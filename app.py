@@ -91,17 +91,17 @@ USUARIOS = {
     },
     # Omar (Viewer): Rol limitado para ver reportes.
     "omar.morales@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Omar Morales",
-        "rol": "viewer",
-        "area": ["reportes"] 
-    },
+    "password": generate_password_hash("Conquers2025"),
+    "nombre": "Omar Morales",
+    "rol": "viewer",
+    "area": ["reportes", "planilla_precios"]
+},
 
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "David Restrepo",
         "rol": "viewer",
-        "area": ["reportes"] 
+        "area": ["reportes", "planilla_precios"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta.
@@ -201,6 +201,49 @@ PLANILLA_TRANSITO_GENERAL = [
 PLANILLA_TRANSITO_REFINERIA = [
     {"ORIGEN": "", "FECHA": "", "GUIA": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "", "TOV": "", "GSV": "", "NSV": ""}
     for _ in range(10)  # O el número de filas que desees por defecto
+]
+
+# REEMPLAZA TU LISTA ACTUAL CON ESTA
+DEPARTAMENTOS_Y_CAPITALES = [
+    {"departamento": "Amazonas", "capital": "Leticia", "lat": -4.2152, "lng": -69.9406},
+    {"departamento": "Antioquia", "capital": "Medellín", "lat": 6.2442, "lng": -75.5812},
+    {"departamento": "Arauca", "capital": "Arauca", "lat": 7.084, "lng": -70.759},
+    {"departamento": "Atlántico", "capital": "Barranquilla", "lat": 10.9639, "lng": -74.7964},
+    {"departamento": "Bolívar", "capital": "Cartagena", "lat": 10.3910, "lng": -75.4794},
+    {"departamento": "Boyacá", "capital": "Tunja", "lat": 5.534, "lng": -73.367},
+    {"departamento": "Caldas", "capital": "Manizales", "lat": 5.068, "lng": -75.517},
+    {"departamento": "Caquetá", "capital": "Florencia", "lat": 1.614, "lng": -75.606},
+    {"departamento": "Casanare", "capital": "Yopal", "lat": 5.337, "lng": -72.390},
+    {"departamento": "Cauca", "capital": "Popayán", "lat": 2.445, "lng": -76.614},
+    {"departamento": "Cesar", "capital": "Valledupar", "lat": 10.463, "lng": -73.253},
+    {"departamento": "Chocó", "capital": "Quibdó", "lat": 5.694, "lng": -76.661},
+    {"departamento": "Córdoba", "capital": "Montería", "lat": 8.747, "lng": -75.881},
+    {"departamento": "Cundinamarca", "capital": "Bogotá", "lat": 4.711, "lng": -74.072},
+    {"departamento": "Guainía", "capital": "Inírida", "lat": 3.865, "lng": -67.923},
+    {"departamento": "Guaviare", "capital": "San José del Guaviare", "lat": 2.572, "lng": -72.645},
+    {"departamento": "Huila", "capital": "Neiva", "lat": 2.927, "lng": -75.281},
+    {"departamento": "La Guajira", "capital": "Riohacha", "lat": 11.544, "lng": -72.907},
+    {"departamento": "Magdalena", "capital": "Santa Marta", "lat": 11.240, "lng": -74.199},
+    {"departamento": "Meta", "capital": "Villavicencio", "lat": 4.142, "lng": -73.626},
+    {"departamento": "Nariño", "capital": "Pasto", "lat": 1.213, "lng": -77.281},
+    {"departamento": "Norte de Santander", "capital": "Cúcuta", "lat": 7.893, "lng": -72.507},
+    {"departamento": "Putumayo", "capital": "Mocoa", "lat": 1.154, "lng": -76.646},
+    {"departamento": "Quindío", "capital": "Armenia", "lat": 4.533, "lng": -75.681},
+    {"departamento": "Risaralda", "capital": "Pereira", "lat": 4.813, "lng": -75.696},
+    {"departamento": "San Andrés y Providencia", "capital": "San Andrés", "lat": 12.584, "lng": -81.700},
+    {"departamento": "Santander", "capital": "Bucaramanga", "lat": 7.119, "lng": -73.122},
+    {"departamento": "Sucre", "capital": "Sincelejo", "lat": 9.295, "lng": -75.397},
+    {"departamento": "Tolima", "capital": "Ibagué", "lat": 4.438, "lng": -75.232},
+    {"departamento": "Valle del Cauca", "capital": "Cali", "lat": 3.451, "lng": -76.532},
+    {"departamento": "Vaupés", "capital": "Mitú", "lat": 1.257, "lng": -70.234},
+    {"departamento": "Vichada", "capital": "Puerto Carreño", "lat": 6.189, "lng": -67.485}
+]
+PLANILLA_PRECIOS = [
+    {
+        "DEPARTAMENTO": d["departamento"], "CAPITAL": d["capital"],
+        "LAT": d["lat"], "LNG": d["lng"], # <-- AÑADIMOS LAS COORDENADAS AQUÍ
+        "DISTANCIA_KM": "", "COSTO_FLETE": "", "PRECIO_VENTA": ""
+    } for d in DEPARTAMENTOS_Y_CAPITALES
 ]
 
 def cargar_productos():
@@ -899,34 +942,7 @@ def reporte_barcaza_bita():
         stats_oidech=stats_oidech
     )
 
-@login_required
-@app.route('/guardar_celda_barcaza', methods=['POST'])
-def guardar_celda_barcaza():
-    if session.get('area') != 'barcaza':
-        return jsonify(success=False, message="Permiso denegado"), 403
 
-    data = request.get_json()
-    tk = data.get("tk")
-    field = data.get("field")
-    value = data.get("value")
-    grupo = data.get("grupo") # <-- RECIBIMOS EL GRUPO
-
-    if not all([tk, field is not None, grupo is not None]):
-        return jsonify(success=False, message="Datos incompletos"), 400
-
-    # Búsqueda usando la clave compuesta TK + GRUPO
-    tanque_encontrado = False
-    for fila in PLANILLA_BARCAZA_ORION:
-        # AHORA LA CONDICIÓN ES MÁS SEGURA Y PRECISA
-        if fila.get("TK") == tk and fila.get("grupo") == grupo:
-            fila[field] = value
-            tanque_encontrado = True
-            break # Encontramos el único tanque, podemos salir del bucle
-
-    if tanque_encontrado:
-        return jsonify(success=True, message=f"Celda {field} de {tk} ({grupo}) actualizada.")
-    else:
-        return jsonify(success=False, message=f"Tanque no encontrado: {tk} en grupo {grupo}"), 404
 
 @login_required
 @app.route('/guardar_celda_bita', methods=['POST'])
@@ -952,13 +968,37 @@ def guardar_celda_bita():
     return jsonify(success=False, message="Tanque no encontrado en la planilla BITA"), 404
 
 @login_required
+@permiso_requerido('barcaza_orion') 
+@app.route('/guardar_celda_barcaza', methods=['POST'])
+def guardar_celda_barcaza():
+    # El 'if' manual que causaba el error de permisos ya no es necesario
+    
+    data = request.get_json()
+    tk = data.get("tk")
+    field = data.get("field")
+    value = data.get("value")
+    grupo = data.get("grupo") 
+
+    if not all([tk, field is not None, grupo is not None]):
+        return jsonify(success=False, message="Datos incompletos"), 400
+
+    # Búsqueda usando la clave compuesta TK + GRUPO para más seguridad
+    tanque_encontrado = False
+    for fila in PLANILLA_BARCAZA_ORION:
+        if fila.get("TK") == tk and fila.get("grupo") == grupo:
+            fila[field] = value
+            tanque_encontrado = True
+            break # Encontramos el único tanque, podemos salir del bucle
+
+    if tanque_encontrado:
+        return jsonify(success=True, message=f"Celda {field} de {tk} ({grupo}) actualizada.")
+    else:
+        return jsonify(success=False, message=f"Tanque no encontrado: {tk} en grupo {grupo}"), 404
+
+@login_required
+@permiso_requerido('barcaza_orion')
 @app.route('/guardar_registro_barcaza', methods=['POST'])
 def guardar_registro_barcaza():
-    # 1. Valida que el usuario tenga permiso
-    if session.get('area') != 'barcaza':
-        return jsonify(success=False, message="Permiso denegado"), 403
-    
-    # 2. Obtiene los datos ACTUALIZADOS que envió el JavaScript
     datos_actualizados = request.get_json()
     
     # 3. Valida que los datos se recibieron correctamente
@@ -997,52 +1037,7 @@ def guardar_registro_barcaza():
         print(f"Error al guardar registro de Orion: {e}")
         return jsonify(success=False, message=f"Error interno del servidor al guardar el archivo: {e}"), 500
     
-@login_required
-@app.route('/guardar_registro_bita', methods=['POST'])
-def guardar_registro_bita():
-    # 1. VERIFICAR PERMISOS
-    # Solo Ricardo puede guardar el registro completo.
-    if session.get('email') != "quality.manager@conquerstrading.com":
-        return jsonify(success=False, message="Permiso denegado para guardar el registro."), 403
 
-    # 2. OBTENER DATOS DE LA TABLA
-    # El JavaScript envía una lista de diccionarios (los datos de todas las filas).
-    datos_nuevos = request.get_json()
-    if not isinstance(datos_nuevos, list):
-        return jsonify(success=False, message="El formato de los datos es incorrecto."), 400
-
-    try:
-        # 3. PREPARAR METADATOS (FECHA Y USUARIO)
-        ahora = datetime.now()
-        timestamp = ahora.strftime('%Y_%m_%d_%H_%M_%S')
-        usuario_actual = session.get('nombre', 'Usuario Desconocido')
-
-        # 4. DEFINIR RUTA Y NOMBRE DE ARCHIVO
-        carpeta = "registros"
-        os.makedirs(carpeta, exist_ok=True) # Crea la carpeta si no existe
-        nombre_archivo = f"barcaza_bita_{timestamp}.json"
-        ruta_completa = os.path.join(carpeta, nombre_archivo)
-
-        # 5. CREAR EL DICCIONARIO A GUARDAR
-        # Este es el contenido que tendrá el archivo .json
-        contenido_a_guardar = {
-            "fecha": timestamp,
-            "usuario": usuario_actual,
-            "datos": datos_nuevos
-        }
-
-        # 6. GUARDAR EL ARCHIVO JSON
-        with open(ruta_completa, 'w', encoding='utf-8') as f:
-            json.dump(contenido_a_guardar, f, ensure_ascii=False, indent=4)
-        
-        # 7. DEVOLVER RESPUESTA DE ÉXITO AL JAVASCRIPT
-        return jsonify(success=True, message="Registro guardado exitosamente.")
-
-    except Exception as e:
-        # Si algo sale mal, devolvemos un error 500
-        print(f"Error al guardar el registro de BITA: {e}") # Para depuración en la consola
-        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
-    
 @login_required
 @app.route('/dashboard_reportes')
 def dashboard_reportes():
@@ -1337,8 +1332,31 @@ def agregar_cliente_ajax():
     clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
     guardar_clientes(clientes)
 
-    # Devuelve el nuevo cliente junto con la respuesta de éxito
-    return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
+@login_required
+@permiso_requerido('planilla_precios')
+@app.route('/planilla_precios')
+def planilla_precios():
+    # La lógica para cargar los datos se mantiene igual
+    datos_guardados = []
+    try:
+        carpeta = "registros"
+        archivos_precios = sorted([a for a in os.listdir(carpeta) if a.startswith("precios_") and a.endswith(".json")], reverse=True)
+        if archivos_precios:
+            ruta_reciente = os.path.join(carpeta, archivos_precios[0])
+            with open(ruta_reciente, 'r', encoding='utf-8') as f:
+                contenido = json.load(f)
+            datos_guardados = contenido.get("datos", [])
+    except Exception as e:
+        print(f"Error cargando planilla de precios: {e}")
+        pass
+
+    fuente_de_datos = datos_guardados if datos_guardados else PLANILLA_PRECIOS
+
+    # ¡Ya no necesitamos la clave de Google!
+    # Simplemente renderizamos la plantilla con los datos de la planilla.
+    return render_template('planilla_precios.html',
+                           planilla=fuente_de_datos,
+                           nombre=session.get("nombre"))
 
 def cargar_conductores():
     """Función auxiliar para cargar conductores desde Conductores.json de forma segura."""
@@ -1354,6 +1372,23 @@ def guardar_conductores(conductores):
     ruta_conductores = os.path.join(BASE_DIR, 'static', 'Conductores.json')
     with open(ruta_conductores, 'w', encoding='utf-8') as f:
         json.dump(conductores, f, ensure_ascii=False, indent=4)
+
+def cargar_empresas():
+    """Función auxiliar para cargar empresas desde EmpresasTransportadoras.json."""
+    try:
+        ruta_empresas = os.path.join(BASE_DIR, 'static', 'EmpresasTransportadoras.json')
+        if not os.path.exists(ruta_empresas):
+            return [] # Si el archivo no existe, devuelve una lista vacía
+        with open(ruta_empresas, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+def guardar_empresas(empresas):
+    """Función auxiliar para guardar la lista de empresas en EmpresasTransportadoras.json."""
+    ruta_empresas = os.path.join(BASE_DIR, 'static', 'EmpresasTransportadoras.json')
+    with open(ruta_empresas, 'w', encoding='utf-8') as f:
+        json.dump(empresas, f, ensure_ascii=False, indent=4)        
 
 @login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])
@@ -1388,7 +1423,26 @@ def agregar_conductor_ajax():
     guardar_conductores(conductores)
 
     return jsonify(success=True, message="Conductor agregado exitosamente.", nuevo_conductor=nuevo_conductor)
+@login_required
+@app.route('/agregar_empresa_ajax', methods=['POST'])
+def agregar_empresa_ajax():
+    data = request.get_json()
+    nombre = data.get('nombre')
 
+    if not nombre:
+        return jsonify(success=False, message="El nombre es obligatorio."), 400
+
+    empresas = cargar_empresas()
+
+    if any(e['NOMBRE_EMPRESA'].lower() == nombre.lower() for e in empresas):
+        return jsonify(success=False, message=f"La empresa '{nombre}' ya existe."), 409
+
+    nueva_empresa = { "NOMBRE_EMPRESA": nombre.upper() }
+    empresas.append(nueva_empresa)
+    empresas.sort(key=lambda x: x['NOMBRE_EMPRESA'])
+    guardar_empresas(empresas)
+
+    return jsonify(success=True, message="Empresa agregada exitosamente.", nueva_empresa=nueva_empresa)
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -75,7 +75,29 @@
         
         #selloInput { -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield; }
         #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
-        
+        /* 1. Hacemos los contenedores 'relative' para posicionar el botón */
+.btn-agregar-flotante {
+    position: absolute; /* Usamos posición absoluta para no afectar el layout */
+    display: none; /* Ocultos hasta que el JS los posicione */
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background-color: #0b8552;
+    color: white;
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+.btn-agregar-flotante:hover {
+    transform: scale(1.1);
+    background-color: #086a43;
+} 
         /* Estilos de Impresión */
         @media print {
            .no-print { 
@@ -112,25 +134,25 @@
         .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
         .descripcion-producto, .volumen { font-weight: bold; }
         .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
-        .lugar-fecha { position: relative; left: -0.8cm; width: 8.8cm; height: 1.1cm; font-size: 14pt }
-        .planta-productor { position: relative; left: -0.6cm; width: 9cm; height: 1cm;font-size: 14pt }
+        .lugar-fecha { width: 8.8cm; height: 1.1cm; font-size: 14pt }
+        .planta-productor { width: 9cm; height: 1cm;font-size: 14pt }
         .factura-remision { width: 3.5cm; height: 1cm;font-size: 16pt  }
         .despacho { width: 15cm; height: 1cm; font-size: 14pt }
         .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
-        .direccion {position: relative; top: -0.1cm; width: 15cm; height: 1.2cm; font-size: 14pt }
+        .direccion { width: 15cm; height: 1.2cm; font-size: 14pt }
         .ciudad { width: 11cm; height: 1cm; font-size: 12pt }
         .nombre-conductor { width: 18cm; height: 1cm; font-size: 14pt }
-        .cedula { position: relative; left: -0.5cm; width: 9cm; height: 1cm; font-size: 16pt }
+        .cedula { width: 9cm; height: 1cm; font-size: 14pt }
         .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
         .placa-cabezote { width: 9.5cm; height: 1cm; font-size: 16pt }
         .placa-tanque { width: 7.5cm; height: 1cm; font-size: 16pt }
         .lugar-origen { width: 9cm; height: 1cm; font-size: 14pt }
         .fecha-hora-salida { width: 12cm; height: 1cm;font-size: 14pt  }
-        .hora {position: relative; left: -0.2cm; width: 3.2cm; height: 1cm; font-size: 14pt }
+        .hora { width: 3.2cm; height: 1cm; font-size: 14pt }
         .lugar-destino { width: 10cm; height: 1cm; font-size: 14pt }
         .horas-vigencia { width: 11cm; height: 1cm; font-size: 14pt }
         .descripcion-producto { width: 18cm; height: 3.8cm; padding: 25px; font-size: 18pt; }
-        .volumen { position: relative; left: -0.2cm;width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
+        .volumen { width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
         .volumen div { margin-bottom: 25px; }
         .volumen div:last-child { margin-bottom: 0; }
         .observaciones { width: 18cm; height: 1.6cm; font-size: 18pt; position: relative;  }
@@ -142,6 +164,33 @@
     </style>
 </head>
 <body>
+  <div id="botones-flotantes-container">
+    <button type="button" id="btnAbrirModalCliente" class="btn-agregar-flotante no-print" title="Agregar Nuevo Cliente"><i class="bi bi-plus"></i></button>
+    <button type="button" id="btnAbrirModalConductor" class="btn-agregar-flotante no-print" title="Agregar Nuevo Conductor"><i class="bi bi-plus"></i></button>
+    <button type="button" id="btnAbrirModalEmpresa" class="btn-agregar-flotante no-print" title="Agregar Nueva Empresa"><i class="bi bi-plus"></i></button>
+</div>
+
+<div class="modal fade" id="modalAgregarCliente"> </div>
+<div class="modal fade" id="modalAgregarConductor"> </div>
+<div class="modal fade" id="modalAgregarEmpresa">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Agregar Nueva Empresa</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="formAgregarEmpresa">
+                    <div class="mb-3">
+                        <label for="nombreNuevaEmpresa" class="form-label">Nombre de la Empresa</label>
+                        <input type="text" class="form-control" id="nombreNuevaEmpresa" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarEmpresa">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
 <div class="acciones no-print">
     <button onclick="window.history.back()" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Regresar
