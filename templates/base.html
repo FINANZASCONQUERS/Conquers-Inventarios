@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Sistema de Gestión | Conquers Trading{% endblock %}</title>
     <link rel="icon" href="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" type="image/jpeg">
+    
+    <!-- CSS Libraries -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-    <script src="https://unpkg.com/leaflet.animatedmarker@1.0.0/src/AnimatedMarker.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />       
+    
     <style>
         :root {
             --primary-color: #0b8552;
@@ -41,7 +43,7 @@
             padding: 2rem 0;
         }
         
-        /* Navbar mejorada */
+        /* Navbar Styles */
         .navbar-custom {
             background-color: white !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
@@ -122,7 +124,7 @@
             color: var(--primary-color);
         }
         
-        /* Botón de toggler personalizado */
+        /* Custom Toggle Button */
         .navbar-toggler {
             border: none;
             padding: 0.5rem;
@@ -171,7 +173,7 @@
             bottom: 0.6em;
         }
         
-        /* Footer mejorado */
+        /* Footer Styles */
         .footer {
             background-color: var(--secondary-color);
             color: white;
@@ -192,7 +194,7 @@
             text-decoration: underline;
         }
         
-        /* Efectos y animaciones */
+        /* Animations */
         .animate-fade {
             animation: fadeIn 0.5s ease-in-out;
         }
@@ -202,6 +204,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
         
+        /* Custom Button */
         .btn-custom {
             background-color: var(--primary-color);
             color: white;
@@ -219,7 +222,7 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         
-        /* Responsive adjustments */
+        /* Responsive Adjustments */
         @media (max-width: 992px) {
             .navbar-custom .navbar-collapse {
                 background-color: white;
@@ -234,193 +237,204 @@
                 padding: 0.75rem 1rem;
             }
         }
-                @media print {
+        
+        @media print {
             .navbar-custom, .footer {
                 display: none !important;
             }
             body {
-                padding-top: 0 !important; /* Quitar el espacio superior de la barra de navegación */
+                padding-top: 0 !important;
             }
         }
     </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
+
 <body style="{% block body_style %}{% endblock %}">
-    
-<nav class="navbar navbar-expand-lg navbar-custom fixed-top">
-    <div class="container">
-        <a class="navbar-brand" href="{{ url_for('home') }}">
-            <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Conquers Trading" class="hover-effect">
-            <span class="d-none d-lg-inline">Sistema de Gestión</span>
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon-custom"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarMain">
-            <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
-                {% if 'email' in session %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint in ['dashboard_reportes', 'home'] %}active{% endif %}" href="{{ url_for('dashboard_reportes') }}">
-                            <i class="bi bi-house-door-fill me-1"></i> Inicio
-                        </a>
-                    </li>
-                    
-                    {% if session.get('rol') == 'admin' %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-file-earmark-text-fill me-1"></i> Planillas
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="planillasDropdown">
-                            <li><a class="dropdown-item" href="{{ url_for('barcaza_orion') }}"><i class="bi bi-water me-2"></i>Planilla Orion</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('barcaza_bita') }}"><i class="bi bi-tsunami me-2"></i>Planilla BITA</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('planta') }}"><i class="bi bi-buildings-fill me-2"></i>Planilla Planta</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('transito') }}"><i class="bi bi-cone-striped me-2"></i>Planilla Tránsito</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}">Planilla de Precios</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
-                        </ul>
-                    </li>
-                    {% else %}
-                        {% if 'barcaza_orion' in session.get('area', []) %}
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('home') }}">
+                <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Conquers Trading" class="hover-effect">
+                <span class="d-none d-lg-inline">Sistema de Gestión</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon-custom"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarMain">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-lg-center">
+                    {% if 'email' in session %}
                         <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'barcaza_orion' %}active{% endif %}" href="{{ url_for('barcaza_orion') }}">
-                                <i class="bi bi-water me-1"></i> Planilla Orion
+                            <a class="nav-link {% if request.endpoint in ['dashboard_reportes', 'home'] %}active{% endif %}" href="{{ url_for('dashboard_reportes') }}">
+                                <i class="bi bi-house-door-fill me-1"></i> Inicio
                             </a>
                         </li>
-                        {% endif %}
                         
-                        {% if 'barcaza_bita' in session.get('area', []) %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'barcaza_bita' %}active{% endif %}" href="{{ url_for('barcaza_bita') }}">
-                                <i class="bi bi-tsunami me-1"></i> Planilla BITA
-                            </a>
-                        </li>
-                        {% endif %}
+                        {% if session.get('rol') == 'admin' %}
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-file-earmark-text-fill me-1"></i> Planillas
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="planillasDropdown">
+                                    <li><a class="dropdown-item" href="{{ url_for('barcaza_orion') }}"><i class="bi bi-water me-2"></i>Planilla Orion</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('barcaza_bita') }}"><i class="bi bi-tsunami me-2"></i>Planilla BITA</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('planta') }}"><i class="bi bi-buildings-fill me-2"></i>Planilla Planta</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('transito') }}"><i class="bi bi-cone-striped me-2"></i>Planilla Tránsito</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}">Planilla de Precios</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
+                                </ul>
+                            </li>
+                        {% else %}
+                            {% if 'barcaza_orion' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'barcaza_orion' %}active{% endif %}" href="{{ url_for('barcaza_orion') }}">
+                                    <i class="bi bi-water me-1"></i> Planilla Orion
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% if 'barcaza_bita' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'barcaza_bita' %}active{% endif %}" href="{{ url_for('barcaza_bita') }}">
+                                    <i class="bi bi-tsunami me-1"></i> Planilla BITA
+                                </a>
+                            </li>
+                            {% endif %}
 
-                        {% if 'planta' in session.get('area', []) %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'planta' %}active{% endif %}" href="{{ url_for('planta') }}">
-                                <i class="bi bi-buildings-fill me-1"></i> Planilla Planta
-                            </a>
-                        </li>
-                        {% endif %}
+                            {% if 'planta' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'planta' %}active{% endif %}" href="{{ url_for('planta') }}">
+                                    <i class="bi bi-buildings-fill me-1"></i> Planilla Planta
+                                </a>
+                            </li>
+                            {% endif %}
 
-                         {% if 'planilla_precios' in session.get('area', []) %}
-                <li class="nav-item">
-                    <a class="nav-link {% if request.endpoint == 'planilla_precios' %}active{% endif %}" href="{{ url_for('planilla_precios') }}">Planilla de Precios</a>
-                </li>
-                {% endif %}
-
-                        {% if 'transito' in session.get('area', []) %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'transito' %}active{% endif %}" href="{{ url_for('transito') }}">
-                                <i class="bi bi-cone-striped me-1"></i> Planilla Tránsito
-                            </a>
-                        </li>
-                        {% endif %}
-
-                        {% if 'guia_transporte' in session.get('area', []) %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'guia_transporte' %}active{% endif %}" href="{{ url_for('guia_transporte') }}">
-                                <i class="bi bi-truck me-1"></i> Generar Guía
-                            </a>
-                        </li>
-                        {% endif %}
+                             {% if 'planilla_precios' in session.get('area', []) %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'planilla_precios' %}active{% endif %}" href="{{ url_for('planilla_precios') }}">Planilla de Precios</a>
+                    </li>
                     {% endif %}
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="javascript:history.back()" title="Volver a la página anterior">
-                            <i class="bi bi-arrow-left-circle me-1"></i> Regresar
-                        </a>
-                    </li>
-
-                    <li class="nav-item dropdown ms-lg-2">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <div class="me-2 d-none d-lg-flex flex-column text-end">
-                                <span class="fw-semibold">{{ session.get('nombre', 'Usuario') }}</span>
-                                <small class="text-muted" style="font-size: 0.75rem;">{{ session.get('area', 'Área')|join(', ') }}</small>
-                            </div>
-                            <i class="bi bi-person-circle fs-5"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><h6 class="dropdown-header">Sesión activa</h6></li>
-                            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
-                        </ul>
-                    </li>
-                {% else %}
-                    <li class="nav-item ms-lg-2">
-                        <a class="btn btn-custom" href="{{ url_for('login') }}">
-                            <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar sesión
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </div>
-    </div>
-</nav>
-
-<main class="container animate-fade {% block main_classes %}{% endblock %}" style="{% block main_style %}{% endblock %}">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flashes-container">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show custom-alert" role="alert">
-                        <div class="d-flex align-items-center">
-                            {% if category == 'success' %}
-                                <i class="bi bi-check-circle-fill me-2"></i>
-                            {% elif category == 'danger' %}
-                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                            {% elif category == 'warning' %}
-                                <i class="bi bi-exclamation-circle-fill me-2"></i>
-                            {% else %}
-                                <i class="bi bi-info-circle-fill me-2"></i>
+                            {% if 'transito' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'transito' %}active{% endif %}" href="{{ url_for('transito') }}">
+                                    <i class="bi bi-cone-striped me-1"></i> Planilla Tránsito
+                                </a>
+                            </li>
                             {% endif %}
-                            <span>{{ message }}</span>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
-    
-    {% block content %}{% endblock %}
-</main>
 
-<footer class="footer">
-    <div class="container">
-        <div class="row">
-            <div class="col-md-6 text-md-start mb-3 mb-md-0">
-                <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Conquers Trading" height="40" class="mb-2">
-                <p class="mb-0">Sistema de Gestión Integral</p>
-            </div>
-            <div class="col-md-6 text-md-end">
-                <p class="mb-1">&copy; {{ current_year }} Conquers Trading. Todos los derechos reservados.</p>
-                <p class="mb-0">Versión 1.0.0</p>
+                            {% if 'guia_transporte' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'guia_transporte' %}active{% endif %}" href="{{ url_for('guia_transporte') }}">
+                                    <i class="bi bi-truck me-1"></i> Generar Guía
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% endif %}
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="javascript:history.back()" title="Volver a la página anterior">
+                                <i class="bi bi-arrow-left-circle me-1"></i> Regresar
+                            </a>
+                        </li>
+
+                        <li class="nav-item dropdown ms-lg-2">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <div class="me-2 d-none d-lg-flex flex-column text-end">
+                                    <span class="fw-semibold">{{ session.get('nombre', 'Usuario') }}</span>
+                                    <small class="text-muted" style="font-size: 0.75rem;">{{ session.get('area', 'Área')|join(', ') }}</small>
+                                </div>
+                                <i class="bi bi-person-circle fs-5"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><h6 class="dropdown-header">Sesión activa</h6></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
+                            </ul>
+                        </li>
+                    {% else %}
+                        <li class="nav-item ms-lg-2">
+                            <a class="btn btn-custom" href="{{ url_for('login') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar sesión
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
             </div>
         </div>
-    </div>
-</footer>
+    </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    // Efecto de navbar al hacer scroll
-    window.addEventListener('scroll', function() {
-        const navbar = document.querySelector('.navbar-custom');
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
-    });
+    <!-- Main Content -->
+    <main class="container animate-fade {% block main_classes %}{% endblock %}" style="{% block main_style %}{% endblock %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flashes-container">
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show custom-alert" role="alert">
+                            <div class="d-flex align-items-center">
+                                {% if category == 'success' %}
+                                    <i class="bi bi-check-circle-fill me-2"></i>
+                                {% elif category == 'danger' %}
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                {% elif category == 'warning' %}
+                                    <i class="bi bi-exclamation-circle-fill me-2"></i>
+                                {% else %}
+                                    <i class="bi bi-info-circle-fill me-2"></i>
+                                {% endif %}
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 text-md-start mb-3 mb-md-0">
+                    <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Conquers Trading" height="40" class="mb-2">
+                    <p class="mb-0">Sistema de Gestión Integral</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-1">&copy; {{ current_year }} Conquers Trading. Todos los derechos reservados.</p>
+                    <p class="mb-0">Versión 1.0.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    // Inicializar tooltips
-    document.addEventListener('DOMContentLoaded', function() {
-        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
+    <script>
+        // Navbar scroll effect
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar-custom');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
         });
-    });
-</script>
-{% block extra_js %}{% endblock %}
+        
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

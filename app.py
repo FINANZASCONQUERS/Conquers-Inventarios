@@ -270,7 +270,7 @@ def guardar_registro_generico(datos_a_guardar, tipo_area):
     """
     try:
         # 1. Crear el timestamp para el nombre del archivo
-        fecha = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        fecha = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         
         # 2. Definir la carpeta y el nombre del archivo
         carpeta = "registros"
@@ -550,7 +550,7 @@ def guardar_transito(tipo_transito): # tipo_transito será 'general' o 'refineri
         return jsonify(success=False, message=f"Tipo de planilla de tránsito '{tipo_transito}' no es válido."), 400
 
     fecha_registro_dt = datetime.now() 
-    fecha_str_para_nombre_archivo = fecha_registro_dt.strftime("%Y-%m-%d_%H-%M-%S") 
+    fecha_str_para_nombre_archivo = fecha_registro_dt.strftime("%Y_%m-%d_%H_%M_%S") 
 
     # Usar BASE_DIR para asegurar la ruta correcta de la carpeta 'registros'
     carpeta_registros_path = os.path.join(BASE_DIR, "registros")
@@ -582,8 +582,10 @@ def guardar_transito(tipo_transito): # tipo_transito será 'general' o 'refineri
                 fila_procesada[k] = v_original
         datos_procesados_para_guardar.append(fila_procesada)
 
-
+        fecha_para_dashboard = fecha_registro_dt.strftime("%Y_%m_%d_%H_%M_%S")
+ 
     data_to_save_in_file = {
+        "fecha": fecha_para_dashboard,
         "timestamp_iso": fecha_registro_dt.isoformat(), 
         "fecha_guardado_str": fecha_str_para_nombre_archivo, 
         "tipo_transito": tipo_transito, # 'general' o 'refineria'
@@ -942,30 +944,15 @@ def reporte_barcaza_bita():
         stats_oidech=stats_oidech
     )
 
-
-
 @login_required
-@app.route('/guardar_celda_bita', methods=['POST'])
-def guardar_celda_bita():
-    # PERMISO: Ricardo puede editar celdas de BITA
-    if session.get('email') != "quality.manager@conquerstrading.com":
-        return jsonify(success=False, message="Permiso denegado"), 403
+@permiso_requerido('barcaza_bita')
+@app.route('/guardar-registro-bita', methods=['POST'])
+def guardar_registro_bita():
+    # Esta línea recibe la LISTA COMPLETA de tanques que envía el navegador
+    datos_actualizados = request.get_json()
 
-    data = request.get_json()
-    tk = data.get("tk")
-    field = data.get("field")
-    value = data.get("value")
-
-    if not all([tk, field is not None]):
-        return jsonify(success=False, message="Datos incompletos"), 400
-
-    # Busca en la planilla de BITA
-    for fila in PLANILLA_BARCAZA_BITA:
-        if fila["TK"] == tk:
-            fila[field] = value
-            return jsonify(success=True)
-
-    return jsonify(success=False, message="Tanque no encontrado en la planilla BITA"), 404
+    # Esta línea le pasa la LISTA COMPLETA a tu otra función que SÍ sabe cómo guardarla
+    return guardar_registro_generico(datos_actualizados, "barcaza_bita")
 
 @login_required
 @permiso_requerido('barcaza_orion') 
@@ -1250,26 +1237,13 @@ def guardar_clientes(clientes):
 
 @login_required
 @app.route('/gestionar_clientes')
-def gestionar_clientes():
-    """Muestra la página para añadir nuevos clientes y ver los existentes."""
-    # Define qué áreas pueden gestionar clientes
-    areas_permitidas = ['transito', 'logistica', 'barcaza']
-    if session.get('area') not in areas_permitidas and session.get('rol') != 'admin':
-        flash("No tienes permisos para gestionar clientes.", "danger")
-        return redirect(url_for('home'))
-        
+def gestionar_clientes():    
     clientes_actuales = cargar_clientes()
     return render_template('gestionar_clientes.html', clientes=clientes_actuales)
 
 @login_required
 @app.route('/guardar_cliente', methods=['POST'])
 def guardar_cliente():
-    """Recibe los datos del formulario y guarda el nuevo cliente."""
-    # Define qué áreas pueden guardar clientes
-    areas_permitidas = ['transito', 'logistica', 'barcaza']
-    if session.get('area') not in areas_permitidas and session.get('rol') != 'admin':
-        flash("No tienes permisos para guardar clientes.", "danger")
-        return redirect(url_for('home'))
 
     nombre = request.form.get('nombre_cliente')
     direccion = request.form.get('direccion_cliente')
@@ -1304,11 +1278,6 @@ def guardar_cliente():
 @login_required
 @app.route('/agregar_cliente_ajax', methods=['POST'])
 def agregar_cliente_ajax():
-    """Recibe datos de un nuevo cliente vía AJAX y los guarda."""
-    # Revisa permisos
-    areas_permitidas = ['transito', 'logistica', 'barcaza']
-    if session.get('area') not in areas_permitidas and session.get('rol') != 'admin':
-        return jsonify(success=False, message="Permiso denegado."), 403
 
     data = request.get_json()
     nombre = data.get('nombre')
@@ -1320,7 +1289,7 @@ def agregar_cliente_ajax():
 
     clientes = cargar_clientes()
 
-    if any(c['NOMBRE_CLIENTE'].lower() == nombre.lower() for c in clientes):
+    if any(c.get('NOMBRE_CLIENTE', '').lower() == nombre.lower() for c in clientes):
         return jsonify(success=False, message=f"El cliente '{nombre}' ya existe."), 409 # 409 Conflict
 
     nuevo_cliente = {
@@ -1331,6 +1300,7 @@ def agregar_cliente_ajax():
     clientes.append(nuevo_cliente)
     clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
     guardar_clientes(clientes)
+    return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
 
 @login_required
 @permiso_requerido('planilla_precios')
@@ -1369,9 +1339,15 @@ def cargar_conductores():
 
 def guardar_conductores(conductores):
     """Función auxiliar para guardar la lista de conductores en Conductores.json."""
-    ruta_conductores = os.path.join(BASE_DIR, 'static', 'Conductores.json')
-    with open(ruta_conductores, 'w', encoding='utf-8') as f:
-        json.dump(conductores, f, ensure_ascii=False, indent=4)
+    try:
+        ruta_conductores = os.path.join(BASE_DIR, 'static', 'Conductores.json')
+        with open(ruta_conductores, 'w', encoding='utf-8') as f:
+            json.dump(conductores, f, ensure_ascii=False, indent=4)
+        return True # Devuelve True si todo salió bien
+    except (IOError, PermissionError) as e:
+        # Captura errores de escritura o de permisos
+        print(f"ERROR AL GUARDAR: No se pudo escribir en el archivo Conductores.json. Causa: {e}")
+        return False # Devuelve False si hubo un error
 
 def cargar_empresas():
     """Función auxiliar para cargar empresas desde EmpresasTransportadoras.json."""
@@ -1393,24 +1369,19 @@ def guardar_empresas(empresas):
 @login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])
 def agregar_conductor_ajax():
-    """Recibe datos de un nuevo conductor vía AJAX y los guarda."""
-    # Revisa permisos
-    areas_permitidas = ['transito', 'logistica', 'barcaza']
-    if session.get('area') not in areas_permitidas and session.get('rol') != 'admin':
-        return jsonify(success=False, message="Permiso denegado."), 403
-
+        
     data = request.get_json()
-    nombre = data.get('nombre')
-    cedula = data.get('cedula')
-    placa = data.get('placa')
+    nombre = str(data.get('nombre', ''))
+    cedula = str(data.get('cedula', ''))
+    placa = str(data.get('placa', ''))
 
     if not nombre or not cedula or not placa:
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
     conductores = cargar_conductores()
 
-    # Verificar si la cédula ya existe para no duplicar conductores
-    if any(c['CEDULA'].lower() == cedula.lower() for c in conductores):
+    # Verificación de duplicados (versión segura)
+    if any(c.get('CEDULA', '').lower() == cedula.lower() for c in conductores):
         return jsonify(success=False, message=f"Un conductor con la cédula '{cedula}' ya existe."), 409
 
     nuevo_conductor = {
@@ -1419,10 +1390,18 @@ def agregar_conductor_ajax():
         "PLACA": placa.upper()
     }
     conductores.append(nuevo_conductor)
-    conductores.sort(key=lambda x: x['CONDUCTOR'])
-    guardar_conductores(conductores)
+    
+    # Ordenar la lista (versión segura)
+    conductores.sort(key=lambda x: x.get('CONDUCTOR', ''))
+    
+    # Guardar los datos y comprobar el resultado
+    guardado_exitoso = guardar_conductores(conductores)
 
-    return jsonify(success=True, message="Conductor agregado exitosamente.", nuevo_conductor=nuevo_conductor)
+    if guardado_exitoso:
+        return jsonify(success=True, message="Conductor agregado exitosamente.", nuevo_conductor=nuevo_conductor)
+    else:
+        return jsonify(success=False, message="Error del servidor: No se pudo escribir en el archivo de conductores."), 500
+
 @login_required
 @app.route('/agregar_empresa_ajax', methods=['POST'])
 def agregar_empresa_ajax():

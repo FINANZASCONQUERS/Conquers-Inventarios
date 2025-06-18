@@ -1,70 +1,87 @@
 {% extends "base.html" %}
 
-{% block title %}Planilla de Precios con Mapa (Leaflet){% endblock %}
+{# Bloque para el título de la página #}
+{% block title %}Planilla de Precios con Mapa Interactivo{% endblock %}
 
+{# Bloque para el contenido principal (el mapa y el formulario) #}
 {% block content %}
 <div class="container-fluid my-4">
 
-    <div class="page-header-container d-flex justify-content-between align-items-center mb-3">
+    <div class="page-header-container d-flex justify-content-between align-items-center mb-4">
         <div class="page-title d-flex align-items-center">
-            <i class="bi bi-map-fill page-title-icon"></i>
-            <h1 class="page-title-text h3 mb-0">Planilla de Precios Interactiva (Open Source)</h1>
+            <i class="bi bi-geo-alt-fill page-title-icon"></i>
+            <h1 class="page-title-text h3 mb-0">Planilla de Precios Georreferenciados</h1>
         </div>
     </div>
 
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card shadow-sm border-0 h-100">
-                <div class="card-body p-2">
-                    <div id="map" style="height: 600px; width: 100%; border-radius: 8px;"></div>
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="mb-0">Mapa Interactivo de Destinos</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="map" style="height: 650px; width: 100%;"></div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-4">
             <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Calcular Ruta</h5>
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Configuración de Ruta</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
                         <label for="origin-input" class="form-label">Origen</label>
-                        <input type="text" class="form-control" id="origin-input" value="Cartagena, Bolívar, Colombia" readonly>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-geo-alt"></i></span>
+                            <input type="text" class="form-control" id="origin-input" value="Cartagena, Bolívar" readonly>
+                        </div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-4">
                         <label for="destination-select" class="form-label">Destino</label>
-                        <select class="form-select" id="destination-select">
-                            <option selected disabled value="">Selecciona un departamento...</option>
-                            {% for fila in planilla %}
-                            <option value="{{ fila.LAT }},{{ fila.LNG }}">{{ fila.DEPARTAMENTO }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-geo-fill"></i></span>
+                            <select class="form-select" id="destination-select">
+                                <option selected disabled value="">Seleccione departamento...</option>
+                                {% for fila in planilla %}
+                                <option value="{{ fila.LAT }},{{ fila.LNG }}">{{ fila.DEPARTAMENTO }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <button id="calculate-route-btn" class="btn btn-primary">
-                            <i class="bi bi-geo-alt-fill me-2"></i>Marcar Ruta
+                            <i class="bi bi-signpost-2-fill me-2"></i>Calcular Ruta
+                        </button>
+                        <button id="clear-route-btn" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Limpiar Ruta
                         </button>
                     </div>
                 </div>
             </div>
 
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Datos del Viaje</h5>
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Información de Distancia</h5>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <tbody>
-                            <tr>
-                                <th scope="row">Distancia</th>
-                                <td id="distance-output">- km</td>
-                            </tr>
-                            <tr>
-                                <th scope="row">Duración Aprox.</th>
-                                <td id="duration-output">- horas</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded me-3">
+                            <i class="bi bi-arrow-left-right text-primary" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Distancia Total</h6>
+                            <p class="mb-0 text-muted">Desde origen a destino</p>
+                        </div>
+                    </div>
+                    <div class="alert alert-primary" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-info-circle-fill me-2"></i>
+                            <span id="distance-output" class="fw-bold">Seleccione un destino</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -72,124 +89,161 @@
 </div>
 
 <style>
-    /* Estilos para que la página se vea bien */
-    .page-title-icon { font-size: 1.75rem; color: #0d6efd; margin-right: 0.75rem; }
-    .page-title-text { color: #343a40; font-weight: 600; }
-    /* Fix para que los iconos de Leaflet se vean */
-    .leaflet-routing-icon { background-color: white !important; }
+    /* Estilos mejorados */
+    .page-title-icon {
+        font-size: 1.75rem;
+        color: #2c3e50;
+        margin-right: 0.75rem;
+    }
+    .page-title-text {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    .card {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    #map {
+        border-radius: 0 0 10px 10px;
+    }
+    .leaflet-routing-container {
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .leaflet-routing-alt {
+        max-height: 200px;
+    }
+    .leaflet-control-attribution {
+        font-size: 11px;
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+    }
 </style>
 {% endblock %}
 
+{# Bloque para el JavaScript adicional (la lógica del mapa) #}
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
- <script src="https://unpkg.com/leaflet.animatedmarker@1.0.0/src/AnimatedMarker.js"></script>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const map = L.map('map').setView([4.57, -74.29], 6);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    // Configuración inicial del mapa centrado en Colombia
+    const map = L.map('map').setView([4.5709, -74.2973], 6);
+    
+    // Capa base profesional con más contraste
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
     }).addTo(map);
 
+    // Capa de relieve opcional (descomentar si se desea)
+    /*
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri',
+        maxZoom: 13
+    }).addTo(map);
+    */
+
     let routingControl = null;
-    let animatedTruck = null;
-    let routePolyline = null; 
+    let destinationMarker = null;
 
-    function formatTruckDuration(totalSeconds) {
-        const drivingSeconds = totalSeconds * 1.6;
-        const drivingHours = drivingSeconds / 3600;
-        const restHours = Math.floor(drivingHours / 12) * 8;
-        const totalHours = drivingHours + restHours;
-
-        if (totalHours < 24) {
-            return totalHours.toFixed(1) + ' horas';
+    // Función para formatear la distancia
+    function formatDistance(meters) {
+        if (meters >= 1000) {
+            return (meters / 1000).toFixed(1) + ' km';
         } else {
-            const days = Math.floor(totalHours / 24);
-            const hours = totalHours % 24;
-            return `${days} día(s) y ${hours.toFixed(0)} horas`;
+            return meters.toFixed(0) + ' m';
         }
     }
 
+    // Botón para calcular ruta
     document.getElementById('calculate-route-btn').addEventListener('click', function() {
         const destinationSelect = document.getElementById('destination-select');
         const selectedOption = destinationSelect.value;
 
         if (!selectedOption) {
-            alert('Por favor, selecciona un destino.');
+            alert('Por favor, seleccione un destino válido.');
             return;
         }
 
-        // --- Limpieza de la ruta y camión anteriores ---
-        if (routingControl) map.removeControl(routingControl);
-        if (animatedTruck) map.removeLayer(animatedTruck);
-        if (routePolyline) map.removeLayer(routePolyline); // <-- NUEVO: Borra la línea anterior
+        // Limpiar ruta anterior si existe
+        if (routingControl) {
+            map.removeControl(routingControl);
+        }
+        if (destinationMarker) {
+            map.removeLayer(destinationMarker);
+        }
 
-        const originCoords = L.latLng(10.3910, -75.4794);
+        const originCoords = L.latLng(10.3910, -75.4794); // Cartagena
         const [lat, lng] = selectedOption.split(',');
         const destinationCoords = L.latLng(parseFloat(lat), parseFloat(lng));
 
-        // --- Configuración de la ruta ---
-        // Ahora le decimos explícitamente que no dibuje nada por sí misma
+        // Añadir marcador de destino con estilo profesional
+        destinationMarker = L.marker(destinationCoords, {
+            icon: L.divIcon({
+                className: 'destination-marker',
+                html: '<i class="bi bi-geo-alt-fill" style="color: #e74c3c; font-size: 1.5rem;"></i>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 30]
+            })
+        }).addTo(map);
+
+        // Calcular y mostrar la ruta
         routingControl = L.Routing.control({
-            waypoints: [ originCoords, destinationCoords ],
-            // Hacemos invisible la ruta por defecto, para dibujar la nuestra
-            lineOptions: { styles: [{opacity: 0, weight: 0}] },
-            // No crear los marcadores A y B
-            createMarker: function() { return null; }, 
-            // No mostrar el panel de instrucciones de texto
+            waypoints: [originCoords, destinationCoords],
+            routeWhileDragging: false,
             show: false,
-            // Añadir los puntos de inicio y fin (invisibles)
-            addWaypoints: false
+            addWaypoints: false,
+            lineOptions: {
+                styles: [{ color: '#3498db', opacity: 0.9, weight: 5 }]
+            },
+            createMarker: function(i, waypoint, n) {
+                if (i === 0) { // Solo marcador de origen
+                    return L.marker(waypoint.latLng, {
+                        icon: L.divIcon({
+                            className: 'origin-marker',
+                            html: '<i class="bi bi-geo-fill" style="color: #2ecc71; font-size: 1.5rem;"></i>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30]
+                        })
+                    });
+                }
+                return null; // No mostrar marcador de destino (ya lo tenemos personalizado)
+            },
+            fitSelectedRoutes: 'smart',
+            altLineOptions: {
+                styles: [{ color: '#3498db', opacity: 0.5, weight: 3 }]
+            }
         }).on('routesfound', function(e) {
             const route = e.routes[0];
-            const summary = route.summary;
-
-            // Actualizar datos de distancia y duración
-            document.getElementById('distance-output').textContent = (summary.totalDistance / 1000).toFixed(2) + ' km';
-            document.getElementById('duration-output').textContent = formatTruckDuration(summary.totalTime);
-
-            // --- DIBUJO PERSONALIZADO DE LA RUTA Y ANIMACIÓN ---
-
-            // 1. Dibujamos nuestra propia línea de ruta para tener control total
-            routePolyline = L.polyline(route.coordinates, {
-                color: '#0d6efd', // Azul de Bootstrap
-                weight: 5,
-                opacity: 0.7,
-                lineCap: 'round',
-                lineJoin: 'round',
-                dashArray: '10, 10' // Línea punteada
-            }).addTo(map);
-
-            // Hacemos que el mapa se ajuste para mostrar la ruta completa
-            map.fitBounds(routePolyline.getBounds());
+            const distance = formatDistance(route.summary.totalDistance);
+            document.getElementById('distance-output').textContent = distance;
             
-            // 2. Creamos el ícono del camión
-            const truckIcon = L.icon({
-                iconUrl: "{{ url_for('static', filename='truck-icon.png') }}",
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
+            // Ajustar el zoom para mostrar toda la ruta con margen
+            map.fitBounds(route.coordinates, { 
+                padding: [50, 50],
+                maxZoom: 7
             });
-            
-            // 3. Creamos y añadimos el marcador animado del camión
-            // Le pasamos las coordenadas de nuestra línea de ruta
-            animatedTruck = L.animatedMarker(routePolyline.getLatLngs(), {
-                icon: truckIcon,
-                distance: 4000,  // Velocidad de la animación (metros por segundo)
-                interval: 50,   // Intervalo de actualización
-                autostart: true,
-                onEnd: function() {
-                    // Opcional: Cuando el camión llega, lo podemos hacer desaparecer o mostrar un aviso
-                    map.removeLayer(animatedTruck);
-                    // alert("¡El camión ha llegado a su destino!");
-                }
-            });
-
-            map.addLayer(animatedTruck);
-            
         }).addTo(map);
+    });
+
+    // Botón para limpiar ruta
+    document.getElementById('clear-route-btn').addEventListener('click', function() {
+        if (routingControl) {
+            map.removeControl(routingControl);
+            routingControl = null;
+        }
+        if (destinationMarker) {
+            map.removeLayer(destinationMarker);
+            destinationMarker = null;
+        }
+        document.getElementById('distance-output').textContent = 'Seleccione un destino';
+        document.getElementById('destination-select').value = '';
     });
 });
 </script>

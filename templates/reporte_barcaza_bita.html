@@ -238,13 +238,16 @@
 {% block content %}
 <div class="reporte-container">
     <div class="container-xl">
-        <div class="reporte-header">
-            <div>
-                <h1 class="reporte-title"><i class="bi bi-tsunami reporte-title-icon"></i> {{ titulo }}</h1>
-                <p class="reporte-subtitle"><i class="bi bi-calendar-check me-2"></i>{{ fecha_actualizacion_info }}</p>
-            </div>
-            <a href="{{ url_for('barcaza_bita') }}" class="btn btn-secondary btn-lg ms-auto"><i class="bi bi-pencil-square me-2"></i>Volver a Planilla</a>
-        </div>
+        <div class="reporte-header d-flex justify-content-between align-items-center"></div>
+            <div class="reporte-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="reporte-title"><i class="bi bi-tsunami reporte-title-icon"></i> {{ titulo }}</h1>
+        <p class="reporte-subtitle"><i class="bi bi-calendar-check me-2"></i>{{ fecha_actualizacion_info }}</p>
+    </div>
+    <a href="{{ url_for('barcaza_bita') }}" class="btn btn-secondary btn-lg">
+        <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
+    </a>
+</div>
 
         <!-- Tarjeta de Total Consolidado para BITA -->
         <div class="row justify-content-center">

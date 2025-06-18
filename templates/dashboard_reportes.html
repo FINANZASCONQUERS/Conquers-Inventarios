@@ -178,7 +178,6 @@
                 </div>
             </div>
         </div>
-    </div>
 <style>
     /* Color System */
     :root {
@@ -292,55 +291,6 @@
             const currentDate = new Date();
             dateElement.textContent = currentDate.toLocaleDateString('es-ES', options);
         }
-        
-        // Monthly Chart
-        const ctx = document.getElementById('monthlyChart').getContext('2d');
-        const monthlyChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'],
-                datasets: [{
-                    label: 'Planta',
-                    data: [12, 19, 15, 8],
-                    backgroundColor: 'rgba(253, 126, 20, 0.7)',
-                    borderRadius: 6
-                }, {
-                    label: 'Tránsito',
-                    data: [8, 12, 6, 14],
-                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                    borderRadius: 6
-                }, {
-                    label: 'Barcazas (BLS)',
-                    data: [1200, 1900, 1500, 2200],
-                    backgroundColor: 'rgba(111, 66, 193, 0.7)',
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label.includes('Barcazas')) {
-                                    return label + ': ' + context.raw.toLocaleString() + ' BLS';
-                                }
-                                return label + ': ' + context.raw;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
     });
 </script>
 {% endblock %}
