@@ -75,12 +75,26 @@
         
         #selloInput { -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield; }
         #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
-        
+        .fila-acciones-agregar {
+    display: flex;
+    justify-content: center; /* Centra los botones horizontalmente */
+    gap: 1rem; /* Espacio entre los botones */
+    margin-top: 1cm; /* Espacio arriba, separándolo del formulario */
+}
+
+/* Estilo opcional para que los botones se vean un poco mejor */
+.fila-acciones-agregar .btn {
+    font-weight: 500;
+}
         /* Estilos de Impresión */
         @media print {
            .no-print { 
         display: none !important; 
     }
+    .btn-agregar-conductor-interno {
+        display: none !important;
+    }
+
             #acciones, #boton-logout { display: none !important; }
             body::before { display: none; }
             .campo, .hoja { border: none !important; }
@@ -93,7 +107,7 @@
              body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
             #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         }
-        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 1.9cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 2.2cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
         .fila { display: flex; margin-bottom: 0.4cm; }
         .fila.pequeno { margin-bottom: 0.3cm; }
@@ -112,24 +126,24 @@
         .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
         .descripcion-producto, .volumen { font-weight: bold; }
         .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
-        .lugar-fecha { width: 8.8cm; height: 1.1cm; font-size: 14pt }
-        .planta-productor { width: 9cm; height: 1cm;font-size: 14pt }
-        .factura-remision { width: 3.5cm; height: 1cm;font-size: 16pt  }
+        .lugar-fecha {position: relative;left: -25px; width: 8.8cm; height: 1.1cm; font-size: 14pt }
+        .planta-productor { position: relative;left: -21px; width: 8.8cm; height: 1cm;font-size: 14pt }
+        .factura-remision {position: relative;left: -10px; width: 3.5cm; height: 1cm;font-size: 16pt  }
         .despacho { width: 15cm; height: 1cm; font-size: 14pt }
         .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
-        .direccion { width: 15cm; height: 1.2cm; font-size: 14pt }
+        .direccion { margin-top: -0.3cm;width: 15cm; height: 1.2cm; font-size: 14pt }
         .ciudad { width: 11cm; height: 1cm; font-size: 12pt }
-        .nombre-conductor { width: 18cm; height: 1cm; font-size: 14pt }
-        .cedula { width: 9cm; height: 1cm; font-size: 14pt }
+        .nombre-conductor { width: 16cm; height: 1cm; font-size: 14pt }
+        .cedula { width: 9cm; height: 1cm; font-size: 16pt }
         .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
         .placa-cabezote { width: 9.5cm; height: 1cm; font-size: 16pt }
         .placa-tanque { width: 7.5cm; height: 1cm; font-size: 16pt }
         .lugar-origen { width: 9cm; height: 1cm; font-size: 14pt }
         .fecha-hora-salida { width: 12cm; height: 1cm;font-size: 14pt  }
-        .hora { width: 3.2cm; height: 1cm; font-size: 14pt }
+        .hora { width: 2.8cm; height: 1cm; font-size: 14pt }
         .lugar-destino { width: 10cm; height: 1cm; font-size: 14pt }
         .horas-vigencia { width: 11cm; height: 1cm; font-size: 14pt }
-        .descripcion-producto { width: 18cm; height: 3.8cm; padding: 25px; font-size: 18pt; }
+        .descripcion-producto { width: 17cm; height: 3.9cm; padding: 25px; font-size: 18pt; }
         .volumen { width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
         .volumen div { margin-bottom: 25px; }
         .volumen div:last-child { margin-bottom: 0; }
@@ -142,6 +156,18 @@
     </style>
 </head>
 <body>
+  </div> <div class="fila-acciones-agregar no-print">
+    <button type="button" id="btnAbrirModalCliente" class="btn btn-outline-success">
+        <i class="bi bi-person-plus-fill me-1"></i> Agregar Cliente
+    </button>
+    <button type="button" id="btnAbrirModalConductor" class="btn btn-outline-success">
+        <i class="bi bi-person-plus-fill me-1"></i> Agregar Conductor
+    </button>
+    <button type="button" id="btnAbrirModalEmpresa" class="btn btn-outline-success">
+        <i class="bi bi-building-add me-1"></i> Agregar Empresa
+    </button>
+</div>
+</div>
 <div class="acciones no-print">
     <button onclick="window.history.back()" class="btn btn-secondary">
         <i class="bi bi-arrow-left"></i> Regresar
@@ -183,7 +209,10 @@
       </div>
     </div>
     <div class="fila">
-      <div class="campo empresa-transportadora sin-borde"><input placeholder="EMPRESA TRANSPORTADORA"></div>
+      <div class="campo empresa-transportadora sin-borde">
+    <input id="empresaTransportadoraInput" list="listaEmpresas" placeholder="EMPRESA TRANSPORTADORA">
+    <datalist id="listaEmpresas"></datalist>
+</div>
       <div class="campo placa-cabezote sin-borde"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
       <div class="campo placa-tanque sin-borde"><input placeholder="PLACA DEL TANQUE"></div>
     </div>
@@ -225,6 +254,7 @@
   </div>
 </div>
 
+
 <div class="modal fade" id="modalAgregarCliente" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -255,117 +285,281 @@
     </div>
   </div>
 </div>
+<div class="modal fade" id="modalAgregarConductor" tabindex="-1" aria-labelledby="modalLabelConductor" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalLabelConductor">Agregar Nuevo Conductor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="formAgregarConductor">
+              <div class="mb-3">
+                  <label for="nombreNuevoConductor" class="form-label">Nombre del Conductor</label>
+                  <input type="text" class="form-control" id="nombreNuevoConductor" required>
+              </div>
+              <div class="mb-3">
+                  <label for="cedulaNuevoConductor" class="form-label">Cédula</label>
+                  <input type="text" class="form-control" id="cedulaNuevoConductor" required>
+              </div>
+              <div class="mb-3">
+                  <label for="placaNuevoConductor" class="form-label">Placa del Cabezote</label>
+                  <input type="text" class="form-control" id="placaNuevoConductor" required>
+              </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btnGuardarConductor">Guardar Conductor</button>
+        </div>
+      </div>
+    </div>
+</div>
+<div class="modal fade" id="modalAgregarEmpresa" tabindex="-1" aria-labelledby="modalLabelEmpresa" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabelEmpresa">Agregar Nueva Empresa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAgregarEmpresa">
+                    <div class="mb-3">
+                        <label for="nombreNuevaEmpresa" class="form-label">Nombre de la Empresa Transportadora</label>
+                        <input type="text" class="form-control" id="nombreNuevaEmpresa" name="nombre" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarEmpresa">Guardar Empresa</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
-    let conductores=[], clientes=[], productos=[];
+    let conductores = [], clientes = [], productos = [], empresas = [];
 
-    async function cargarDatos(){
-        const [cRes,cliRes,pRes]=await Promise.all([
-            fetch("{{ url_for('static', filename='Conductores.json') }}"),
-            fetch("{{ url_for('static', filename='Clientes.json') }}"),
-            fetch("{{ url_for('static', filename='Producto.json') }}")
+    // --- FUNCIONES DE CARGA Y ACTUALIZACIÓN ---
+
+    async function cargarDatos() {
+        console.log("Iniciando carga de datos...");
+
+        const cargarJson = async (url) => {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn(`Advertencia: No se pudo cargar ${url}. Se usará una lista vacía.`);
+                    return [];
+                }
+                return await response.json();
+            } catch (error) {
+                console.error(`Fallo crítico al cargar ${url}:`, error);
+                return [];
+            }
+        };
+
+        [conductores, clientes, productos, empresas] = await Promise.all([
+            cargarJson("{{ url_for('static', filename='Conductores.json') }}"),
+            cargarJson("{{ url_for('static', filename='Clientes.json') }}"),
+            cargarJson("{{ url_for('static', filename='Producto.json') }}"),
+            cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}")
         ]);
-        conductores=await cRes.json();
-        clientes=await cliRes.json();
-        productos=await pRes.json();
-        
-        const dl=document.getElementById('listaConductores');
-        const dc=document.getElementById('listaCedulas');
-        conductores.forEach(c=>{
-            dl.insertAdjacentHTML('beforeend',`<option value="${c.CONDUCTOR}" data-cedula="${c.CEDULA}" data-placa="${c.PLACA}"></option>`);
-            dc.insertAdjacentHTML('beforeend',`<option value="${c.CEDULA}" data-nombre="${c.CONDUCTOR}" data-placa="${c.PLACA}"></option>`);
-        });
-        const prodSel=document.getElementById('productoSelect');
-        productos.forEach(p=>prodSel.insertAdjacentHTML('beforeend',`<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
-        
+
+        console.log("Datos cargados:", { conductores, clientes, productos, empresas });
+
+        // Llenamos todos los dropdowns y datalists
+        actualizarDropdownEmpresas();
         actualizarDropdownClientes();
+        actualizarDropdownConductores();
+
+        const prodSel = document.getElementById('productoSelect');
+        prodSel.innerHTML = '';
+        productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
+
         configurarEventosConductores();
     }
 
     function actualizarDropdownClientes() {
         const cliSel = document.getElementById('clienteSelect');
         cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
-        
-        clientes.forEach(c => cliSel.insertAdjacentHTML('beforeend',`<option value="${c.NOMBRE_CLIENTE}">${c.NOMBRE_CLIENTE}</option>`));
-        
+        clientes.forEach(c => cliSel.insertAdjacentHTML('beforeend', `<option value="${c.NOMBRE_CLIENTE}">${c.NOMBRE_CLIENTE}</option>`));
         cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
     }
 
+    function actualizarDropdownConductores() {
+        const dl = document.getElementById('listaConductores');
+        const dc = document.getElementById('listaCedulas');
+        dl.innerHTML = '';
+        dc.innerHTML = '';
+        conductores.forEach(c => {
+            dl.insertAdjacentHTML('beforeend', `<option value="${c.CONDUCTOR}" data-cedula="${c.CEDULA}" data-placa="${c.PLACA}"></option>`);
+            dc.insertAdjacentHTML('beforeend', `<option value="${c.CEDULA}" data-nombre="${c.CONDUCTOR}" data-placa="${c.PLACA}"></option>`);
+        });
+    }
+
+    // Asegúrate de tener la función para empresas también
+    function actualizarDropdownEmpresas() {
+        const datalist = document.getElementById('listaEmpresas');
+        if (datalist) {
+            datalist.innerHTML = '';
+            empresas.forEach(e => {
+                datalist.insertAdjacentHTML('beforeend', `<option value="${e.NOMBRE_EMPRESA}"></option>`);
+            });
+        }
+    }
+    
+    // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
+
     window.addEventListener('DOMContentLoaded', async () => {
-        await cargarDatos();
+    // 1. Cargar todos los datos iniciales
+    await cargarDatos();
 
-        const clienteSelect = document.getElementById('clienteSelect');
-        const modalEl = document.getElementById('modalAgregarCliente');
-        const modal = new bootstrap.Modal(modalEl);
-        const btnGuardarCliente = document.getElementById('btnGuardarCliente');
-        const formAgregarCliente = document.getElementById('formAgregarCliente');
+    // 2. Definir todas las variables de los modales en un solo lugar
+    const modalElCliente = document.getElementById('modalAgregarCliente');
+    const modalCliente = new bootstrap.Modal(modalElCliente);
+    
+    const modalElConductor = document.getElementById('modalAgregarConductor');
+    const modalConductor = new bootstrap.Modal(modalElConductor);
 
-        clienteSelect.addEventListener('change', function() {
-            if (this.value === 'AGREGAR_CLIENTE') {
-                formAgregarCliente.reset();
-                modal.show();
-                this.value = "";
-            }
-        });
+    const modalElEmpresa = document.getElementById('modalAgregarEmpresa');
+    const modalEmpresa = new bootstrap.Modal(modalElEmpresa);
 
-        btnGuardarCliente.addEventListener('click', async () => {
-            const nombre = document.getElementById('nombreNuevoCliente').value.trim();
-            const direccion = document.getElementById('direccionNuevoCliente').value.trim();
-            const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
-
-            if (!nombre || !direccion || !ciudad) {
-                alert('Por favor, complete todos los campos.');
-                return;
-            }
-
-            try {
-                const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre, direccion, ciudad })
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    clientes.push(result.nuevo_cliente);
-                    clientes.sort((a, b) => a.NOMBRE_CLIENTE.localeCompare(b.NOMBRE_CLIENTE));
-                    
-                    actualizarDropdownClientes();
-                    clienteSelect.value = result.nuevo_cliente.NOMBRE_CLIENTE;
-                    clienteSelect.dispatchEvent(new Event('change'));
-
-                    modal.hide();
-                    alert(result.message);
-                } else {
-                    alert(`Error: ${result.message}`);
-                }
-            } catch (error) {
-                alert('Error de conexión al intentar guardar el cliente.');
-                console.error('Error:', error);
-            }
-        });
-
-        // --- El resto de la inicialización de la página ---
-        const now = new Date();
-        const dOpt = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
-        // Usar la fecha actual real
-        const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
-        document.getElementById('fechaExpEDICION').value = `CARTAGENA, ${fechaActual}`;
-        
-        actualizarHoraAutomaticamente();
-        setInterval(actualizarHoraAutomaticamente, 60000);
-
-        const contenedorAcciones = document.getElementById('acciones');
-        if(contenedorAcciones){
-            const botonDescarga = document.createElement('button');
-            botonDescarga.innerHTML = '<i class="bi bi-file-earmark-pdf-fill"></i> Descargar PDF';
-            botonDescarga.onclick = descargarPDF;
-            contenedorAcciones.appendChild(botonDescarga);
+    // 3. Configurar todos los eventos
+    
+    // Eventos para CLIENTE
+    document.getElementById('btnAbrirModalCliente').addEventListener('click', () => {
+        document.getElementById('formAgregarCliente').reset();
+        modalCliente.show();
+    });
+    document.getElementById('clienteSelect').addEventListener('change', function() {
+        if (this.value === 'AGREGAR_CLIENTE') {
+            document.getElementById('formAgregarCliente').reset();
+            modalCliente.show();
+            this.value = "";
         }
     });
+    document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
+        const nombre = document.getElementById('nombreNuevoCliente').value.trim();
+        const direccion = document.getElementById('direccionNuevoCliente').value.trim();
+        const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
+        if (!nombre || !direccion || !ciudad) return Swal.fire({icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.'});
+        
+        try {
+            const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
+            const result = await response.json();
+            if (response.ok) {
+                clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                actualizarDropdownClientes();
+                document.getElementById('clienteSelect').value = result.nuevo_cliente.NOMBRE_CLIENTE;
+                document.getElementById('clienteSelect').dispatchEvent(new Event('change'));
+                modalCliente.hide();
+                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+            }
+        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
+    });
 
+    // Eventos para CONDUCTOR
+    document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
+        document.getElementById('formAgregarConductor').reset();
+        modalConductor.show();
+    });
+    document.getElementById('btnGuardarConductor').addEventListener('click', async () => {
+        const nombre = document.getElementById('nombreNuevoConductor').value.trim();
+        const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
+        const placa = document.getElementById('placaNuevoConductor').value.trim();
+        if (!nombre || !cedula || !placa) return Swal.fire({icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.'});
+        
+        try {
+            const response = await fetch("{{ url_for('agregar_conductor_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, cedula, placa }) });
+            const result = await response.json();
+            if (response.ok) {
+                conductores = await (await fetch("{{ url_for('static', filename='Conductores.json') }}?v=" + Date.now())).json();
+                actualizarDropdownConductores();
+                document.getElementById('conductorSelect').value = result.nuevo_conductor.CONDUCTOR;
+                document.getElementById('conductorSelect').dispatchEvent(new Event('change'));
+                modalConductor.hide();
+                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El conductor '${result.nuevo_conductor.CONDUCTOR}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+            }
+        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
+    });
+
+    // Eventos para EMPRESA
+    document.getElementById('btnAbrirModalEmpresa').addEventListener('click', () => {
+        document.getElementById('formAgregarEmpresa').reset();
+        modalEmpresa.show();
+    });
+    document.getElementById('btnGuardarEmpresa').addEventListener('click', async () => {
+        const nombre = document.getElementById('nombreNuevaEmpresa').value.trim();
+        if (!nombre) return Swal.fire({icon: 'warning', title: 'Campo Vacío', text: 'Por favor, ingrese el nombre de la empresa.'});
+        
+        try {
+            const response = await fetch("{{ url_for('agregar_empresa_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+            const result = await response.json();
+            if (response.ok) {
+                empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
+                actualizarDropdownEmpresas();
+                document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
+                modalEmpresa.hide();
+                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+            }
+        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
+    });
+
+     const now = new Date();
+    const dOpt = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/Bogota'
+    };
+    const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
+    
+    const fechaInput = document.getElementById('fechaExpEDICION');
+    if (fechaInput) {
+        fechaInput.value = `CARTAGENA, ${fechaActual}`;
+    }
+
+    // Lógica para actualizar la hora de salida automáticamente
+    actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
+    setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
+
+    // Lógica del campo de sellos
+    const selloInput = document.getElementById('selloInput');
+    if (selloInput) {
+        selloInput.addEventListener('input', function(e) {
+            let valor = this.value.replace(/[^\d]/g, '');
+            valor = valor.substring(0, 36);
+            let valorFormateado = '';
+            for (let i = 0; i < valor.length; i++) {
+                if (i > 0 && i % 6 === 0) {
+                    valorFormateado += '-';
+                }
+                valorFormateado += valor[i];
+            }
+            this.value = valorFormateado;
+        });
+        selloInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            const numeros = text.replace(/[^\d]/g, '').substring(0, 36);
+            document.execCommand('insertText', false, numeros);
+        });
+    }
+
+    
+    // ... el resto de tu código de inicialización (fechas, PDF, sellos, etc.) ...
+});
     function configurarEventosConductores() {
         const conductorInput = document.getElementById('conductorSelect');
         const cedulaInput = document.getElementById('cedulaConductor');

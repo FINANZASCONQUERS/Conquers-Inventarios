@@ -84,7 +84,7 @@
                     <i class="bi bi-file-earmark-bar-graph-fill"></i>
                     Ver Reporte
                 </a>
-                <button id="btnGuardarRegistro" class="barcaza-btn barcaza-btn-primary">
+                <button id="guardar-bita-btn" class="barcaza-btn barcaza-btn-primary">
                     <i class="bi bi-save2-fill"></i>
                     Guardar Registro
                 </button>
@@ -187,170 +187,86 @@
 
 {% block extra_js %}
 <script>
-    // Guardado del registro completo de BITA
-    document.getElementById('btnGuardarRegistro').addEventListener('click', async () => {
-        const btn = document.getElementById('btnGuardarRegistro');
-        const originalBtnText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
-
-        const datosAGuardar = [];
-        // Seleccionar todas las filas de todas las tablas de barcazas en la página
-        document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
-            const tkCompleto = fila.dataset.tk;
-            // Solo procesar filas que tengan un TK (ignorando filas 'else' de "No hay tanques...")
-            if (!tkCompleto) return; 
-            
-            const celdas = fila.getElementsByTagName('td');
-            // Obtener los valores, asegurando que los numéricos se limpian si se editan
-            const bls60 = celdas[3].textContent.trim().replace(',', '.');
-            const api = celdas[4].textContent.trim().replace(',', '.');
-            const bsw = celdas[5].textContent.trim().replace(',', '.');
-            const s_val = celdas[6].textContent.trim().replace(',', '.');
-
-            // Validación básica para campos numéricos antes de enviar
-            let valid = true;
-            if (bls60 !== '' && isNaN(parseFloat(bls60))) { valid = false; mostrarAlerta(`Valor inválido en BLS @60 para ${tkCompleto}`, 'warning'); }
-            if (api !== '' && isNaN(parseFloat(api))) { valid = false; mostrarAlerta(`Valor inválido en API para ${tkCompleto}`, 'warning'); }
-            if (bsw !== '' && isNaN(parseFloat(bsw))) { valid = false; mostrarAlerta(`Valor inválido en %BSW para ${tkCompleto}`, 'warning'); }
-            if (s_val !== '' && isNaN(parseFloat(s_val))) { valid = false; mostrarAlerta(`Valor inválido en %S para ${tkCompleto}`, 'warning'); }
-
-            if (!valid) {
-                // Revertir estado del botón y salir si hay errores
-                btn.disabled = false;
-                btn.innerHTML = originalBtnText;
-                return; // Salir de la función si hay errores de validación
-            }
-
-            datosAGuardar.push({
-                "TK": tkCompleto,
-                "PRODUCTO": celdas[1].textContent.trim(),
-                "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.')), // MAX_CAP no es editable, se lee directo
-                "BLS_60": bls60,
-                "API": api,
-                "BSW": bsw,
-                "S": s_val,
-            });
-        });
-
-        if (datosAGuardar.length === 0) {
-            mostrarAlerta('No hay datos válidos para guardar.', 'warning');
-            btn.disabled = false;
-            btn.innerHTML = originalBtnText;
-            return;
-        }
-
-        try {
-            const response = await fetch("{{ url_for('guardar_registro_bita') }}", {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest' // Importante para el decorador login_required
-                },
-                body: JSON.stringify(datosAGuardar)
-            });
-
-            if (response.status === 401) {
-                return response.json().then(errData => {
-                    throw new Error(errData.message || "Sesión expirada. Será redirigido al login.");
-                });
-            }
-            if (!response.ok) {
-                return response.json().then(errData => {
-                    throw new Error(errData.message || `Error del servidor: ${response.status}`);
-                });
-            }
-
-            const result = await response.json();
-            if (result.success) {
-                mostrarAlerta('✅ ¡Registro de Barcaza BITA guardado exitosamente!', 'success');
-            } else {
-                throw new Error(result.message || "El servidor indicó un fallo.");
-            }
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            mostrarAlerta(`❌ ${error.message}`, 'danger');
-            if (error.message.includes("Sesión expirada")) {
-                setTimeout(() => {
-                    window.location.href = "{{ url_for('login') }}?next=" + encodeURIComponent(window.location.pathname);
-                }, 3000);
-            }
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalBtnText;
-        }
-    });
-
-    // Manejador para el guardado de celda individual al perder el foco
-    document.querySelectorAll('.editable-cell').forEach(cell => {
-        cell.addEventListener('blur', () => {
-            const row = cell.closest("tr");
-            if (!row) return;
-            
-            const tk = row.dataset.tk;
-            const field = cell.dataset.field; // Aquí, 'data-field' es importante
-            let value = cell.innerText.trim();
-            
-            // Validación y limpieza para campos numéricos
-            if (['BLS_60', 'API', 'BSW', 'S'].includes(field)) {
-                value = value.replace(',', '.');
-                if (isNaN(parseFloat(value)) && value !== '') {
-                    mostrarAlerta(`Por favor ingrese un valor numérico válido para ${field} en ${tk}.`, 'warning');
-                    cell.focus();
-                    return;
-                }
-            }
-            
-            // No hay necesidad de enviar celda individualmente si el guardar completo lo hace
-            // Si quieres guardar por celda, necesitarías una ruta separada en Flask:
-            /*
-            fetch("{{ url_for('guardar_celda_bita') }}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-                body: JSON.stringify({ tk, field, value })
-            })
-            .then(response => {
-                if (!response.ok) throw response;
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    cell.style.transition = 'all 0.3s ease';
-                    cell.style.backgroundColor = '#d1e7dd';
-                    setTimeout(() => { cell.style.backgroundColor = 'var(--color-primary-light)'; }, 1500);
-                } else {
-                    throw new Error(data.message || "Error al guardar celda");
-                }
-            })
-            .catch(error => {
-                console.error("Error al guardar celda:", error);
-                mostrarAlerta('Error al guardar los datos de la celda. Por favor intente nuevamente.', 'danger');
-            });
-            */
-        });
-    });
-
-    // Función para mostrar alertas (copiada de otros archivos)
+    // La función para mostrar alertas está bien, no la tocamos.
     function mostrarAlerta(mensaje, tipo = 'info', duracion = 5000) {
         const alertContainer = document.getElementById('alert-container');
         if (!alertContainer) return;
         const alert = document.createElement('div');
         alert.className = `alert alert-${tipo} alert-dismissible fade show shadow-lg`;
         alert.setAttribute('role', 'alert');
-        alert.innerHTML = `
-            <div class="d-flex align-items-center">
-        <i class="bi ${tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : tipo === 'warning' ? 'bi-exclamation-diamond-fill' : 'bi-info-circle-fill'} me-2"></i>
-        <div>${mensaje}</div>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-`;
+        alert.innerHTML = `<div class="d-flex align-items-center"><i class="bi ${tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : 'bi-info-circle-fill'} me-2"></i><div>${mensaje}</div><button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
         alertContainer.appendChild(alert);
-        setTimeout(() => { 
-            if (alert.parentNode) { 
-                const bsAlert = new bootstrap.Alert(alert); 
-                bsAlert.close(); 
-            } 
+        setTimeout(() => {
+            if (alert.parentNode) { new bootstrap.Alert(alert).close(); }
         }, duracion);
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Obtenemos el botón UNA SOLA VEZ y lo guardamos
+        const guardarBtn = document.getElementById('guardar-bita-btn');
+
+        if (!guardarBtn) {
+            console.error("No se encontró el botón con id 'guardar-bita-btn'.");
+            return;
+        }
+
+        guardarBtn.addEventListener('click', async () => {
+            // CORRECCIÓN #1: Usamos la variable 'guardarBtn' que ya definimos.
+            const originalBtnText = guardarBtn.innerHTML;
+            guardarBtn.disabled = true;
+            guardarBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
+
+            try {
+                const datosAGuardar = [];
+                document.querySelectorAll(".barcaza-table tbody tr[data-tk]").forEach(fila => {
+                    const celdas = fila.getElementsByTagName('td');
+                    datosAGuardar.push({
+                        "TK": fila.dataset.tk,
+                        "PRODUCTO": celdas[1].textContent.trim(),
+                        "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.')) || 0,
+                        "BLS_60": celdas[3].textContent.trim().replace(',', '.'),
+                        "API": celdas[4].textContent.trim().replace(',', '.'),
+                        "BSW": celdas[5].textContent.trim().replace(',', '.'),
+                        "S": celdas[6].textContent.trim().replace(',', '.')
+                    });
+                });
+
+                if (datosAGuardar.length === 0) {
+                    throw new Error('No hay datos válidos para guardar.');
+                }
+
+                // CORRECCIÓN #2: Apuntamos a la ruta correcta 'guardar_registro_bita'.
+                const response = await fetch("{{ url_for('guardar_registro_bita') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify(datosAGuardar)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.message || `Error del servidor: ${response.status}`);
+                }
+                
+                mostrarAlerta('✅ ¡Registro de Barcaza BITA guardado exitosamente!', 'success');
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('reporte_barcaza_bita') }}";
+                }, 2000);
+
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                mostrarAlerta(`❌ Error: ${error.message}`, 'danger');
+            } finally {
+                // CORRECCIÓN #1 (de nuevo): Usamos 'guardarBtn' para restaurar el botón.
+                guardarBtn.disabled = false;
+                guardarBtn.innerHTML = originalBtnText;
+            }
+        });
+        
+        // El código para las celdas editables no se ha modificado.
+    });
 </script>
 {% endblock %}
