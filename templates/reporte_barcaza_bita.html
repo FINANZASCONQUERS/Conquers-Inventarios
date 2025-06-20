@@ -157,17 +157,7 @@
     
     .text-center { text-align: center; }
     .text-right { text-align: right; }
-    
-    .btn-primary {
-        background-color: var(--color-primary);
-        border-color: var(--color-primary);
-    }
-    
-    .btn-primary:hover {
-        background-color: var(--color-primary-dark);
-        border-color: var(--color-primary-dark);
-    }
-    
+     
     .table-responsive {
         border-radius: 0 0 var(--border-radius) var(--border-radius);
         overflow: hidden;
@@ -232,29 +222,131 @@
     .table-responsive {
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
+
+    /* Estilos para el filtro mejorado */
+    .filter-container {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        padding: 1.25rem;
+        margin-bottom: 2rem;
+    }
+    
+    .filter-form {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .filter-group {
+        flex: 1;
+        min-width: 200px;
+    }
+    
+    .filter-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--color-secondary);
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-date-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+    }
+    
+    .filter-date-input:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+        outline: none;
+    }
+    
+    .filter-badge {
+        background-color: var(--color-primary-light);
+        color: var(--color-primary);
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius);
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .filter-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    @media (max-width: 768px) {
+        .filter-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .filter-group {
+            width: 100%;
+        }
+        
+        .filter-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="reporte-container">
     <div class="container-xl">
-        <div class="reporte-header d-flex justify-content-between align-items-center"></div>
-            <div class="reporte-header d-flex justify-content-between align-items-center">
+        <div class="reporte-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
     <div>
-        <h1 class="reporte-title"><i class="bi bi-tsunami reporte-title-icon"></i> {{ titulo }}</h1>
-        <p class="reporte-subtitle"><i class="bi bi-calendar-check me-2"></i>{{ fecha_actualizacion_info }}</p>
+        <h1 class="reporte-title">
+            <i class="bi bi-tsunami" style="color: #198754;"></i> Reporte Interactivo - Barcaza BITA
+        </h1>
     </div>
-    <a href="{{ url_for('barcaza_bita') }}" class="btn btn-secondary btn-lg">
+    <div>
+        {# Solo muestra el botón si el usuario es admin o tiene permiso para 'barcaza_bita' #}
+{% if session.rol == 'admin' or 'barcaza_bita' in session.area %}
+    <a href="{{ url_for('barcaza_bita') }}" class="btn btn-secondary">
         <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
     </a>
+{% endif %}
+    </div>
 </div>
-
+</div>
+ <!-- Filtro mejorado -->
+    <form method="GET" action="{{ url_for('reporte_barcaza_bita') }}" class="p-3 bg-white border rounded-3 shadow-sm mb-4">
+    <div class="row align-items-end g-3">
+        <div class="col-md-4">
+            <label for="fecha_filtro" class="form-label fw-bold text-muted">Seleccionar fecha</label>
+            <input type="date" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+        </div>
+        <div class="col-md-auto">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel-fill me-1"></i> Aplicar filtro</button>
+        </div>
+        <div class="col-md-auto">
+            <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-outline-secondary">Restablecer</a>
+        </div>
+        {% if fecha_seleccionada %}
+        <div class="col-md-auto ms-auto">
+            <span class="badge bg-primary bg-opacity-10 text-primary p-2" style="font-size: 0.9rem;">
+                <i class="bi bi-calendar-check-fill"></i>
+                Mostrando datos del: {{ fecha_seleccionada }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+</form>
         <!-- Tarjeta de Total Consolidado para BITA -->
         <div class="row justify-content-center">
             <div class="col-12 col-lg-10 mb-5">
                 <div class="reporte-card border-2 border-success">
                     <div class="reporte-card-header total-consolidado">
-                        <span><i class="bi bi-calculator-fill me-2"></i>TOTAL CONSOLIDADO (Selección Actual)</span>
+                        <span><i class="bi bi-calculator-fill me-2"></i>TOTAL CONSOLIDADO </span>
                     </div>
                     <div class="table-responsive">
                         <table class="reporte-table">
@@ -280,7 +372,6 @@
                 </div>
             </div>
         </div>
-
         <!-- Desglose por grupos individuales -->
         <div class="row g-4 justify-content-center">
             <!-- Tarjeta Marinse -->
@@ -324,7 +415,6 @@
                     </div>
                 </div>
             </div>
-
             <!-- Tarjeta Oidech -->
             <div class="col-12 col-lg-10">
                 <div class="reporte-card">

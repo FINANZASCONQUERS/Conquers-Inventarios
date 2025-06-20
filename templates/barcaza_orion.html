@@ -133,6 +133,31 @@
         </div>
 
         <div id="alert-container" class="alert-container"></div>
+        <form method="GET" action="{{ url_for('barcaza_orion') }}" class="my-4 p-3 bg-white border rounded-3 shadow-sm">
+    <div class="row align-items-center g-3">
+        <div class="col-md-5">
+            <label for="fecha_filtro" class="form-label fw-bold text-muted">Ver inventario del día:</label>
+            <input type="date" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+        </div>
+        <div class="col-md-auto">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel-fill me-1"></i> Filtrar
+            </button>
+        </div>
+        <div class="col-md-auto">
+            <a href="{{ url_for('barcaza_orion') }}" class="btn btn-outline-secondary">Ver Estado Actual</a>
+        </div>
+        
+        {# Este bloque muestra la fecha que se está viendo, pero solo si no es la de hoy #}
+        {% if fecha_seleccionada and fecha_seleccionada != today_iso %}
+        <div class="col-md-auto ms-auto">
+            <div class="badge bg-primary bg-opacity-10 text-primary p-2">
+                <i class="bi bi-calendar-check me-1"></i> Mostrando datos del: {{ fecha_seleccionada }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</form>
 
         <div class="row g-4">
             {#--- Columna Izquierda ---#}
@@ -209,42 +234,6 @@
             btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
         }
     });
-
-    // =================================================================
-    //  AUTOGUARDADO DE CELDAS INDIVIDUALES AL PERDER EL FOCO (onblur)
-    // =================================================================
-    document.querySelectorAll('.editable-cell').forEach(cell => {
-        cell.addEventListener('blur', () => {
-            const row = cell.closest("tr");
-            if (!row || !row.dataset.tk) return;
-            
-            const tk = row.dataset.tk;
-            const grupo = row.dataset.grupo;
-            const field = cell.dataset.field;
-            let value = cell.innerText.trim().replace(',', '.');
-
-            fetch("{{ url_for('guardar_celda_barcaza') }}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-                body: JSON.stringify({ tk, grupo, field, value })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    cell.style.transition = 'all 0.3s ease';
-                    cell.style.backgroundColor = '#d1e7dd'; // Verde éxito
-                    setTimeout(() => { cell.style.backgroundColor = ''; }, 1500);
-                } else {
-                    mostrarAlerta(data.message || 'Error al guardar celda', 'danger');
-                }
-            })
-            .catch(error => {
-                console.error("Error al guardar celda:", error);
-                mostrarAlerta('Error de red al guardar la celda.', 'danger');
-            });
-        });
-    });
-
     // =================================================================
     //  FUNCIÓN PARA MOSTRAR ALERTAS (notificaciones)
     // =================================================================

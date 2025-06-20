@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard de Tránsito - Conquers Trading{% endblock %}
+{% block title %}Tránsito - Conquers Trading{% endblock %}
 
 {% block extra_css %}
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -53,17 +53,30 @@
         margin-top: 0.5rem;
     }
 
+    /* Summary cards container */
+    .summary-cards-container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    @media (min-width: 768px) {
+        .summary-cards-container {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
     /* Summary card */
     .summary-card {
         background: white;
         border-radius: var(--border-radius);
         box-shadow: var(--shadow-sm);
         padding: 1.5rem;
-        margin-bottom: 2rem;
-        display: flex;
-        align-items: center;
         border: 1px solid var(--color-border);
         transition: var(--transition);
+        display: flex;
+        align-items: center;
     }
 
     .summary-card:hover {
@@ -85,6 +98,16 @@
     .summary-icon.truck {
         background-color: rgba(13, 110, 253, 0.1);
         color: #0d6efd;
+    }
+
+    .summary-icon.refinery {
+        background-color: rgba(220, 53, 69, 0.1);
+        color: #dc3545;
+    }
+
+    .summary-icon.eds {
+        background-color: rgba(23, 162, 184, 0.1);
+        color: #17a2b8;
     }
 
     .summary-info {
@@ -210,6 +233,44 @@
         color: var(--color-secondary);
     }
 
+    /* Observations section */
+    .observations-container {
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px dashed var(--color-border);
+    }
+
+    .observation-item {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: flex-start;
+    }
+
+    .observation-item i {
+        margin-right: 0.5rem;
+        margin-top: 0.15rem;
+        color: var(--color-info);
+    }
+
+    /* Truck observations */
+    .truck-observations {
+        margin-top: 0.5rem;
+        padding-left: 1rem;
+    }
+
+    .truck-observation {
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+        margin-bottom: 0.25rem;
+        display: flex;
+    }
+
+    .truck-observation i {
+        margin-right: 0.5rem;
+    }
+
     /* Empty state */
     .empty-state {
         padding: 2rem;
@@ -237,7 +298,7 @@
         <div>
             <h1 class="page-title-text">
                 <i class="bi bi-speedometer2 page-title-icon"></i>
-                <span>Dashboard de Tránsito</span>
+                <span>Tránsito</span>
             </h1>
             {% if fecha_actualizacion_info and "error" not in fecha_actualizacion_info|lower %}
             <p class="page-subtitle mb-0 ms-1">
@@ -247,20 +308,48 @@
             {% endif %}
         </div>
         <div>
-            <a href="{{ url_for('transito') }}" class="btn btn-outline-secondary btn-lg">
-                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
-            </a>
+            {# Solo muestra el botón si el usuario es admin o tiene permiso para 'transito' #}
+{% if session.rol == 'admin' or 'transito' in session.area %}
+    <a href="{{ url_for('transito') }}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
+    </a>
+{% endif %}
         </div>
     </div>
 
-        <!-- Summary Card -->
-        <div class="summary-card fade-in">
-            <div class="summary-icon truck">
-                <i class="bi bi-truck"></i>
+        <!-- Summary Cards -->
+        <div class="summary-cards-container">
+            <!-- Total Trips Card -->
+            <div class="summary-card fade-in">
+                <div class="summary-icon truck">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div class="summary-info">
+                    <div class="summary-label">Viajes Totales</div>
+                    <div class="summary-value" id="grandTotalViajes">0</div>
+                </div>
             </div>
-            <div class="summary-info">
-                <div class="summary-label">Viajes Totales Registrados</div>
-                <div class="summary-value" id="grandTotalViajes">0</div>
+
+            <!-- Refinery Trips Card -->
+            <div class="summary-card fade-in">
+                <div class="summary-icon refinery">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="summary-info">
+                    <div class="summary-label">Viajes a Refinería</div>
+                    <div class="summary-value" id="refineriaTotalViajes">0</div>
+                </div>
+            </div>
+
+            <!-- EDS Trips Card -->
+            <div class="summary-card fade-in">
+                <div class="summary-icon eds">
+                    <i class="bi bi-ev-station-fill"></i>
+                </div>
+                <div class="summary-info">
+                    <div class="summary-label">Viajes a EDSM</div>
+                    <div class="summary-value" id="edsTotalViajes">0</div>
+                </div>
             </div>
         </div>
 
@@ -300,11 +389,28 @@
 <script>
     const datosConsolidados = {{ datos_consolidados | default({}) | tojson | safe }};
     const datosConteoCamiones = {{ datos_conteo_camiones | default({}) | tojson | safe }};
+    const observacionesCamiones = {{ observaciones_camiones | default({}) | tojson | safe }};
 
-    function renderSection(destinationType, containerEl, totalDisplayEl) {
+    function formatTimeString(timeStr) {
+        // Formatea "0158 PM" a "01:58 PM"
+        if (!timeStr) return timeStr;
+        
+        // Extraer la parte numérica y el AM/PM
+        const matches = timeStr.match(/(\d{2})(\d{2})\s*(AM|PM)/i);
+        if (matches && matches.length === 4) {
+            return `${matches[1]}:${matches[2]} ${matches[3].toUpperCase()}`;
+        }
+        return timeStr;
+    }
+
+    function renderSection(destinationType, containerEl, totalDisplayEl, viajesDisplayEl) {
         const originsData = datosConsolidados[destinationType] || {};
+        const tripsData = datosConteoCamiones[destinationType] || {};
+        const observationsData = observacionesCamiones[destinationType] || {};
+        
         containerEl.innerHTML = '';
         let sectionTotalNSV = 0;
+        let sectionTotalTrips = 0;
         const originNames = Object.keys(originsData).sort();
 
         if (originNames.length === 0) {
@@ -315,20 +421,42 @@
                 </div>
             `;
             totalDisplayEl.textContent = '0.00 NSV';
-            return 0;
+            viajesDisplayEl.textContent = '0';
+            return { nsv: 0, trips: 0 };
         }
 
         originNames.forEach(origin => {
             const productsData = originsData[origin];
+            const originTripsData = tripsData[origin] || {};
+            const originObservations = observationsData[origin] || {};
+            
             const originCard = document.createElement('div');
             originCard.className = 'origin-card';
 
             let productsHTML = '';
             Object.keys(productsData).sort().forEach(product => {
                 const nsv = productsData[product];
-                const trips = datosConteoCamiones[destinationType]?.[origin]?.[product] || 0;
-                sectionTotalNSV += nsv;
+                const trips = originTripsData[product] || 0;
+                const productObservations = originObservations[product] || [];
                 
+                sectionTotalNSV += nsv;
+                sectionTotalTrips += trips;
+                
+                // Prepare observations HTML
+                let observationsHTML = '';
+                if (productObservations.length > 0) {
+                    observationsHTML = '<div class="truck-observations">';
+                    productObservations.forEach(obs => {
+                        observationsHTML += `
+                            <div class="truck-observation">
+                                <i class="bi bi-truck"></i>
+                                <span>${obs}</span>
+                            </div>
+                        `;
+                    });
+                    observationsHTML += '</div>';
+                }
+
                 productsHTML += `
                     <div class="product-item">
                         <div>
@@ -339,6 +467,7 @@
                             ${nsv.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>
                     </div>
+                    ${observationsHTML}
                 `;
             });
 
@@ -350,27 +479,29 @@
         });
 
         totalDisplayEl.textContent = `${sectionTotalNSV.toLocaleString('es-CO', {minimumFractionDigits: 2, maximumFractionDigits: 2})} NSV`;
-        return sectionTotalNSV;
+        viajesDisplayEl.textContent = sectionTotalTrips;
+        
+        return { nsv: sectionTotalNSV, trips: sectionTotalTrips };
     }
 
     function renderCompleteReport() {
         // Render both sections
-        renderSection('Refinería', 
+        const refineriaData = renderSection(
+            'Refinería', 
             document.getElementById('refineria-content-container'), 
-            document.getElementById('refineriaTotalDisplay'));
+            document.getElementById('refineriaTotalDisplay'),
+            document.getElementById('refineriaTotalViajes')
+        );
         
-        renderSection('EDSM', 
+        const edsData = renderSection(
+            'EDSM', 
             document.getElementById('eds-content-container'), 
-            document.getElementById('edsTotalDisplay'));
+            document.getElementById('edsTotalDisplay'),
+            document.getElementById('edsTotalViajes')
+        );
 
         // Calculate and display total trips
-        let totalTrips = 0;
-        Object.values(datosConteoCamiones).forEach(destination => {
-            Object.values(destination).forEach(products => {
-                totalTrips += Object.values(products).reduce((sum, count) => sum + count, 0);
-            });
-        });
-
+        const totalTrips = refineriaData.trips + edsData.trips;
         document.getElementById('grandTotalViajes').textContent = totalTrips;
     }
 

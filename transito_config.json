@@ -2,11 +2,11 @@
   "REFINERIA": {
     "nombre_display": "Tránsito Crudo Refinería", 
     "campos": {
-      "Indico": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
-      "Dorotea": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
-      "Tulipan": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
-      "Acites": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"},
-      "Alberta": {"productos": ["Crudo Liviano"], "auto_select_product": "Crudo Liviano"}
+      "Indico": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Dorotea": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Tulipan": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Acites": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Alberta": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"}
     }
   },
   "EDSM": {

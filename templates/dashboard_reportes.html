@@ -4,8 +4,8 @@
 {% block navbar_brand_text %}Dashboard{% endblock %}
 
 {% block main_style %}
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    font-family: 'Poppins', sans-serif;
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
 {% endblock %}
 
 {% block content %}
@@ -15,15 +15,17 @@
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
             <div>
                 <h1 class="display-6 fw-semibold mb-2 text-gray-800">
-                    <i class="bi bi-speedometer2 me-2 text-primary-gradient"></i> SISTEMA DE GESTION DE INVENTARIOS
+                    <i class="bi bi-speedometer2 me-2 text-primary"></i> SISTEMA DE GESTIÓN DE INVENTARIOS
                 </h1>
-                <p class="lead text-muted mb-0">Resumen operacional en tiempo real</p>
+                <p class="lead text-muted mb-0">Panel de control operacional</p>
             </div>
             <div class="mt-3 mt-md-0">
-                <span class="badge bg-light text-dark border border-2 border-primary">
-                    <i class="bi bi-calendar-check me-1"></i> 
-                    <span id="current-date">{{ current_date }}</span>
-                </span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-white text-dark border border-2 border-primary me-2">
+                        <i class="bi bi-calendar-check me-1"></i> 
+                        <span id="current-date">{{ current_date }}</span>
+                    </span>
+                </div>
             </div>
         </div>
         <hr class="dashboard-divider">
@@ -31,6 +33,7 @@
 
     <!-- Stats Cards -->
     <div class="row g-4 mb-5">
+        <!-- Planta Card -->
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
                 <div class="card-body">
@@ -48,15 +51,17 @@
                             </ul>
                         </div>
                     </div>
+                    <p class="small text-muted text-uppercase fw-bold mb-1">Reporte de Planta</p>
                     <h3 class="mb-1">{{ (planta_summary.datos or [])|length }}</h3>
                     <p class="text-muted mb-2">Tanques registrados</p>
                     <div class="progress thin-progress">
                         <div class="progress-bar bg-planta" role="progressbar" style="width: {{ planta_summary.completion_rate }}%"></div>
                     </div>
-                    <div class="mt-3 text-center">
-   <small class="text-muted">
-       <i class="bi bi-info-circle me-1"></i>
-                        {{ planta_summary.info_completa | default('Sin Registros') }}</small>
+                    <div class="mt-3">
+                        <small class="text-muted d-flex align-items-center">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span>{{ planta_summary.info_completa | default('Sin Registros') }}</span>
+                        </small>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-top-0 pt-0">
@@ -67,6 +72,7 @@
             </div>
         </div>
 
+        <!-- Tránsito Card - Mejorada con más detalles -->
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
                 <div class="card-body">
@@ -84,16 +90,38 @@
                             </ul>
                         </div>
                     </div>
-                    <h3 class="mb-1">{{ (transito_summary.datos or [])|length }}</h3>
-                    <p class="text-muted mb-2">Registros en tránsito</p>
-                    <div class="progress thin-progress">
+                    
+                    <p class="small text-muted text-uppercase fw-bold mb-1">Reporte de Tránsito</p>
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h3 class="mb-0">{{ (transito_summary.datos or [])|length }}</h3>
+    <span class="badge bg-transito-soft text-transito">Viajes Totales</span>
+</div>
+                    
+                    <div class="transito-details mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">Refinería</small>
+                            <small class="fw-semibold">{{ transito_summary.refineria_count or 0 }}</small>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <small class="text-muted">EDMS</small>
+                            <small class="fw-semibold">{{ transito_summary.edms_count or 0 }}</small>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">Otros</small>
+                            <small class="fw-semibold">{{ transito_summary.otros_count or 0 }}</small>
+                        </div>
+                    </div>
+                    
+                    <div class="progress thin-progress mb-2">
                         <div class="progress-bar bg-transito" role="progressbar" style="width: {{ transito_summary.completion_rate }}%"></div>
                     </div>
-                    <div class="mt-3 text-center">
-   <small class="text-muted">
-       <i class="bi bi-info-circle me-1"></i>
-                    {{ transito_summary.info_completa | default('Sin Registros') }}</small>
-                    </div>
+                    
+                    <div class="mt-3">
+    <small class="text-muted d-flex align-items-center">
+        <i class="bi bi-info-circle me-1"></i>
+        <span>{{ transito_summary.info_completa | default('Sin Registros') }}</span>
+    </small>
+</div>
                 </div>
                 <div class="card-footer bg-transparent border-top-0 pt-0">
                     <a href="{{ url_for('reporte_transito') }}" class="btn btn-sm btn-transito stretched-link">
@@ -103,6 +131,7 @@
             </div>
         </div>
 
+        <!-- Orion Card -->
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
                 <div class="card-body">
@@ -120,18 +149,19 @@
                             </ul>
                         </div>
                     </div>
-                    {% set total_bls_orion = (orion_summary.datos or [])|map(attribute='BLS_60')|map('float')|sum %}
+                    {% set total_bls_orion = (orion_summary.datos or [])|map(attribute='bls_60')|map('float')|sum %}
+                    <p class="small text-muted text-uppercase fw-bold mb-1">Reporte Barcaza Orion</p>   
                     <h3 class="mb-1">{{ "%.2f"|format(total_bls_orion) }} <small class="text-muted fs-6">BLS</small></h3>
                     <p class="text-muted mb-2">Barcaza Orion</p>
                     <div class="progress thin-progress">
                         <div class="progress-bar bg-orion" role="progressbar" style="width: {{ orion_summary.completion_rate }}%"></div>
                     </div>
-                    <div class="mt-3 text-center">
-                       <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                            {{ orion_summary.info_completa | default('Sin Registros') }}
-                              </small>
-                </div>
+                    <div class="mt-3">
+                        <small class="text-muted d-flex align-items-center">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span>{{ orion_summary.info_completa | default('Sin Registros') }}</span>
+                        </small>
+                    </div>
                 </div>
                 <div class="card-footer bg-transparent border-top-0 pt-0">
                     <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-sm btn-orion stretched-link">
@@ -141,6 +171,7 @@
             </div>
         </div>
 
+        <!-- Bita Card -->
         <div class="col-xl-3 col-md-6">
             <div class="card stat-card h-100 border-0 shadow-sm hover-lift">
                 <div class="card-body">
@@ -158,17 +189,18 @@
                             </ul>
                         </div>
                     </div>
-                    {% set total_bls_bita = (bita_summary.datos or [])|map(attribute='BLS_60')|map('float')|sum %}
+                    {% set total_bls_bita = (bita_summary.datos or [])|map(attribute='bls_60')|map('float')|sum %}
+                    <p class="small text-muted text-uppercase fw-bold mb-1">Reporte Barcaza BITA</p>
                     <h3 class="mb-1">{{ "%.2f"|format(total_bls_bita) }} <small class="text-muted fs-6">BLS</small></h3>
                     <p class="text-muted mb-2">Barcaza BITA</p>
                     <div class="progress thin-progress">
                         <div class="progress-bar bg-bita" role="progressbar" style="width: {{ bita_summary.completion_rate }}%"></div>
                     </div>
-                    <div class="mt-3 text-center">
-   <small class="text-muted">
-       <i class="bi bi-info-circle me-1"></i>
-                        
-    {{ bita_summary.info_completa | default('Sin Registros') }}</small>
+                    <div class="mt-3">
+                        <small class="text-muted d-flex align-items-center">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span>{{ bita_summary.info_completa | default('Sin Registros') }}</span>
+                        </small>
                     </div>
                 </div>
                 <div class="card-footer bg-transparent border-top-0 pt-0">
@@ -178,10 +210,12 @@
                 </div>
             </div>
         </div>
+    </div>
 <style>
-    /* Color System */
+    /* Modern Color System */
     :root {
-        --primary-gradient: linear-gradient(135deg, #0b8552 0%, #0a6e45 100%);
+        --primary: #0b8552;
+        --primary-soft: rgba(11, 133, 82, 0.1);
         --planta: #fd7e14;
         --planta-soft: rgba(253, 126, 20, 0.1);
         --transito: #0d6efd;
@@ -190,14 +224,15 @@
         --orion-soft: rgba(111, 66, 193, 0.1);
         --bita: #198754;
         --bita-soft: rgba(25, 135, 84, 0.1);
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-800: #343a40;
     }
     
-    /* Text Gradient */
-    .text-primary-gradient {
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
+    /* Base Styles */
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #212529;
     }
     
     /* Header */
@@ -214,18 +249,15 @@
     /* Stat Cards */
     .stat-card {
         border-radius: 12px;
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         overflow: hidden;
         position: relative;
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
     
     .stat-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    }
-    
-    .hover-lift:hover {
-        transform: translateY(-5px);
     }
     
     .stat-icon {
@@ -241,36 +273,45 @@
     .thin-progress {
         height: 6px;
         border-radius: 3px;
+        background-color: var(--gray-200);
     }
     
     /* Buttons */
     .btn-planta {
         background-color: var(--planta);
         color: white;
+        border: none;
     }
     
     .btn-transito {
         background-color: var(--transito);
         color: white;
+        border: none;
     }
     
     .btn-orion {
         background-color: var(--orion);
         color: white;
+        border: none;
     }
     
     .btn-bita {
         background-color: var(--bita);
         color: white;
+        border: none;
     }
     
-    /* Table */
-    .table-hover tbody tr {
-        transition: all 0.2s ease;
+    /* Transito Details */
+    .transito-details {
+        background-color: var(--gray-100);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
     }
     
-    .table-hover tbody tr:hover {
-        background-color: rgba(11, 133, 82, 0.05);
+    /* Card Headers */
+    .card-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     }
     
     /* Responsive adjustments */
@@ -282,14 +323,23 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment-timezone@0.5.34/builds/moment-timezone-with-data.min.js"></script>
 <script>
-    // Current date formatting
+    // Current date and time in Bogotá
     document.addEventListener('DOMContentLoaded', function() {
+        // Format date
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         const dateElement = document.getElementById('current-date');
         if (dateElement) {
             const currentDate = new Date();
             dateElement.textContent = currentDate.toLocaleDateString('es-ES', options);
+        }
+            
+        // Format transito update time if exists
+        const transitoUpdateElement = document.getElementById('transito-update-time');
+        if (transitoUpdateElement && transitoUpdateElement.textContent !== 'N/A') {
+            const updateTime = moment(transitoUpdateElement.textContent).tz('America/Bogota').format('HH:mm');
+            transitoUpdateElement.textContent = updateTime;
         }
     });
 </script>
