@@ -25,6 +25,7 @@
     --border-radius: 0.75rem; 
     --transition: all 0.3s ease;
 }
+
     .reporte-container { padding: 2rem 0; background-color: #f8fafc; }
     .reporte-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--color-border); }
     .reporte-title { font-size: 1.75rem; font-weight: 700; color: var(--color-secondary); }
@@ -32,15 +33,15 @@
     .reporte-subtitle { font-size: 0.95rem; color: #6c757d; }
     .reporte-card { background-color: white; border-radius: var(--border-radius); box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.05); margin-bottom: 2rem; overflow: hidden; }
     .reporte-card-header { 
-    padding: 1rem 1.5rem; 
-    /* CAMBIO: Ahora usa un gradiente verde */
-    background: linear-gradient(135deg, var(--color-success), var(--color-success-dark)); 
-    color: white; 
-    font-weight: 600; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-}
+        padding: 1rem 1.5rem; 
+        /* CAMBIO: Ahora usa un gradiente verde */
+        background: linear-gradient(135deg, var(--color-success), var(--color-success-dark)); 
+        color: white; 
+        font-weight: 600; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+    }
     .reporte-table { width: 100%; font-size: 0.9rem; }
     .reporte-table thead th { background-color: var(--color-secondary); color: white; padding: 0.75rem 1rem; text-align: center; }
     .reporte-table tbody td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
@@ -55,193 +56,279 @@
     .text-right { text-align: right; }
     .text-center { text-align: center; }
     .numeric-cell { font-family: 'Courier New', monospace; font-weight: 500; }
+
+    /* ESTILOS PARA EL FILTRO MEJORADO */
+    .reporte-filters-container {
+        background-color: white;
+        border-radius: var(--border-radius);
+        box-shadow: 0 0.25rem 0.75rem rgba(0,0,0,0.05);
+        padding: 1.25rem;
+        margin-bottom: 2rem;
+    }
+    .filter-group {
+        margin-bottom: 1rem;
+    }
+    .filter-label {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--color-secondary);
+        margin-bottom: 0.5rem;
+    }
+    .filter-date-input {
+        border: 1px solid var(--color-border);
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1rem;
+        width: 100%;
+        transition: var(--transition);
+    }
+    .filter-date-input:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        outline: none;
+    }
+    .filter-badge {
+        background-color: var(--color-primary-light);
+        color: var(--color-primary);
+        padding: 0.5rem 1rem;
+        border-radius: var(--border-radius);
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .btn-filter {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        border-radius: var(--border-radius);
+        transition: var(--transition);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 </style>
 {% endblock %}
 
- {% block content %}
-    <div class="reporte-container">
-        <div class="container-xl">
-            <div class="reporte-header">
-                <div>
-                    <h1 class="reporte-title"><i class="bi bi-shield-fill-check reporte-title-icon"></i> Reporte Interactivo - Barcaza Orion</h1>
-                    <p class="reporte-subtitle"><i class="bi bi-calendar-check me-2"></i>{{ fecha_actualizacion_info }}</p>
-                </div>
-                <a href="{{ url_for('barcaza_orion') }}" class="btn btn-secondary btn-lg ms-auto">
-                    <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
-                </a>
+{% block content %}
+<div class="reporte-container">
+    <div class="container-xl">
+        <div class="reporte-header">
+            <div>
+                <h1 class="reporte-title">
+                    <i class="bi bi-shield-fill-check reporte-title-icon"></i> Reporte Interactivo - Barcaza Orion
+                </h1>
+                <p class="reporte-subtitle">
             </div>
+            <div>
+                {# Solo muestra el botón si el usuario es admin o tiene permiso para 'barcaza_orion' #}
+{% if session.rol == 'admin' or 'barcaza_orion' in session.area %}
+    <a href="{{ url_for('barcaza_orion') }}" class="btn btn-secondary">
+        <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
+    </a>
+{% endif %}
+            </div>
+        </div>
 
-            <!-- Tarjeta de Total Consolidado -->
-            <div class="row justify-content-center">
-                <div class="col-12 col-lg-10 mb-5">
-                    <div class="reporte-card border-2 border-primary">
-                        <div class="reporte-card-header total-consolidado">
-                            <span><i class="bi bi-calculator-fill me-2"></i>TOTAL CONSOLIDADO (Selección Actual)</span>
+        <!-- Filtro mejorado -->
+        <form method="GET" action="{{ url_for('reporte_barcaza') }}" class="reporte-filters-container">
+            <div class="row align-items-end g-3">
+                <div class="col-md-4">
+                    <div class="filter-group">
+                        <label for="fecha_filtro" class="filter-label">Seleccionar fecha</label>
+                        <input type="date" class="filter-date-input" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+                    </div>
+                </div>
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary btn-filter">
+                        <i class="bi bi-funnel-fill me-1"></i> Aplicar filtro
+                    </button>
+                </div>
+                <div class="col-md-auto">
+                    <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-outline-secondary btn-filter">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Restablecer
+                    </a>
+                </div>
+                {% if fecha_seleccionada %}
+                <div class="col-md-auto ms-auto">
+                    <span class="filter-badge">
+                        <i class="bi bi-calendar-check"></i>
+                        Mostrando datos del: {{ fecha_seleccionada }}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </form>
+
+        <!-- Tarjeta de Total Consolidado -->
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-10 mb-5">
+                <div class="reporte-card border-2 border-primary">
+                    <div class="reporte-card-header total-consolidado">
+                        <span><i class="bi bi-calculator-fill me-2"></i>TOTAL CONSOLIDADO (Selección Actual)</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="reporte-table">
+                            <thead>
+                                <tr>
+                                    <th>Descripción</th><th>Total Capacidad</th><th>Total Inventario (BLS)</th>
+                                    <th style="min-width: 150px;">% Llenado</th><th>API Ponderado</th><th>%BSW Ponderado</th><th>%S Ponderado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="reporte-totals-row fs-5" id="total-consolidado-row">
+                                    <td><strong>TOTALES / PROMEDIOS</strong></td>
+                                    <td class="text-center numeric-cell" id="total-cap-consolidado">...</td>
+                                    <td class="text-center numeric-cell" id="total-bls-consolidado">...</td>
+                                    <td><div class="progress-wrapper" style="height: 28px;" id="total-porc-consolidado-wrapper"><div class="progress-fill"></div><span class="progress-text"></span></div></td>
+                                    <td class="text-center numeric-cell" id="total-api-consolidado">...</td>
+                                    <td class="text-center numeric-cell" id="total-bsw-consolidado">...</td>
+                                    <td class="text-center numeric-cell" id="total-s-consolidado">...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desglose por grupos individuales -->
+        {% if datos_para_template %}
+            <div class="row g-4 justify-content-center">
+                {% for nombre_barcaza, data in datos_para_template.items()|sort %}
+                <div class="col-12 col-lg-10 mb-4">
+                    <div class="reporte-card">
+                        <div class="reporte-card-header">
+                            <span>{{ nombre_barcaza }}</span>
+                            <span class="badge bg-light text-dark"><i class="bi bi-database me-1"></i>{{ data.tanques|length }} Tanques</span>
                         </div>
                         <div class="table-responsive">
                             <table class="reporte-table">
                                 <thead>
                                     <tr>
-                                        <th>Descripción</th><th>Total Capacidad</th><th>Total Inventario (BLS)</th>
-                                        <th style="min-width: 150px;">% Llenado</th><th>API Ponderado</th><th>%BSW Ponderado</th><th>%S Ponderado</th>
+                                        <th class="selector-col">Incluir</th>
+                                        <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>BLS @60</th><th>API</th><th>%BSW</th><th>%S</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr class="reporte-totals-row fs-5" id="total-consolidado-row">
-                                        <td><strong>TOTALES / PROMEDIOS</strong></td>
-                                        <td class="text-center numeric-cell" id="total-cap-consolidado">...</td>
-                                        <td class="text-center numeric-cell" id="total-bls-consolidado">...</td>
-                                        <td><div class="progress-wrapper" style="height: 28px;" id="total-porc-consolidado-wrapper"><div class="progress-fill"></div><span class="progress-text"></span></div></td>
-                                        <td class="text-center numeric-cell" id="total-api-consolidado">...</td>
-                                        <td class="text-center numeric-cell" id="total-bsw-consolidado">...</td>
-                                        <td class="text-center numeric-cell" id="total-s-consolidado">...</td>
+                                    {% for fila in data.tanques %}
+                                    <tr class="fila-tanque" data-tk="{{ fila.TK }}" data-grupo="{{ fila.grupo }}">
+                                        <td class="text-center"><input class="form-check-input tank-selector" type="checkbox" checked></td>
+                                        <td><strong>{{ fila.TK }}</strong></td>
+                                        <td>{{ fila.PRODUCTO }}</td>
+                                        <td class="text-right numeric-cell">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                                        <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.API|float) }}</td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.BSW|float) }}</td>
+                                        <td class="text-center numeric-cell">{{ "%.1f"|format(fila.S|float) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    <tr class="reporte-totals-row" id="total-row-{{ nombre_barcaza|replace(' ', '-')|replace('(', '')|replace(')', '') }}">
+                                        <td colspan="3"><strong>TOTAL / PROMEDIO</strong></td>
+                                        <td class="text-right numeric-cell total-cap">...</td>
+                                        <td class="text-right numeric-cell total-bls">...</td>
+                                        <td class="text-center numeric-cell prom-api">...</td>
+                                        <td class="text-center numeric-cell prom-bsw">...</td>
+                                        <td class="text-center numeric-cell prom-s">...</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
-
-            <!-- Desglose por grupos individuales -->
-            {% if datos_para_template %}
-                <div class="row g-4 justify-content-center">
-                    {% for nombre_barcaza, data in datos_para_template.items()|sort %}
-                    <div class="col-12 col-lg-10 mb-4">
-                        <div class="reporte-card">
-                            <div class="reporte-card-header">
-                                <span>{{ nombre_barcaza }}</span>
-                                <span class="badge bg-light text-dark"><i class="bi bi-database me-1"></i>{{ data.tanques|length }} Tanques</span>
-                            </div>
-                            <div class="table-responsive">
-                                <table class="reporte-table">
-                                    <thead>
-                                        <tr>
-                                            <th class="selector-col">Incluir</th>
-                                            <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>BLS @60</th><th>API</th><th>%BSW</th><th>%S</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for fila in data.tanques %}
-                                        <tr class="fila-tanque" data-tk="{{ fila.TK }}" data-grupo="{{ fila.grupo }}">
-                                            <td class="text-center"><input class="form-check-input tank-selector" type="checkbox" checked></td>
-                                            <td><strong>{{ fila.TK }}</strong></td>
-                                            <td>{{ fila.PRODUCTO }}</td>
-                                            <td class="text-right numeric-cell">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                            <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
-                                            <td class="text-center numeric-cell">{{ "%.1f"|format(fila.API|float) }}</td>
-                                            <td class="text-center numeric-cell">{{ "%.1f"|format(fila.BSW|float) }}</td>
-                                            <td class="text-center numeric-cell">{{ "%.1f"|format(fila.S|float) }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                        <tr class="reporte-totals-row" id="total-row-{{ nombre_barcaza|replace(' ', '-')|replace('(', '')|replace(')', '') }}">
-                                            <td colspan="3"><strong>TOTAL / PROMEDIO</strong></td>
-                                            <td class="text-right numeric-cell total-cap">...</td>
-                                            <td class="text-right numeric-cell total-bls">...</td>
-                                            <td class="text-center numeric-cell prom-api">...</td>
-                                            <td class="text-center numeric-cell prom-bsw">...</td>
-                                            <td class="text-center numeric-cell prom-s">...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="alert alert-warning text-center" role="alert">
-                    <h4 class="alert-heading">No hay datos para mostrar</h4>
-                    <p class="mb-0">No se encontró ningún registro de Barcaza Orion guardado.</p>
-                </div>
-            {% endif %}
-        </div>
+        {% else %}
+            <div class="alert alert-warning text-center" role="alert">
+                <h4 class="alert-heading">No hay datos para mostrar</h4>
+                <p class="mb-0">No se encontró ningún registro de Barcaza Orion guardado.</p>
+            </div>
+        {% endif %}
     </div>
-    {% endblock %}
+</div>
+{% endblock %}
 
-    {% block extra_js %}
-    <script>
-    // Obtenemos los datos completos enviados desde Python
-    const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | safe }}');
+{% block extra_js %}
+<script>
+// Obtenemos los datos completos enviados desde Python
+const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | safe }}');
 
-    function calcularEstadisticas(listaTanques) {
-        if (!listaTanques || listaTanques.length === 0) {
-            return { total_cap: 0, total_bls: 0, total_porc: 0, prom_api: 0, prom_bsw: 0, prom_s: 0 };
-        }
-        const total_cap = listaTanques.reduce((sum, t) => sum + (parseFloat(t.MAX_CAP) || 0), 0);
-        const total_bls = listaTanques.reduce((sum, t) => sum + (parseFloat(t.BLS_60) || 0), 0);
-        const total_porc = total_cap > 0 ? (total_bls / total_cap * 100) : 0;
-        let suma_ponderada_api = 0, suma_ponderada_bsw = 0, suma_ponderada_s = 0;
-        if (total_bls > 0) {
-            listaTanques.forEach(t => {
-                const peso = (parseFloat(t.BLS_60) || 0) / total_bls;
-                suma_ponderada_api += (parseFloat(t.API) || 0) * peso;
-                suma_ponderada_bsw += (parseFloat(t.BSW) || 0) * peso;
-                suma_ponderada_s += (parseFloat(t.S) || 0) * peso;
-            });
-        }
-        return { total_cap, total_bls, total_porc, prom_api: suma_ponderada_api, prom_bsw: suma_ponderada_bsw, prom_s: suma_ponderada_s };
+function calcularEstadisticas(listaTanques) {
+    if (!listaTanques || listaTanques.length === 0) {
+        return { total_cap: 0, total_bls: 0, total_porc: 0, prom_api: 0, prom_bsw: 0, prom_s: 0 };
     }
-
-    function actualizarVistaTotales(idBase, stats) {
-        const format = (num, decimals) => num.toFixed(decimals);
-        if (idBase === 'consolidado') {
-            document.getElementById('total-cap-consolidado').innerHTML = `<strong>${format(stats.total_cap, 2)}</strong>`;
-            document.getElementById('total-bls-consolidado').innerHTML = `<strong>${format(stats.total_bls, 2)}</strong>`;
-            const porcWrapper = document.getElementById('total-porc-consolidado-wrapper');
-            const fill = porcWrapper.querySelector('.progress-fill');
-            const text = porcWrapper.querySelector('.progress-text');
-            const porc = stats.total_porc;
-            fill.className = 'progress-fill ' + (porc >= 95 ? 'bg-danger' : porc >= 80 ? 'bg-warning' : 'bg-success');
-            fill.style.width = `${format(porc, 1)}%`;
-            text.textContent = `${format(porc, 1)}%`;
-            document.getElementById('total-api-consolidado').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
-            document.getElementById('total-bsw-consolidado').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
-            document.getElementById('total-s-consolidado').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
-        } else {
-            const totalRow = document.getElementById(`total-row-${idBase}`);
-            if(totalRow) {
-                totalRow.querySelector('.total-cap').innerHTML = `<strong>${format(stats.total_cap, 2)}</strong>`;
-                totalRow.querySelector('.total-bls').innerHTML = `<strong>${format(stats.total_bls, 2)}</strong>`;
-                totalRow.querySelector('.prom-api').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
-                totalRow.querySelector('.prom-bsw').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
-                totalRow.querySelector('.prom-s').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
-            }
-        }
-    }
-
-    function recalcularTodo() {
-        const tanquesSeleccionados = [];
-        document.querySelectorAll('.tank-selector:checked').forEach(checkbox => {
-            const tk = checkbox.closest('tr').dataset.tk;
-            const grupo = checkbox.closest('tr').dataset.grupo;
-            const tanqueData = todosLosTanques.find(t => t.TK === tk && t.grupo === grupo);
-            if (tanqueData) {
-                tanquesSeleccionados.push(tanqueData);
-            }
-        });
-        
-        actualizarVistaTotales('consolidado', calcularEstadisticas(tanquesSeleccionados));
-
-        const grupos = {
-            "PRINCIPAL": "Tanque-Principal-TK-101", "MANZANILLO": "Barcaza-Manzanillo-MGO", 
-            "CR": "Barcaza-CR", "MARGOTH": "Barcaza-Margoth", "ODISEA": "Barcaza-Odisea"
-        };
-
-        Object.keys(grupos).forEach(grupo => {
-            const tanquesDelGrupo = tanquesSeleccionados.filter(t => t.grupo === grupo);
-            actualizarVistaTotales(grupos[grupo], calcularEstadisticas(tanquesDelGrupo));
+    const total_cap = listaTanques.reduce((sum, t) => sum + (parseFloat(t.MAX_CAP) || 0), 0);
+    const total_bls = listaTanques.reduce((sum, t) => sum + (parseFloat(t.BLS_60) || 0), 0);
+    const total_porc = total_cap > 0 ? (total_bls / total_cap * 100) : 0;
+    let suma_ponderada_api = 0, suma_ponderada_bsw = 0, suma_ponderada_s = 0;
+    if (total_bls > 0) {
+        listaTanques.forEach(t => {
+            const peso = (parseFloat(t.BLS_60) || 0) / total_bls;
+            suma_ponderada_api += (parseFloat(t.API) || 0) * peso;
+            suma_ponderada_bsw += (parseFloat(t.BSW) || 0) * peso;
+            suma_ponderada_s += (parseFloat(t.S) || 0) * peso;
         });
     }
+    return { total_cap, total_bls, total_porc, prom_api: suma_ponderada_api, prom_bsw: suma_ponderada_bsw, prom_s: suma_ponderada_s };
+}
 
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.tank-selector').forEach(checkbox => {
-            checkbox.addEventListener('change', (event) => {
-                event.target.closest('tr').classList.toggle('fila-excluida', !event.target.checked);
-                recalcularTodo();
-            });
-        });
-        recalcularTodo(); // Llamada inicial
+function actualizarVistaTotales(idBase, stats) {
+    const format = (num, decimals) => num.toFixed(decimals);
+    if (idBase === 'consolidado') {
+        document.getElementById('total-cap-consolidado').innerHTML = `<strong>${format(stats.total_cap, 2)}</strong>`;
+        document.getElementById('total-bls-consolidado').innerHTML = `<strong>${format(stats.total_bls, 2)}</strong>`;
+        const porcWrapper = document.getElementById('total-porc-consolidado-wrapper');
+        const fill = porcWrapper.querySelector('.progress-fill');
+        const text = porcWrapper.querySelector('.progress-text');
+        const porc = stats.total_porc;
+        fill.className = 'progress-fill ' + (porc >= 95 ? 'bg-danger' : porc >= 80 ? 'bg-warning' : 'bg-success');
+        fill.style.width = `${format(porc, 1)}%`;
+        text.textContent = `${format(porc, 1)}%`;
+        document.getElementById('total-api-consolidado').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
+        document.getElementById('total-bsw-consolidado').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
+        document.getElementById('total-s-consolidado').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
+    } else {
+        const totalRow = document.getElementById(`total-row-${idBase}`);
+        if(totalRow) {
+            totalRow.querySelector('.total-cap').innerHTML = `<strong>${format(stats.total_cap, 2)}</strong>`;
+            totalRow.querySelector('.total-bls').innerHTML = `<strong>${format(stats.total_bls, 2)}</strong>`;
+            totalRow.querySelector('.prom-api').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
+            totalRow.querySelector('.prom-bsw').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
+            totalRow.querySelector('.prom-s').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
+        }
+    }
+}
+
+function recalcularTodo() {
+    const tanquesSeleccionados = [];
+    document.querySelectorAll('.tank-selector:checked').forEach(checkbox => {
+        const tk = checkbox.closest('tr').dataset.tk;
+        const grupo = checkbox.closest('tr').dataset.grupo;
+        const tanqueData = todosLosTanques.find(t => t.TK === tk && t.grupo === grupo);
+        if (tanqueData) {
+            tanquesSeleccionados.push(tanqueData);
+        }
     });
-    </script>
-    {% endblock %}
+    
+    actualizarVistaTotales('consolidado', calcularEstadisticas(tanquesSeleccionados));
+
+    const grupos = {
+        "PRINCIPAL": "Tanque-Principal-TK-101", "MANZANILLO": "Barcaza-Manzanillo-MGO", 
+        "CR": "Barcaza-CR", "MARGOTH": "Barcaza-Margoth", "ODISEA": "Barcaza-Odisea"
+    };
+
+    Object.keys(grupos).forEach(grupo => {
+        const tanquesDelGrupo = tanquesSeleccionados.filter(t => t.grupo === grupo);
+        actualizarVistaTotales(grupos[grupo], calcularEstadisticas(tanquesDelGrupo));
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.tank-selector').forEach(checkbox => {
+        checkbox.addEventListener('change', (event) => {
+            event.target.closest('tr').classList.toggle('fila-excluida', !event.target.checked);
+            recalcularTodo();
+        });
+    });
+    recalcularTodo(); // Llamada inicial
+});
+</script>
+{% endblock %}

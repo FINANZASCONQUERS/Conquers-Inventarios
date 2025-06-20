@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, time # 'time' es importante para HORA_LIMITE
+from datetime import datetime, time, date, timedelta 
 import os
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file # Añadido send_file
@@ -8,39 +8,132 @@ import openpyxl # Para Excel - Recuerda: pip install openpyxl
 from io import BytesIO # Para Excel
 import logging # Para un logging más flexible
 import copy
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
+import pytz
 
-def formatear_info_actualizacion(fecha_str_original, usuario_str, tipo_fecha="underscore"):
+def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
-    Formatea la fecha y el usuario para el mensaje de "Última actualización".
+    Formatea la fecha y el usuario, convirtiendo la hora de UTC a la de Bogotá.
+    Esta versión es robusta y maneja correctamente las zonas horarias.
     """
     try:
-        if not fecha_str_original or not usuario_str:
-            return "Información de actualización no disponible."
+        if not fecha_dt_utc or not usuario_str:
+            return "Información no disponible."
 
-        # CORRECCIÓN: El formato ahora usa guiones bajos para coincidir con los datos guardados.
-        formato_entrada = "%Y_%m_%d_%H_%M_%S"
-        
-        # Convierte el texto a un objeto datetime
-        dt_obj = datetime.strptime(fecha_str_original, formato_entrada)
+        # Define la zona horaria de Bogotá
+        bogota_zone = pytz.timezone('America/Bogota')
 
-        # MEJORA: Formato con meses en español para mayor claridad
+        # Comprobación de seguridad: Si la fecha no tiene zona horaria (es "naive"),
+        # le asignamos UTC. Si ya la tiene, no hacemos nada.
+        if fecha_dt_utc.tzinfo is None:
+            fecha_dt_utc = pytz.utc.localize(fecha_dt_utc)
+
+        # Ahora que estamos seguros de que es una fecha en UTC, la convertimos a la zona de Bogotá
+        dt_obj_bogota = fecha_dt_utc.astimezone(bogota_zone)
+
+        # Formateamos el texto final para mostrarlo
         meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        nombre_mes = meses[dt_obj.month - 1]
+        nombre_mes = meses[dt_obj_bogota.month - 1]
         
-        fecha_formateada = dt_obj.strftime(f"%d de {nombre_mes} de %Y")
-        hora_formateada = dt_obj.strftime("%I:%M %p") # Formato 12-horas con AM/PM
+        fecha_formateada = dt_obj_bogota.strftime(f"%d de {nombre_mes} de %Y")
+        hora_formateada = dt_obj_bogota.strftime("%I:%M %p")
 
-        # Crear el mensaje final
         mensaje = f"Última actualización guardada por {usuario_str} el {fecha_formateada} a las {hora_formateada}"
         return mensaje
 
-    except (ValueError, TypeError) as e:
-        # Si el parseo falla por alguna razón, se muestra este mensaje de error.
-        print(f"Error al formatear fecha: {e}") 
-        return f"Fecha de registro (error de formato): {fecha_str_original}"
+    except Exception as e:
+        print(f"Error al formatear fecha: {e}")
+        return "Fecha de registro con error de formato."
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_para_produccion_cambiar'
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
+
+class RegistroPlanta(db.Model):
+    __tablename__ = 'registros_planta'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    tk = db.Column(db.String(50))
+    producto = db.Column(db.String(100))
+    max_cap = db.Column(db.Float)
+    bls_60 = db.Column(db.Float)
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+    s = db.Column(db.Float)
+
+    def __repr__(self):
+        return f'<RegistroPlanta ID: {self.id}, TK: {self.tk}>'
+    
+class RegistroBarcazaOrion(db.Model):
+    __tablename__ = 'registros_barcaza_orion' # Nombre de la nueva tabla
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    # Columnas específicas de la planilla Orion
+    tk = db.Column(db.String(50))
+    producto = db.Column(db.String(100))
+    max_cap = db.Column(db.Float)
+    bls_60 = db.Column(db.Float)
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+    s = db.Column(db.Float)
+    grupo = db.Column(db.String(50)) # Columna especial para Orion
+
+    def __repr__(self):
+        return f'<RegistroBarcazaOrion ID: {self.id}, TK: {self.tk}>'
+class RegistroBarcazaBita(db.Model):
+    __tablename__ = 'registros_barcaza_bita' # Nombre de la nueva tabla
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    # Columnas de la planilla BITA
+    tk = db.Column(db.String(50))
+    producto = db.Column(db.String(100))
+    max_cap = db.Column(db.Float)
+    bls_60 = db.Column(db.Float)
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+    s = db.Column(db.Float)
+
+    def __repr__(self):
+        return f'<RegistroBarcazaBita ID: {self.id}, TK: {self.tk}>'
+
+class RegistroTransito(db.Model):
+    __tablename__ = 'registros_transito'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    # Columna para saber si es 'general' (EDSM) o 'refineria'
+    tipo_transito = db.Column(db.String(50), nullable=False)
+
+    # El resto de las columnas de tu planilla
+    origen = db.Column(db.String(100))
+    fecha = db.Column(db.String(50)) # Guardamos la fecha del cargue como texto
+    guia = db.Column(db.String(100))
+    producto = db.Column(db.String(100))
+    placa = db.Column(db.String(50))
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+    nsv = db.Column(db.Float)
+    observaciones = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<RegistroTransito ID: {self.id}, Guia: {self.guia}>'
+    
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -194,12 +287,12 @@ PLANILLA_BARCAZA_BITA = [
     {"TK": "OID TK-3C", "PRODUCTO": "VLSFO", "MAX_CAP": 4928.29, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 PLANILLA_TRANSITO_GENERAL = [
-    {"ORIGEN": "", "FECHA": "", "GUIA": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "", "TOV": "", "GSV": "", "NSV": ""}
+    {"ORIGEN": "", "FECHA": "", "GUIA": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "",  "NSV": "", "OBSERVACIONES":""}
     for _ in range(10)  # O el número de filas que desees por defecto
 ]
 
 PLANILLA_TRANSITO_REFINERIA = [
-    {"ORIGEN": "", "FECHA": "", "GUIA": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "", "TOV": "", "GSV": "", "NSV": ""}
+    {"ORIGEN": "", "FECHA": "", "GUIA": "", "PRODUCTO": "", "PLACA": "", "API": "", "BSW": "",  "NSV": "", "OBSERVACIONES":""}
     for _ in range(10)  # O el número de filas que desees por defecto
 ]
 
@@ -297,28 +390,33 @@ def guardar_registro_generico(datos_a_guardar, tipo_area):
         # En caso de cualquier error, registrarlo y devolver un error en formato JSON
         print(f"ERROR en guardar_registro_generico para '{tipo_area}': {e}")
         return jsonify(success=False, message=f"Error interno del servidor al guardar el registro: {str(e)}"), 500
+
 def cargar_transito_config():
     ruta_config = "transito_config.json"
     default_config = {
-        "REFINERIA": {"campos": {}},
-        "EDSM": {"campos": {}}
+        "REFINERIA": {
+            "nombre_display": "Tránsito Crudo Refinería",
+            "campos": {}
+        },
+        "EDSM": {
+            "nombre_display": "Tránsito Crudo EDSM",
+            "campos": {}
+        }
     }
+    
     try:
         if os.path.exists(ruta_config):
             with open(ruta_config, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            # Validaciones básicas
-            if not isinstance(config, dict) or \
-               "REFINERIA" not in config or "campos" not in config["REFINERIA"] or \
-               "EDSM" not in config or "campos" not in config["EDSM"]:
-                print(f"Advertencia: Estructura inválida en {ruta_config}. Usando configuración por defecto.")
-                return default_config
-            return config
-        else:
-            print(f"Advertencia: {ruta_config} no encontrado. Usando configuración por defecto.")
-            return default_config
+                # Validación de estructura básica
+                if not all(k in config for k in ['REFINERIA', 'EDSM']):
+                    raise ValueError("Estructura inválida")
+                return config
     except Exception as e:
-        print(f"Error crítico al cargar {ruta_config}: {e}. Usando configuración por defecto.")
+        print(f"Error cargando configuración: {e}")
+    
+    # Si hay error, devolver configuración por defecto
+    return default_config
 
 def login_required(f):
     # ... tu decorador de login (déjalo como está) ...
@@ -395,44 +493,117 @@ def calcular_estadisticas(lista_tanques):
     }
 
 @login_required
-@permiso_requerido('transito')        
+@permiso_requerido('transito')
 @app.route('/transito')
 def transito():
-    carpeta_registros = os.path.join(BASE_DIR, "registros")
-    os.makedirs(carpeta_registros, exist_ok=True)
-    try:
-        archivos_general = sorted([f for f in os.listdir(carpeta_registros) if f.startswith("transito_general_") and f.endswith(".json")], reverse=True)
-        if archivos_general:
-            with open(os.path.join(carpeta_registros, archivos_general[0]), 'r', encoding='utf-8') as f:
-                datos_general = json.load(f).get('datos', [])
-        else:
-            datos_general = [] # Usar la lista vacía si no hay registros
-    except Exception as e:
-        print(f"Error cargando datos de tránsito general: {e}")
-        datos_general = []
+    # Iniciamos la consulta base
+    query = db.session.query(RegistroTransito)
 
-    # Cargar los últimos datos guardados para 'refineria'
-    try:
-        archivos_refineria = sorted([f for f in os.listdir(carpeta_registros) if f.startswith("transito_refineria_") and f.endswith(".json")], reverse=True)
-        if archivos_refineria:
-            with open(os.path.join(carpeta_registros, archivos_refineria[0]), 'r', encoding='utf-8') as f:
-                datos_refineria = json.load(f).get('datos', [])
-        else:
-            datos_refineria = [] # Usar la lista vacía si no hay registros
-    except Exception as e:
-        print(f"Error cargando datos de tránsito refinería: {e}")
-        datos_refineria = []
+    # Leemos todos los posibles filtros desde la URL
+    filtros = {
+        'fecha': request.args.get('fecha_cargue'),
+        'guia': request.args.get('guia'),
+        'origen': request.args.get('origen'),
+        'producto': request.args.get('producto'),
+        'placa': request.args.get('placa')
+    }
 
-    transito_config_data = cargar_transito_config()
+    # Aplicamos los filtros a la consulta solo si tienen un valor
+    if filtros['fecha']:
+        query = query.filter(RegistroTransito.fecha == filtros['fecha'])
+    if filtros['guia']:
+        query = query.filter(RegistroTransito.guia.ilike(f"%{filtros['guia']}%"))
+    if filtros['origen']:
+        query = query.filter(RegistroTransito.origen == filtros['origen'])
+    if filtros['producto']:
+        query = query.filter(RegistroTransito.producto == filtros['producto'])
+    if filtros['placa']:
+        query = query.filter(RegistroTransito.placa.ilike(f"%{filtros['placa']}%"))
 
-    # Ahora se pasan los datos cargados del último archivo, no las plantillas vacías.
+    # Ejecutamos la consulta final
+    todos_los_registros = query.order_by(RegistroTransito.timestamp.desc()).all()
+
+    # Separamos los resultados y los convertimos a diccionario
+    datos_general = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'general']
+    datos_refineria = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'refineria']
+
     return render_template("transito.html",
-        nombre=session.get("nombre"),
-        datos_general=datos_general, 
-        datos_refineria=datos_refineria,
-        tipo_inicial="general",
-        transito_config=transito_config_data
-    )
+                           nombre=session.get("nombre"),
+                           datos_general=datos_general,
+                           datos_refineria=datos_refineria,
+                           tipo_inicial="general",
+                           transito_config=cargar_transito_config(),
+                           # Pasamos los filtros de vuelta para que se muestren en los campos
+                           filtros=filtros)
+@login_required
+@app.route('/api/add-origen', methods=['POST'])
+def agregar_origen():
+    data = request.get_json()
+    origen_nombre = data.get('origen_nombre', '').strip().upper()
+    tipo_planilla = data.get('tipo_planilla', 'EDSM')  # 'EDSM' o 'REFINERIA'
+
+    if not origen_nombre or tipo_planilla not in ['EDSM', 'REFINERIA']:
+        return jsonify(success=False, message="Datos incompletos o inválidos"), 400
+
+    try:
+        # Cargar configuración actual
+        config = cargar_transito_config()
+        
+        # Verificar si el origen ya existe
+        if origen_nombre in config[tipo_planilla]['campos']:
+            return jsonify(success=False, message="Este origen ya existe"), 409
+
+        # Agregar el nuevo origen
+        config[tipo_planilla]['campos'][origen_nombre] = {
+            "productos": [],
+            "auto_select_product": ""
+        }
+
+        # Guardar la configuración actualizada
+        with open('transito_config.json', 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+
+        return jsonify(success=True, message="Origen agregado exitosamente")
+
+    except Exception as e:
+        print(f"Error al agregar origen: {e}")
+        return jsonify(success=False, message="Error interno del servidor"), 500
+    
+@login_required
+@app.route('/api/add-producto', methods=['POST'])
+def agregar_producto_transito():
+    data = request.get_json()
+    origen_nombre = data.get('origen_nombre', '').strip().upper()
+    producto_nombre = data.get('producto_nombre', '').strip()
+    tipo_planilla = data.get('tipo_planilla', 'EDSM')  # 'EDSM' o 'REFINERIA'
+
+    if not origen_nombre or not producto_nombre or tipo_planilla not in ['EDSM', 'REFINERIA']:
+        return jsonify(success=False, message="Datos incompletos o inválidos"), 400
+
+    try:
+        # Cargar configuración actual
+        config = cargar_transito_config()
+        
+        # Verificar si el origen existe
+        if origen_nombre not in config[tipo_planilla]['campos']:
+            return jsonify(success=False, message="El origen especificado no existe"), 404
+
+        # Verificar si el producto ya existe
+        if producto_nombre in config[tipo_planilla]['campos'][origen_nombre]['productos']:
+            return jsonify(success=False, message="Este producto ya existe para este origen"), 409
+
+        # Agregar el nuevo producto
+        config[tipo_planilla]['campos'][origen_nombre]['productos'].append(producto_nombre)
+
+        # Guardar la configuración actualizada
+        with open('transito_config.json', 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+
+        return jsonify(success=True, message="Producto agregado exitosamente")
+
+    except Exception as e:
+        print(f"Error al agregar producto: {e}")
+        return jsonify(success=False, message="Error interno del servidor"), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -467,150 +638,208 @@ def logout():
 @permiso_requerido('planta')
 @app.route('/planta')
 def planta():
-   return render_template("planta.html", planilla=PLANILLA_PLANTA)
+    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy.
+    fecha_str = request.args.get('fecha')
+
+    try:
+        # Intenta convertir el texto de la fecha a un objeto de fecha real
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        # Si el formato es incorrecto, usa la fecha de hoy como valor por defecto seguro
+        fecha_seleccionada = date.today()
+    
+    # Creamos un timestamp del final del día seleccionado para incluir todos los registros de ese día
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+
+    # 2. Consulta para obtener el estado MÁS RECIENTE de CADA tanque EN O ANTES de la fecha seleccionada
+    subquery = db.session.query(
+        RegistroPlanta.tk,
+        func.max(RegistroPlanta.timestamp).label('max_timestamp')
+    ).filter(RegistroPlanta.timestamp <= timestamp_limite
+             ) .group_by(RegistroPlanta.tk
+                         ).subquery()
+
+    registros_recientes = db.session.query(RegistroPlanta).join(
+        subquery,
+        (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)
+    ).all()
+    
+    # 3. La lógica para preparar y mostrar los datos es la misma de antes
+    datos_para_plantilla = []
+    if registros_recientes:
+        for registro in registros_recientes:
+            datos_para_plantilla.append({
+                "TK": registro.tk, "PRODUCTO": registro.producto, "MAX_CAP": registro.max_cap,
+                "BLS_60": registro.bls_60 or "", "API": registro.api or "", 
+                "BSW": registro.bsw or "", "S": registro.s or ""
+            })
+    else:
+        # Si no hay registros para esa fecha, mostramos la planilla por defecto
+        datos_para_plantilla = PLANILLA_PLANTA
+
+    # 4. Enviamos los datos y la fecha seleccionada de vuelta al HTML
+    return render_template("planta.html", 
+                           planilla=datos_para_plantilla, 
+                           nombre=session.get("nombre", "Usuario"),
+                           # Esto es para que el campo de fecha muestre el día que estás viendo
+                           fecha_seleccionada=fecha_seleccionada.isoformat())
 
 @login_required
 @app.route('/reporte_planta')
 def reporte_planta():
-    carpeta = "registros"
-    datos_planta_js = []
-    # Usaremos una variable más descriptiva para la info completa
-    fecha_actualizacion_info = "No hay registros guardados." 
-
+    # 1. Lee la fecha del filtro de la URL (o usa la de hoy si no hay ninguna)
+    fecha_str = request.args.get('fecha')
     try:
-        archivos_planta = sorted(
-            [a for a in os.listdir(carpeta) if a.startswith("planta_") and a.endswith(".json")], 
-            reverse=True
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
+    
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+
+    # 2. Ejecuta la consulta a la base de datos para obtener el estado de ese día
+    subquery = (db.session.query(
+        func.max(RegistroPlanta.id).label('max_id')
+    ).filter(
+        RegistroPlanta.timestamp <= timestamp_limite
+    ).group_by(RegistroPlanta.tk).subquery())
+
+    registros_recientes = (db.session.query(RegistroPlanta)
+        .filter(RegistroPlanta.id.in_(subquery))
+        .all())
+    
+    # 3. Prepara los datos y la información de actualización para la plantilla
+    datos_planta_js = []
+    fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
+
+    if registros_recientes:
+        for registro in registros_recientes:
+            datos_planta_js.append({
+                "TK": registro.tk,
+                "PRODUCTO": registro.producto,
+                "MAX_CAP": registro.max_cap,
+                "BLS_60": registro.bls_60,
+                "API": registro.api,
+                "BSW": registro.bsw,
+                "S": registro.s
+            })
+        
+        # Para el mensaje "Última actualización", buscamos el registro más reciente de la selección
+        ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
+        fecha_formato_para_funcion = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
+        fecha_actualizacion_info = formatear_info_actualizacion(
+            fecha_formato_para_funcion, 
+            ultimo_registro.usuario
         )
-        if archivos_planta:
-            ruta_mas_reciente = os.path.join(carpeta, archivos_planta[0])
-            with open(ruta_mas_reciente, encoding='utf-8') as f:
-                planta_data_cargada = json.load(f)
-            
-            datos_planta_js = planta_data_cargada.get("datos", [])
-            
-            # Usar las claves correctas guardadas por guardar_registro_generico
-            fecha_guardado = planta_data_cargada.get("fecha") 
-            usuario_guardado = planta_data_cargada.get("usuario")
-            
-            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado, tipo_fecha="underscore")
 
-        else:
-            datos_planta_js = PLANILLA_PLANTA 
-            # fecha_actualizacion_info ya tiene "No hay registros guardados."
-            
-    except Exception as e:
-        print(f"Error crítico al cargar datos para /reporte_planta: {e}")
-        datos_planta_js = [] 
-        fecha_actualizacion_info = "Error al cargar la información de actualización."
-        flash(f"No se pudo cargar el reporte de planta: {str(e)}", "danger")
-
+    # 4. Renderiza la plantilla del reporte con los datos y fechas correctos
     return render_template("reporte_planta.html", 
                            datos_planta_para_js=datos_planta_js,
-                           fecha_actualizacion_info=fecha_actualizacion_info)
+                           fecha_actualizacion_info=fecha_actualizacion_info,
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat())
 
 @login_required
+@permiso_requerido('transito')
+@app.route('/guardar-config-transito', methods=['POST'])
+def guardar_config_transito():
+    try:
+        nueva_config = request.get_json()
+        # Validación básica de la estructura recibida
+        if not isinstance(nueva_config, dict) or 'REFINERIA' not in nueva_config or 'EDSM' not in nueva_config:
+            return jsonify(success=False, message="Formato de configuración inválido."), 400
+
+        with open('transito_config.json', 'w', encoding='utf-8') as f:
+            json.dump(nueva_config, f, ensure_ascii=False, indent=4)
+
+        return jsonify(success=True, message="Configuración guardada exitosamente.")
+    except Exception as e:
+        print(f"Error al guardar transito_config.json: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('transito')
 @app.route('/guardar-registro-transito-<tipo_transito>', methods=['POST'])
-def guardar_transito(tipo_transito): # tipo_transito será 'general' o 'refineria'
-    app.logger.info(f"Solicitud para guardar tránsito tipo: {tipo_transito}")
-    
-    # --- INICIO VERIFICACIÓN DE HORA PARA TRÁNSITO ---
-    '''
-    try:
-        HORA_LIMITE = time(10, 0, 0) # Definición de la hora límite
-        hora_actual_servidor = datetime.now().time()
-        app.logger.info(f"Guardar Tránsito - Hora actual: {hora_actual_servidor}, Hora límite: {HORA_LIMITE}")
-
-        if hora_actual_servidor >= HORA_LIMITE:
-            mensaje = f"No se pueden registrar datos de tránsito ('{tipo_transito}') después de las {HORA_LIMITE.strftime('%I:%M %p').replace('AM','a.m.').replace('PM','p.m.')}."
-            app.logger.warning(f"Intento de guardado denegado por hora límite: {mensaje} para usuario {session.get('nombre')}")
-            return jsonify(success=False, message=mensaje), 403 # 403 Forbidden es apropiado
-    except NameError as ne:
-        app.logger.error(f"Error de programación en guardar_transito (verificación de hora): {ne}. ¿Falta importar 'time' de 'datetime'?")
-        return jsonify(success=False, message="Error de configuración del servidor (verificación de hora)."), 500
-    except Exception as e_time_check:
-        app.logger.error(f"Error inesperado en verificación de hora para guardar_transito: {e_time_check}")
-        return jsonify(success=False, message="Error del servidor al verificar la hora del registro."), 500
- '''
-    
-    # --- FIN VERIFICACIÓN DE HORA ---
+def guardar_transito(tipo_transito):
+    datos_recibidos = request.get_json()
+    if not isinstance(datos_recibidos, list):
+        return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
-        datos_recibidos = request.get_json()
-        if not isinstance(datos_recibidos, list):
-            app.logger.error(f"Guardar Tránsito: Los datos recibidos no son una lista. Tipo: {type(datos_recibidos)}")
-            return jsonify(success=False, message="El formato de datos enviados es incorrecto (se esperaba una lista)."), 400
-        app.logger.info(f"Guardar Tránsito: {len(datos_recibidos)} filas recibidas. Muestra de la primera fila (si existe): {json.dumps(datos_recibidos[0] if datos_recibidos else {}, indent=2)}")
-    except Exception as e_json_load:
-        app.logger.error(f"Guardar Tránsito: Error al obtener o parsear JSON de la solicitud: {e_json_load}")
-  
-    # Validar que tipo_transito sea uno de los esperados
-    if tipo_transito not in ["general", "refineria"]: # Asumiendo que estos son los valores que usa tu JS en la URL
-        app.logger.error(f"Guardar Tránsito: tipo_transito inválido recibido en la URL: '{tipo_transito}'")
-        return jsonify(success=False, message=f"Tipo de planilla de tránsito '{tipo_transito}' no es válido."), 400
+        # Itera sobre cada fila enviada desde el frontend
+        for datos_fila in datos_recibidos:
+            # Solo procesamos filas que tengan datos, especialmente una guía.
+            guia = datos_fila.get('GUIA')
+            if not guia:
+                continue
 
-    fecha_registro_dt = datetime.now() 
-    fecha_str_para_nombre_archivo = fecha_registro_dt.strftime("%Y_%m-%d_%H_%M_%S") 
+            registro_id = datos_fila.get('id')
 
-    # Usar BASE_DIR para asegurar la ruta correcta de la carpeta 'registros'
-    carpeta_registros_path = os.path.join(BASE_DIR, "registros")
-    try:
-        os.makedirs(carpeta_registros_path, exist_ok=True)
-    except OSError as e_mkdir:
-        app.logger.error(f"Guardar Tránsito: Error crítico al crear directorio de registros '{carpeta_registros_path}': {e_mkdir}")
-        return jsonify(success=False, message="Error del servidor al preparar el almacenamiento de registros."), 500
-
-    nombre_archivo_final = f"transito_{tipo_transito}_{fecha_str_para_nombre_archivo}.json"
-    ruta_archivo_final = os.path.join(carpeta_registros_path, nombre_archivo_final)
-    app.logger.info(f"Guardar Tránsito: Se intentará guardar en: {ruta_archivo_final}")
-
-    datos_procesados_para_guardar = []
-    for fila_idx, fila_original in enumerate(datos_recibidos):
-        if not isinstance(fila_original, dict):
-            app.logger.warning(f"Guardar Tránsito: Fila {fila_idx} no es un diccionario, se omitirá. Contenido: {fila_original}")
-            continue
-        fila_procesada = {}
-        for k, v_original in fila_original.items():
-            if k == "FECHA" and v_original and isinstance(v_original, str) and "/" in v_original:
-                try:
-                    dt_obj = datetime.strptime(v_original, "%d/%m/%Y")
-                    fila_procesada[k] = dt_obj.strftime("%Y-%m-%d") # Guardar en formato ISO YYYY-MM-DD
-                except ValueError:
-                    app.logger.warning(f"Guardar Tránsito: Formato de fecha inválido '{v_original}' en fila {fila_idx}, se guardará como texto.")
-                    fila_procesada[k] = v_original 
+            # Si la fila tiene un ID, significa que es un registro existente.
+            if registro_id:
+                registro = db.session.query(RegistroTransito).get(registro_id)
+                if registro:
+                    # ACTUALIZAMOS el registro existente
+                    registro.usuario = session.get("nombre", "No identificado")
+                    registro.origen = datos_fila.get('ORIGEN')
+                    registro.fecha = datos_fila.get('FECHA')
+                    registro.producto = datos_fila.get('PRODUCTO')
+                    registro.placa = datos_fila.get('PLACA')
+                    registro.api = float(str(datos_fila.get('API')).replace(',', '.')) if datos_fila.get('API') else None
+                    registro.bsw = float(str(datos_fila.get('BSW')).replace(',', '.')) if datos_fila.get('BSW') else None
+                    registro.nsv = float(str(datos_fila.get('NSV')).replace(',', '.')) if datos_fila.get('NSV') else None
+                    registro.observaciones = datos_fila.get('OBSERVACIONES')
+                    registro.timestamp = datetime.utcnow()
             else:
-                fila_procesada[k] = v_original
-        datos_procesados_para_guardar.append(fila_procesada)
+                # Si la fila NO tiene ID, es un registro nuevo y lo CREAMOS.
+                nuevo_registro = RegistroTransito(
+                    usuario=session.get("nombre", "No identificado"),
+                    tipo_transito=tipo_transito,
+                    guia=guia,
+                    origen=datos_fila.get('ORIGEN'),
+                    fecha=datos_fila.get('FECHA'),
+                    producto=datos_fila.get('PRODUCTO'),
+                    placa=datos_fila.get('PLACA'),
+                    api=float(str(datos_fila.get('API')).replace(',', '.')) if datos_fila.get('API') else None,
+                    bsw=float(str(datos_fila.get('BSW')).replace(',', '.')) if datos_fila.get('BSW') else None,
+                    nsv=float(str(datos_fila.get('NSV')).replace(',', '.')) if datos_fila.get('NSV') else None,
+                    observaciones=datos_fila.get('OBSERVACIONES')
+                )
+                db.session.add(nuevo_registro)
 
-        fecha_para_dashboard = fecha_registro_dt.strftime("%Y_%m_%d_%H_%M_%S")
- 
-    data_to_save_in_file = {
-        "fecha": fecha_para_dashboard,
-        "timestamp_iso": fecha_registro_dt.isoformat(), 
-        "fecha_guardado_str": fecha_str_para_nombre_archivo, 
-        "tipo_transito": tipo_transito, # 'general' o 'refineria'
-        "usuario": session.get("nombre"),
-        "datos": datos_procesados_para_guardar # La lista de filas que vino del frontend (con fechas procesadas)
-    }
+        # Confirmamos todos los cambios (updates y nuevos) en la base de datos.
+        db.session.commit()
 
-    try:
-        with open(ruta_archivo_final, 'w', encoding='utf-8') as f:
-            json.dump(data_to_save_in_file, f, ensure_ascii=False, indent=2)
-        app.logger.info(f"REGISTRO DE TRÁNSITO GUARDADO EXITOSAMENTE: {nombre_archivo_final}")
+        # Después de guardar, consultamos el historial COMPLETO para devolverlo al frontend.
+        registros_actualizados = db.session.query(RegistroTransito).filter_by(tipo_transito=tipo_transito).order_by(RegistroTransito.timestamp.desc()).all()
         
-        # Actualizar las planillas globales en memoria (si tu vista de edición directa las usa)
-        # Esto es opcional y depende de cómo cargues los datos en la vista de edición /transito
-        if tipo_transito == "general":
-            global PLANILLA_TRANSITO_GENERAL
-            PLANILLA_TRANSITO_GENERAL = [dict(d) for d in datos_procesados_para_guardar] # Actualizar con los datos guardados
-        elif tipo_transito == "refineria":
-            global PLANILLA_TRANSITO_REFINERIA
-            PLANILLA_TRANSITO_REFINERIA = [dict(d) for d in datos_procesados_para_guardar]
+        datos_para_frontend = [
+            {"id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or ''}
+            for r in registros_actualizados
+        ]
+        
+        return jsonify(success=True, message="Historial guardado exitosamente.", datos=datos_para_frontend)
 
-        return jsonify(success=True, message=f"Registro de tránsito '{tipo_transito}' guardado exitosamente.")
-    except Exception as e_write_file:
-        app.logger.error(f"Guardar Tránsito: Error crítico al escribir el archivo de registro '{ruta_archivo_final}': {e_write_file}")
-        return jsonify(success=False, message=f"Error del servidor al guardar el archivo de registro: {str(e_write_file)}"), 500
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al guardar tránsito: {e}")
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+    
+@login_required
+@permiso_requerido('transito')
+@app.route('/eliminar-registro-transito/<int:registro_id>', methods=['DELETE'])
+def eliminar_registro_transito(registro_id):
+    try:
+        registro_a_eliminar = db.session.query(RegistroTransito).get(registro_id)
+        if registro_a_eliminar:
+            db.session.delete(registro_a_eliminar)
+            db.session.commit()
+            return jsonify(success=True, message="Registro eliminado exitosamente.")
+        else:
+            return jsonify(success=False, message="Registro no encontrado."), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
     
 @login_required
 @app.route('/agregar-producto', methods=['POST'])
@@ -660,123 +889,111 @@ def historial_registros():
     return render_template("reporte_general.html", registros=registros, nombre=session.get("nombre"))
 
 @login_required
+@permiso_requerido('transito')
 @app.route('/reporte_transito')
 def reporte_transito():
-    app.logger.info("Accediendo a /reporte_transito")
+    app.logger.info("Accediendo a /reporte_transito desde la base de datos")
     datos_consolidados = {}
     datos_conteo_camiones = {}
-    fecha_actualizacion_info = "No hay registros de tránsito para mostrar."
+    # --- CORRECCIÓN 1: INICIALIZAR EL DICCIONARIO AQUÍ ---
+    observaciones_camiones = {} 
     
-    carpeta_registros_path = os.path.join(BASE_DIR, "registros")
-    os.makedirs(carpeta_registros_path, exist_ok=True)
-
+    fecha_actualizacion_info = "No se encontraron registros de tránsito."
+    
     try:
-        # 1. Obtener todos los archivos de registro de tránsito
-        todos_los_archivos = [a for a in os.listdir(carpeta_registros_path) if a.startswith("transito_") and a.endswith(".json")]
+        todos_los_registros = db.session.query(RegistroTransito).order_by(RegistroTransito.timestamp.desc()).all()
 
-        if not todos_los_archivos:
-            return render_template("reporte_transito.html", datos_consolidados=datos_consolidados, datos_conteo_camiones=datos_conteo_camiones, nombre=session.get("nombre"), fecha_actualizacion_info=fecha_actualizacion_info)
+        if not todos_los_registros:
+            return render_template("reporte_transito.html", 
+                                   datos_consolidados=datos_consolidados, 
+                                   datos_conteo_camiones=datos_conteo_camiones,
+                                   # --- CORRECCIÓN 2: PASAR LA VARIABLE AQUÍ TAMBIÉN ---
+                                   observaciones_camiones=observaciones_camiones,
+                                   nombre=session.get("nombre"), 
+                                   fecha_actualizacion_info=fecha_actualizacion_info)
 
-        # 2. Encontrar la fecha más reciente de los archivos
-        fechas = set()
-        for archivo in todos_los_archivos:
-            try:
-                # Extrae la fecha del nombre del archivo, ej: transito_general_YYYY-MM-DD_...
-                fecha_str = archivo.split('_')[2]
-                fechas.add(fecha_str)
-            except IndexError:
-                continue # Ignora archivos con formato de nombre incorrecto
+        ultimo_registro = max(todos_los_registros, key=lambda r: r.timestamp)
+        fecha_formato = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
+        fecha_actualizacion_info = formatear_info_actualizacion(fecha_formato, ultimo_registro.usuario)
 
-        if not fechas:
-            raise ValueError("No se encontraron archivos de registro con formato de fecha válido.")
-
-        fecha_mas_reciente = max(fechas)
-
-        # 3. Filtrar archivos que corresponden solo al día más reciente
-        archivos_del_dia = [a for a in todos_los_archivos if fecha_mas_reciente in a]
-        
-        # Actualizar la info con el primer archivo del día
-        if archivos_del_dia:
-            ruta_primer_archivo = os.path.join(carpeta_registros_path, sorted(archivos_del_dia, reverse=True)[0])
-            with open(ruta_primer_archivo, 'r', encoding='utf-8') as f:
-                data_primer_archivo = json.load(f)
-            usuario_guardado = data_primer_archivo.get("usuario", "N/A")
-            fecha_actualizacion_info = f"Mostrando registros consolidados del día {fecha_mas_reciente}. Último guardado por {usuario_guardado}."
-
-
-        # 4. Procesar y consolidar los datos de los archivos de ese día
-        for archivo_nombre in archivos_del_dia:
-            ruta_completa = os.path.join(carpeta_registros_path, archivo_nombre)
-            with open(ruta_completa, 'r', encoding='utf-8') as f:
-                data_archivo = json.load(f)
-
-            tipo_archivo_guardado = data_archivo.get("tipo_transito") # 'general' o 'refineria'
-            registros_individuales = data_archivo.get("datos", [])
-
-            if not tipo_archivo_guardado or not isinstance(registros_individuales, list):
-                continue
-
-            tipo_destino_reporte = "Refinería" if tipo_archivo_guardado == "refineria" else "EDSM"
+        for reg in todos_los_registros:
+            origen = (reg.origen or "").strip()
+            producto = (reg.producto or "").strip()
             
-            for reg in registros_individuales:
-                origen = reg.get("ORIGEN", "").strip()
-                producto = reg.get("PRODUCTO", "").strip()
-                
-                # Saltar filas que no tengan origen y producto
-                if not origen or not producto:
-                    continue
-                
-                try:
-                    nsv_str = str(reg.get("NSV", "0")).replace(',', '.')
-                    nsv = float(nsv_str) if nsv_str else 0.0
-                except (ValueError, TypeError):
-                    nsv = 0.0
+            if not origen or not producto:
+                continue
+            
+            tipo_destino_reporte = "Refinería" if reg.tipo_transito == "refineria" else "EDSM"
+            nsv = float(reg.nsv or 0.0)
 
-                # Consolidar datos de NSV
-                datos_consolidados.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0.0)
-                datos_consolidados[tipo_destino_reporte][origen][producto] += nsv
+            datos_consolidados.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0.0)
+            datos_consolidados[tipo_destino_reporte][origen][producto] += nsv
+            
+            datos_conteo_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0)
+            datos_conteo_camiones[tipo_destino_reporte][origen][producto] += 1
+            
+            if reg.observaciones and reg.observaciones.strip():
+                observacion_texto = reg.observaciones.strip()
+                placa = reg.placa or "SIN PLACA"
+                texto_completo = f"{placa}: {observacion_texto}"
                 
-                # Contar viajes
-                datos_conteo_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0)
-                datos_conteo_camiones[tipo_destino_reporte][origen][producto] += 1
-                
+                lista_de_observaciones = observaciones_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, [])
+                lista_de_observaciones.append(texto_completo)
+            
     except Exception as e:
-        app.logger.error(f"Error crítico al generar reporte de tránsito: {e}")
+        app.logger.error(f"Error crítico al generar reporte de tránsito desde BD: {e}")
         flash(f"Ocurrió un error al generar el reporte: {e}", "danger")
         fecha_actualizacion_info = "Error al cargar los datos."
 
     return render_template("reporte_transito.html",
                            datos_consolidados=datos_consolidados,
                            datos_conteo_camiones=datos_conteo_camiones,
+                           # --- CORRECCIÓN 3: PASAR LA VARIABLE EN EL RETURN FINAL ---
+                           observaciones_camiones=observaciones_camiones,
                            nombre=session.get("nombre"),
                            fecha_actualizacion_info=fecha_actualizacion_info)
+
 @login_required
 @permiso_requerido('barcaza_orion')
 @app.route('/barcaza_orion')
 def barcaza_orion():
-    # Lógica para cargar datos guardados (esta parte no cambia)
-    datos_guardados = []
-    try:
-        carpeta = "registros"
-        archivos_orion = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_orion_") and a.endswith(".json")], reverse=True)
-        if archivos_orion:
-            ruta_reciente = os.path.join(carpeta, archivos_orion[0])
-            with open(ruta_reciente, 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-            datos_guardados = contenido.get("datos", [])
-    except Exception:
-        pass
+    print("\n--- INICIANDO RUTA /barcaza_orion ---")
     
-    fuente_de_datos = datos_guardados if datos_guardados else PLANILLA_BARCAZA_ORION
+    fecha_str = request.args.get('fecha')
+    try:
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
+    
+    print(f"DEBUG: Filtrando por fecha: {fecha_seleccionada}")
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
-    # --- INICIO DE LA CORRECCIÓN ---
-    # Ahora filtramos usando la clave "grupo" que añadiste. Es mucho más limpio.
-    tanques_principales = [tk for tk in fuente_de_datos if tk.get('grupo') == 'PRINCIPAL']
-    tanques_man = [tk for tk in fuente_de_datos if tk.get('grupo') == 'MANZANILLO']
-    tanques_cr = [tk for tk in fuente_de_datos if tk.get('grupo') == 'CR']
-    tanques_margoth = [tk for tk in fuente_de_datos if tk.get('grupo') == 'MARGOTH']
-    tanques_odisea = [tk for tk in fuente_de_datos if tk.get('grupo') == 'ODISEA']
-    # --- FIN DE LA CORRECCIÓN ---
+    subquery = (db.session.query(
+        func.max(RegistroBarcazaOrion.id).label('max_id')
+    ).filter(RegistroBarcazaOrion.timestamp <= timestamp_limite).group_by(RegistroBarcazaOrion.tk).subquery())
+
+    registros_recientes = (db.session.query(RegistroBarcazaOrion)
+        .filter(RegistroBarcazaOrion.id.in_(subquery)).all())
+    
+    print(f"DEBUG: La consulta a la BD encontró {len(registros_recientes)} registros.")
+    
+    datos_para_plantilla = []
+    if registros_recientes:
+        for registro in registros_recientes:
+            datos_para_plantilla.append({
+                "TK": registro.tk, "PRODUCTO": registro.producto, "MAX_CAP": registro.max_cap,
+                "BLS_60": registro.bls_60 or "", "API": registro.api or "", 
+                "BSW": registro.bsw or "", "S": registro.s or "", "grupo": registro.grupo or ""
+            })
+    else:
+        print("DEBUG: No se encontraron registros, se usará la planilla por defecto.")
+        datos_para_plantilla = PLANILLA_BARCAZA_ORION
+
+    tanques_principales = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'PRINCIPAL']
+    tanques_man = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MANZANILLO']
+    tanques_cr = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'CR']
+    tanques_margoth = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MARGOTH']
+    tanques_odisea = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'ODISEA']
 
     return render_template("barcaza_orion.html",
                            titulo="Planilla Barcaza Orion",
@@ -785,41 +1002,61 @@ def barcaza_orion():
                            tanques_cr=tanques_cr,
                            tanques_margoth=tanques_margoth,
                            tanques_odisea=tanques_odisea,
-                           nombre=session.get("nombre"))
+                           nombre=session.get("nombre"),
+                           fecha_seleccionada=fecha_seleccionada.isoformat())
+
 @login_required
 @permiso_requerido('barcaza_bita')
 @app.route('/barcaza_bita')
 def barcaza_bita():
-    datos_guardados = []
+    # 1. Lógica del filtro de fecha
+    fecha_str = request.args.get('fecha')
     try:
-        carpeta = "registros"
-        archivos_bita = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_bita_") and a.endswith(".json")], reverse=True)
-        if archivos_bita:
-            ruta_reciente = os.path.join(carpeta, archivos_bita[0])
-            with open(ruta_reciente, 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-            datos_guardados = contenido.get("datos", [])
-    except Exception:
-        # Si hay algún error (ej. la carpeta no existe), no hace nada y usará la planilla en blanco.
-        pass
+        fecha_seleccionada_obj = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada_obj = date.today()
 
-    # 3. DECIDIR QUÉ DATOS MOSTRAR
-    # Si 'datos_guardados' tiene algo, úsalo. Si no, usa la planilla por defecto.
-    fuente_de_datos = datos_guardados if datos_guardados else PLANILLA_BARCAZA_BITA
-
-    # 4. CREAR LOS GRUPOS PARA LA PÁGINA
-    grupos = {
-        "BARCAZA MARINSE": [tk for tk in fuente_de_datos if tk.get('TK', '').startswith('MARI')],
-        "BARCAZA OIDECH": [tk for tk in fuente_de_datos if tk.get('TK', '').startswith('OID')]
-    }
+    # --- CÓDIGO CLAVE PARA FORMATEAR LA FECHA ---
+    meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+    nombre_mes = meses[fecha_seleccionada_obj.month - 1]
+    fecha_display = fecha_seleccionada_obj.strftime(f"%d de {nombre_mes} de %Y")
+    # --- FIN DEL CÓDIGO CLAVE ---
     
-    # 5. RENDERIZAR LA PÁGINA CON LOS DATOS CARGADOS
-    return render_template(
-        "barcaza_bita.html", 
-        titulo="Planilla Barcaza BITA", 
-        grupos=grupos,
-        nombre=session.get('nombre', 'Desconocido') 
-    )
+
+    timestamp_limite = datetime.combine(fecha_seleccionada_obj, time.max)
+
+    # 2. Consulta a la base de datos para BITA
+    subquery = (db.session.query(func.max(RegistroBarcazaBita.id).label('max_id'))
+        .filter(RegistroBarcazaBita.timestamp <= timestamp_limite).group_by(RegistroBarcazaBita.tk).subquery())
+
+    registros_recientes = (db.session.query(RegistroBarcazaBita)
+        .filter(RegistroBarcazaBita.id.in_(subquery)).all())
+
+    # 3. Preparar los datos
+    datos_para_plantilla = []
+    if registros_recientes:
+        for r in registros_recientes:
+            datos_para_plantilla.append({
+                "TK": r.tk, "PRODUCTO": r.producto, "MAX_CAP": r.max_cap,
+                "BLS_60": r.bls_60 or "", "API": r.api or "", "BSW": r.bsw or "", "S": r.s or ""
+            })
+    else:
+        datos_para_plantilla = PLANILLA_BARCAZA_BITA
+
+    # 4. Lógica para separar en grupos
+    grupos = {
+        "BARCAZA MARINSE": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('MARI')],
+        "BARCAZA OIDECH": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('OID')]
+    }
+
+    # 5. Renderizar la plantilla, pasando todas las variables necesarias
+    return render_template("barcaza_bita.html",
+                           titulo="Planilla Barcaza BITA",
+                           grupos=grupos,
+                           nombre=session.get('nombre', 'Desconocido'),
+                           fecha_seleccionada=fecha_seleccionada_obj.isoformat(),
+                           today_iso=date.today().isoformat(),
+                           fecha_display=fecha_display) 
 
 @login_required
 @permiso_requerido('guia_transporte') 
@@ -831,200 +1068,203 @@ def guia_transporte():
 @login_required
 @app.route('/reporte_barcaza')
 def reporte_barcaza():
-    """
-    Muestra el reporte de la Barcaza Orion, calculando un total consolidado
-    y luego desglosando por cada grupo de tanques.
-    """
-    # --- 1. Carga de datos del archivo JSON más reciente ---
-    carpeta = "registros"
-    fecha_actualizacion_info = "No hay registros de Barcaza Orion guardados."
-    datos_barcaza_reporte = []
-    
+    # 1. Lógica del filtro de fecha (idéntica a la que ya usamos)
+    fecha_str = request.args.get('fecha')
     try:
-        os.makedirs(carpeta, exist_ok=True)
-        archivos_orion = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_orion_") and a.endswith(".json")], reverse=True)
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
+    
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
-        if archivos_orion:
-            ruta_reciente = os.path.join(carpeta, archivos_orion[0])
-            with open(ruta_reciente, 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-            
-            datos_barcaza_reporte = contenido.get("datos", [])
-            fecha_guardado = contenido.get("fecha")
-            usuario_guardado = contenido.get("usuario")
-            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado)
+    # 2. Consulta a la base de datos para obtener el estado de ese día para la Barcaza Orion
+    subquery = (db.session.query(
+        func.max(RegistroBarcazaOrion.id).label('max_id')
+    ).filter(
+        RegistroBarcazaOrion.timestamp <= timestamp_limite
+    ).group_by(RegistroBarcazaOrion.tk).subquery())
 
-    except Exception as e:
-        flash(f"Error al generar el reporte de barcaza: {e}", "danger")
-        fecha_actualizacion_info = "Error al cargar la información."
+    registros_recientes = (db.session.query(RegistroBarcazaOrion)
+        .filter(RegistroBarcazaOrion.id.in_(subquery))
+        .all())
+    
+    # 3. Preparar los datos para la plantilla
+    todos_los_tanques_lista = []
+    if registros_recientes:
+        for registro in registros_recientes:
+            todos_los_tanques_lista.append({
+                "TK": registro.tk, "PRODUCTO": registro.producto, "MAX_CAP": registro.max_cap,
+                "BLS_60": registro.bls_60, "API": registro.api, 
+                "BSW": registro.bsw, "S": registro.s, "grupo": registro.grupo
+            })
 
-    total_consolidado = calcular_estadisticas(datos_barcaza_reporte)
-
-    barcazas_agrupadas = {}
+    # 4. Calcular el total consolidado a partir de los datos filtrados
+    total_consolidado = calcular_estadisticas(todos_los_tanques_lista)
+    
+    # 5. Agrupar los tanques en el diccionario que la plantilla espera
+    datos_para_template = {}
     nombres_display = {
         "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
         "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
     }
-    if datos_barcaza_reporte:
-        for tanque in datos_barcaza_reporte:
+    if todos_los_tanques_lista:
+        for tanque in todos_los_tanques_lista:
             grupo_key = tanque.get("grupo")
             if grupo_key in nombres_display:
                 nombre_barcaza = nombres_display[grupo_key]
-                if nombre_barcaza not in barcazas_agrupadas:
-                    barcazas_agrupadas[nombre_barcaza] = []
-                barcazas_agrupadas[nombre_barcaza].append(tanque)
+                if nombre_barcaza not in datos_para_template:
+                    datos_para_template[nombre_barcaza] = {"tanques": [], "totales": {}}
+                datos_para_template[nombre_barcaza]["tanques"].append(tanque)
+        
+        # Calcular las estadísticas para cada grupo
+        for nombre, data in datos_para_template.items():
+            data["totales"] = calcular_estadisticas(data["tanques"])
 
-    datos_para_template = {}
-    for nombre_barcaza, tanques_list in barcazas_agrupadas.items():
-        estadisticas = calcular_estadisticas(tanques_list)
-        datos_para_template[nombre_barcaza] = {
-            "tanques": tanques_list,
-            "totales": estadisticas 
-        }
+    # 6. Formatear el mensaje de "Última actualización"
+    fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
+    if registros_recientes:
+        ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
+        fecha_formato_para_funcion = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
+        fecha_actualizacion_info = formatear_info_actualizacion(
+            fecha_formato_para_funcion, 
+            ultimo_registro.usuario
+        )
+    
+    # 7. Renderizar la plantilla con todos los datos necesarios
     return render_template("reporte_barcaza_orion.html",
+                           titulo="Reporte Interactivo - Barcaza Orion", # Título corregido
                            datos_para_template=datos_para_template,
                            total_consolidado=total_consolidado,
+                           todos_los_tanques_json=json.dumps(todos_los_tanques_lista),
                            fecha_actualizacion_info=fecha_actualizacion_info,
-                           todos_los_tanques_json=json.dumps(datos_barcaza_reporte)
-                          )
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat())
 
-@login_required   
+@login_required
 @app.route('/reporte_barcaza_bita')
 def reporte_barcaza_bita():
-    """
-    Muestra el reporte interactivo de la Barcaza BITA.
-    """
-    # --- 1. Carga de datos del archivo JSON más reciente ---
-    carpeta = "registros"
-    fecha_actualizacion_info = "No hay registros de Barcaza BITA guardados."
-    datos_reporte = []
-    
+    # La lógica de consulta es idéntica a la de la planilla
+    fecha_str = request.args.get('fecha')
     try:
-        os.makedirs(carpeta, exist_ok=True)
-        archivos_bita = sorted([a for a in os.listdir(carpeta) if a.startswith("barcaza_bita_") and a.endswith(".json")], reverse=True)
-        
-        if archivos_bita:
-            ruta_reciente = os.path.join(carpeta, archivos_bita[0])
-            with open(ruta_reciente, 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-            datos_reporte = contenido.get("datos", [])
-            fecha_guardado = contenido.get("fecha")
-            usuario_guardado = contenido.get("usuario")
-            fecha_actualizacion_info = formatear_info_actualizacion(fecha_guardado, usuario_guardado)
-    except Exception as e:
-        flash(f"Error al generar el reporte de barcaza BITA: {e}", "danger")
-        fecha_actualizacion_info = "Error al cargar la información."
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
 
-    # --- 2. Calcular el total consolidado inicial ---
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+    subquery = (db.session.query(func.max(RegistroBarcazaBita.id).label('max_id'))
+        .filter(RegistroBarcazaBita.timestamp <= timestamp_limite).group_by(RegistroBarcazaBita.tk).subquery())
+    registros_recientes = (db.session.query(RegistroBarcazaBita)
+        .filter(RegistroBarcazaBita.id.in_(subquery)).all())
+
+    # Preparar los datos y estadísticas para el reporte
+    datos_reporte = []
+    if registros_recientes:
+        for r in registros_recientes:
+            datos_reporte.append({
+                "TK": r.tk, "PRODUCTO": r.producto, "MAX_CAP": r.max_cap,
+                "BLS_60": r.bls_60, "API": r.api, "BSW": r.bsw, "S": r.s
+            })
+
     total_consolidado = calcular_estadisticas(datos_reporte)
-
-    # --- 3. Separación de datos para la vista inicial ---
     tanques_marinse = [tk for tk in datos_reporte if tk.get('TK','').startswith('MARI')]
     tanques_oidech = [tk for tk in datos_reporte if tk.get('TK','').startswith('OID')]
-
-    # --- 4. Cálculo de estadísticas para cada grupo ---
     stats_marinse = calcular_estadisticas(tanques_marinse)
     stats_oidech = calcular_estadisticas(tanques_oidech)
-    
-    # --- 5. Renderizado de la plantilla con las nuevas variables ---
-    return render_template(
-        "reporte_barcaza_bita.html",
-        titulo="Reporte Interactivo - Barcaza BITA",
-        fecha_actualizacion_info=fecha_actualizacion_info,
-        nombre=session.get('nombre', 'Desconocido'),
-        
-        # Nuevas variables para la interactividad
-        total_consolidado=total_consolidado,
-        todos_los_tanques_json=json.dumps(datos_reporte),
 
-        # Datos para los grupos (la plantilla los usará para la estructura inicial)
-        tanques_marinse=tanques_marinse,
-        stats_marinse=stats_marinse,
-        tanques_oidech=tanques_oidech,
-        stats_oidech=stats_oidech
-    )
+    fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
+    if registros_recientes:
+        ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
+        fecha_fmt = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
+        fecha_actualizacion_info = formatear_info_actualizacion(fecha_fmt, ultimo_registro.usuario)
+
+    return render_template("reporte_barcaza_bita.html",
+                           titulo="Reporte Interactivo - Barcaza BITA",
+                           fecha_actualizacion_info=fecha_actualizacion_info,
+                           nombre=session.get('nombre', 'Desconocido'),
+                           total_consolidado=total_consolidado,
+                           todos_los_tanques_json=json.dumps(datos_reporte),
+                           tanques_marinse=tanques_marinse,
+                           stats_marinse=stats_marinse,
+                           tanques_oidech=tanques_oidech,
+                           stats_oidech=stats_oidech,
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat())
 
 @login_required
 @permiso_requerido('barcaza_bita')
 @app.route('/guardar-registro-bita', methods=['POST'])
 def guardar_registro_bita():
-    # Esta línea recibe la LISTA COMPLETA de tanques que envía el navegador
-    datos_actualizados = request.get_json()
+    lista_tanques = request.get_json()
+    if not lista_tanques or not isinstance(lista_tanques, list):
+        return jsonify(success=False, message="No se recibieron datos o el formato es incorrecto."), 400
 
-    # Esta línea le pasa la LISTA COMPLETA a tu otra función que SÍ sabe cómo guardarla
-    return guardar_registro_generico(datos_actualizados, "barcaza_bita")
+    try:
+        for datos_tanque in lista_tanques:
+            if not datos_tanque.get('TK'):
+                continue
+            
+            nuevo_registro = RegistroBarcazaBita(
+                usuario=session.get("nombre", "No identificado"),
+                tk=datos_tanque.get('TK'),
+                producto=datos_tanque.get('PRODUCTO'),
+                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+            )
+            db.session.add(nuevo_registro)
 
-@login_required
-@permiso_requerido('barcaza_orion') 
-@app.route('/guardar_celda_barcaza', methods=['POST'])
-def guardar_celda_barcaza():
-    # El 'if' manual que causaba el error de permisos ya no es necesario
-    
-    data = request.get_json()
-    tk = data.get("tk")
-    field = data.get("field")
-    value = data.get("value")
-    grupo = data.get("grupo") 
+        db.session.commit()
+        return jsonify(success=True, message="Registro de Barcaza BITA guardado en la base de datos.")
 
-    if not all([tk, field is not None, grupo is not None]):
-        return jsonify(success=False, message="Datos incompletos"), 400
-
-    # Búsqueda usando la clave compuesta TK + GRUPO para más seguridad
-    tanque_encontrado = False
-    for fila in PLANILLA_BARCAZA_ORION:
-        if fila.get("TK") == tk and fila.get("grupo") == grupo:
-            fila[field] = value
-            tanque_encontrado = True
-            break # Encontramos el único tanque, podemos salir del bucle
-
-    if tanque_encontrado:
-        return jsonify(success=True, message=f"Celda {field} de {tk} ({grupo}) actualizada.")
-    else:
-        return jsonify(success=False, message=f"Tanque no encontrado: {tk} en grupo {grupo}"), 404
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al guardar Barcaza BITA en la base de datos: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
 
 @login_required
 @permiso_requerido('barcaza_orion')
 @app.route('/guardar_registro_barcaza', methods=['POST'])
 def guardar_registro_barcaza():
-    datos_actualizados = request.get_json()
-    
-    # 3. Valida que los datos se recibieron correctamente
-    if not datos_actualizados or not isinstance(datos_actualizados, list):
+    # 1. Recibimos la lista de tanques desde la planilla
+    lista_tanques = request.get_json()
+    if not lista_tanques or not isinstance(lista_tanques, list):
         return jsonify(success=False, message="No se recibieron datos o el formato es incorrecto."), 400
 
-    # 4. Lógica de guardado explícita y completa
     try:
-        ahora = datetime.now()
-        timestamp = ahora.strftime('%Y_%m_%d_%H_%M_%S')
-        usuario_actual = session.get('nombre', 'Usuario Desconocido')
+        # 2. Recorremos cada tanque que se recibió
+        for datos_tanque in lista_tanques:
+            # Ignoramos filas vacías
+            if not datos_tanque.get('TK'):
+                continue
+            
+            # 3. Creamos una instancia del modelo de base de datos RegistroBarcazaOrion
+            nuevo_registro = RegistroBarcazaOrion(
+                usuario=session.get("nombre", "No identificado"),
+                tk=datos_tanque.get('TK'),
+                producto=datos_tanque.get('PRODUCTO'),
+                grupo=datos_tanque.get('grupo'),
+                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+            )
+            # 4. Añadimos la nueva "fila" a la sesión de la base de datos
+            db.session.add(nuevo_registro)
 
-        carpeta = "registros"
-        os.makedirs(carpeta, exist_ok=True) # Crea la carpeta si no existe
+        # 5. Guardamos todos los cambios de forma permanente
+        db.session.commit()
         
-        # Nombre de archivo específico para Orion
-        nombre_archivo = f"barcaza_orion_{timestamp}.json"
-        ruta_completa = os.path.join(carpeta, nombre_archivo)
-
-        # Contenido completo a guardar en el archivo
-        contenido_a_guardar = {
-            "fecha": timestamp,
-            "usuario": usuario_actual,
-            "datos": datos_actualizados
-        }
-
-        # Escribir el archivo .json
-        with open(ruta_completa, 'w', encoding='utf-8') as f:
-            json.dump(contenido_a_guardar, f, ensure_ascii=False, indent=4)
-        
-        # Devolver respuesta de éxito al JavaScript
-        return jsonify(success=True, message="Registro de Barcaza Orion guardado exitosamente.")
+        return jsonify(success=True, message="Registro de Barcaza Orion guardado en la BASE DE DATOS.")
 
     except Exception as e:
-        # Si algo sale mal durante el guardado, se informa el error
-        print(f"Error al guardar registro de Orion: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor al guardar el archivo: {e}"), 500
+        # Si algo sale mal, deshacemos los cambios para mantener la integridad de los datos
+        db.session.rollback()
+        print(f"Error al guardar Barcaza Orion en la base de datos: {e}")
+        return jsonify(success=False, message=f"Error al guardar en la base de datos: {str(e)}"), 500
     
-
 @login_required
 @app.route('/dashboard_reportes')
 def dashboard_reportes():
@@ -1033,103 +1273,73 @@ def dashboard_reportes():
     if session.get('rol') != 'admin' and len(user_areas) == 1 and user_areas[0] == 'guia_transporte':
         return redirect(url_for('home_logistica'))
 
-    carpeta = "registros"
-    os.makedirs(carpeta, exist_ok=True)
-    
-    # --- INICIO DE LA LÓGICA MEJORADA ---
-
-    def crear_resumen(prefijo_archivo):
-        """
-        Función auxiliar para cargar el último registro de un área y formatear su información.
-        """
-        resumen = {
-            "datos": [], 
-            "info_completa": "Sin Registros"
-        }
-        try:
-            archivos = sorted([a for a in os.listdir(carpeta) if a.startswith(prefijo_archivo) and a.endswith(".json")], reverse=True)
-            if archivos:
-                ruta_reciente = os.path.join(carpeta, archivos[0])
-                with open(ruta_reciente, 'r', encoding='utf-8') as f:
-                    contenido = json.load(f)
-                
-                # Guarda la lista de datos para cálculos en la plantilla (ej. total BLS)
-                resumen["datos"] = contenido.get("datos", [])
-                
-                # Usa la función que ya tienes para crear el texto con fecha, hora y usuario
-                resumen["info_completa"] = formatear_info_actualizacion(
-                    contenido.get("fecha"),
-                    contenido.get("usuario")
-                )
-        except Exception as e:
-            print(f"Error cargando resumen para {prefijo_archivo}: {e}")
-            resumen["info_completa"] = "Error al cargar datos"
-            
-        return resumen
-
-    # Llama a la función auxiliar para cada tipo de reporte
-    planta_summary = crear_resumen("planta_")
-    transito_summary = crear_resumen("transito_")
-    orion_summary = crear_resumen("barcaza_orion_")
-    bita_summary = crear_resumen("barcaza_bita_")
-    
-    recent_activities = []
+    # --- Resumen para PLANTA ---
+    planta_summary = {'datos': [], 'info_completa': 'Sin Registros'}
     try:
-        # 1. Obtener TODOS los archivos .json de la carpeta de registros
-        todos_los_archivos = [f for f in os.listdir(carpeta) if f.endswith(".json")]
-        
-        # 2. Ordenarlos por nombre para tener los más recientes primero
-        todos_los_archivos.sort(reverse=True)
-        
-        # 3. Tomar solo los últimos 7 registros para mostrar
-        for archivo in todos_los_archivos[:7]:
-            ruta = os.path.join(carpeta, archivo)
-            with open(ruta, 'r', encoding='utf-8') as f:
-                contenido = json.load(f)
-
-            # Extraer la información relevante
-            fecha_str = contenido.get("fecha", "")
-            usuario = contenido.get("usuario", "N/A")
-            
-            # Determinar el módulo y el color basado en el nombre del archivo
-            if "planta" in archivo:
-                modulo = {"nombre": "Planta", "color": "planta"}
-            elif "transito" in archivo:
-                modulo = {"nombre": "Tránsito", "color": "transito"}
-            elif "barcaza_orion" in archivo:
-                modulo = {"nombre": "Barcaza Orion", "color": "orion"}
-            elif "barcaza_bita" in archivo:
-                modulo = {"nombre": "Barcaza BITA", "color": "bita"}
-            else:
-                modulo = {"nombre": "Desconocido", "color": "secondary"}
-
-            # Formatear solo la hora
-            try:
-                hora = datetime.strptime(fecha_str, "%Y_%m_%d_%H_%M_%S").strftime("%I:%M %p")
-            except:
-                hora = "Hora inválida"
-
-            recent_activities.append({
-                "module": modulo["nombre"],
-                "module_color": modulo["color"],
-                "action": "Registro guardado",
-                "user": usuario,
-                "time": hora
-            })
+        registros_planta = db.session.query(RegistroPlanta).all()
+        # Filtramos para asegurarnos de que solo usamos registros con fecha
+        registros_validos = [r for r in registros_planta if r.timestamp]
+        if registros_validos:
+            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
+            planta_summary['datos'] = registros_validos
+            planta_summary['info_completa'] = formatear_info_actualizacion(
+                ultimo_registro.timestamp, ultimo_registro.usuario
+            )
     except Exception as e:
-        print(f"Error al generar actividad reciente: {e}")
+        print(f"Error al cargar resumen de Planta: {e}")
 
-    # --- FIN DE LA NUEVA LÓGICA ---
+    # --- Resumen para BARCAZA ORION ---
+    orion_summary = {'datos': [], 'info_completa': 'Sin Registros'}
+    try:
+        registros_orion = db.session.query(RegistroBarcazaOrion).all()
+        registros_validos = [r for r in registros_orion if r.timestamp]
+        if registros_validos:
+            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
+            orion_summary['datos'] = registros_validos
+            orion_summary['info_completa'] = formatear_info_actualizacion(
+                ultimo_registro.timestamp, ultimo_registro.usuario
+            )
+    except Exception as e:
+        print(f"Error al cargar resumen de Orion: {e}")
 
-   
+    # --- Resumen para BARCAZA BITA ---
+    bita_summary = {'datos': [], 'info_completa': 'Sin Registros'}
+    try:
+        registros_bita = db.session.query(RegistroBarcazaBita).all()
+        registros_validos = [r for r in registros_bita if r.timestamp]
+        if registros_validos:
+            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
+            bita_summary['datos'] = registros_validos
+            bita_summary['info_completa'] = formatear_info_actualizacion(
+                ultimo_registro.timestamp, ultimo_registro.usuario
+            )
+    except Exception as e:
+        print(f"Error al cargar resumen de BITA: {e}")
 
-    # Renderiza la plantilla pasándole los nuevos diccionarios de resumen
+    # --- Resumen para TRÁNSITO ---
+    transito_summary = {'datos': [], 'refineria_count': 0, 'edms_count': 0, 'otros_count': 0, 'info_completa': 'Sin Registros'}
+    try:
+        registros_transito = db.session.query(RegistroTransito).all()
+        registros_validos = [r for r in registros_transito if r.timestamp]
+        if registros_validos:
+            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
+            transito_summary['datos'] = registros_validos
+            transito_summary['info_completa'] = formatear_info_actualizacion(
+                ultimo_registro.timestamp, ultimo_registro.usuario
+            )
+            transito_summary['refineria_count'] = sum(1 for r in registros_validos if r.tipo_transito == 'refineria')
+            transito_summary['edms_count'] = sum(1 for r in registros_validos if r.tipo_transito == 'general')
+            
+    except Exception as e:
+        print(f"Error al cargar resumen de Tránsito: {e}")
+
+    # --- Renderizar la plantilla ---
     return render_template("dashboard_reportes.html",
                            nombre=session.get("nombre"),
                            planta_summary=planta_summary,
-                           transito_summary=transito_summary,
                            orion_summary=orion_summary,
-                           bita_summary=bita_summary)
+                           bita_summary=bita_summary,
+                           transito_summary=transito_summary)
 
 @login_required                        
 @app.route('/guardar-datos-planta', methods=['POST'])
@@ -1153,29 +1363,48 @@ def guardar_datos_planta():
     return jsonify(success=False, message="Tanque o campo no encontrado"), 404
 
 @login_required
+@permiso_requerido('planta')
 @app.route('/guardar-registro-planta', methods=['POST'])
 def guardar_registro_planta():
-    # --- VERIFICACIÓN DE HORA (TEMPORALMENTE DESACTIVADA) ---
-    # Se ha añadido y comentado un bloque similar para la planta.
-    '''
+    # 1. Recibimos la lista de tanques desde la planilla (esto no cambia)
+    lista_tanques = request.get_json()
+    if not isinstance(lista_tanques, list):
+        return jsonify(success=False, message="Formato de datos incorrecto."), 400
+
     try:
-        HORA_LIMITE = time(10, 0, 0)
-        hora_actual_servidor = datetime.now().time()
-        if hora_actual_servidor >= HORA_LIMITE:
-            mensaje = f"No se pueden registrar datos de planta después de las {HORA_LIMITE.strftime('%I:%M %p').replace('AM','a.m.').replace('PM','p.m.')}."
-            return jsonify(success=False, message=mensaje), 403
-    except Exception as e_time_check:
-        app.logger.error(f"Error inesperado en verificación de hora para guardar_planta: {e_time_check}")
-        return jsonify(success=False, message="Error del servidor al verificar la hora del registro."), 500
-    '''
-    # --- FIN VERIFICACIÓN DE HORA ---
+        # 2. Recorremos cada tanque que se recibió
+        for datos_tanque in lista_tanques:
+            # Si una fila está vacía (sin TK), la ignoramos para no guardar basura
+            if not datos_tanque.get('TK'):
+                continue
 
-    # Corrección para que la función procese los datos y llame a guardar_registro_generico
-    datos_actualizados = request.get_json()
-    if not datos_actualizados or not isinstance(datos_actualizados, list):
-        return jsonify(success=False, message="No se recibieron datos o el formato es incorrecto."), 400
+            # 3. Creamos una fila nueva para nuestra tabla 'RegistroPlanta'
+            nuevo_registro = RegistroPlanta(
+               # timestamp=(datetime.utcnow() - timedelta(days=1)),# 
+                usuario=session.get("nombre", "No identificado"),
+                tk=datos_tanque.get('TK'),
+                producto=datos_tanque.get('PRODUCTO'),
+                # Convertimos a float, si está vacío o da error, guardamos None (NULO en la base de datos)
+                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+            )
+            
+            # 4. Añadimos el nuevo registro a la 'sesión' (una zona de preparación)
+            db.session.add(nuevo_registro)
 
-    return guardar_registro_generico(datos_actualizados, "planta")
+        # 5. Guardamos TODO en la base de datos de forma permanente
+        db.session.commit()
+        
+        return jsonify(success=True, message="Registro guardado en la BASE DE DATOS exitosamente.")
+
+    except Exception as e:
+        # 6. Si algo sale mal, revertimos los cambios para no dejar datos corruptos
+        db.session.rollback()
+        print(f"Error al guardar en la base de datos para planta: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor al guardar en la base de datos: {str(e)}"), 500
 
 
 @app.route('/')
@@ -1422,6 +1651,17 @@ def agregar_empresa_ajax():
     guardar_empresas(empresas)
 
     return jsonify(success=True, message="Empresa agregada exitosamente.", nueva_empresa=nueva_empresa)
+
+
+@app.cli.command("init-db")
+def init_db_command():
+    """Crea las tablas nuevas de la base de datos."""
+    db.create_all()
+    print("Base de datos inicializada y tablas creadas.")
+
+
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)

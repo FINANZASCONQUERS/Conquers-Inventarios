@@ -23,16 +23,44 @@
             <h1 class="page-title-text h3 mb-0">Planilla de Inventario de Planta</h1>
         </div>
         <div class="action-buttons-bar d-flex gap-2">
-    <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary btn-lg">
-        <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
-    </a>
-    <button id="btnGuardarRegistro" onclick="guardarRegistro()" class="btn btn-success btn-lg">
-        <i class="bi bi-save2-fill me-1"></i> Guardar Registro
-    </button>
-</div>
-            </div>
+            <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary btn-lg">
+                <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
+            </a>
+            <button id="btnGuardarRegistro" onclick="guardarRegistro()" class="btn btn-success btn-lg">
+                <i class="bi bi-save2-fill me-1"></i> Guardar Registro
+            </button>
         </div>
     </div>
+
+   <form method="GET" action="{{ url_for('planta') }}" class="my-4 p-3 bg-white border rounded-3 shadow-sm">
+    <div class="row align-items-center g-3">
+        <div class="col-md-5">
+            <label for="fecha_filtro" class="form-label fw-bold text-muted">Ver inventario del día:</label>
+            <input type="date" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+        </div>
+        <div class="col-md-auto">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-funnel-fill me-1"></i> Filtrar
+            </button>
+        </div>
+        <div class="col-md-auto">
+            <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary">Ver Estado Actual</a>
+        </div>
+        
+        {# Este bloque muestra la fecha que se está viendo, pero solo si no es la de hoy #}
+        {% if fecha_seleccionada and fecha_seleccionada != today_iso %}
+        <div class="col-md-auto ms-auto">
+            <div class="badge bg-primary bg-opacity-10 text-primary p-2">
+                <i class="bi bi-calendar-check me-1"></i> Mostrando datos del: {{ fecha_seleccionada }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</form>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <div id="time-limit-alert-container" class="mb-3"></div>
 
@@ -100,6 +128,51 @@
         z-index: 1055; /* Encima de otros elementos */
         width: auto;
         max-width: 400px;
+    }
+    
+
+    /* ----------------------------------------- */
+    /* --- ESTILOS DEL FILTRO MEJORADO --- */
+    /* ----------------------------------------- */
+    
+    .card.filter-card {
+        border-radius: 0.5rem;
+        background-color: #f8fafc;
+        border: 1px solid rgba(11, 133, 82, 0.1);
+    }
+
+    .form-floating .form-control {
+        height: calc(3rem + 2px);
+        min-height: auto;
+        padding: 1rem 1.25rem;
+        border-radius: 0.375rem;
+        box-shadow: none;
+        transition: all 0.2s ease;
+    }
+
+    .form-floating .form-control:focus {
+        background-color: #fff;
+        box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.15);
+        border-color: rgba(11, 133, 82, 0.4);
+    }
+
+    .form-floating label {
+        font-size: 0.85rem;
+        padding: 0.75rem 1.25rem;
+        color: #6c757d;
+    }
+
+    .form-floating>.form-control:focus~label, 
+    .form-floating>.form-control:not(:placeholder-shown)~label {
+        transform: scale(0.85) translateY(-0.8rem) translateX(0.15rem);
+        background-color: #f8fafc;
+        padding: 0 0.5rem;
+        color: #0b8552;
+    }
+
+    .badge.bg-primary-opacity {
+        background-color: rgba(11, 133, 82, 0.1);
+        color: #0b8552;
     }
 
     /* ----------------------------------------- */
@@ -219,40 +292,6 @@
         const editableCells = document.querySelectorAll(".editable");
         let edicionPermitida = true;
 
-         // ▼▼▼ BLOQUE DE RESTRICCIÓN DE TIEMPO DESACTIVADO ▼▼▼
-        /*
-        const btnGuardarRegistro = document.getElementById('btnGuardarRegistro');
-        const ahora = new Date();
-        const horaActual = ahora.getHours();
-        const HORA_LIMITE_REGISTRO = 10;
-
-        if (horaActual >= HORA_LIMITE_REGISTRO) {
-            edicionPermitida = false;
-
-            if (btnGuardarRegistro) {
-                btnGuardarRegistro.disabled = true;
-                btnGuardarRegistro.classList.remove('btn-primary');
-                btnGuardarRegistro.classList.add('btn-secondary');
-                btnGuardarRegistro.style.cursor = 'not-allowed';
-            }
-            
-            const avisoContainer = document.getElementById('time-limit-alert-container');
-            if(avisoContainer) {
-                avisoContainer.innerHTML = `
-                    <div class="alert alert-warning text-center aviso-hora-limite" role="alert">
-                        <i class="bi bi-clock-fill me-2"></i>Los registros para hoy se aceptan únicamente antes de las ${HORA_LIMITE_REGISTRO}:00 AM. La planilla ha sido bloqueada.
-                    </div>
-                `;
-            }
-
-            editableCells.forEach(cell => {
-                cell.contentEditable = false;
-                cell.classList.remove('editable');
-                cell.classList.add('celda-no-editable');
-            });
-        }
-        */
-        // ▲▲▲ FIN DEL BLOQUE DESACTIVADO ▲▲▲
         // --- LÓGICA PARA CELDAS EDITABLES ---
         editableCells.forEach(cell => {
             // Validación de entrada (sin cambios en la lógica)
@@ -314,16 +353,6 @@
 
     // --- FUNCIÓN PARA GUARDAR REGISTRO COMPLETO ---
     function guardarRegistro() {
-         // ▼▼▼ CHEQUEO DE HORA DESACTIVADO ▼▼▼
-        /*
-        // Doble chequeo de seguridad
-        if (new Date().getHours() >= 10) {
-            mostrarAlerta("Los registros están cerrados después de las 10:00 AM.", "warning");
-            return;
-        }
-          */
-        // ▲▲▲ FIN DEL CHEQUEO DESACTIVADO ▲▲▲    
-
         const datosAEnviar = [];
         document.querySelectorAll("tbody tr").forEach(row => {
             const tk = row.dataset.tk;
