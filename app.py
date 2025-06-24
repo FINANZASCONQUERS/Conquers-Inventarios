@@ -281,7 +281,7 @@ PLANILLA_BARCAZA_BITA = [
     {"TK": "MARI TK-4C", "PRODUCTO": "VLSFO", "MAX_CAP": 1433.75, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-5C", "PRODUCTO": "VLSFO", "MAX_CAP": 1641.97, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-6C", "PRODUCTO": "VLSFO", "MAX_CAP": 1617.23, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    # Barcaza Oiltech
+    # Barcaza Oidech
     {"TK": "OID TK-1C", "PRODUCTO": "VLSFO", "MAX_CAP": 4535.54, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-2C", "PRODUCTO": "VLSFO", "MAX_CAP": 5808.34, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-3C", "PRODUCTO": "VLSFO", "MAX_CAP": 4928.29, "BLS_60": "", "API": "", "BSW": "", "S": ""}
@@ -1276,17 +1276,16 @@ def dashboard_reportes():
     # --- Resumen para PLANTA ---
     planta_summary = {'datos': [], 'info_completa': 'Sin Registros'}
     try:
-        registros_planta = db.session.query(RegistroPlanta).all()
-        # Filtramos para asegurarnos de que solo usamos registros con fecha
-        registros_validos = [r for r in registros_planta if r.timestamp]
-        if registros_validos:
-            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
-            planta_summary['datos'] = registros_validos
-            planta_summary['info_completa'] = formatear_info_actualizacion(
-                ultimo_registro.timestamp, ultimo_registro.usuario
-            )
+        # CONSULTA INTELIGENTE PARA PLANTA
+        subquery_planta = (db.session.query(func.max(RegistroPlanta.id).label('max_id')).group_by(RegistroPlanta.tk).subquery())
+        registros_planta = (db.session.query(RegistroPlanta).filter(RegistroPlanta.id.in_(subquery_planta)).all())
+        
+        if registros_planta:
+            planta_summary['datos'] = registros_planta
+            ultimo_registro = max(registros_planta, key=lambda r: r.timestamp)
+            planta_summary['info_completa'] = formatear_info_actualizacion(ultimo_registro.timestamp, ultimo_registro.usuario)
     except Exception as e:
-        print(f"Error al cargar resumen de Planta: {e}")
+        print(f"Error al cargar resumen de Planta desde la BD: {e}")
 
     # --- Resumen para BARCAZA ORION ---
     orion_summary = {'datos': [], 'info_completa': 'Sin Registros'}
