@@ -281,7 +281,7 @@ PLANILLA_BARCAZA_BITA = [
     {"TK": "MARI TK-4C", "PRODUCTO": "VLSFO", "MAX_CAP": 1433.75, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-5C", "PRODUCTO": "VLSFO", "MAX_CAP": 1641.97, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-6C", "PRODUCTO": "VLSFO", "MAX_CAP": 1617.23, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    # Barcaza Oidech
+    # Barcaza Oiltech
     {"TK": "OID TK-1C", "PRODUCTO": "VLSFO", "MAX_CAP": 4535.54, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-2C", "PRODUCTO": "VLSFO", "MAX_CAP": 5808.34, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-3C", "PRODUCTO": "VLSFO", "MAX_CAP": 4928.29, "BLS_60": "", "API": "", "BSW": "", "S": ""}
@@ -970,7 +970,7 @@ def barcaza_orion():
 
     subquery = (db.session.query(
         func.max(RegistroBarcazaOrion.id).label('max_id')
-    ).filter(RegistroBarcazaOrion.timestamp <= timestamp_limite).group_by(RegistroBarcazaOrion.tk).subquery())
+    ).filter(RegistroBarcazaOrion.timestamp <= timestamp_limite).group_by(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).subquery())
 
     registros_recientes = (db.session.query(RegistroBarcazaOrion)
         .filter(RegistroBarcazaOrion.id.in_(subquery)).all())
@@ -1082,7 +1082,7 @@ def reporte_barcaza():
         func.max(RegistroBarcazaOrion.id).label('max_id')
     ).filter(
         RegistroBarcazaOrion.timestamp <= timestamp_limite
-    ).group_by(RegistroBarcazaOrion.tk).subquery())
+    ).group_by(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).subquery())
 
     registros_recientes = (db.session.query(RegistroBarcazaOrion)
         .filter(RegistroBarcazaOrion.id.in_(subquery))
