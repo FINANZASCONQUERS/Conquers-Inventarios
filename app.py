@@ -687,7 +687,7 @@ def planta():
 @login_required
 @app.route('/reporte_planta')
 def reporte_planta():
-    # 1. Lee la fecha del filtro de la URL (o usa la de hoy si no hay ninguna)
+    # 1. La lógica del filtro de fecha no cambia
     fecha_str = request.args.get('fecha')
     try:
         fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
@@ -696,7 +696,7 @@ def reporte_planta():
     
     timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
-    # 2. Ejecuta la consulta a la base de datos para obtener el estado de ese día
+    # 2. La consulta a la base de datos no cambia
     subquery = (db.session.query(
         func.max(RegistroPlanta.id).label('max_id')
     ).filter(
@@ -707,12 +707,34 @@ def reporte_planta():
         .filter(RegistroPlanta.id.in_(subquery))
         .all())
     
-    # 3. Prepara los datos y la información de actualización para la plantilla
+    # 3. Preparamos los datos y la información
     datos_planta_js = []
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
 
     if registros_recientes:
-        for registro in registros_recientes:
+        # ========================================================
+        #  INICIO: LÓGICA DE ORDENAMIENTO PERSONALIZADO
+        # ========================================================
+        
+        # 1. Definimos el orden exacto que queremos.
+        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02"]
+        
+        # 2. Creamos un mapa para asignar un "peso" a cada TK.
+        orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+        
+        # 3. Ordenamos la lista de registros usando nuestro mapa.
+        #    Los tanques no especificados en la lista irán al final.
+        registros_ordenados = sorted(
+            registros_recientes, 
+            key=lambda r: orden_map.get(r.tk, 99) # Usamos 99 para que los no encontrados vayan al final
+        )
+        
+        # ========================================================
+        #  FIN DE LA LÓGICA DE ORDENAMIENTO
+        # ========================================================
+
+        # Usamos la nueva lista YA ORDENADA para construir los datos para el HTML
+        for registro in registros_ordenados:
             datos_planta_js.append({
                 "TK": registro.tk,
                 "PRODUCTO": registro.producto,
@@ -723,20 +745,21 @@ def reporte_planta():
                 "S": registro.s
             })
         
-        # Para el mensaje "Última actualización", buscamos el registro más reciente de la selección
-        ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
-        fecha_formato_para_funcion = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
+        # La lógica para la fecha de actualización no cambia
+        ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
+        fecha_formato = ultimo_registro_general.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
         fecha_actualizacion_info = formatear_info_actualizacion(
-            fecha_formato_para_funcion, 
-            ultimo_registro.usuario
+            fecha_formato, 
+            ultimo_registro_general.usuario
         )
 
-    # 4. Renderiza la plantilla del reporte con los datos y fechas correctos
+    # 4. Renderizamos la plantilla con los datos ya ordenados
     return render_template("reporte_planta.html", 
                            datos_planta_para_js=datos_planta_js,
                            fecha_actualizacion_info=fecha_actualizacion_info,
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
                            today_iso=date.today().isoformat())
+
 
 @login_required
 @permiso_requerido('transito')
@@ -840,7 +863,7 @@ def eliminar_registro_transito(registro_id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
-    
+       
 @login_required
 @app.route('/agregar-producto', methods=['POST'])
 def agregar_producto():
@@ -1195,75 +1218,103 @@ def reporte_barcaza_bita():
 @app.route('/guardar-registro-bita', methods=['POST'])
 def guardar_registro_bita():
     lista_tanques = request.get_json()
-    if not lista_tanques or not isinstance(lista_tanques, list):
-        return jsonify(success=False, message="No se recibieron datos o el formato es incorrecto."), 400
+    if not isinstance(lista_tanques, list):
+        return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
+        today_start = datetime.combine(date.today(), time.min)
+        today_end = datetime.combine(date.today(), time.max)
+
         for datos_tanque in lista_tanques:
-            if not datos_tanque.get('TK'):
-                continue
-            
-            nuevo_registro = RegistroBarcazaBita(
-                usuario=session.get("nombre", "No identificado"),
-                tk=datos_tanque.get('TK'),
-                producto=datos_tanque.get('PRODUCTO'),
-                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
-            )
-            db.session.add(nuevo_registro)
+            tk = datos_tanque.get('TK')
+            if not tk: continue
 
+            registro_existente = db.session.query(RegistroBarcazaBita).filter(
+                RegistroBarcazaBita.tk == tk,
+                RegistroBarcazaBita.timestamp.between(today_start, today_end)
+            ).first()
+
+            if registro_existente:
+                # ACTUALIZAR
+                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
+                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
+                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
+                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.timestamp = datetime.utcnow()
+            else:
+                # CREAR
+                nuevo_registro = RegistroBarcazaBita(
+                    timestamp=datetime.utcnow(),
+                    usuario=session.get("nombre", "No identificado"),
+                    tk=tk,
+                    producto=datos_tanque.get('PRODUCTO'),
+                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                )
+                db.session.add(nuevo_registro)
+        
         db.session.commit()
-        return jsonify(success=True, message="Registro de Barcaza BITA guardado en la base de datos.")
-
+        return jsonify(success=True, message="Inventario de Barcaza BITA actualizado.")
     except Exception as e:
         db.session.rollback()
-        print(f"Error al guardar Barcaza BITA en la base de datos: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
 @login_required
 @permiso_requerido('barcaza_orion')
 @app.route('/guardar_registro_barcaza', methods=['POST'])
 def guardar_registro_barcaza():
-    # 1. Recibimos la lista de tanques desde la planilla
     lista_tanques = request.get_json()
-    if not lista_tanques or not isinstance(lista_tanques, list):
-        return jsonify(success=False, message="No se recibieron datos o el formato es incorrecto."), 400
-
+    if not isinstance(lista_tanques, list):
+        return jsonify(success=False, message="Formato incorrecto."), 400
+    
     try:
-        # 2. Recorremos cada tanque que se recibió
+        today_start = datetime.combine(date.today(), time.min)
+        today_end = datetime.combine(date.today(), time.max)
+
         for datos_tanque in lista_tanques:
-            # Ignoramos filas vacías
-            if not datos_tanque.get('TK'):
-                continue
-            
-            # 3. Creamos una instancia del modelo de base de datos RegistroBarcazaOrion
-            nuevo_registro = RegistroBarcazaOrion(
-                usuario=session.get("nombre", "No identificado"),
-                tk=datos_tanque.get('TK'),
-                producto=datos_tanque.get('PRODUCTO'),
-                grupo=datos_tanque.get('grupo'),
-                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
-            )
-            # 4. Añadimos la nueva "fila" a la sesión de la base de datos
-            db.session.add(nuevo_registro)
+            tk = datos_tanque.get('TK')
+            grupo = datos_tanque.get('grupo')
+            if not tk or not grupo: continue
 
-        # 5. Guardamos todos los cambios de forma permanente
-        db.session.commit()
+            registro_existente = db.session.query(RegistroBarcazaOrion).filter(
+                RegistroBarcazaOrion.tk == tk,
+                RegistroBarcazaOrion.grupo == grupo,
+                RegistroBarcazaOrion.timestamp.between(today_start, today_end)
+            ).first()
+
+            if registro_existente:
+                # ACTUALIZAR
+                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
+                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
+                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
+                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.timestamp = datetime.utcnow()
+            else:
+                # CREAR
+                nuevo_registro = RegistroBarcazaOrion(
+                    timestamp=datetime.utcnow(),
+                    usuario=session.get("nombre", "No identificado"),
+                    tk=tk,
+                    grupo=grupo,
+                    producto=datos_tanque.get('PRODUCTO'),
+                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                )
+                db.session.add(nuevo_registro)
         
-        return jsonify(success=True, message="Registro de Barcaza Orion guardado en la BASE DE DATOS.")
-
+        db.session.commit()
+        return jsonify(success=True, message="Inventario de Barcaza Orion actualizado.")
     except Exception as e:
-        # Si algo sale mal, deshacemos los cambios para mantener la integridad de los datos
         db.session.rollback()
-        print(f"Error al guardar Barcaza Orion en la base de datos: {e}")
-        return jsonify(success=False, message=f"Error al guardar en la base de datos: {str(e)}"), 500
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
 @login_required
 @app.route('/dashboard_reportes')
@@ -1276,16 +1327,17 @@ def dashboard_reportes():
     # --- Resumen para PLANTA ---
     planta_summary = {'datos': [], 'info_completa': 'Sin Registros'}
     try:
-        # CONSULTA INTELIGENTE PARA PLANTA
-        subquery_planta = (db.session.query(func.max(RegistroPlanta.id).label('max_id')).group_by(RegistroPlanta.tk).subquery())
-        registros_planta = (db.session.query(RegistroPlanta).filter(RegistroPlanta.id.in_(subquery_planta)).all())
-        
-        if registros_planta:
-            planta_summary['datos'] = registros_planta
-            ultimo_registro = max(registros_planta, key=lambda r: r.timestamp)
-            planta_summary['info_completa'] = formatear_info_actualizacion(ultimo_registro.timestamp, ultimo_registro.usuario)
+        registros_planta = db.session.query(RegistroPlanta).all()
+        # Filtramos para asegurarnos de que solo usamos registros con fecha
+        registros_validos = [r for r in registros_planta if r.timestamp]
+        if registros_validos:
+            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
+            planta_summary['datos'] = registros_validos
+            planta_summary['info_completa'] = formatear_info_actualizacion(
+                ultimo_registro.timestamp, ultimo_registro.usuario
+            )
     except Exception as e:
-        print(f"Error al cargar resumen de Planta desde la BD: {e}")
+        print(f"Error al cargar resumen de Planta: {e}")
 
     # --- Resumen para BARCAZA ORION ---
     orion_summary = {'datos': [], 'info_completa': 'Sin Registros'}
@@ -1365,45 +1417,51 @@ def guardar_datos_planta():
 @permiso_requerido('planta')
 @app.route('/guardar-registro-planta', methods=['POST'])
 def guardar_registro_planta():
-    # 1. Recibimos la lista de tanques desde la planilla (esto no cambia)
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
-        # 2. Recorremos cada tanque que se recibió
+        today_start = datetime.combine(date.today(), time.min)
+        today_end = datetime.combine(date.today(), time.max)
+
         for datos_tanque in lista_tanques:
-            # Si una fila está vacía (sin TK), la ignoramos para no guardar basura
-            if not datos_tanque.get('TK'):
-                continue
+            tk = datos_tanque.get('TK')
+            if not tk: continue
 
-            # 3. Creamos una fila nueva para nuestra tabla 'RegistroPlanta'
-            nuevo_registro = RegistroPlanta(
-               # timestamp=(datetime.utcnow() - timedelta(days=1)),# 
-                usuario=session.get("nombre", "No identificado"),
-                tk=datos_tanque.get('TK'),
-                producto=datos_tanque.get('PRODUCTO'),
-                # Convertimos a float, si está vacío o da error, guardamos None (NULO en la base de datos)
-                max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
-            )
-            
-            # 4. Añadimos el nuevo registro a la 'sesión' (una zona de preparación)
-            db.session.add(nuevo_registro)
+            registro_existente = db.session.query(RegistroPlanta).filter(
+                RegistroPlanta.tk == tk,
+                RegistroPlanta.timestamp.between(today_start, today_end)
+            ).first()
 
-        # 5. Guardamos TODO en la base de datos de forma permanente
-        db.session.commit()
+            if registro_existente:
+                # Si existe, lo ACTUALIZAMOS
+                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
+                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
+                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
+                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.timestamp = datetime.utcnow()
+            else:
+                # Si no existe para hoy, CREAMOS uno nuevo
+                nuevo_registro = RegistroPlanta(
+                    timestamp=datetime.utcnow(),
+                    usuario=session.get("nombre", "No identificado"),
+                    tk=tk,
+                    producto=datos_tanque.get('PRODUCTO'),
+                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
+                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
+                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
+                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
+                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                )
+                db.session.add(nuevo_registro)
         
-        return jsonify(success=True, message="Registro guardado en la BASE DE DATOS exitosamente.")
-
+        db.session.commit()
+        return jsonify(success=True, message="Inventario de planta actualizado exitosamente.")
     except Exception as e:
-        # 6. Si algo sale mal, revertimos los cambios para no dejar datos corruptos
         db.session.rollback()
-        print(f"Error al guardar en la base de datos para planta: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor al guardar en la base de datos: {str(e)}"), 500
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
 
 @app.route('/')

@@ -788,6 +788,58 @@
     });
 }
 
+function eliminarFilaEnServidor(registroId, indexFila) {
+    if (!confirm("¿Está seguro que desea eliminar este registro permanentemente?")) {
+        return;
+    }
+
+    const btnEliminar = document.querySelector(`tr[data-index="${indexFila}"] .btn-outline-danger`);
+    if (btnEliminar) {
+        btnEliminar.disabled = true;
+        btnEliminar.innerHTML = '<i class="bi bi-hourglass"></i>';
+    }
+
+    fetch(`/eliminar-registro-transito/${registroId}`, {
+        method: 'DELETE',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Eliminar la fila del array currentData
+            currentData.splice(indexFila, 1);
+            
+            // Si estamos viendo datos iniciales, actualizamos también el dataset correspondiente
+            if (vistaActual === "general") {
+                datosGeneralInit = datosGeneralInit.filter(item => item.id !== registroId);
+            } else {
+                datosRefineriaInit = datosRefineriaInit.filter(item => item.id !== registroId);
+            }
+            
+            mostrarAlerta(data.message, "success");
+            guardarEstadoEnSesion();
+            redibujarTabla();
+        } else {
+            throw new Error(data.message || "Error al eliminar");
+        }
+    })
+    .catch(error => {
+        console.error("Error al eliminar:", error);
+        mostrarAlerta(`Error al eliminar: ${error.message}`, "danger");
+    })
+    .finally(() => {
+        if (btnEliminar) {
+            btnEliminar.disabled = false;
+            btnEliminar.innerHTML = '<i class="bi bi-trash"></i>';
+        }
+    });
+}
+
     function guardarEstadoEnSesion() {
     // Guarda tanto la vista actual como los datos en un solo objeto
     const estado = {
@@ -854,6 +906,8 @@ function limpiarEstadoDeSesion() {
         // La lógica de restricción por hora sigue comentada como en tu ejemplo.
         // Si la descomentas, funcionará como antes.
     }
+
+    
 
 </script>
 {% endblock %}
