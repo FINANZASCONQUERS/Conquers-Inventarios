@@ -1,587 +1,587 @@
-{% extends "base.html" %}
+    {% extends "base.html" %}
 
-{% block title %}Reporte de Planta - Conquers Trading{% endblock %}
+    {% block title %}Reporte de Planta - Conquers Trading{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-<style>
-    /* Variables de diseño */
-    :root {
-        --color-primary: #0b8552;
-        --color-primary-light: rgba(11, 133, 82, 0.1);
-        --color-secondary: #2c3e50;
-        --color-success: #28a745;
-        --color-warning: #fd7e14;
-        --color-danger: #dc3545;
-        --color-info: #17a2b8;
-        --color-light: #f8f9fa;
-        --color-dark: #343a40;
-        --color-border: #e0e5ec;
-        --color-text-muted: #6c757d;
-        --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-        --border-radius: 0.5rem;
-        --transition: all 0.3s ease;
-    }
-
-    /* Estructura principal */
-    .report-container {
-        padding: 2rem 0;
-        background-color: #f8fafc;
-    }
-
-    /* Encabezado del reporte */
-    .report-header {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        border-left: 4px solid var(--color-primary);
-    }
-
-    .report-title {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .report-title h1 {
-        font-size: 1.75rem;
-        font-weight: 700;
-        color: var(--color-secondary);
-        margin-bottom: 0.5rem;
-    }
-
-    .report-title .title-icon {
-        color: var(--color-primary);
-        font-size: 1.8rem;
-        margin-right: 0.75rem;
-    }
-
-    .report-subtitle {
-        font-size: 0.9rem;
-        color: var(--color-text-muted);
-        display: flex;
-        align-items: center;
-    }
-
-    .report-subtitle i {
-        margin-right: 0.5rem;
-    }
-
-    /* Filtros mejorados */
-    .report-filters-container {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        margin-bottom: 2rem;
-        padding: 1rem;
-    }
-
-    .filter-group {
-        margin-bottom: 1rem;
-    }
-
-    .filter-label {
-        font-weight: 600;
-        font-size: 0.85rem;
-        color: var(--color-secondary);
-        margin-bottom: 0.5rem;
-    }
-
-    /* Grid de tanques */
-    .tanques-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 1.5rem;
-    }
-
-    /* Tarjeta de tanque */
-    .tanque-card {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        overflow: hidden;
-        transition: var(--transition);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-
-    .tanque-card:hover {
-        transform: translateY(-5px);
-        box-shadow: var(--shadow-md);
-    }
-
-    .tanque-card-header {
-        background-color: var(--color-primary);
-        color: white;
-        padding: 1rem 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .tanque-id {
-        font-size: 1.25rem;
-        font-weight: 700;
-    }
-
-    .tanque-producto {
-        background-color: rgba(255, 255, 255, 0.2);
-        padding: 0.25rem 0.75rem;
-        border-radius: 1rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .tanque-card-body {
-        padding: 1.25rem;
-        display: flex;
-        gap: 1.5rem;
-        flex-grow: 1;
-    }
-
-    /* Visualización del tanque */
-    .tanque-visual {
-        width: 100px;
-        height: 150px;
-        background-color: #e9ecef;
-        border-radius: 0.25rem;
-        position: relative;
-        overflow: hidden;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-        flex-shrink: 0;
-    }
-
-    .tanque-visual::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 15px;
-        background-color: #d1d5db;
-        border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-        z-index: 2;
-    }
-
-    .tanque-liquido {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        transition: height 0.5s ease;
-    }
-
-    .tanque-liquido.empty { background: transparent; }
-    .tanque-liquido.low { background: linear-gradient(to top, #ffc107, #ffd700); }
-    .tanque-liquido.medium { background: linear-gradient(to top, #fd7e14, #ff922b); }
-    .tanque-liquido.high { background: linear-gradient(to top, #28a745, #40c057); }
-    .tanque-liquido.full { background: linear-gradient(to top, #dc3545, #f03e3e); }
-
-    /* Información del tanque */
-    .tanque-info {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .tanque-volume {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--color-dark);
-        margin-bottom: 0.5rem;
-    }
-
-    .tanque-volume-unit {
-        font-size: 1rem;
-        font-weight: 500;
-        color: var(--color-text-muted);
-    }
-
-    .tanque-progress {
-        height: 10px;
-        background-color: var(--color-light);
-        border-radius: 5px;
-        overflow: hidden;
-        margin: 0.75rem 0;
-    }
-
-    .tanque-progress-bar {
-        height: 100%;
-        transition: width 0.5s ease;
-    }
-
-    .tanque-progress-bar.low { background-color: #ffc107; }
-    .tanque-progress-bar.medium { background-color: #fd7e14; }
-    .tanque-progress-bar.high { background-color: #28a745; }
-    .tanque-progress-bar.full { background-color: #dc3545; }
-
-    .tanque-percentage {
-        font-size: 1rem;
-        font-weight: 600;
-        display: flex;
-        justify-content: space-between;
-    }
-
-    .tanque-percentage.low { color: #ffc107; }
-    .tanque-percentage.medium { color: #fd7e14; }
-    .tanque-percentage.high { color: #28a745; }
-    .tanque-percentage.full { color: #dc3545; }
-
-    .tanque-max {
-        font-size: 0.85rem;
-        color: var(--color-text-muted);
-    }
-
-    /* Footer de la tarjeta */
-    .tanque-card-footer {
-        background-color: var(--color-light);
-        padding: 0.75rem 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px solid var(--color-border);
-    }
-
-    .tanque-stat {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-
-    .tanque-stat-label {
-        font-size: 0.75rem;
-        color: var(--color-text-muted);
-        margin-bottom: 0.25rem;
-    }
-
-    .tanque-stat-value {
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-
-    /* Total de producto */
-    .total-producto {
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        padding: 1rem 1.5rem;
-        margin-top: 2rem;
-        text-align: center;
-        border-left: 4px solid var(--color-primary);
-    }
-
-    .total-producto h3 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--color-secondary);
-        margin-bottom: 0;
-    }
-
-    .total-producto strong {
-        color: var(--color-primary);
-    }
-
-    /* Mensaje cuando no hay datos */
-    .no-data-message {
-        grid-column: 1 / -1;
-        background-color: white;
-        border-radius: var(--border-radius);
-        box-shadow: var(--shadow-sm);
-        padding: 2rem;
-        text-align: center;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .tanques-grid {
-            grid-template-columns: 1fr;
+    {% block extra_css %}
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
+    <style>
+        /* Variables de diseño */
+        :root {
+            --color-primary: #0b8552;
+            --color-primary-light: rgba(11, 133, 82, 0.1);
+            --color-secondary: #2c3e50;
+            --color-success: #28a745;
+            --color-warning: #fd7e14;
+            --color-danger: #dc3545;
+            --color-info: #17a2b8;
+            --color-light: #f8f9fa;
+            --color-dark: #343a40;
+            --color-border: #e0e5ec;
+            --color-text-muted: #6c757d;
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+            --border-radius: 0.5rem;
+            --transition: all 0.3s ease;
         }
-        
+
+        /* Estructura principal */
+        .report-container {
+            padding: 2rem 0;
+            background-color: #f8fafc;
+        }
+
+        /* Encabezado del reporte */
         .report-header {
-            flex-direction: column;
-            align-items: flex-start;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid var(--color-primary);
         }
-        
-        .report-filters {
+
+        .report-title {
+            display: flex;
             flex-direction: column;
         }
-        
+
+        .report-title h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--color-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .report-title .title-icon {
+            color: var(--color-primary);
+            font-size: 1.8rem;
+            margin-right: 0.75rem;
+        }
+
+        .report-subtitle {
+            font-size: 0.9rem;
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+        }
+
+        .report-subtitle i {
+            margin-right: 0.5rem;
+        }
+
+        /* Filtros mejorados */
+        .report-filters-container {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+            padding: 1rem;
+        }
+
         .filter-group {
             margin-bottom: 1rem;
-            width: 100%;
         }
-    }
-</style>
-{% endblock %}
 
-{% block content %}
-<div class="report-container">
-    <div class="container">
-        <!-- Encabezado del reporte -->
-        <div class="report-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-            <div class="report-title d-flex align-items-center mb-3 mb-md-0">
-                <i class="bi bi-buildings-fill title-icon"></i>
-                <div>
-                    <h1>Reporte Visual de Planta</h1>
-                    {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error" not in fecha_actualizacion_info|lower %}
-                    <div class="report-subtitle">
-                        <i class="bi bi-info-circle"></i>{{ fecha_actualizacion_info }}
+        .filter-label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--color-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Grid de tanques */
+        .tanques-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Tarjeta de tanque */
+        .tanque-card {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .tanque-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .tanque-card-header {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tanque-id {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .tanque-producto {
+            background-color: rgba(255, 255, 255, 0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .tanque-card-body {
+            padding: 1.25rem;
+            display: flex;
+            gap: 1.5rem;
+            flex-grow: 1;
+        }
+
+        /* Visualización del tanque */
+        .tanque-visual {
+            width: 100px;
+            height: 150px;
+            background-color: #e9ecef;
+            border-radius: 0.25rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+            flex-shrink: 0;
+        }
+
+        .tanque-visual::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 15px;
+            background-color: #d1d5db;
+            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+            z-index: 2;
+        }
+
+        .tanque-liquido {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: height 0.5s ease;
+        }
+
+        .tanque-liquido.empty { background: transparent; }
+        .tanque-liquido.low { background: linear-gradient(to top, #ffc107, #ffd700); }
+        .tanque-liquido.medium { background: linear-gradient(to top, #fd7e14, #ff922b); }
+        .tanque-liquido.high { background: linear-gradient(to top, #28a745, #40c057); }
+        .tanque-liquido.full { background: linear-gradient(to top, #dc3545, #f03e3e); }
+
+        /* Información del tanque */
+        .tanque-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tanque-volume {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .tanque-volume-unit {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--color-text-muted);
+        }
+
+        .tanque-progress {
+            height: 10px;
+            background-color: var(--color-light);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0.75rem 0;
+        }
+
+        .tanque-progress-bar {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .tanque-progress-bar.low { background-color: #ffc107; }
+        .tanque-progress-bar.medium { background-color: #fd7e14; }
+        .tanque-progress-bar.high { background-color: #28a745; }
+        .tanque-progress-bar.full { background-color: #dc3545; }
+
+        .tanque-percentage {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .tanque-percentage.low { color: #ffc107; }
+        .tanque-percentage.medium { color: #fd7e14; }
+        .tanque-percentage.high { color: #28a745; }
+        .tanque-percentage.full { color: #dc3545; }
+
+        .tanque-max {
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+        }
+
+        /* Footer de la tarjeta */
+        .tanque-card-footer {
+            background-color: var(--color-light);
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .tanque-stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .tanque-stat-label {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .tanque-stat-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Total de producto */
+        .total-producto {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            padding: 1rem 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+            border-left: 4px solid var(--color-primary);
+        }
+
+        .total-producto h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--color-secondary);
+            margin-bottom: 0;
+        }
+
+        .total-producto strong {
+            color: var(--color-primary);
+        }
+
+        /* Mensaje cuando no hay datos */
+        .no-data-message {
+            grid-column: 1 / -1;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            padding: 2rem;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .tanques-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .report-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .report-filters {
+                flex-direction: column;
+            }
+            
+            .filter-group {
+                margin-bottom: 1rem;
+                width: 100%;
+            }
+        }
+    </style>
+    {% endblock %}
+
+    {% block content %}
+    <div class="report-container">
+        <div class="container">
+            <!-- Encabezado del reporte -->
+            <div class="report-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                <div class="report-title d-flex align-items-center mb-3 mb-md-0">
+                    <i class="bi bi-buildings-fill title-icon"></i>
+                    <div>
+                        <h1>Reporte Visual de Planta</h1>
+                        {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error" not in fecha_actualizacion_info|lower %}
+                        <div class="report-subtitle">
+                            <i class="bi bi-info-circle"></i>{{ fecha_actualizacion_info }}
+                        </div>
+                        {% endif %}
                     </div>
+                </div>
+                {# Solo muestra el botón si el usuario es admin o tiene permiso para 'planta' #}
+                {% if session.rol == 'admin' or 'planta' in session.area %} 
+                <div class="action-button-group">
+                    <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
+                        <i class="bi bi-pencil-fill me-2"></i>
+                        <span>Volver a la Planilla</span>
+                    </a>
                     {% endif %}
                 </div>
             </div>
-            {# Solo muestra el botón si el usuario es admin o tiene permiso para 'planta' #}
-            {% if session.rol == 'admin' or 'planta' in session.area %} 
-            <div class="action-button-group">
-                <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                    <i class="bi bi-pencil-fill me-2"></i>
-                    <span>Volver a la Planilla</span>
-                </a>
-                {% endif %}
-            </div>
-        </div>
-        
-        <!-- Filtros mejorados -->
-        <div class="report-filters-container">
-            <div class="row align-items-end g-3">
-                <div class="col-md-4">
-                    <div class="form-floating">
-                        <select id="filtroProducto" class="form-select border-0 bg-light">
-                            <option value="todos" selected>Todos los productos</option>
-                        </select>
-                        <label for="filtroProducto">Producto</label>
+            
+            <!-- Filtros mejorados -->
+            <div class="report-filters-container">
+                <div class="row align-items-end g-3">
+                    <div class="col-md-4">
+                        <div class="form-floating">
+                            <select id="filtroProducto" class="form-select border-0 bg-light">
+                                <option value="todos" selected>Todos los productos</option>
+                            </select>
+                            <label for="filtroProducto">Producto</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-floating">
+                            <select id="filtroTanque" class="form-select border-0 bg-light">
+                                <option value="todos" selected>Todos los tanques</option>
+                            </select>
+                            <label for="filtroTanque">Tanque</label>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <form method="GET" action="{{ url_for('reporte_planta') }}" class="h-100">
+                            <div class="form-floating h-100">
+                                <input type="date" class="form-control border-0 bg-light h-100" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+                                <label for="fecha_filtro">Fecha del reporte</label>
+                            </div>
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="submit" class="btn btn-primary flex-grow-1">
+                                    <i class="bi bi-funnel-fill me-1"></i> Filtrar
+                                </button>
+                                <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                </a>
+                            </div>
+                        </form>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="form-floating">
-                        <select id="filtroTanque" class="form-select border-0 bg-light">
-                            <option value="todos" selected>Todos los tanques</option>
-                        </select>
-                        <label for="filtroTanque">Tanque</label>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <form method="GET" action="{{ url_for('reporte_planta') }}" class="h-100">
-                        <div class="form-floating h-100">
-                            <input type="date" class="form-control border-0 bg-light h-100" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
-                            <label for="fecha_filtro">Fecha del reporte</label>
-                        </div>
-                        <div class="d-flex gap-2 mt-2">
-                            <button type="submit" class="btn btn-primary flex-grow-1">
-                                <i class="bi bi-funnel-fill me-1"></i> Filtrar
-                            </button>
-                            <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-counterclockwise me-1"></i>
-                            </a>
-                        </div>
-                    </form>
-                </div>
             </div>
-        </div>
-        
-        <!-- Grid de tanques -->
-        <div id="contenedor-tanques" class="tanques-grid">
-            <!-- Los tanques se cargarán aquí dinámicamente -->
-        </div>
+            
+            <!-- Grid de tanques -->
+            <div id="contenedor-tanques" class="tanques-grid">
+                <!-- Los tanques se cargarán aquí dinámicamente -->
+            </div>
 
-        <!-- Total de producto -->
-        <div class="total-producto" id="totalProductoContainer" style="display: none;">
-            <h3 id="totalProducto"></h3>
+            <!-- Total de producto -->
+            <div class="total-producto" id="totalProductoContainer" style="display: none;">
+                <h3 id="totalProducto"></h3>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-    const datosPlanta = {{ datos_planta_para_js | default('[]') | tojson }};
+    <script>
+        const datosPlanta = {{ datos_planta_para_js | default('[]') | tojson }};
 
-    // Elementos del DOM
-    const contenedorTanques = document.getElementById("contenedor-tanques");
-    const filtroProductoSelect = document.getElementById("filtroProducto");
-    const filtroTanqueSelect = document.getElementById("filtroTanque");
-    const totalProductoDisplay = document.getElementById("totalProducto");
-    const totalProductoContainer = document.getElementById("totalProductoContainer");
+        // Elementos del DOM
+        const contenedorTanques = document.getElementById("contenedor-tanques");
+        const filtroProductoSelect = document.getElementById("filtroProducto");
+        const filtroTanqueSelect = document.getElementById("filtroTanque");
+        const totalProductoDisplay = document.getElementById("totalProducto");
+        const totalProductoContainer = document.getElementById("totalProductoContainer");
 
-    // Cargar los filtros
-    function cargarFiltros() {
-        const productos = new Set();
-        const tanques = new Set();
-        
-        if (Array.isArray(datosPlanta)) {
-            datosPlanta.forEach(d => {
-                if (d && typeof d === 'object') {
-                    if (d.PRODUCTO) productos.add(d.PRODUCTO);
-                    if (d.TK) tanques.add(d.TK);
-                }
-            });
-        }
-        
-        // Limpiar selects
-        filtroProductoSelect.innerHTML = '<option value="todos" selected>Todos los productos</option>';
-        filtroTanqueSelect.innerHTML = '<option value="todos" selected>Todos los tanques</option>';
-        
-        // Agregar opciones
-        productos.forEach(p => {
-            const op = document.createElement("option");
-            op.value = p;
-            op.textContent = p;
-            filtroProductoSelect.appendChild(op);
-        });
-        
-        tanques.forEach(t => {
-            const op = document.createElement("option");
-            op.value = t;
-            op.textContent = `${t}`;
-            filtroTanqueSelect.appendChild(op);
-        });
-
-        // Agregar event listeners
-        filtroProductoSelect.addEventListener('change', filtrar);
-        filtroTanqueSelect.addEventListener('change', filtrar);
-    }
-
-    // Determinar el nivel de llenado
-    function determinarNivel(porcentaje) {
-        if (porcentaje >= 95) return 'full';
-        if (porcentaje >= 80) return 'high';
-        if (porcentaje >= 40) return 'medium';
-        if (porcentaje > 0) return 'low';
-        return 'empty';
-    }
-
-    // Crear tarjeta de tanque
-    function crearTarjetaTanque(data) {
-        if (typeof data !== 'object' || data === null) {
-            console.error("Datos de tanque inválidos:", data);
-            return document.createDocumentFragment();
-        }
-         
-
-        const bls60 = parseFloat(data.BLS_60) || 0;
-        const maxCap = parseFloat(data.MAX_CAP) || 0;
-        const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
-        const nivel = determinarNivel(porcentaje);
-        
-        const card = document.createElement("div");
-        card.className = "tanque-card";
-        card.setAttribute("data-tk", data.TK || '');
-        card.setAttribute("data-producto", data.PRODUCTO || '');
-        card.setAttribute("title", `Capacidad: ${maxCap.toLocaleString()} BLS`);
-
-        card.innerHTML = `
-            <div class="tanque-card-header">
-                <div class="tanque-id">${data.TK || 'N/A'}</div>
-                <div class="tanque-producto">${data.PRODUCTO || 'N/A'}</div>
-            </div>
+        // Cargar los filtros
+        function cargarFiltros() {
+            const productos = new Set();
+            const tanques = new Set();
             
-            <div class="tanque-card-body">
-                <div class="tanque-visual">
-                    <div class="tanque-liquido ${nivel}" style="height:${porcentaje}%"></div>
-                </div>
-                
-                <div class="tanque-info">
-                    <div class="tanque-volume">
-                        ${bls60.toLocaleString('es-CO')} <span class="tanque-volume-unit">BLS</span>
-                    </div>
-                    
-                    <div class="tanque-progress">
-                        <div class="tanque-progress-bar ${nivel}" style="width: ${porcentaje}%"></div>
-                    </div>
-                    
-                    <div class="tanque-percentage ${nivel}">
-                        <span>${porcentaje.toFixed(1)}%</span>
-                        <span class="tanque-max">Max: ${maxCap.toLocaleString('es-CO')}</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="tanque-card-footer">
-                <div class="tanque-stat">
-                    <span class="tanque-stat-label">API</span>
-                    <span class="tanque-stat-value">${data.API || 'N/A'}</span>
-                </div>
-                
-                <div class="tanque-stat">
-                    <span class="tanque-stat-label">BSW</span>
-                    <span class="tanque-stat-value">${data.BSW ? data.BSW + '%' : 'N/A'}</span>
-                </div>
-                
-                <div class="tanque-stat">
-                    <span class="tanque-stat-label">%S</span>
-                    <span class="tanque-stat-value">${data.S ? data.S + '%' : 'N/A'}</span>
-                </div>
-            </div>
-        `;
-        
-        return card;
-    }
-
-    // Filtrar tanques
-    function filtrar() {
-        const producto = filtroProductoSelect.value;
-        const tanque = filtroTanqueSelect.value;
-        
-        contenedorTanques.innerHTML = "";
-        let totalBLS = 0;
-        let tanquesMostrados = 0;
-        let productoFiltrado = "";
-
-        if (Array.isArray(datosPlanta)) {
-            datosPlanta.forEach(d => {
-                if (typeof d !== 'object' || d === null) return;
-                
-                const coincideProducto = producto === "todos" || d.PRODUCTO === producto;
-                const coincideTanque = tanque === "todos" || d.TK === tanque;
-                
-                if (coincideProducto && coincideTanque) {
-                    contenedorTanques.appendChild(crearTarjetaTanque(d));
-                    tanquesMostrados++;
-                    
-                    if (producto !== "todos" && tanque === "todos") {
-                        totalBLS += (parseFloat(d.BLS_60) || 0);
-                        productoFiltrado = producto;
+            if (Array.isArray(datosPlanta)) {
+                datosPlanta.forEach(d => {
+                    if (d && typeof d === 'object') {
+                        if (d.PRODUCTO) productos.add(d.PRODUCTO);
+                        if (d.TK) tanques.add(d.TK);
                     }
-                }
-            });
-        }
-        
-        // Mostrar total si hay filtro por producto
-        if (productoFiltrado) {
-            totalProductoDisplay.innerHTML = `Volumen total de <strong>${productoFiltrado}</strong>: ${totalBLS.toLocaleString('es-CO')} BLS`;
-            totalProductoContainer.style.display = 'block';
-        } else {
-            totalProductoContainer.style.display = 'none';
-        }
-        
-        // Mostrar mensaje si no hay resultados
-        if (tanquesMostrados === 0) {
-            const mensaje = document.createElement("div");
-            mensaje.className = "no-data-message";
-            
-            if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
-                mensaje.innerHTML = `
-                    <i class="bi bi-exclamation-circle-fill text-muted mb-3" style="font-size: 2rem;"></i>
-                    <h3 class="h5">No hay tanques que coincidan con los filtros</h3>
-                    <p class="text-muted">Prueba con otros criterios de búsqueda</p>
-                `;
-            } else {
-                mensaje.innerHTML = `
-                    <i class="bi bi-database-fill-exclamation text-muted mb-3" style="font-size: 2rem;"></i>
-                    <h3 class="h5">No hay datos disponibles</h3>
-                    <p class="text-muted">Por favor, guarde un registro primero</p>
-                `;
+                });
             }
             
-            contenedorTanques.appendChild(mensaje);
-        }
-    }
+            // Limpiar selects
+            filtroProductoSelect.innerHTML = '<option value="todos" selected>Todos los productos</option>';
+            filtroTanqueSelect.innerHTML = '<option value="todos" selected>Todos los tanques</option>';
+            
+            // Agregar opciones
+            productos.forEach(p => {
+                const op = document.createElement("option");
+                op.value = p;
+                op.textContent = p;
+                filtroProductoSelect.appendChild(op);
+            });
+            
+            tanques.forEach(t => {
+                const op = document.createElement("option");
+                op.value = t;
+                op.textContent = `${t}`;
+                filtroTanqueSelect.appendChild(op);
+            });
 
-    // Inicializar
-    document.addEventListener("DOMContentLoaded", () => {
-        cargarFiltros();
-        filtrar();
-    });
-</script>
-{% endblock %}
+            // Agregar event listeners
+            filtroProductoSelect.addEventListener('change', filtrar);
+            filtroTanqueSelect.addEventListener('change', filtrar);
+        }
+
+        // Determinar el nivel de llenado
+        function determinarNivel(porcentaje) {
+            if (porcentaje >= 95) return 'full';
+            if (porcentaje >= 80) return 'high';
+            if (porcentaje >= 40) return 'medium';
+            if (porcentaje > 0) return 'low';
+            return 'empty';
+        }
+
+        // Crear tarjeta de tanque
+        function crearTarjetaTanque(data) {
+            if (typeof data !== 'object' || data === null) {
+                console.error("Datos de tanque inválidos:", data);
+                return document.createDocumentFragment();
+            }
+            
+
+            const bls60 = parseFloat(data.BLS_60) || 0;
+            const maxCap = parseFloat(data.MAX_CAP) || 0;
+            const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
+            const nivel = determinarNivel(porcentaje);
+            
+            const card = document.createElement("div");
+            card.className = "tanque-card";
+            card.setAttribute("data-tk", data.TK || '');
+            card.setAttribute("data-producto", data.PRODUCTO || '');
+            card.setAttribute("title", `Capacidad: ${maxCap.toLocaleString()} BLS`);
+
+            card.innerHTML = `
+                <div class="tanque-card-header">
+                    <div class="tanque-id">${data.TK || 'N/A'}</div>
+                    <div class="tanque-producto">${data.PRODUCTO || 'N/A'}</div>
+                </div>
+                
+                <div class="tanque-card-body">
+                    <div class="tanque-visual">
+                        <div class="tanque-liquido ${nivel}" style="height:${porcentaje}%"></div>
+                    </div>
+                    
+                    <div class="tanque-info">
+                        <div class="tanque-volume">
+                            ${bls60.toLocaleString('es-CO')} <span class="tanque-volume-unit">BLS</span>
+                        </div>
+                        
+                        <div class="tanque-progress">
+                            <div class="tanque-progress-bar ${nivel}" style="width: ${porcentaje}%"></div>
+                        </div>
+                        
+                        <div class="tanque-percentage ${nivel}">
+                            <span>${porcentaje.toFixed(1)}%</span>
+                            <span class="tanque-max">Max: ${maxCap.toLocaleString('es-CO')}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tanque-card-footer">
+                    <div class="tanque-stat">
+                        <span class="tanque-stat-label">API</span>
+                        <span class="tanque-stat-value">${data.API || 'N/A'}</span>
+                    </div>
+                    
+                    <div class="tanque-stat">
+                        <span class="tanque-stat-label">BSW</span>
+                        <span class="tanque-stat-value">${data.BSW ? data.BSW + '%' : 'N/A'}</span>
+                    </div>
+                    
+                    <div class="tanque-stat">
+                        <span class="tanque-stat-label">%S</span>
+                        <span class="tanque-stat-value">${data.S ? data.S + '%' : 'N/A'}</span>
+                    </div>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        // Filtrar tanques
+        function filtrar() {
+            const producto = filtroProductoSelect.value;
+            const tanque = filtroTanqueSelect.value;
+            
+            contenedorTanques.innerHTML = "";
+            let totalBLS = 0;
+            let tanquesMostrados = 0;
+            let productoFiltrado = "";
+
+            if (Array.isArray(datosPlanta)) {
+                datosPlanta.forEach(d => {
+                    if (typeof d !== 'object' || d === null) return;
+                    
+                    const coincideProducto = producto === "todos" || d.PRODUCTO === producto;
+                    const coincideTanque = tanque === "todos" || d.TK === tanque;
+                    
+                    if (coincideProducto && coincideTanque) {
+                        contenedorTanques.appendChild(crearTarjetaTanque(d));
+                        tanquesMostrados++;
+                        
+                        if (producto !== "todos" && tanque === "todos") {
+                            totalBLS += (parseFloat(d.BLS_60) || 0);
+                            productoFiltrado = producto;
+                        }
+                    }
+                });
+            }
+            
+            // Mostrar total si hay filtro por producto
+            if (productoFiltrado) {
+                totalProductoDisplay.innerHTML = `Volumen total de <strong>${productoFiltrado}</strong>: ${totalBLS.toLocaleString('es-CO')} BLS`;
+                totalProductoContainer.style.display = 'block';
+            } else {
+                totalProductoContainer.style.display = 'none';
+            }
+            
+            // Mostrar mensaje si no hay resultados
+            if (tanquesMostrados === 0) {
+                const mensaje = document.createElement("div");
+                mensaje.className = "no-data-message";
+                
+                if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
+                    mensaje.innerHTML = `
+                        <i class="bi bi-exclamation-circle-fill text-muted mb-3" style="font-size: 2rem;"></i>
+                        <h3 class="h5">No hay tanques que coincidan con los filtros</h3>
+                        <p class="text-muted">Prueba con otros criterios de búsqueda</p>
+                    `;
+                } else {
+                    mensaje.innerHTML = `
+                        <i class="bi bi-database-fill-exclamation text-muted mb-3" style="font-size: 2rem;"></i>
+                        <h3 class="h5">No hay datos disponibles</h3>
+                        <p class="text-muted">Por favor, guarde un registro primero</p>
+                    `;
+                }
+                
+                contenedorTanques.appendChild(mensaje);
+            }
+        }
+
+        // Inicializar
+        document.addEventListener("DOMContentLoaded", () => {
+            cargarFiltros();
+            filtrar();
+        });
+    </script>
+    {% endblock %}
