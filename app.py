@@ -134,7 +134,31 @@ class RegistroTransito(db.Model):
     def __repr__(self):
         return f'<RegistroTransito ID: {self.id}, Guia: {self.guia}>'
     
+class RegistroInventarioSiza(db.Model):
+    __tablename__ = 'registros_inventario_siza'
 
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow) # Fecha de recepción del lote
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    # Datos para identificar el lote
+    fuente_planilla = db.Column(db.String(150), nullable=False) # Ej: "Planilla 25-Jun-2025" o un ID único
+
+    # Datos del tanque y producto
+    tk = db.Column(db.String(50), nullable=False)
+    producto = db.Column(db.String(100))
+
+    # ¡Las columnas clave para el control de inventario!
+    bls_iniciales = db.Column(db.Float, nullable=False)
+    bls_actuales = db.Column(db.Float, nullable=False) # Este valor se irá reduciendo
+
+    # Propiedades de calidad del lote
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+
+    def __repr__(self):
+        return f'<InventarioSiza ID: {self.id}, Planilla: {self.fuente_planilla}, TK: {self.tk}>'    
+    
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 @app.context_processor
@@ -217,6 +241,13 @@ USUARIOS = {
         "nombre": "Samantha Roa",
         "rol": "editor",
         "area": ["guia_transporte"]
+    },
+
+    "comex@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Daniela Cuadrado",
+        "rol": "editor",
+        "area": ["siza_inventory"] 
     }
 }
 
@@ -849,6 +880,103 @@ def guardar_transito(tipo_transito):
     
 @login_required
 @permiso_requerido('transito')
+@app.route('/subir_excel_transito', methods=['POST'])
+def subir_excel_transito():
+    if 'archivo_excel' not in request.files:
+        return jsonify({
+            'success': False,
+            'message': "No se encontró el archivo en la solicitud."
+        }), 400
+
+    archivo = request.files['archivo_excel']
+    tipo_transito = request.form.get('tipo_transito', 'general')
+    sobrescribir = request.form.get('sobrescribirDatos', 'on') == 'on'
+
+    if archivo.filename == '':
+        return jsonify({
+            'success': False,
+            'message': "No se seleccionó ningún archivo."
+        }), 400
+
+    if not archivo.filename.endswith('.xlsx'):
+        return jsonify({
+            'success': False,
+            'message': "Formato de archivo no válido. Por favor, suba un archivo .xlsx"
+        }), 400
+
+    try:
+        workbook = openpyxl.load_workbook(archivo)
+        sheet = workbook.active
+        
+        datos_del_excel = []
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            if len(row) < 9: 
+                continue
+
+            datos_fila = {
+                'FECHA': row[0] if row[0] else datetime.now().strftime('%Y-%m-%d'),
+                'GUIA': row[1],
+                'ORIGEN': row[2],
+                'PRODUCTO': row[3],
+                'PLACA': row[4],
+                'API': float(row[5]) if row[5] and str(row[5]).strip() else None,
+                'BSW': float(row[6]) if row[6] and str(row[6]).strip() else None,
+                'NSV': float(row[7]) if row[7] and str(row[7]).strip() else None,
+                'OBSERVACIONES': row[8] if row[8] else ''
+            }
+            
+            if datos_fila.get('GUIA'):
+                datos_del_excel.append(datos_fila)
+
+        if not datos_del_excel:
+            return jsonify({
+                'success': False,
+                'message': "El archivo Excel no contenía datos válidos."
+            }), 400
+        
+        if sobrescribir:
+            today_start = datetime.combine(date.today(), time.min)
+            today_end = datetime.combine(date.today(), time.max)
+            
+            db.session.query(RegistroTransito).filter(
+                RegistroTransito.tipo_transito == tipo_transito,
+                RegistroTransito.timestamp.between(today_start, today_end)
+            ).delete()
+
+        for fila in datos_del_excel:
+            nuevo_registro = RegistroTransito(
+                usuario=session.get("nombre", "No identificado"),
+                tipo_transito=tipo_transito,
+                fecha=fila.get('FECHA'),
+                guia=fila.get('GUIA'),
+                origen=fila.get('ORIGEN'),
+                producto=fila.get('PRODUCTO'),
+                placa=fila.get('PLACA'),
+                api=fila.get('API'),
+                bsw=fila.get('BSW'),
+                nsv=fila.get('NSV'),
+                observaciones=fila.get('OBSERVACIONES')
+            )
+            db.session.add(nuevo_registro)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f"Se han cargado y guardado {len(datos_del_excel)} registros desde el archivo.",
+            'count': len(datos_del_excel)
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f"Error al procesar el archivo Excel: {str(e)}"
+        }), 500
+
+    
+@login_required
+@permiso_requerido('transito')
 @app.route('/eliminar-registro-transito/<int:registro_id>', methods=['DELETE'])
 def eliminar_registro_transito(registro_id):
     try:
@@ -1087,6 +1215,13 @@ def barcaza_bita():
 def guia_transporte():
     # El if de permisos ya no es necesario aquí.
     return render_template("guia_transporte.html", nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('siza_inventory') # Usamos el permiso que le asignamos a Daniela
+@app.route('/inicio-siza')
+def home_siza():
+    """Página de inicio personalizada para el módulo de Inventario SIZA."""
+    return render_template('home_siza.html')
 
 @login_required
 @app.route('/reporte_barcaza')
@@ -1334,7 +1469,7 @@ def dashboard_reportes():
             ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
             planta_summary['datos'] = registros_validos
             planta_summary['info_completa'] = formatear_info_actualizacion(
-                ultimo_registro.timestamp, ultimo_registro.usuario
+            ultimo_registro.timestamp, ultimo_registro.usuario
             )
     except Exception as e:
         print(f"Error al cargar resumen de Planta: {e}")
@@ -1474,13 +1609,17 @@ def home():
     if session.get('rol') == 'admin':
         return redirect(url_for('dashboard_reportes'))
     
-    # Si el usuario es de logística (y no es admin), va a su página de inicio especial.
-    # Comprobamos si 'guia_transporte' es su ÚNICO permiso para evitar confusiones.
     user_areas = session.get('area', [])
-    if len(user_areas) == 1 and user_areas[0] == 'guia_transporte':
+
+    # Redirección para el área de Logística (Generar Guía)
+    if 'guia_transporte' in user_areas and len(user_areas) == 1:
         return redirect(url_for('home_logistica'))
 
-    # Todos los demás usuarios van al dashboard general.
+    # Redirección para el área de Inventario SIZA
+    if 'siza_inventory' in user_areas and len(user_areas) == 1:
+        return redirect(url_for('home_siza'))
+
+    # Todos los demás usuarios (o con múltiples permisos) van al dashboard general.
     return redirect(url_for('dashboard_reportes'))
 
 @login_required
@@ -1613,6 +1752,110 @@ def planilla_precios():
     return render_template('planilla_precios.html',
                            planilla=fuente_de_datos,
                            nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('siza_inventory')
+@app.route('/inventario_siza')
+def inventario_siza():
+    """Muestra el estado actual del inventario de SIZA, desglosado por planilla/lote."""
+    
+    # Consultamos todos los lotes que AÚN tienen inventario
+    inventario_activo = db.session.query(RegistroInventarioSiza).filter(
+        RegistroInventarioSiza.bls_actuales > 0
+    ).order_by(RegistroInventarioSiza.timestamp.asc()).all()
+
+    # Calculamos los totales para una vista resumida
+    totales_por_tk = {}
+    for lote in inventario_activo:
+        totales_por_tk.setdefault(lote.tk, {'total_bls': 0, 'producto': lote.producto})
+        totales_por_tk[lote.tk]['total_bls'] += lote.bls_actuales
+        
+    return render_template("inventario_siza.html", 
+                           inventario_desglosado=inventario_activo,
+                           inventario_totalizado=totales_por_tk,
+                           nombre=session.get("nombre"))
+
+
+@login_required
+@permiso_requerido('siza_inventory')
+@app.route('/siza/registrar_entrada', methods=['POST'])
+def registrar_entrada_siza():
+    """Registra la llegada de una nueva planilla (lote) al inventario."""
+    try:
+        datos = request.get_json()
+        fuente_planilla = datos.get('fuente_planilla')
+        entradas = datos.get('entradas') # Debe ser una lista de {'tk': 'TK-XXX', 'bls': 1000, 'api': 15, 'bsw': 0.5}
+
+        if not fuente_planilla or not isinstance(entradas, list):
+            return jsonify(success=False, message="Datos incompletos o en formato incorrecto."), 400
+
+        for entrada in entradas:
+            if not entrada.get('tk') or not float(entrada.get('bls', 0)) > 0:
+                continue # Ignorar filas sin tanque o sin volumen
+
+            nuevo_lote = RegistroInventarioSiza(
+                usuario=session.get("nombre", "No identificado"),
+                fuente_planilla=fuente_planilla,
+                tk=entrada['tk'],
+                producto=entrada.get('producto', 'CRUDO SIZA'), # Puedes poner un valor por defecto
+                bls_iniciales=float(entrada['bls']),
+                bls_actuales=float(entrada['bls']), # Al inicio, el actual es igual al inicial
+                api=float(entrada.get('api')) if entrada.get('api') else None,
+                bsw=float(entrada.get('bsw')) if entrada.get('bsw') else None,
+            )
+            db.session.add(nuevo_lote)
+        
+        db.session.commit()
+        flash("Nueva planilla registrada exitosamente.", "success")
+        return jsonify(success=True, message="Entrada registrada.")
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al registrar entrada en Siza: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
+
+@login_required
+@permiso_requerido('siza_inventory')
+@app.route('/siza/registrar_consumo', methods=['POST'])
+def registrar_consumo_siza():
+    """Registra una salida de inventario, consumiendo los lotes más antiguos primero (FIFO)."""
+    try:
+        datos = request.get_json()
+        tk_consumo = datos.get('tk')
+        bls_a_consumir = float(datos.get('bls', 0))
+
+        if not tk_consumo or bls_a_consumir <= 0:
+            return jsonify(success=False, message="Debe especificar un tanque y una cantidad válida."), 400
+
+        # 1. Obtener todos los lotes para ese tanque, del más viejo al más nuevo
+        lotes_disponibles = db.session.query(RegistroInventarioSiza).filter(
+            RegistroInventarioSiza.tk == tk_consumo,
+            RegistroInventarioSiza.bls_actuales > 0
+        ).order_by(RegistroInventarioSiza.timestamp.asc()).all()
+
+        # 2. Verificar si hay suficiente inventario
+        total_disponible = sum(lote.bls_actuales for lote in lotes_disponibles)
+        if bls_a_consumir > total_disponible:
+            return jsonify(success=False, message=f"No hay suficiente inventario. Disponible: {total_disponible:,.2f} BLS."), 400
+
+        # 3. Aplicar la lógica FIFO
+        restante_por_consumir = bls_a_consumir
+        for lote in lotes_disponibles:
+            if restante_por_consumir <= 0:
+                break
+
+            consumo_de_lote = min(lote.bls_actuales, restante_por_consumir)
+            lote.bls_actuales -= consumo_de_lote
+            restante_por_consumir -= consumo_de_lote
+        
+        db.session.commit()
+        flash(f"Consumo de {bls_a_consumir:,.2f} BLS del tanque {tk_consumo} registrado.", "success")
+        return jsonify(success=True, message="Consumo registrado exitosamente.")
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al registrar consumo en Siza: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
 
 def cargar_conductores():
     """Función auxiliar para cargar conductores desde Conductores.json de forma segura."""

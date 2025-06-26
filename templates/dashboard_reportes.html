@@ -15,89 +15,116 @@
         <h1 class="display-5 fw-semibold mb-3 text-gray-800">
             <i class="bi bi-speedometer2 me-2 text-primary"></i> PANEL DE CONTROL
         </h1>
-        <p class="lead text-muted mb-0">Acceso rápido a los reportes del sistema</p>
+        <div class="text-muted">
+            <i class="bi bi-calendar-check me-1"></i>
+            <span id="current-date">{{ current_date }}</span>
+        </div>
     </div>
 
     <!-- Access Cards -->
     <div class="row g-4 justify-content-center">
         <!-- Planta Card -->
         <div class="col-xl-3 col-md-6">
-            <a href="{{ url_for('reporte_planta') }}" class="card access-card h-100 border-0 text-decoration-none">
+            <div class="card access-card h-100 border-0">
                 <div class="card-body text-center p-4 d-flex flex-column">
                     <div class="access-icon bg-planta-soft mx-auto mb-4">
                         <i class="bi bi-buildings-fill text-planta"></i>
                     </div>
                     <h3 class="h4 mb-3">Reporte Planta</h3>
-                    <p class="text-muted mb-4">Gestión de tanques e inventario en planta</p>
+                    
+                    <!-- Fecha de actualización específica -->
+                    <div class="update-info mb-3">
+                        <div class="update-badge bg-white text-dark border border-1 border-planta">
+                            <i class="bi bi-clock-history text-planta me-1"></i>
+                           <small>{{ planta_summary.info_completa }}</small>
+                        </div>
+                    </div>
+                    
                     <div class="mt-auto">
-                        <span class="btn btn-planta btn-sm px-4">
+                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-planta btn-sm px-4">
                             Acceder <i class="bi bi-arrow-right ms-2"></i>
-                        </span>
+                        </a>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- Tránsito Card -->
         <div class="col-xl-3 col-md-6">
-            <a href="{{ url_for('reporte_transito') }}" class="card access-card h-100 border-0 text-decoration-none">
+            <div class="card access-card h-100 border-0">
                 <div class="card-body text-center p-4 d-flex flex-column">
                     <div class="access-icon bg-transito-soft mx-auto mb-4">
                         <i class="bi bi-truck text-transito"></i>
                     </div>
                     <h3 class="h4 mb-3">Reporte Tránsito</h3>
-                    <p class="text-muted mb-4">Registro y seguimiento de transportes</p>
+                    
+                    <!-- Fecha de actualización específica -->
+                    <div class="update-info mb-3">
+                        <div class="update-badge bg-white text-dark border border-1 border-transito">
+                            <i class="bi bi-clock-history text-transito me-1"></i>
+                            <small>{{ transito_summary.info_completa }}</small>
+                        </div>
+                    </div>
+                    
                     <div class="mt-auto">
-                        <span class="btn btn-transito btn-sm px-4">
+                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-transito btn-sm px-4">
                             Acceder <i class="bi bi-arrow-right ms-2"></i>
-                        </span>
+                        </a>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- Orion Card -->
         <div class="col-xl-3 col-md-6">
-            <a href="{{ url_for('reporte_barcaza') }}" class="card access-card h-100 border-0 text-decoration-none">
+            <div class="card access-card h-100 border-0">
                 <div class="card-body text-center p-4 d-flex flex-column">
                     <div class="access-icon bg-orion-soft mx-auto mb-4">
                         <i class="bi bi-water text-orion"></i>
                     </div>
                     <h3 class="h4 mb-3">Barcaza Orion</h3>
-                    <p class="text-muted mb-4">Inventario y gestión de la barcaza Orion</p>
+                    
+                    <!-- Fecha de actualización específica -->
+                    <div class="update-info mb-3">
+                        <div class="update-badge bg-white text-dark border border-1 border-orion">
+                            <i class="bi bi-clock-history text-orion me-1"></i>
+                            <small>{{ orion_summary.info_completa }}</small>
+                        </div>
+                    </div>
+                    
                     <div class="mt-auto">
-                        <span class="btn btn-orion btn-sm px-4">
+                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-orion btn-sm px-4">
                             Acceder <i class="bi bi-arrow-right ms-2"></i>
-                        </span>
+                        </a>
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
 
         <!-- Bita Card -->
         <div class="col-xl-3 col-md-6">
-            <a href="{{ url_for('reporte_barcaza_bita') }}" class="card access-card h-100 border-0 text-decoration-none">
+            <div class="card access-card h-100 border-0">
                 <div class="card-body text-center p-4 d-flex flex-column">
                     <div class="access-icon bg-bita-soft mx-auto mb-4">
                         <i class="bi bi-tsunami text-bita"></i>
                     </div>
                     <h3 class="h4 mb-3">Barcaza BITA</h3>
-                    <p class="text-muted mb-4">Inventario y gestión de la barcaza BITA</p>
+                    
+                    <!-- Fecha de actualización específica -->
+                    <div class="update-info mb-3">
+                        <div class="update-badge bg-white text-dark border border-1 border-bita">
+                            <i class="bi bi-clock-history text-bita me-1"></i>
+                            <small>{{ bita_summary.info_completa }}</small>
+                        </div>
+                    </div>
+                    
                     <div class="mt-auto">
-                        <span class="btn btn-bita btn-sm px-4">
+                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-bita btn-sm px-4">
                             Acceder <i class="bi bi-arrow-right ms-2"></i>
-                        </span>
+                        </a>
                     </div>
                 </div>
-            </a>
-        </div>
-    </div>
-
-    <!-- Current Date -->
-    <div class="text-center mt-5">
-        <div class="badge bg-white text-dark border border-2 border-primary px-3 py-2">
-            <i class="bi bi-calendar-check me-2"></i>
-            <span id="current-date">{{ current_date }}</span>
+            </div>
         </div>
     </div>
 </div>
@@ -141,21 +168,40 @@
     .btn-planta {
         background-color: var(--planta);
         color: white;
+        border: none;
     }
     
     .btn-transito {
         background-color: var(--transito);
         color: white;
+        border: none;
     }
     
     .btn-orion {
         background-color: var(--orion);
         color: white;
+        border: none;
     }
     
     .btn-bita {
         background-color: var(--bita);
         color: white;
+        border: none;
+    }
+    
+    .update-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+    }
+    
+    .update-info {
+        min-height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     @media (max-width: 768px) {

@@ -26,6 +26,9 @@
                 <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success">
                     <i class="bi bi-save2-fill me-1"></i> Guardar
                 </button>
+                <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSubirExcel">
+                    <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Subir Excel
+                    </button>
                 <a href="{{ url_for('reporte_transito') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
                 </a>
@@ -44,7 +47,6 @@
             </div>
         </div>
     </div>
-
     <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1100;"></div>
     <div id="avisoHoraLimiteContainer" class="mb-3"></div>
 
@@ -147,7 +149,35 @@
         <button type="button" class="btn btn-primary" id="btnGuardarNuevoProducto" onclick="guardarNuevoProducto()">Guardar Producto</button>
       </div>
     </div>
-  </div>
+    </div>
+    <!-- Modal para Subir Excel (fuera de cualquier otro modal) -->
+    <div class="modal fade" id="modalSubirExcel" tabindex="-1" aria-labelledby="modalExcelLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalExcelLabel">Cargar Planilla desde Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formSubirExcel" enctype="multipart/form-data">
+                    <p class="text-muted">Seleccione el archivo `.xlsx`. Los datos deben empezar en la segunda fila.</p>
+                    <div class="mb-3">
+                        <label for="archivo_excel" class="form-label">Archivo Excel</label>
+                        <input class="form-control" type="file" name="archivo_excel" id="archivo_excel" required accept=".xlsx">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="sobrescribirDatos" name="sobrescribirDatos" checked>
+                        <label class="form-check-label" for="sobrescribirDatos">Sobrescribir datos del día</label>
+                    </div>
+                    <input type="hidden" name="tipo_transito" id="tipoTransitoHidden" value="{{ tipo_inicial }}">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnProcesarExcel">Procesar Archivo</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -250,6 +280,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const filterInputs = document.querySelectorAll('.excel-filter');
         const tableBody = document.getElementById('tablaTransitoBody');
+        
 
         const applyFilters = () => {
             const rows = tableBody.querySelectorAll('tr');
@@ -334,6 +365,57 @@
         document.getElementById('origenAsociadoTexto').textContent = fila.ORIGEN;
         modalNuevoProducto.show();
     }
+    const modalSubirExcel = new bootstrap.Modal(document.getElementById('modalSubirExcel'));
+
+    document.getElementById('btnProcesarExcel').addEventListener('click', function() {
+    const form = document.getElementById('formSubirExcel');
+    const fileInput = document.getElementById('archivo_excel');
+    const btn = this;
+    
+    if (!fileInput.files.length) {
+        mostrarAlerta("Por favor seleccione un archivo Excel.", "warning");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+    const formData = new FormData(form);
+    
+    fetch('/subir_excel_transito', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Error en la respuesta del servidor');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            mostrarAlerta(data.message, "success");
+            // Recargar los datos después de 1.5 segundos
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.message || "Error al procesar el archivo");
+        }
+    })
+    .catch(error => {
+        mostrarAlerta(`Error: ${error.message}`, "danger");
+        console.error("Error:", error);
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = 'Procesar Archivo';
+        modalSubirExcel.hide();
+    });
+});
 
     function guardarNuevoOrigen() {
         const input = document.getElementById('inputNuevoOrigen');
