@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de S.A.E.{% endblock %}
+
+{% block content %}
+<div class="container-fluid my-4">
+    <h2 class="display-6 mb-4">S.A.E. Disponibles para Gastar</h2>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                Listado de S.A.E. Disponibles
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col">N° S.A.E</th>
+                            <th scope="col">Acta</th>
+                            <th scope="col">Producto</th>
+                            <th scope="col">BBL Netos</th>
+                            <th scope="col">Fecha de Carga</th>
+                            <th scope="col" class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if registros %}
+                            {% for registro in registros %}
+                                <tr>
+                                    <td><strong>{{ registro.numero_sae }}</strong></td>
+                                    <td>{{ registro.acta }}</td>
+                                    <td>{{ registro.producto }}</td>
+                                    <td>{{ "%.2f"|format(registro.bbl_netos) }}</td>
+                                    <td><small>{{ registro.fecha_carga.strftime('%Y-%m-%d') }}</small></td>
+                                    <td class="text-center">
+                                        <form action="{{ url_for('gastar_sae', id=registro.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres marcar este S.A.E. como gastado?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="bi bi-fire me-1"></i> Gastar
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <i class="bi bi-trophy-fill fs-4"></i>
+                                    <p class="mb-0 mt-2">¡Felicidades!</p>
+                                    <p class="small">No hay ningún S.A.E. disponible para gastar en este momento.</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

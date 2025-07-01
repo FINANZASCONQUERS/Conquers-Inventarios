@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Consumir Inventario{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold text-primary">
+                <i class="bi bi-lightning-charge me-2"></i>Consumir Inventario
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('inventario_zisa') }}">Inventario</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Consumir</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message|safe }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-calculator me-2"></i>Formulario de Consumo
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('consumir_inventario') }}">
+                        <div class="mb-3">
+                            <label for="empresa" class="form-label">Empresa</label>
+                            <select class="form-select" id="empresa" name="empresa" required>
+                                <option value="" selected disabled>Seleccione una empresa</option>
+                                <option value="ZISA">CWT</option>
+                                <option value="FBCOL">FBCOL</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="cantidad_a_gastar" class="form-label">Cantidad a Consumir (BBL)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" min="0.01" class="form-control" 
+                                       id="cantidad_a_gastar" name="cantidad_a_gastar" required>
+                                <span class="input-group-text">BBL</span>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle me-2"></i>Consumir Inventario
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Resumen de Inventario
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th class="text-end">Disponible</th>
+                                    <th class="text-end">Consumido</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="badge bg-primary">CWT</span></td>
+                                    <td class="text-end">{{ "%.2f"|format(total_inventario_zisa) }} BBL</td>
+                                    <td class="text-end">{{ "%.2f"|format(total_consumido_zisa) }} BBL</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="badge bg-success">FBCOL</span></td>
+                                    <td class="text-end">{{ "%.2f"|format(total_inventario_fbcol) }} BBL</td>
+                                    <td class="text-end">{{ "%.2f"|format(total_consumido_fbcol) }} BBL</td>
+                                </tr>
+                                <tr class="table-light fw-bold">
+                                    <td>Total</td>
+                                    <td class="text-end">{{ "%.2f"|format(total_inventario_zisa + total_inventario_fbcol) }} BBL</td>
+                                    <td class="text-end">{{ "%.2f"|format(total_consumido_zisa + total_consumido_fbcol) }} BBL</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-clock-history me-2"></i>Últimos 10 Consumos (Todas las Empresas)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha de Carga Original</th>
+                                    <th>Empresa</th>
+                                    <th>N° S.A.E</th>
+                                    <th>Carrotanque</th>
+                                    <th class="text-end">BBL Consumidos</th>
+                                    <th>Usuario Original</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for consumo in ultimos_consumos %}
+                                <tr>
+                                    <td><small>{{ consumo.fecha_carga.strftime('%d/%m/%Y %H:%M') }}</small></td>
+                                    <td><span class="badge {% if consumo.empresa == 'ZISA' %}bg-primary{% else %}bg-success{% endif %}">{{ consumo.empresa }}</span></td>
+                                    <td><strong>{{ consumo.numero_sae | int }}</strong></td>
+                                    <td>{{ consumo.carrotanque }}</td>
+                                    <td class="text-end fw-bold">{{ "%.2f"|format(consumo.bbl_descargados) }}</td>
+                                    <td><small>{{ consumo.usuario_carga }}</small></td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        No hay registros de consumo recientes.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}    

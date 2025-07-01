@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Consumo{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <!-- Encabezado mejorado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 pt-3">
+        <div>
+            <h1 class="display-6 fw-bold text-gray-800">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>Reporte de Consumo
+            </h1>
+            <nav aria-label="breadcrumb" class="mt-3">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('home') }}" class="text-decoration-none">Inicio</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('inventario_zisa') }}" class="text-decoration-none">Inventario</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Reporte de Consumo</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Tarjeta de filtros con mejor diseño -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 text-primary">
+                <i class="bi bi-funnel me-2"></i>Filtros de Búsqueda
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('reporte_consumo') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="empresa" class="form-label fw-semibold">Empresa</label>
+                    <select name="empresa" id="empresa" class="form-select border-2">
+                        <option value="">Todas las empresas</option>
+                        <!-- CAMBIO 1: Texto del filtro -->
+                        <option value="ZISA" {% if filtros.empresa == 'ZISA' %}selected{% endif %}>CWT</option>
+                        <option value="FBCOL" {% if filtros.empresa == 'FBCOL' %}selected{% endif %}>FBCOL</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_inicio" class="form-label fw-semibold">Fecha Inicio</label>
+                    <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ filtros.fecha_inicio }}" 
+                           class="form-control border-2">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_fin" class="form-label fw-semibold">Fecha Final</label>
+                    <input type="date" name="fecha_fin" id="fecha_fin" value="{{ filtros.fecha_fin }}" 
+                           class="form-control border-2">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2 flex-grow-1">
+                        <i class="bi bi-search me-2"></i>Buscar
+                    </button>
+                    <a href="{{ url_for('descargar_reporte_pdf', empresa=filtros.empresa, fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin) }}" 
+                       class="btn btn-danger" title="Descargar PDF">
+                       <i class="bi bi-file-earmark-pdf-fill"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resumen total con mejor diseño -->
+    <div class="card border-left-primary shadow-sm mb-4 border-start border-4">
+        <div class="card-body py-4">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h4 class="text-primary fw-semibold mb-1">Total Consumido</h4>
+                    <p class="text-muted mb-0">Según los filtros aplicados</p>
+                </div>
+                <div class="col-auto">
+                    <h2 class="display-5 fw-bold text-primary">{{ "%.2f"|format(total_consumido) }} <span class="fs-4">BBL</span></h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de resultados con mejor diseño -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 text-primary">
+                <i class="bi bi-table me-2"></i>Detalle de Registros Consumidos
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0">Fecha Consumo</th>
+                            <th class="border-0">N° S.A.E</th>
+                            <th class="border-0">Empresa</th>
+                            <th class="border-0">Carrotanque</th>
+                            <th class="border-0">Producto</th>
+                            <th class="border-0 text-end">BBL Consumidos</th>
+                            <th class="border-0">Usuario</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for registro in registros %}
+                        <tr class="border-top">
+                            <td class="text-nowrap">
+                                <span class="fw-semibold">{{ registro.fecha_carga.strftime('%d/%m/%Y') }}</span>
+                                <small class="text-muted d-block">{{ registro.fecha_carga.strftime('%H:%M') }}</small>
+                            </td>
+                            <td><span class="badge bg-light text-dark border">{{ registro.numero_sae | int }}</span></td>
+                            <td>
+                                <span class="badge {% if registro.empresa == 'ZISA' %}bg-primary{% else %}bg-success{% endif %} py-1 px-2">
+                                    <!-- CAMBIO 2: Texto en la tabla -->
+                                    {% if registro.empresa == 'ZISA' %}
+                                        CWT
+                                    {% else %}
+                                        {{ registro.empresa }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td class="fw-semibold">{{ registro.carrotanque }}</td>
+                            <td>{{ registro.producto }}</td>
+                            <td class="text-end fw-bold text-primary">{{ "%.2f"|format(registro.bbl_descargados) }}</td>
+                            <td><small class="text-muted">{{ registro.usuario_carga }}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="bi bi-exclamation-circle text-muted display-6"></i>
+                                    <h5 class="mt-3 text-muted">No se encontraron registros</h5>
+                                    <p class="text-muted">Prueba ajustando los filtros de búsqueda</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Inventario ZISA/FBCOL{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold text-primary">
+                <i class="bi bi-box-seam me-2"></i>Gestión de Inventario
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Inicio</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Inventario CWT/FBCOL</li>
+                </ol>
+            </nav>
+        </div>
+        <div class="alert alert-info py-2 px-3 mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            <small>Última actualización: {{ g.current_time.strftime('%d/%m/%Y %H:%M') }}</small>
+        </div>
+    </div>
+
+        <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white border-bottom-0 pb-0">
+                    <h5 class="card-title">
+                        <i class="bi bi-upload text-primary me-2"></i>Cargar Inventario
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Selecciona el archivo <strong>Inventario Crudo - SIZA.xlsx</strong> para actualizar los registros.</p>
+                    
+                    <form action="{{ url_for('cargar_inventario_zisa') }}" method="POST" enctype="multipart/form-data" class="dropzone needsclick" id="fileUploadForm">
+                        <div class="dz-message needsclick">
+                            <i class="bi bi-cloud-arrow-up fs-1 text-muted"></i>
+                            <h5 class="mb-2">Arrastra tu archivo aquí o haz clic para seleccionar</h5>
+                            <p class="text-muted">Solo archivos .xlsx (Excel)</p>
+                        </div>
+                        <div class="fallback">
+                            <input type="file" class="form-control" name="archivo_excel" id="archivoExcel" accept=".xlsx" required>
+                        </div>
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-upload me-2"></i>Procesar Archivo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white border-bottom-0 pb-0">
+                    <h5 class="card-title">
+                        <i class="bi bi-lightning-charge text-warning me-2"></i>Gestión Rápida
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-check-circle text-success me-2"></i>Consumir Inventario
+                        </h6>
+                        <p class="text-muted">Haz clic para gestionar los S.A.E. disponibles y marcar los que ya se han gastado.</p>
+                        <a href="{{ url_for('consumir_inventario') }}" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle-fill me-2"></i> Ir a Gestión de S.A.E.
+                        </a>
+                    </div>
+                    
+                    <div class="mt-auto">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-graph-up text-info me-2"></i>Reportes
+                        </h6>
+                        <p class="text-muted">Genera reportes detallados del inventario.</p>
+                        <a href="{{ url_for('reporte_consumo') }}" class="btn btn-info w-100">
+    <i class="bi bi-file-earmark-bar-graph me-2"></i> Generar Reporte de Consumo
+</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="row mb-4">
+                <div class="col-12">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+                            <div>{{ message }}</div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-start border-primary border-4 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted fw-bold mb-2">Inventario CWT</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_zisa) }} BBL</h3>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-droplet-fill text-primary fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-start border-success border-4 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted fw-bold mb-2">Inventario FBCOL</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_fbcol) }} BBL</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-fuel-pump-fill text-success fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card border-start border-warning border-4 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-uppercase text-muted fw-bold mb-2">Total General</h6>
+                            <h3 class="mb-0">{{ "%.2f"|format(total_zisa + total_fbcol) }} BBL</h3>
+                        </div>
+                        <div class="bg-warning bg-opacity-10 p-3 rounded">
+                            <i class="bi bi-bar-chart-fill text-warning fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-lg mb-4">
+        <div class="card-header bg-white border-bottom-0 pt-3">
+            <ul class="nav nav-tabs card-header-tabs" id="inventarioTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="zisa-tab" data-bs-toggle="tab" data-bs-target="#zisa" type="button" role="tab">
+                        <i class="bi bi-droplet me-1"></i> CWT
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="fbcol-tab" data-bs-toggle="tab" data-bs-target="#fbcol" type="button" role="tab">
+                        <i class="bi bi-fuel-pump me-1"></i> FBCOL
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="tab-content" id="inventarioTabsContent">
+                <div class="tab-pane fade show active" id="zisa" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="120px">Estado</th>
+                                    <th>No S.A.E</th>
+                                    <th>Acta</th>
+                                    <th>Mes</th>
+                                    <th>Carrotanque</th>
+                                    <th>Producto</th>
+                                    <th class="text-end">BBL Netos</th>
+                                    <th class="text-end">BBL Descargados</th>
+                                    <th>Usuario</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if registros_zisa %}
+                                    {% for registro in registros_zisa %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge rounded-pill {% if registro.estado == 'Disponible' %}bg-success{% else %}bg-secondary{% endif %} w-100">
+                                                {{ registro.estado }}
+                                            </span>
+                                        </td>
+                                        <td><strong>{{ registro.numero_sae }}</strong></td>
+                                        <td>{{ registro.acta }}</td>
+                                        <td>{{ registro.mes }}</td>
+                                        <td>{{ registro.carrotanque }}</td>
+                                        <td>{{ registro.producto }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(registro.bbl_netos) if registro.bbl_netos else '-' }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(registro.bbl_descargados) if registro.bbl_descargados else '-' }}</td>
+                                        <td><small class="text-muted">{{ registro.usuario_carga }}</small></td>
+                                        <td><small class="text-muted">{{ registro.fecha_carga.strftime('%d/%m/%Y') }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="10" class="text-center py-4">
+                                            <div class="d-flex flex-column align-items-center justify-content-center text-muted">
+                                                <i class="bi bi-database-exclamation fs-1"></i>
+                                                <p class="mt-2 mb-0 fw-bold">No hay registros para SIZA</p>
+                                                <small>Sube un archivo Excel para comenzar</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="fbcol" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="120px">Estado</th>
+                                    <th>No S.A.E</th>
+                                    <th>Acta</th>
+                                    <th>Mes</th>
+                                    <th>Carrotanque</th>
+                                    <th>Producto</th>
+                                    <th class="text-end">BBL Netos</th>
+                                    <th class="text-end">BBL Descargados</th>
+                                    <th>Usuario</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if registros_fbcol %}
+                                    {% for registro in registros_fbcol %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge rounded-pill {% if registro.estado == 'Disponible' %}bg-success{% else %}bg-secondary{% endif %} w-100">
+                                                {{ registro.estado }}
+                                            </span>
+                                        </td>
+                                        <td><strong>{{ registro.numero_sae }}</strong></td>
+                                        <td>{{ registro.acta }}</td>
+                                        <td>{{ registro.mes }}</td>
+                                        <td>{{ registro.carrotanque }}</td>
+                                        <td>{{ registro.producto }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(registro.bbl_netos) if registro.bbl_netos else '-' }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(registro.bbl_descargados) if registro.bbl_descargados else '-' }}</td>
+                                        <td><small class="text-muted">{{ registro.usuario_carga }}</small></td>
+                                        <td><small class="text-muted">{{ registro.fecha_carga.strftime('%d/%m/%Y') }}</small></td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="10" class="text-center py-4">
+                                            <div class="d-flex flex-column align-items-center justify-content-center text-muted">
+                                                <i class="bi bi-database-exclamation fs-1"></i>
+                                                <p class="mt-2 mb-0 fw-bold">No hay registros para FBCOL</p>
+                                                <small>Sube un archivo Excel para comenzar</small>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // Inicializar el dropzone
+    Dropzone.autoDiscover = false;
+    
+    $("#fileUploadForm").dropzone({
+        paramName: "archivo_excel",
+        maxFilesize: 5, // MB
+        acceptedFiles: ".xlsx",
+        addRemoveLinks: true,
+        dictDefaultMessage: "Arrastra archivos aquí para subir",
+        dictFallbackMessage: "Tu navegador no soporta arrastrar y soltar para subir archivos.",
+        dictFileTooBig: "El archivo es muy grande ({{filesize}}MiB). Tamaño máximo: {{maxFilesize}}MiB.",
+        dictInvalidFileType: "No puedes subir archivos de este tipo.",
+        dictResponseError: "El servidor respondió con código {{statusCode}}.",
+        dictCancelUpload: "Cancelar subida",
+        dictUploadCanceled: "Subida cancelada",
+        dictRemoveFile: "Eliminar archivo",
+        dictMaxFilesExceeded: "No puedes subir más archivos."
+    });
+    
+    // Inicializar tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

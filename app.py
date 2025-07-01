@@ -4,13 +4,17 @@ import os
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file # Añadido send_file
 from werkzeug.security import generate_password_hash, check_password_hash
-import openpyxl # Para Excel - Recuerda: pip install openpyxl
+import openpyxl 
 from io import BytesIO # Para Excel
 import logging # Para un logging más flexible
 import copy
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 import pytz
+import pandas as pd
+from flask import g
+from flask import Response
+from weasyprint import HTML, CSS
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -133,31 +137,32 @@ class RegistroTransito(db.Model):
 
     def __repr__(self):
         return f'<RegistroTransito ID: {self.id}, Guia: {self.guia}>'
-    
-class RegistroInventarioSiza(db.Model):
-    __tablename__ = 'registros_inventario_siza'
 
+class RegistroZisa(db.Model):
+    __tablename__ = 'registros_zisa'
     id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow) # Fecha de recepción del lote
-    usuario = db.Column(db.String(100), nullable=False)
     
-    # Datos para identificar el lote
-    fuente_planilla = db.Column(db.String(150), nullable=False) # Ej: "Planilla 25-Jun-2025" o un ID único
-
-    # Datos del tanque y producto
-    tk = db.Column(db.String(50), nullable=False)
+    empresa = db.Column(db.String(50), nullable=False, default='ZISA', index=True)
+    
+    # Columnas de la planilla
+    mes = db.Column(db.String(50), nullable=False)
+    carrotanque = db.Column(db.String(100))
     producto = db.Column(db.String(100))
+    numero_sae = db.Column(db.String(50)) # Para la columna "N° S.A.E"
+    acta = db.Column(db.String(50))
+    bbl_netos = db.Column(db.Float)
+    bbl_descargados = db.Column(db.Float)
 
-    # ¡Las columnas clave para el control de inventario!
-    bls_iniciales = db.Column(db.Float, nullable=False)
-    bls_actuales = db.Column(db.Float, nullable=False) # Este valor se irá reduciendo
+    # Datos de auditoría
+    usuario_carga = db.Column(db.String(100), nullable=False)
+    fecha_carga = db.Column(db.DateTime, default=datetime.utcnow)
 
-    # Propiedades de calidad del lote
-    api = db.Column(db.Float)
-    bsw = db.Column(db.Float)
+    estado = db.Column(db.String(50), default='Disponible', nullable=False)
 
     def __repr__(self):
-        return f'<InventarioSiza ID: {self.id}, Planilla: {self.fuente_planilla}, TK: {self.tk}>'    
+        return f'<RegistroZisa id={self.id} carrotanque={self.carrotanque}>'    
+    
+
     
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -220,6 +225,13 @@ USUARIOS = {
         "rol": "viewer",
         "area": ["reportes", "planilla_precios"] 
     },
+
+    "finance@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Germna Galvis",
+        "rol": "viewer",
+        "area": ["reportes", "planilla_precios"] 
+    },
     
     # Ignacio (Editor): Solo acceso a Planta.
     "production@conquerstrading.com": {
@@ -247,7 +259,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Daniela Cuadrado",
         "rol": "editor",
-        "area": ["siza_inventory"] 
+        "area": ["zisa_inventory"] 
     }
 }
 
@@ -1217,7 +1229,7 @@ def guia_transporte():
     return render_template("guia_transporte.html", nombre=session.get("nombre"))
 
 @login_required
-@permiso_requerido('siza_inventory') # Usamos el permiso que le asignamos a Daniela
+@permiso_requerido("zisa_inventory") # Usamos el permiso que le asignamos a Daniela
 @app.route('/inicio-siza')
 def home_siza():
     """Página de inicio personalizada para el módulo de Inventario SIZA."""
@@ -1597,6 +1609,329 @@ def guardar_registro_planta():
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+    
+@login_required
+@permiso_requerido('zisa_inventory')    
+@app.route('/inventario-zisa')
+def inventario_zisa():
+    # 1. Definimos la variable global 'g.current_time' para que la plantilla la pueda usar
+    # Usamos la zona horaria de Bogotá que ya tienes configurada en otras partes
+    try:
+        bogota_zone = pytz.timezone('America/Bogota')
+        g.current_time = datetime.now(bogota_zone)
+    except Exception:
+        g.current_time = datetime.now() # Fallback por si acaso
+
+    # 2. Consultamos todos los registros de la tabla
+    todos_los_registros = RegistroZisa.query.order_by(RegistroZisa.fecha_carga.desc()).all()
+    
+    # 3. Los separamos por empresa para las tablas
+    registros_zisa = [r for r in todos_los_registros if r.empresa == 'ZISA']
+    registros_fbcol = [r for r in todos_los_registros if r.empresa == 'FBCOL']
+
+    # 4. Calculamos los totales de inventario disponible para las tarjetas de resumen
+    total_zisa = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Disponible', empresa='ZISA').scalar() or 0.0
+    total_fbcol = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Disponible', empresa='FBCOL').scalar() or 0.0
+    
+    # 5. Enviamos TODAS las variables que la plantilla necesita
+    return render_template('inventario_zisa.html', 
+                           registros_zisa=registros_zisa,
+                           registros_fbcol=registros_fbcol,
+                           total_zisa=total_zisa,       # <-- Variable añadida
+                           total_fbcol=total_fbcol,     # <-- Variable añadida
+                           nombre=session.get("nombre"))
+@login_required
+@permiso_requerido('zisa_inventory')
+@app.route('/cargar-inventario-zisa', methods=['POST'])
+def cargar_inventario_zisa():
+    if 'archivo_excel' not in request.files:
+        flash('No se seleccionó ningún archivo.', 'warning')
+        return redirect(url_for('inventario_zisa'))
+
+    archivo = request.files['archivo_excel']
+    
+    if not archivo.filename.lower().endswith('.xlsx'):
+        flash('Formato de archivo no válido. Por favor, suba un archivo .xlsx', 'danger')
+        return redirect(url_for('inventario_zisa'))
+
+    try:
+        xls = pd.ExcelFile(archivo)
+        hojas_a_procesar = {'CWT 2025': 'ZISA', 'FBCOL 2025': 'FBCOL'}
+        resultados = {'nuevos': 0, 'duplicados': 0, 'errores': 0}
+        resumen = []
+
+        for hoja, empresa in hojas_a_procesar.items():
+            if hoja not in xls.sheet_names:
+                resumen.append(f"Hoja '{hoja}' no encontrada - Saltada")
+                continue
+
+            try:
+                df = pd.read_excel(xls, sheet_name=hoja)
+                df.columns = df.columns.str.strip().str.upper()
+                
+                # Validación de columnas
+                columnas_requeridas = {'MES', 'CARROTANQUE', 'PRODUCTO', 'N S.A.E', 'ACTA', 'BBL NETOS', 'VEHICULOS DESCARGADOS'}
+                if not columnas_requeridas.issubset(df.columns):
+                    faltantes = columnas_requeridas - set(df.columns)
+                    resumen.append(f"Error en '{hoja}': Faltan columnas: {', '.join(faltantes)}")
+                    resultados['errores'] += 1
+                    continue
+                
+                # Procesamiento del DataFrame
+                df = df.dropna(subset=['ACTA', 'CARROTANQUE'])
+                nuevos = 0
+                duplicados = 0
+                
+                for _, fila in df.iterrows():
+                    try:
+                        existe = RegistroZisa.query.filter_by(
+                            empresa=empresa,
+                            acta=str(fila['ACTA']),
+                            carrotanque=str(fila['CARROTANQUE'])
+                        ).first()
+
+                        if not existe:
+                            registro = RegistroZisa(
+                                empresa=empresa,
+                                mes=fila['MES'],
+                                carrotanque=str(fila['CARROTANQUE']),
+                                producto=fila['PRODUCTO'],
+                                numero_sae=fila['N S.A.E'],
+                                acta=str(fila['ACTA']),
+                                bbl_netos=float(fila['BBL NETOS']),
+                                bbl_descargados=float(fila['VEHICULOS DESCARGADOS']),
+                                usuario_carga=session.get('nombre', 'Desconocido'),
+                                estado='Disponible'
+                            )
+                            db.session.add(registro)
+                            nuevos += 1
+                        else:
+                            duplicados += 1
+                    except Exception as e:
+                        app.logger.error(f"Error procesando fila en {hoja}: {str(e)}")
+                        resultados['errores'] += 1
+
+                db.session.commit()
+                resultados['nuevos'] += nuevos
+                resultados['duplicados'] += duplicados
+                resumen.append(f"{hoja}: {nuevos} nuevos, {duplicados} duplicados")
+                
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Error procesando hoja {hoja}: {str(e)}")
+                resumen.append(f"Error procesando {hoja}: {str(e)}")
+                resultados['errores'] += 1
+
+        # Resultado final
+        if resultados['nuevos'] > 0:
+            flash(f"Procesamiento completado: {resultados['nuevos']} nuevos registros", 'success')
+        if resultados['duplicados'] > 0:
+            flash(f"{resultados['duplicados']} registros duplicados omitidos", 'info')
+        if resultados['errores'] > 0:
+            flash(f"Se encontraron {resultados['errores']} errores durante el procesamiento", 'warning')
+        
+        for mensaje in resumen:
+            flash(mensaje, 'info')
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error crítico al procesar archivo: {str(e)}")
+        flash(f'Error al procesar el archivo: {str(e)}', 'danger')
+    
+    return redirect(url_for('inventario_zisa'))
+
+@login_required
+@permiso_requerido('zisa_inventory')
+@app.route('/consumir-inventario', methods=['GET', 'POST'])
+def consumir_inventario():
+    if request.method == 'POST':
+        try:
+            # --- DIAGNÓSTICO: Imprimimos lo que recibimos del formulario ---
+            print("="*30)
+            print("INICIANDO PROCESO DE CONSUMO")
+            cantidad_a_consumir = float(request.form.get('cantidad_a_gastar', 0))
+            empresa = request.form.get('empresa')
+            print(f"--> Solicitud para consumir {cantidad_a_consumir} BBL de la empresa: {empresa}")
+
+            if cantidad_a_consumir <= 0 or not empresa:
+                flash('La cantidad debe ser positiva y debes seleccionar una empresa.', 'warning')
+                return redirect(url_for('consumir_inventario'))
+
+            registros_disponibles = RegistroZisa.query.filter_by(
+                empresa=empresa, estado='Disponible'
+            ).order_by(RegistroZisa.fecha_carga.asc()).all()
+
+            total_disponible_en_bd = sum(r.bbl_descargados for r in registros_disponibles if r.bbl_descargados)
+            if total_disponible_en_bd < cantidad_a_consumir:
+                flash(f'Inventario insuficiente en {empresa}. Disponible: {total_disponible_en_bd:.2f} BBL, Solicitado: {cantidad_a_consumir:.2f} BBL', 'danger')
+                return redirect(url_for('consumir_inventario'))
+            
+            cantidad_restante = cantidad_a_consumir
+            actas_consumidas = []
+            
+            for registro in registros_disponibles:
+                if cantidad_restante <= 0:
+                    break
+                
+                # --- MEJORA DE ROBUSTEZ: Manejo de valores nulos o cero ---
+                bbl_del_registro = registro.bbl_descargados or 0.0
+                
+                # --- DIAGNÓSTICO: Imprimimos cada registro que se va a procesar ---
+                print(f"Procesando registro ID={registro.id}, Acta={registro.acta}, BBL_Descargados={bbl_del_registro}")
+
+                # --- MEJORA DE ROBUSTEZ: Si el registro no tiene barriles, lo saltamos ---
+                if bbl_del_registro <= 0:
+                    print(f"--> SALTADO: El registro ID={registro.id} tiene 0 o menos barriles.")
+                    continue
+
+                if bbl_del_registro <= cantidad_restante:
+                    registro.estado = 'Gastado'
+                    cantidad_restante -= bbl_del_registro
+                    actas_consumidas.append(f"{registro.acta} ({registro.carrotanque})")
+                    print(f"--> CONSUMIDO COMPLETO: ID={registro.id}. Quedan por consumir: {cantidad_restante}")
+                else:
+                    # Lógica de división (ya estaba bien, pero la rodeamos de diagnósticos)
+                    print(f"--> DIVIDIENDO: ID={registro.id}. Se consumirán {cantidad_restante} de {bbl_del_registro}")
+                    proporcion_a_dividir = cantidad_restante / bbl_del_registro
+                    bbl_netos_originales = registro.bbl_netos or 0.0
+
+                    nuevo_registro_disponible = RegistroZisa(
+                        empresa=registro.empresa, mes=registro.mes, carrotanque=registro.carrotanque,
+                        producto=registro.producto, numero_sae=registro.numero_sae, acta=registro.acta,
+                        bbl_netos = bbl_netos_originales * (1 - proporcion_a_dividir),
+                        bbl_descargados = bbl_del_registro - cantidad_restante,
+                        usuario_carga=registro.usuario_carga, fecha_carga=registro.fecha_carga,
+                        estado='Disponible'
+                    )
+                    db.session.add(nuevo_registro_disponible)
+                    
+                    registro.estado = 'Gastado'
+                    registro.bbl_descargados = cantidad_restante
+                    registro.bbl_netos = bbl_netos_originales * proporcion_a_dividir
+                    
+                    actas_consumidas.append(f"{registro.acta} (parcial)")
+                    cantidad_restante = 0
+                    print(f"--> DIVISIÓN COMPLETA. ID={registro.id} ahora está gastado. Se creó un nuevo registro para el sobrante.")
+
+            db.session.commit()
+            print("--> COMMIT REALIZADO CON ÉXITO")
+            print("="*30)
+            flash(f'Éxito: Se consumieron {cantidad_a_consumir:.2f} BBL de {empresa}. Actas utilizadas: {", ".join(actas_consumidas)}', 'success')
+            
+        except Exception as e:
+            db.session.rollback()
+            # --- DIAGNÓSTICO CRÍTICO ---
+            print("\n" + "!"*50)
+            print(f"ERROR CATASTRÓFICO AL CONSUMIR: {e}")
+            import traceback
+            traceback.print_exc() # Imprime el error detallado en la consola
+            print("!"*50 + "\n")
+            app.logger.error(f"Error al consumir inventario: {str(e)}")
+            flash('Ocurrió un error grave al procesar la solicitud. Revisa la consola del servidor.', 'danger')
+        
+        return redirect(url_for('consumir_inventario'))
+    
+    else: # El método GET se mantiene igual
+        total_zisa = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Disponible', empresa='ZISA').scalar() or 0.0
+        total_fbcol = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Disponible', empresa='FBCOL').scalar() or 0.0
+        total_consumido_zisa = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Gastado', empresa='ZISA').scalar() or 0.0
+        total_consumido_fbcol = db.session.query(func.sum(RegistroZisa.bbl_descargados)).filter_by(estado='Gastado', empresa='FBCOL').scalar() or 0.0
+        ultimos_consumos = RegistroZisa.query.filter_by(estado='Gastado').order_by(RegistroZisa.fecha_carga.desc()).limit(10).all()
+
+        return render_template('consumir_inventario.html',
+                               total_inventario_zisa=total_zisa,
+                               total_inventario_fbcol=total_fbcol,
+                               total_consumido_zisa=total_consumido_zisa,
+                               total_consumido_fbcol=total_consumido_fbcol,
+                               ultimos_consumos=ultimos_consumos)
+
+@login_required
+@permiso_requerido('zisa_inventory')    
+@app.route('/reporte-consumo')
+def reporte_consumo():
+    # 1. Obtener los filtros desde la URL (si es que existen)
+    empresa_filtro = request.args.get('empresa', default='')
+    fecha_inicio_str = request.args.get('fecha_inicio', default='')
+    fecha_fin_str = request.args.get('fecha_fin', default='')
+
+    # 2. Empezar la consulta base: solo registros 'Gastado'
+    query = RegistroZisa.query.filter_by(estado='Gastado')
+
+    # 3. Aplicar los filtros a la consulta
+    if empresa_filtro in ['ZISA', 'FBCOL']:
+        query = query.filter_by(empresa=empresa_filtro)
+    
+    # Filtro por fecha de inicio
+    if fecha_inicio_str:
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d')
+            query = query.filter(RegistroZisa.fecha_carga >= fecha_inicio)
+        except ValueError:
+            flash('Formato de fecha de inicio inválido. Use AAAA-MM-DD.', 'warning')
+    
+    # Filtro por fecha de fin
+    if fecha_fin_str:
+        try:
+            # Se suma un día para que el rango sea inclusivo hasta el final del día seleccionado
+            fecha_fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d') + timedelta(days=1)
+            query = query.filter(RegistroZisa.fecha_carga < fecha_fin)
+        except ValueError:
+            flash('Formato de fecha de fin inválido. Use AAAA-MM-DD.', 'warning')
+
+    # 4. Ejecutar la consulta final
+    registros_consumidos = query.order_by(RegistroZisa.fecha_carga.desc()).all()
+
+    # 5. Calcular la suma total de los BBL descargados de los registros filtrados
+    total_consumido_filtrado = sum(r.bbl_descargados for r in registros_consumidos)
+
+    # 6. Preparar los filtros para devolverlos a la plantilla (para que los campos del formulario recuerden su valor)
+    filtros_activos = {
+        'empresa': empresa_filtro,
+        'fecha_inicio': fecha_inicio_str,
+        'fecha_fin': fecha_fin_str
+    }
+
+    return render_template('reporte_consumo.html',
+                           registros=registros_consumidos,
+                           total_consumido=total_consumido_filtrado,
+                           filtros=filtros_activos)
+
+@login_required
+@permiso_requerido('zisa_inventory')
+@app.route('/descargar-reporte-pdf')
+def descargar_reporte_pdf():
+    # --- PASO 1: REPETIMOS LA MISMA LÓGICA DE FILTRADO DE LA PÁGINA DEL REPORTE ---
+    empresa_filtro = request.args.get('empresa', default='')
+    fecha_inicio_str = request.args.get('fecha_inicio', default='')
+    fecha_fin_str = request.args.get('fecha_fin', default='')
+
+    query = RegistroZisa.query.filter_by(estado='Gastado')
+
+    if empresa_filtro in ['ZISA', 'FBCOL']:
+        query = query.filter_by(empresa=empresa_filtro)
+    
+    # Aplicar filtros de fecha...
+    # ... (la misma lógica de fechas que en tu ruta 'reporte_consumo') ...
+
+    registros_consumidos = query.order_by(RegistroZisa.fecha_carga.desc()).all()
+    total_consumido_filtrado = sum(r.bbl_descargados for r in registros_consumidos)
+
+    # --- PASO 2: RENDERIZAMOS UNA PLANTILLA HTML ESPECIAL PARA EL PDF ---
+    # No es la página web completa, solo el contenido del reporte.
+    html_para_pdf = render_template('reporte_pdf_template.html',
+                                    registros=registros_consumidos,
+                                    total_consumido=total_consumido_filtrado,
+                                    empresa=empresa_filtro or "Todas",
+                                    fecha_inicio=fecha_inicio_str,
+                                    fecha_fin=fecha_fin_str)
+    
+    # --- PASO 3: USAMOS WEASYPRINT PARA CONVERTIR EL HTML A PDF ---
+    pdf = HTML(string=html_para_pdf).write_pdf()
+
+    # --- PASO 4: DEVOLVEMOS EL PDF COMO UNA DESCARGA ---
+    return Response(pdf,
+                    mimetype='application/pdf',
+                    headers={'Content-Disposition': 'attachment;filename=reporte_consumo.pdf'})
 
 
 @app.route('/')
@@ -1616,7 +1951,7 @@ def home():
         return redirect(url_for('home_logistica'))
 
     # Redirección para el área de Inventario SIZA
-    if 'siza_inventory' in user_areas and len(user_areas) == 1:
+    if 'zisa_inventory' in user_areas and len(user_areas) == 1:
         return redirect(url_for('home_siza'))
 
     # Todos los demás usuarios (o con múltiples permisos) van al dashboard general.
@@ -1752,110 +2087,6 @@ def planilla_precios():
     return render_template('planilla_precios.html',
                            planilla=fuente_de_datos,
                            nombre=session.get("nombre"))
-
-@login_required
-@permiso_requerido('siza_inventory')
-@app.route('/inventario_siza')
-def inventario_siza():
-    """Muestra el estado actual del inventario de SIZA, desglosado por planilla/lote."""
-    
-    # Consultamos todos los lotes que AÚN tienen inventario
-    inventario_activo = db.session.query(RegistroInventarioSiza).filter(
-        RegistroInventarioSiza.bls_actuales > 0
-    ).order_by(RegistroInventarioSiza.timestamp.asc()).all()
-
-    # Calculamos los totales para una vista resumida
-    totales_por_tk = {}
-    for lote in inventario_activo:
-        totales_por_tk.setdefault(lote.tk, {'total_bls': 0, 'producto': lote.producto})
-        totales_por_tk[lote.tk]['total_bls'] += lote.bls_actuales
-        
-    return render_template("inventario_siza.html", 
-                           inventario_desglosado=inventario_activo,
-                           inventario_totalizado=totales_por_tk,
-                           nombre=session.get("nombre"))
-
-
-@login_required
-@permiso_requerido('siza_inventory')
-@app.route('/siza/registrar_entrada', methods=['POST'])
-def registrar_entrada_siza():
-    """Registra la llegada de una nueva planilla (lote) al inventario."""
-    try:
-        datos = request.get_json()
-        fuente_planilla = datos.get('fuente_planilla')
-        entradas = datos.get('entradas') # Debe ser una lista de {'tk': 'TK-XXX', 'bls': 1000, 'api': 15, 'bsw': 0.5}
-
-        if not fuente_planilla or not isinstance(entradas, list):
-            return jsonify(success=False, message="Datos incompletos o en formato incorrecto."), 400
-
-        for entrada in entradas:
-            if not entrada.get('tk') or not float(entrada.get('bls', 0)) > 0:
-                continue # Ignorar filas sin tanque o sin volumen
-
-            nuevo_lote = RegistroInventarioSiza(
-                usuario=session.get("nombre", "No identificado"),
-                fuente_planilla=fuente_planilla,
-                tk=entrada['tk'],
-                producto=entrada.get('producto', 'CRUDO SIZA'), # Puedes poner un valor por defecto
-                bls_iniciales=float(entrada['bls']),
-                bls_actuales=float(entrada['bls']), # Al inicio, el actual es igual al inicial
-                api=float(entrada.get('api')) if entrada.get('api') else None,
-                bsw=float(entrada.get('bsw')) if entrada.get('bsw') else None,
-            )
-            db.session.add(nuevo_lote)
-        
-        db.session.commit()
-        flash("Nueva planilla registrada exitosamente.", "success")
-        return jsonify(success=True, message="Entrada registrada.")
-
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error al registrar entrada en Siza: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
-
-@login_required
-@permiso_requerido('siza_inventory')
-@app.route('/siza/registrar_consumo', methods=['POST'])
-def registrar_consumo_siza():
-    """Registra una salida de inventario, consumiendo los lotes más antiguos primero (FIFO)."""
-    try:
-        datos = request.get_json()
-        tk_consumo = datos.get('tk')
-        bls_a_consumir = float(datos.get('bls', 0))
-
-        if not tk_consumo or bls_a_consumir <= 0:
-            return jsonify(success=False, message="Debe especificar un tanque y una cantidad válida."), 400
-
-        # 1. Obtener todos los lotes para ese tanque, del más viejo al más nuevo
-        lotes_disponibles = db.session.query(RegistroInventarioSiza).filter(
-            RegistroInventarioSiza.tk == tk_consumo,
-            RegistroInventarioSiza.bls_actuales > 0
-        ).order_by(RegistroInventarioSiza.timestamp.asc()).all()
-
-        # 2. Verificar si hay suficiente inventario
-        total_disponible = sum(lote.bls_actuales for lote in lotes_disponibles)
-        if bls_a_consumir > total_disponible:
-            return jsonify(success=False, message=f"No hay suficiente inventario. Disponible: {total_disponible:,.2f} BLS."), 400
-
-        # 3. Aplicar la lógica FIFO
-        restante_por_consumir = bls_a_consumir
-        for lote in lotes_disponibles:
-            if restante_por_consumir <= 0:
-                break
-
-            consumo_de_lote = min(lote.bls_actuales, restante_por_consumir)
-            lote.bls_actuales -= consumo_de_lote
-            restante_por_consumir -= consumo_de_lote
-        
-        db.session.commit()
-        flash(f"Consumo de {bls_a_consumir:,.2f} BLS del tanque {tk_consumo} registrado.", "success")
-        return jsonify(success=True, message="Consumo registrado exitosamente.")
-
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Error al registrar consumo en Siza: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
 
 def cargar_conductores():
     """Función auxiliar para cargar conductores desde Conductores.json de forma segura."""

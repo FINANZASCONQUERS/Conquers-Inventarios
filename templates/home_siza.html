@@ -1,9 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Inicio - Inventario SIZA{% endblock %}
+{% block title %}Inicio - Logística{% endblock %}
 
 {% block extra_css %}
-{# Reutilizamos exactamente el mismo estilo de la otra página de bienvenida #}
 <style>
     :root {
         --welcome-primary: #0b8552;
@@ -85,7 +84,7 @@
         margin: 1.5rem auto;
         font-size: 1.1rem;
         line-height: 1.6;
-        max-width: 85%; /* Ajustado para el nuevo texto */
+        max-width: 80%;
     }
     
     .btn-start {
@@ -155,17 +154,17 @@
             <div class="col-lg-8">
                 <div class="welcome-card animate__animated animate__fadeInUp">
                     <div class="welcome-icon animate-float">
-                        <i class="bi bi-clipboard-data-fill"></i>
+                        <i class="bi bi-file-earmark-arrow-up-fill"></i>
                     </div>
                     <h1 class="welcome-title">¡Bienvenid@, {{ session.get('nombre', 'Usuario') }}!</h1>
                     <p class="welcome-text">
-                        Estás en el módulo de Inventario SIZA. Tu tarea principal es registrar
-                        las nuevas planillas (entradas) y los consumos (salidas) para un control preciso del stock.
+                        Estás en el módulo de Inventario SIZA. Tu tarea principal es <strong>cargar la planilla de Inventario SIZA</strong>
+                        desde un archivo Excel para mantener el inventario actualizado.
                     </p>
-                    <a href="{{ url_for('inventario_siza') }}" class="btn btn-start">
-                        <i class="bi bi-list-check me-2"></i>Gestionar Inventario SIZA
+                    <a href="{{ url_for('inventario_zisa') }}" class="btn btn-primary btn-start">
+                        <i class="bi bi-file-earmark-spreadsheet-fill me-2"></i>Ir al Inventario SIZA
                     </a>
-               </div>
+                </div>
             </div>
         </div>
     </div>

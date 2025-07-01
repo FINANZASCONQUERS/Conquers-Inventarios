@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Consumo</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            line-height: 1.4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #0d6efd;
+            border-bottom: 2px solid #0d6efd;
+            padding-bottom: 10px;
+        }
+        .info-header {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 12px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        thead {
+            background-color: #f2f2f2;
+            color: #333;
+        }
+        tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .total-row td {
+            font-weight: bold;
+            font-size: 14px;
+            background-color: #e9ecef;
+        }
+        .text-end {
+            text-align: right;
+        }
+        .badge {
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+        }
+        .bg-primary { background-color: #0d6efd; }
+        .bg-success { background-color: #198754; }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Consumo de Inventario</h1>
+    
+    <div class="info-header">
+        <strong>Filtros Aplicados:</strong><br>
+        Empresa: <strong>{{ empresa }}</strong> |
+        Fecha Inicio: <strong>{{ fecha_inicio or 'N/A' }}</strong> |
+        Fecha Fin: <strong>{{ fecha_fin or 'N/A' }}</strong>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Fecha Consumo</th>
+                <th>N° S.A.E</th>
+                <th>Empresa</th>
+                <th>Carrotanque</th>
+                <th>Producto</th>
+                <th class="text-end">BBL Consumidos</th>
+                <th>Usuario Original</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+            <tr>
+                <td>{{ registro.fecha_carga.strftime('%d/%m/%Y') }}</td>
+                <td><strong>{{ registro.numero_sae | int }}</strong></td>
+                <td><span class="badge {% if registro.empresa == 'ZISA' %}bg-primary{% else %}bg-success{% endif %}">{{ registro.empresa }}</span></td>
+                <td>{{ registro.carrotanque }}</td>
+                <td>{{ registro.producto }}</td>
+                <td class="text-end">{{ "%.2f"|format(registro.bbl_descargados) }}</td>
+                <td>{{ registro.usuario_carga }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align:center; padding: 20px;">No se encontraron registros con los filtros seleccionados.</td>
+            </tr>
+            {% endfor %}
+            <tr class="total-row">
+                <td colspan="5" class="text-end"><strong>TOTAL CONSUMIDO</strong></td>
+                <td class="text-end">{{ "%.2f"|format(total_consumido) }}</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
