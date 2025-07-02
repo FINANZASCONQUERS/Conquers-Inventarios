@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Barcaza Orion</title>
+    <style>
+        body { font-family: sans-serif; font-size: 10px; }
+        h1 { color: #333; text-align: center; }
+        h2 { color: #0b8552; border-bottom: 2px solid #0b8552; padding-bottom: 5px; margin-top: 25px;}
+        p { color: #555; text-align: center; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .header-main th { background-color: #0b8552; color: white; }
+        .summary-table { margin-top: 10px; width: 60%; }
+        .summary-table td { font-weight: bold; }
+        .total-consolidado { margin-top: 30px; background-color: #e8f5e9; padding: 15px; border: 1px solid #0b8552;}
+    </style>
+</head>
+<body>
+    <h1>Reporte de Inventario - Barcaza Orion</h1>
+    <p>Datos correspondientes a: <strong>{{ fecha_reporte }}</strong></p>
+
+    {% for nombre_barcaza, data in datos_agrupados.items() %}
+    <h2>{{ nombre_barcaza }}</h2>
+    <table>
+        <thead class="header-main">
+            <tr>
+                <th>Tanque (TK)</th>
+                <th>Producto</th>
+                <th>Capacidad Máx.</th>
+                <th>BLS @60°F</th>
+                <th>API</th>
+                <th>%BSW</th>
+                <th>%S</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tanque in data.tanques %}
+            <tr>
+                <td>{{ tanque.TK }}</td>
+                <td>{{ tanque.PRODUCTO }}</td>
+                <td>{{ "%.2f"|format(tanque.MAX_CAP | default(0)) }}</td>
+                <td>{{ "%.2f"|format(tanque.BLS_60 | default(0)) }}</td>
+                <td>{{ "%.2f"|format(tanque.API | default(0)) }}</td>
+                <td>{{ "%.2f"|format(tanque.BSW | default(0)) }}</td>
+                <td>{{ "%.2f"|format(tanque.S | default(0)) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <table class="summary-table">
+        <tr>
+            <td>Total BLS @60°F:</td>
+            <td>{{ "%.2f"|format(data.totales.total_bls | default(0)) }}</td>
+        </tr>
+        <tr>
+            <td>Promedio Ponderado API:</td>
+            <td>{{ "%.2f"|format(data.totales.prom_api | default(0)) }}</td>
+        </tr>
+    </table>
+    {% endfor %}
+
+    <div class="total-consolidado">
+        <h2>Total Consolidado de la Operación</h2>
+        <table class="summary-table">
+             <tr>
+                <td>Total BLS @60°F:</td>
+                <td>{{ "%.2f"|format(total_consolidado.total_bls | default(0)) }}</td>
+            </tr>
+            <tr>
+                <td>Promedio Ponderado API:</td>
+                <td>{{ "%.2f"|format(total_consolidado.prom_api | default(0)) }}</td>
+            </tr>
+            <tr>
+                <td>Promedio Ponderado %BSW:</td>
+                <td>{{ "%.4f"|format(total_consolidado.prom_bsw | default(0)) }}</td>
+            </tr>
+             <tr>
+                <td>Promedio Ponderado %S:</td>
+                <td>{{ "%.4f"|format(total_consolidado.prom_s | default(0)) }}</td>
+            </tr>
+        </table>
+    </div>
+
+</body>
+</html>

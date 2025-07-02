@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Consolidado de Tránsito</title>
+    <style>
+        @page { size: letter landscape; margin: 1.5cm; }
+        body { font-family: sans-serif; font-size: 9px; }
+        h1 { color: #333; text-align: center; }
+        h2 { color: #0b8552; border-bottom: 2px solid #0b8552; padding-bottom: 5px; margin-top: 20px;}
+        p { color: #555; text-align: center; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
+        .header-main th { background-color: #0b8552; color: white; text-align: center; }
+        .group-header td { background-color: #e8f5e9; font-weight: bold; }
+        .obs-list { padding-left: 15px; margin: 0; }
+    </style>
+</head>
+<body>
+    <h1>Reporte Consolidado de Tránsito</h1>
+    <p>Reporte generado el: <strong>{{ fecha_reporte }}</strong></p>
+
+    {% for tipo_destino, origenes in datos_consolidados.items() %}
+    <h2>Destino: {{ tipo_destino }}</h2>
+    <table class="main-table">
+        <thead class="header-main">
+            <tr>
+                <th>Origen</th>
+                <th>Producto</th>
+                <th>Total NSV (Barriles)</th>
+                <th>N° de Viajes</th>
+                <th>Observaciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for origen, productos in origenes.items() %}
+                {% for producto, total_nsv in productos.items() %}
+                <tr>
+                    <td>{{ origen }}</td>
+                    <td>{{ producto }}</td>
+                    <td style="text-align: right;">{{ "%.2f"|format(total_nsv) }}</td>
+                    <td style="text-align: center;">{{ datos_conteo_camiones[tipo_destino][origen][producto] }}</td>
+                    <td>
+                        {% set lista_obs = observaciones_camiones.get(tipo_destino, {}).get(origen, {}).get(producto, []) %}
+                        {% if lista_obs %}
+                            <ul class="obs-list">
+                            {% for obs in lista_obs %}
+                                <li>{{ obs }}</li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+
+</body>
+</html>

@@ -28,10 +28,12 @@
                 </button>
                 <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSubirExcel">
                     <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Subir Excel
-                    </button>
+                </button>
                 <a href="{{ url_for('reporte_transito') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
                 </a>
+                <div class="btn-group ms-3">
+</div>
             </div>
             <div class="btn-group ms-2" role="group">
                  <button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
@@ -103,7 +105,6 @@
     </div>
 </div>
 
-<!-- Modal para Nuevo Origen -->
 <div class="modal fade" id="modalNuevoOrigen" tabindex="-1" aria-labelledby="modalNuevoOrigenLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -126,32 +127,29 @@
     </div>
   </div>
 </div>
-
-<!-- Modal para Nuevo Producto -->
 <div class="modal fade" id="modalNuevoProducto" tabindex="-1" aria-labelledby="modalNuevoProductoLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalNuevoProductoLabel">Añadir Nuevo Producto</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p>Añadir producto para el origen: <strong id="origenAsociadoTexto"></strong></p>
-        <form id="formNuevoProducto" onsubmit="event.preventDefault(); guardarNuevoProducto();">
-          <div class="mb-3">
-            <label for="inputNuevoProducto" class="form-label">Nombre del Nuevo Producto:</label>
-            <input type="text" class="form-control" id="inputNuevoProducto" required>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnGuardarNuevoProducto" onclick="guardarNuevoProducto()">Guardar Producto</button>
-      </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalNuevoProductoLabel">Añadir Nuevo Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Añadir producto para el origen: <strong id="origenAsociadoTexto"></strong></p>
+                <form id="formNuevoProducto" onsubmit="event.preventDefault(); guardarNuevoProducto();">
+                    <div class="mb-3">
+                        <label for="inputNuevoProducto" class="form-label">Nombre del Nuevo Producto:</label>
+                        <input type="text" class="form-control" id="inputNuevoProducto" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnGuardarNuevoProducto" onclick="guardarNuevoProducto()">Guardar Producto</button>
+            </div>
+        </div>
     </div>
-    </div>
-    <!-- Modal para Subir Excel (fuera de cualquier otro modal) -->
-    <div class="modal fade" id="modalSubirExcel" tabindex="-1" aria-labelledby="modalExcelLabel" aria-hidden="true">
+</div> <div class="modal fade" id="modalSubirExcel" tabindex="-1" aria-labelledby="modalExcelLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -179,165 +177,268 @@
         </div>
     </div>
 </div>
-
 <style>
-    /* Estilo del título principal, como en la página de Planta */
-    .page-title-text {
-        color: #343a40;
-        font-weight: 600;
-    }
-    .page-title-icon {
-        color: #0b8552;
-        font-size: 1.2em;
-        margin-right: 0.75rem;
-        vertical-align: text-bottom;
-    }
-    
-    /* Estilo del encabezado de la tabla, como en Planta */
-    .table-header-custom th {
-        background-color: #0b8552 !important;
-        color: white;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        padding: 0.9rem;
-        vertical-align: middle;
-    }
-    
-    .table tbody td {
-        vertical-align: middle;
-    }
-
-    /* Estilos para los inputs y selects */
-    .cell-input-wrapper {
-        padding: 0.25rem 0.5rem !important;
-    }
-
-    .cell-input-wrapper .form-control,
-    .cell-input-wrapper .form-select {
-        font-size: 0.9rem;
-        padding: 0.5rem;
-        border-color: #e0e5ec;
-        background-color: #fef9e7;
-        transition: all 0.2s ease-in-out;
-    }
-    .cell-input-wrapper .form-control:focus,
-    .cell-input-wrapper .form-select:focus {
-        background-color: #fffde7;
-        border-color: #0b8552;
-        box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.15);
-        outline: none;
-    }
-    .cell-input-wrapper .form-control:disabled,
-    .cell-input-wrapper .form-select:disabled {
-        background-color: #e9ecef !important;
-        cursor: not-allowed;
-    }
-    
-    /* Estilos para los botones de añadir */
-    .btn-add-item {
-        min-width: 30px;
-        padding: 0.25rem;
-    }
-    
-    /* Estilos para los contenedores flex de selects + botones */
-    .select-with-btn-container {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-    
-    .aviso-hora-limite {
-        padding: 1rem;
-        border-left: 4px solid #ffc107;
-    }
+/* ... (Todo tu CSS existente va aquí) ... */
+.page-title-text {
+    color: #343a40;
+    font-weight: 600;
+}
+.page-title-icon {
+    color: #0b8552;
+    font-size: 1.2em;
+    margin-right: 0.75rem;
+    vertical-align: text-bottom;
+}
+.table-header-custom th {
+    background-color: #0b8552 !important;
+    color: white;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 0.9rem;
+    vertical-align: middle;
+}
+.table tbody td {
+    vertical-align: middle;
+}
+.cell-input-wrapper {
+    padding: 0.25rem 0.5rem !important;
+}
+.cell-input-wrapper .form-control,
+.cell-input-wrapper .form-select {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+    border-color: #e0e5ec;
+    background-color: #fef9e7;
+    transition: all 0.2s ease-in-out;
+}
+.cell-input-wrapper .form-control:focus,
+.cell-input-wrapper .form-select:focus {
+    background-color: #fffde7;
+    border-color: #0b8552;
+    box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.15);
+    outline: none;
+}
+.cell-input-wrapper .form-control:disabled,
+.cell-input-wrapper .form-select:disabled {
+    background-color: #e9ecef !important;
+    cursor: not-allowed;
+}
+.btn-add-item {
+    min-width: 30px;
+    padding: 0.25rem;
+}
+.select-with-btn-container {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+.aviso-hora-limite {
+    padding: 1rem;
+    border-left: 4px solid #ffc107;
+}
 </style>
 
 <script>
-    // --- Variables globales ---
     let datosGeneralInit = {{ datos_general | default([]) | tojson | safe }};
     let datosRefineriaInit = {{ datos_refineria | default([]) | tojson | safe }};
     const transitoConfig = {{ transito_config | default({}) | tojson | safe }};
+    const VISTA_ESTADO = '{{ vista_estado | default("En Tránsito") }}'; // Variable clave para saber la vista actual
     
     let vistaActual = '{{ tipo_inicial | default("general") }}';
     let currentData = []; 
     let edicionTransitoPermitida = true;
-    const HORA_LIMITE_REGISTRO_TRANSITO = 10;
     let FilaActivaParaAnadirItem = null;
     let modalNuevoOrigen = null;
     let modalNuevoProducto = null;
+    let modalSubirExcel = null;
 
-    // Elementos del DOM
-    const tipoTransitoVisualSpan = document.getElementById("tipoTransitoVisual");
-    const toggleNombreVistaSpan = document.getElementById("toggleNombreVista");
-    const tablaTransitoBody = document.getElementById("tablaTransitoBody");
-    const btnGuardarTransito = document.getElementById('btnGuardarTransito');
-    const btnAnadirFilaTransito = document.getElementById('btnAnadirFilaTransito');
-    const avisoHoraLimiteContainer = document.getElementById('avisoHoraLimiteContainer');
-
-    // --- Lógica para el filtro tipo Excel ---
+    // --- Lógica principal que se ejecuta cuando la página ha cargado ---
     document.addEventListener('DOMContentLoaded', function() {
+        // 1. Inicializar todos los modales
+        modalNuevoOrigen = new bootstrap.Modal(document.getElementById('modalNuevoOrigen'));
+        modalNuevoProducto = new bootstrap.Modal(document.getElementById('modalNuevoProducto'));
+        modalSubirExcel = new bootstrap.Modal(document.getElementById('modalSubirExcel'));
+
+        // 2. Asignar eventos de clic
+        const btnProcesarExcel = document.getElementById('btnProcesarExcel');
+        if (btnProcesarExcel) {
+            btnProcesarExcel.addEventListener('click', procesarArchivoExcel);
+        }
+
+        // 3. Lógica para los filtros de la tabla
         const filterInputs = document.querySelectorAll('.excel-filter');
-        const tableBody = document.getElementById('tablaTransitoBody');
+        filterInputs.forEach(input => {
+            input.addEventListener('keyup', aplicarFiltros);
+        });
+
+        // 4. Cargar el estado inicial de la tabla
+        renderTabla();
+    });
+
+    // ===================================================================
+    // NUEVA LÓGICA PARA MANEJAR EL CAMBIO DE ESTADO
+    // ===================================================================
+
+    function crearTdAccion(tr, index) {
+        const td = crearTdGenerico(tr);
+        const registroId = currentData[index]?.id;
+
+        // Si la fila no tiene ID (es una fila nueva), no se muestra ningún botón de acción.
+        if (!registroId) {
+            tr.appendChild(td);
+            return;
+        }
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.disabled = !edicionTransitoPermitida;
+
+        // El botón cambia según la vista actual
+        if (VISTA_ESTADO === 'En Tránsito') {
+            button.className = "btn btn-outline-success btn-sm";
+            button.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+            button.title = "Marcar como Descargado";
+            button.onclick = () => marcarEstado(registroId, index, 'Descargado');
+        } else { // Si la vista es 'Descargado'
+            button.className = "btn btn-outline-info btn-sm";
+            button.innerHTML = '<i class="bi bi-arrow-counterclockwise"></i>';
+            button.title = "Reactivar a En Tránsito";
+            button.onclick = () => marcarEstado(registroId, index, 'En Tránsito');
+        }
         
+        td.appendChild(button);
+        tr.appendChild(td);
+    }
+    
+    function marcarEstado(registroId, indexFila, nuevoEstado) {
+        const accionUrl = nuevoEstado === 'Descargado' ? 'marcar-descargado' : 'marcar-en-transito';
+        const confirmacionMsg = nuevoEstado === 'Descargado'
+            ? "¿Está seguro que desea marcar este viaje como 'Descargado'? Desaparecerá de esta vista."
+            : "¿Está seguro que desea reactivar este viaje a 'En Tránsito'? Desaparecerá de esta vista.";
 
-        const applyFilters = () => {
-            const rows = tableBody.querySelectorAll('tr');
-            const activeFilters = Array.from(filterInputs).map(input => ({
-                value: input.value.toUpperCase(),
-                index: parseInt(input.getAttribute('data-column-index'), 10)
-            })).filter(filter => filter.value !== '');
+        if (!confirm(confirmacionMsg)) return;
 
-            rows.forEach(row => {
-                let shouldShow = true;
-                const cells = row.querySelectorAll('td');
+        fetch(`/${accionUrl}/${registroId}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, "success");
+                // Quita la fila de la vista actual porque su estado cambió
+                currentData.splice(indexFila, 1); 
+                redibujarTabla(); // Redibuja la tabla para reflejar el cambio
+            } else {
+                throw new Error(data.message || "Error al actualizar el estado");
+            }
+        })
+        .catch(error => mostrarAlerta(`Error: ${error.message}`, "danger"));
+    }
+    
+    // ===================================================================
+    // EL RESTO DE FUNCIONES (AJUSTADAS Y UNIFICADAS)
+    // ===================================================================
 
-                for (const filter of activeFilters) {
-                    if (cells.length > filter.index) {
-                        const cellElement = cells[filter.index].querySelector('input, select, textarea');
-                        const cellContent = (cellElement ? cellElement.value : cells[filter.index].textContent).toUpperCase();
-                        
-                        if (!cellContent.includes(filter.value)) {
-                            shouldShow = false;
-                            break;
-                        }
-                    } else {
+    function redibujarTabla() {
+        const tablaTransitoBody = document.getElementById('tablaTransitoBody');
+        tablaTransitoBody.innerHTML = "";
+        currentData.forEach((fila, index) => {
+            const tr = document.createElement("tr");
+            tr.dataset.index = index;
+            crearTdFecha(tr, fila, "FECHA");
+            crearTdInputAlfanumerico(tr, fila, "GUIA");
+            crearTdOrigen(tr, fila, "ORIGEN");
+            crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]);
+            crearTdInputAlfanumerico(tr, fila, "PLACA");
+            crearTdInputNumerico(tr, fila, 'API');
+            crearTdInputNumerico(tr, fila, 'BSW');
+            crearTdInputNumerico(tr, fila, 'NSV');
+            crearTdTextArea(tr, fila, "OBSERVACIONES");
+            // --- CAMBIO: Se llama a la nueva función de acción ---
+            crearTdAccion(tr, index); 
+        });
+    }
+
+    // (Aquí van todas tus otras funciones sin cambios: 
+    // procesarArchivoExcel, aplicarFiltros, abrirModalNuevoOrigen, guardarNuevoOrigen,
+    // clonarDatosIniciales, renderTabla, crearTdGenerico, y todas las de `crearTd...`)
+    // ...
+    // Asegúrate de que todas tus funciones auxiliares estén aquí.
+    // ...
+    function procesarArchivoExcel() {
+        const form = document.getElementById('formSubirExcel');
+        const fileInput = document.getElementById('archivo_excel');
+        const btn = document.getElementById('btnProcesarExcel');
+        if (!fileInput.files || !fileInput.files.length) {
+            mostrarAlerta("Por favor, seleccione un archivo Excel.", "warning");
+            return;
+        }
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+        const formData = new FormData(form);
+        fetch('/subir_excel_transito', {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || 'Error desconocido del servidor'); });
+            }
+            return response.json();
+        }).then(data => {
+            if (data.success) {
+                mostrarAlerta(data.message, "success");
+                modalSubirExcel.hide();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                throw new Error(data.message || "Ocurrió un error al procesar el archivo.");
+            }
+        }).catch(error => {
+            mostrarAlerta(`Error: ${error.message}`, "danger");
+        }).finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = 'Procesar Archivo';
+        });
+    }
+
+    // --- EL RESTO DE TUS FUNCIONES (SIN CAMBIOS) ---
+    // (Pega aquí el resto de tus funciones como aplicarFiltros, guardarNuevoOrigen, redibujarTabla, etc.)
+    function aplicarFiltros() {
+        const tableBody = document.getElementById('tablaTransitoBody');
+        const filterInputs = document.querySelectorAll('.excel-filter');
+        const rows = tableBody.querySelectorAll('tr');
+        const activeFilters = Array.from(filterInputs).map(input => ({
+            value: input.value.toUpperCase(),
+            index: parseInt(input.getAttribute('data-column-index'), 10)
+        })).filter(filter => filter.value !== '');
+
+        rows.forEach(row => {
+            let shouldShow = true;
+            const cells = row.querySelectorAll('td');
+
+            for (const filter of activeFilters) {
+                if (cells.length > filter.index) {
+                    const cellElement = cells[filter.index].querySelector('input, select, textarea');
+                    const cellContent = (cellElement ? cellElement.value : cells[filter.index].textContent).toUpperCase();
+                    
+                    if (!cellContent.includes(filter.value)) {
                         shouldShow = false;
                         break;
                     }
+                } else {
+                    shouldShow = false;
+                    break;
                 }
-                row.style.display = shouldShow ? '' : 'none';
-            });
-        };
-
-        filterInputs.forEach(input => {
-            input.addEventListener('keyup', applyFilters);
+            }
+            row.style.display = shouldShow ? '' : 'none';
         });
+    }
 
-        // Inicializar modales de Bootstrap
-        modalNuevoOrigen = new bootstrap.Modal(document.getElementById('modalNuevoOrigen'));
-        modalNuevoProducto = new bootstrap.Modal(document.getElementById('modalNuevoProducto'));
-        
-        const estadoRecuperado = cargarEstadoDesdeSesion();
-        if (estadoRecuperado) {
-            // Si hay datos en la memoria, los cargamos
-            vistaActual = estadoRecuperado.vista;
-            currentData = estadoRecuperado.datos;
-            mostrarAlerta("Se recuperaron los cambios no guardados de tu sesión anterior.", "info");
-            actualizarTextosDeVista();
-            redibujarTabla();
-        } else {
-            // Si no hay nada, cargamos desde cero como antes
-            vistaActual = '{{ tipo_inicial | default("general") }}';
-            renderTabla();
-        }
-        
-        // Esta función se ejecuta en ambos casos
-        verificarEstadoEdicion();
-    });
-
-    // --- Funciones para añadir orígenes y productos ---
     function abrirModalNuevoOrigen(rowIndex) {
         if (!edicionTransitoPermitida) {
             mostrarAlerta("No se pueden añadir orígenes. Los registros están cerrados.", "warning");
@@ -353,112 +454,66 @@
             mostrarAlerta("No se pueden añadir productos. Los registros están cerrados.", "warning");
             return;
         }
-        
         const fila = currentData[rowIndex];
         if (!fila.ORIGEN) {
             mostrarAlerta("Por favor, seleccione un origen primero.", "warning");
             return;
         }
-        
         FilaActivaParaAnadirItem = rowIndex;
         document.getElementById('inputNuevoProducto').value = '';
         document.getElementById('origenAsociadoTexto').textContent = fila.ORIGEN;
         modalNuevoProducto.show();
     }
-    const modalSubirExcel = new bootstrap.Modal(document.getElementById('modalSubirExcel'));
-
-    document.getElementById('btnProcesarExcel').addEventListener('click', function() {
-    const form = document.getElementById('formSubirExcel');
-    const fileInput = document.getElementById('archivo_excel');
-    const btn = this;
     
-    if (!fileInput.files.length) {
-        mostrarAlerta("Por favor seleccione un archivo Excel.", "warning");
-        return;
-    }
-
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
-
-    const formData = new FormData(form);
-    
-    fetch('/subir_excel_transito', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            mostrarAlerta(data.message, "success");
-            // Recargar los datos después de 1.5 segundos
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            throw new Error(data.message || "Error al procesar el archivo");
-        }
-    })
-    .catch(error => {
-        mostrarAlerta(`Error: ${error.message}`, "danger");
-        console.error("Error:", error);
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = 'Procesar Archivo';
-        modalSubirExcel.hide();
-    });
-});
-
     function guardarNuevoOrigen() {
         const input = document.getElementById('inputNuevoOrigen');
         const nuevoOrigenNombre = input.value.trim().toUpperCase();
         const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";
-        
         if (!nuevoOrigenNombre) {
             mostrarAlerta("El nombre del origen no puede estar vacío.", "warning");
             return;
         }
-        
         const btn = document.getElementById('btnGuardarNuevoOrigen');
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
-
         fetch('/api/add-origen', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-            body: JSON.stringify({ origen_nombre: nuevoOrigenNombre, tipo_planilla: tipoPlanilla })
-        })
-        .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
-        .then(({ ok, status, data }) => {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                origen_nombre: nuevoOrigenNombre,
+                tipo_planilla: tipoPlanilla
+            })
+        }).then(res => res.json().then(data => ({
+            ok: res.ok,
+            status: res.status,
+            data
+        }))).then(({
+            ok,
+            status,
+            data
+        }) => {
             if (!ok) throw new Error(data.message || `Error del servidor (${status})`);
-            
-            // Éxito: Actualizar configuración local y redibujar
-            transitoConfig[tipoPlanilla].campos[nuevoOrigenNombre] = { productos: [], auto_select_product: "" };
+            transitoConfig[tipoPlanilla].campos[nuevoOrigenNombre] = {
+                productos: [],
+                auto_select_product: ""
+            };
             mostrarAlerta("Origen guardado con éxito.", "success");
             modalNuevoOrigen.hide();
-            
             if (FilaActivaParaAnadirItem !== null) {
                 currentData[FilaActivaParaAnadirItem].ORIGEN = nuevoOrigenNombre;
-                currentData[FilaActivaParaAnadirItem].PRODUCTO = ""; // Limpiar producto
+                currentData[FilaActivaParaAnadirItem].PRODUCTO = "";
             }
-            redibujarTabla(); // Redibuja toda la tabla con la nueva opción
-        })
-        .catch(error => {
+            redibujarTabla();
+        }).catch(error => {
             if (error.message.includes("SESSION_EXPIRED")) {
                 window.location.reload();
             } else {
                 mostrarAlerta(`Error: ${error.message}`, "danger");
             }
-        })
-        .finally(() => {
+        }).finally(() => {
             btn.disabled = false;
             btn.innerHTML = 'Guardar Origen';
         });
@@ -469,30 +524,34 @@
         const nuevoProductoNombre = inputProducto.value.trim();
         const origenAsociado = document.getElementById('origenAsociadoTexto').textContent;
         const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";
-
         if (!nuevoProductoNombre) {
             mostrarAlerta("El nombre del producto no puede estar vacío.", "warning");
             return;
         }
-
         const btn = document.getElementById('btnGuardarNuevoProducto');
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
-
         fetch('/api/add-producto', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
-            body: JSON.stringify({ 
-                origen_nombre: origenAsociado, 
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                origen_nombre: origenAsociado,
                 producto_nombre: nuevoProductoNombre,
-                tipo_planilla: tipoPlanilla 
+                tipo_planilla: tipoPlanilla
             })
-        })
-        .then(res => res.json().then(data => ({ ok: res.ok, status: res.status, data })))
-        .then(({ ok, status, data }) => {
+        }).then(res => res.json().then(data => ({
+            ok: res.ok,
+            status: res.status,
+            data
+        }))).then(({
+            ok,
+            status,
+            data
+        }) => {
             if (!ok) throw new Error(data.message || `Error del servidor (${status})`);
-            
-            // Actualizar configuración local
             if (!transitoConfig[tipoPlanilla].campos[origenAsociado]) {
                 transitoConfig[tipoPlanilla].campos[origenAsociado] = {
                     productos: [],
@@ -500,81 +559,70 @@
                 };
             }
             transitoConfig[tipoPlanilla].campos[origenAsociado].productos.push(nuevoProductoNombre);
-            
             mostrarAlerta("Producto guardado con éxito.", "success");
             modalNuevoProducto.hide();
-
             if (FilaActivaParaAnadirItem !== null) {
                 currentData[FilaActivaParaAnadirItem].PRODUCTO = nuevoProductoNombre;
             }
-            redibujarTabla(); // Redibuja toda la tabla con la nueva opción
-        })
-        .catch(error => {
-             if (error.message.includes("SESSION_EXPIRED")) {
+            redibujarTabla();
+        }).catch(error => {
+            if (error.message.includes("SESSION_EXPIRED")) {
                 window.location.reload();
             } else {
                 mostrarAlerta(`Error: ${error.message}`, "danger");
             }
-        })
-        .finally(() => {
+        }).finally(() => {
             btn.disabled = false;
             btn.innerHTML = 'Guardar Producto';
         });
     }
 
-    // --- Funciones principales ---
-
     function clonarDatosIniciales(datosOriginales) {
-    const MIN_FILAS = 10;
-    let datosValidos = Array.isArray(datosOriginales) ? datosOriginales : [];
-    
-    // Hacemos una copia profunda de los datos recibidos del servidor
-    let datosClonados = JSON.parse(JSON.stringify(datosValidos));
-    
-    // Añade filas vacías solo si el historial actual es menor a 10
-    while (datosClonados.length < MIN_FILAS) {
-        datosClonados.push({
-            id: null, // El id es null porque es una fila nueva, no guardada
-            FECHA: "", GUIA: "", ORIGEN: "", PRODUCTO: "", 
-            PLACA: "", API: "", BSW: "", NSV: "", OBSERVACIONES: ""
-        });
+        const MIN_FILAS = 10;
+        let datosValidos = Array.isArray(datosOriginales) ? datosOriginales : [];
+        let datosClonados = JSON.parse(JSON.stringify(datosValidos));
+        while (datosClonados.length < MIN_FILAS) {
+            datosClonados.push({
+                id: null,
+                FECHA: "",
+                GUIA: "",
+                ORIGEN: "",
+                PRODUCTO: "",
+                PLACA: "",
+                API: "",
+                BSW: "",
+                NSV: "",
+                OBSERVACIONES: ""
+            });
+        }
+        return datosClonados;
     }
-    
-    return datosClonados;
-}
 
     function redibujarTabla() {
+        const tablaTransitoBody = document.getElementById('tablaTransitoBody');
         tablaTransitoBody.innerHTML = "";
-
         currentData.forEach((fila, index) => {
             const tr = document.createElement("tr");
             tr.dataset.index = index;
-            
             crearTdFecha(tr, fila, "FECHA");
             crearTdInputAlfanumerico(tr, fila, "GUIA");
-            crearTdOrigen(tr, fila, "ORIGEN"); 
-            crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]); 
+            crearTdOrigen(tr, fila, "ORIGEN");
+            crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]);
             crearTdInputAlfanumerico(tr, fila, "PLACA");
             crearTdInputNumerico(tr, fila, 'API');
             crearTdInputNumerico(tr, fila, 'BSW');
             crearTdInputNumerico(tr, fila, 'NSV');
             crearTdTextArea(tr, fila, "OBSERVACIONES");
             crearTdBotonEliminar(tr, index);
-            
             tablaTransitoBody.appendChild(tr);
         });
-        
         verificarEstadoEdicion();
     }
 
     function renderTabla() {
-        currentData = vistaActual === "general" 
-            ? clonarDatosIniciales(datosGeneralInit) 
-            : clonarDatosIniciales(datosRefineriaInit);
+        currentData = vistaActual === "general" ? clonarDatosIniciales(datosGeneralInit) : clonarDatosIniciales(datosRefineriaInit);
         redibujarTabla();
     }
-
-    // --- Funciones auxiliares para crear celdas ---
 
     function crearTdGenerico(tr) {
         const td = document.createElement("td");
@@ -599,7 +647,7 @@
         const td = crearTdGenerico(tr);
         td.classList.add("ps-3");
         const input = document.createElement("input");
-        input.type = "date"; 
+        input.type = "date";
         input.className = "form-control form-control-sm";
         let fechaValor = fila[campoKey] || "";
         if (fechaValor && fechaValor.includes('/')) {
@@ -630,15 +678,18 @@
     function crearTdInputNumerico(tr, fila, campoKey) {
         const td = crearTdGenerico(tr);
         const input = document.createElement("input");
-        input.type = "text"; 
+        input.type = "text";
         input.className = "form-control form-control-sm text-center";
-        input.setAttribute('inputmode', 'decimal'); 
-        input.value = String(fila[campoKey] || "").replace('.', ','); 
+        input.setAttribute('inputmode', 'decimal');
+        input.value = String(fila[campoKey] || "").replace('.', ',');
         input.dataset.field = campoKey;
         input.disabled = !edicionTransitoPermitida;
         input.addEventListener("change", actualizarDatoFila);
         input.addEventListener('keydown', function(event) {
-            if (!edicionTransitoPermitida) { event.preventDefault(); return; }
+            if (!edicionTransitoPermitida) {
+                event.preventDefault();
+                return;
+            }
             const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", ".", ","];
             if (allowedKeys.includes(event.key)) {
                 if ((event.key === '.' || event.key === ',') && (input.value.includes(',') || input.value.includes('.'))) {
@@ -646,8 +697,12 @@
                 }
                 return;
             }
-            if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) { return; }
-            if (!(event.key >= '0' && event.key <= '9')) { event.preventDefault(); }
+            if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) {
+                return;
+            }
+            if (!(event.key >= '0' && event.key <= '9')) {
+                event.preventDefault();
+            }
         });
         td.appendChild(input);
     }
@@ -656,16 +711,13 @@
         const td = crearTdGenerico(tr);
         const divContenedor = document.createElement("div");
         divContenedor.className = "select-with-btn-container";
-        
         const select = document.createElement("select");
         select.className = "form-select form-select-sm";
         select.dataset.field = campoKey;
         select.disabled = !edicionTransitoPermitida;
-        
         const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
         const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;
-        const origenesDisponibles = configParaTipoActual?.campos ? Object.keys(configParaTipoActual.campos).sort() : [];
-        
+        const origenesDisponibles = configParaTipoActual ?.campos ? Object.keys(configParaTipoActual.campos).sort() : [];
         select.innerHTML = '<option value="">Seleccione Origen...</option>';
         origenesDisponibles.forEach(nombreOrigen => {
             const option = document.createElement("option");
@@ -674,18 +726,15 @@
             select.appendChild(option);
         });
         select.value = fila[campoKey] || "";
-        
         select.addEventListener("change", function(event) {
             const rowIndex = parseInt(event.target.closest("tr").dataset.index, 10);
             const nuevoOrigen = event.target.value;
             currentData[rowIndex][campoKey] = nuevoOrigen;
-            
             const productoSelectElement = event.target.closest("tr").querySelector('select[data-field="PRODUCTO"]');
             if (productoSelectElement) {
-                const origenConfig = configParaTipoActual?.campos?.[nuevoOrigen];
-                const productos = origenConfig?.productos || [];
-                const autoProducto = origenConfig?.auto_select_product || "";
-                
+                const origenConfig = configParaTipoActual ?.campos ?.[nuevoOrigen];
+                const productos = origenConfig ?.productos || [];
+                const autoProducto = origenConfig ?.auto_select_product || "";
                 productoSelectElement.innerHTML = '<option value="">Seleccione Producto...</option>';
                 productos.forEach(prod => {
                     const opt = document.createElement("option");
@@ -697,7 +746,6 @@
                 currentData[rowIndex]["PRODUCTO"] = autoProducto;
             }
         });
-        
         const btnAdd = document.createElement("button");
         btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";
         btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';
@@ -706,29 +754,24 @@
         btnAdd.onclick = function() {
             abrirModalNuevoOrigen(parseInt(tr.dataset.index, 10));
         };
-        
         divContenedor.appendChild(select);
         divContenedor.appendChild(btnAdd);
         td.appendChild(divContenedor);
     }
-    
+
     function crearTdProducto(tr, fila, campoKey, origenSeleccionado) {
         const td = crearTdGenerico(tr);
         const divContenedor = document.createElement("div");
         divContenedor.className = "select-with-btn-container";
-        
         const select = document.createElement("select");
         select.className = "form-select form-select-sm";
         select.dataset.field = campoKey;
         select.disabled = !edicionTransitoPermitida;
-        
         select.innerHTML = '<option value="">Seleccione Producto...</option>';
-        
         if (origenSeleccionado) {
             const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
             const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;
-            const origenConfig = configParaTipoActual?.campos?.[origenSeleccionado];
-            
+            const origenConfig = configParaTipoActual ?.campos ?.[origenSeleccionado];
             if (origenConfig && origenConfig.productos) {
                 origenConfig.productos.forEach(prod => {
                     const option = document.createElement("option");
@@ -739,9 +782,7 @@
                 select.value = fila[campoKey] || origenConfig.auto_select_product || "";
             }
         }
-        
         select.addEventListener("change", actualizarDatoFila);
-        
         const btnAdd = document.createElement("button");
         btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";
         btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';
@@ -750,54 +791,48 @@
         btnAdd.onclick = function() {
             abrirModalNuevoProducto(parseInt(tr.dataset.index, 10));
         };
-        
         divContenedor.appendChild(select);
         divContenedor.appendChild(btnAdd);
         td.appendChild(divContenedor);
     }
 
     function crearTdBotonEliminar(tr, index) {
-    const td = document.createElement("td");
-    td.classList.add("text-center", "align-middle");
-    const button = document.createElement("button");
-    button.className = "btn btn-outline-danger btn-sm";
-    button.innerHTML = '<i class="bi bi-trash"></i>';
-    button.type = "button";
-    button.disabled = !edicionTransitoPermitida;
-
-    button.onclick = function() {
-        if (!edicionTransitoPermitida) return;
-        
-        // Obtenemos el ID del registro de la base de datos.
-        // Si no tiene ID (es una fila nueva sin guardar), simplemente la borra de la vista.
-        const registroId = currentData[index].id;
-        
-        if (registroId) {
-            // Si tiene ID, llama a la función para borrarla del servidor
-            eliminarFilaEnServidor(registroId, index);
-        } else {
-            // Si no tiene ID, es una fila nueva, solo se borra de la vista
-            if (currentData.length > 1) { 
-                currentData.splice(index, 1);
-                guardarEstadoEnSesion();
-                redibujarTabla(); 
+        const td = document.createElement("td");
+        td.classList.add("text-center", "align-middle");
+        const button = document.createElement("button");
+        button.className = "btn btn-outline-danger btn-sm";
+        button.innerHTML = '<i class="bi bi-trash"></i>';
+        button.type = "button";
+        button.disabled = !edicionTransitoPermitida;
+        button.onclick = function() {
+            if (!edicionTransitoPermitida) return;
+            const registroId = currentData[index].id;
+            if (registroId) {
+                eliminarFilaEnServidor(registroId, index);
             } else {
-                mostrarAlerta("Debe haber al menos una fila.", "warning");
+                if (currentData.length > 1) {
+                    currentData.splice(index, 1);
+                    guardarEstadoEnSesion();
+                    redibujarTabla();
+                } else {
+                    mostrarAlerta("Debe haber al menos una fila.", "warning");
+                }
             }
-        }
-    };
-    td.appendChild(button);
-    tr.appendChild(td);
-}
+        };
+        td.appendChild(button);
+        tr.appendChild(td);
+    }
 
     function actualizarDatoFila(event) {
         const element = event.target;
         const field = element.dataset.field;
         const index = parseInt(element.closest("tr").dataset.index, 10);
-        let value = element.value; 
-        if (element.type === "date") { /* No hacer trim a fechas */ } 
-        else if (element.getAttribute('inputmode') === 'decimal') { value = value.replace(',', '.'); } 
-        else { value = value.trim(); }
+        let value = element.value;
+        if (element.type === "date") {} else if (element.getAttribute('inputmode') === 'decimal') {
+            value = value.replace(',', '.');
+        } else {
+            value = value.trim();
+        }
         if (currentData && currentData[index] !== undefined) {
             currentData[index][field] = value;
         }
@@ -810,162 +845,153 @@
             return;
         }
         const nuevaFilaVacia = {
-            FECHA: "", GUIA: "", ORIGEN: "", PRODUCTO: "", 
-            PLACA: "", API: "", BSW: "", NSV: "", OBSERVACIONES: ""
+            FECHA: "",
+            GUIA: "",
+            ORIGEN: "",
+            PRODUCTO: "",
+            PLACA: "",
+            API: "",
+            BSW: "",
+            NSV: "",
+            OBSERVACIONES: ""
         };
         currentData.push(nuevaFilaVacia);
         guardarEstadoEnSesion();
         redibujarTabla();
     }
-    
+
     function guardarRegistro() {
-    if (!edicionTransitoPermitida) {
-        mostrarAlerta(`Los registros están cerrados.`, "warning");
-        return;
-    }
-    const btn = document.getElementById('btnGuardarTransito');
-    btn.disabled = true;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
-
-    // Filtra para enviar solo las filas que el usuario ha llenado
-    const datosAEnviar = currentData.filter(fila => fila.GUIA && fila.GUIA.trim() !== "");
-
-    if (datosAEnviar.length === 0) {
-        mostrarAlerta("No hay datos nuevos o modificados para guardar.", "warning");
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
-        return;
-    }
-
-    fetch(`/guardar-registro-transito-${vistaActual}`, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        body: JSON.stringify(datosAEnviar)
-    })
-    .then(res => res.json().then(data => ({ ok: res.ok, data })))
-    .then(({ ok, data }) => {
-        if (!ok) throw new Error(data.message || "Error del servidor");
-
-        mostrarAlerta(data.message, "success");
-        limpiarEstadoDeSesion(); 
-        
-        // Actualiza los datos base con la respuesta COMPLETA del servidor
-        const historialCompleto = data.datos;
-        
-        if (vistaActual === 'general') {
-            datosGeneralInit = historialCompleto;
-        } else {
-            datosRefineriaInit = historialCompleto;
+        if (!edicionTransitoPermitida) {
+            mostrarAlerta(`Los registros están cerrados.`, "warning");
+            return;
         }
-        // Vuelve a renderizar la tabla con todo el historial fresco
-        renderTabla(); 
-    })
-    .catch(error => {
-        console.error("Error al guardar:", error);
-        mostrarAlerta(`Error: ${error.message}`, "danger"); 
-    })
-    .finally(() => {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
-    });
-}
-
-function eliminarFilaEnServidor(registroId, indexFila) {
-    if (!confirm("¿Está seguro que desea eliminar este registro permanentemente?")) {
-        return;
-    }
-
-    const btnEliminar = document.querySelector(`tr[data-index="${indexFila}"] .btn-outline-danger`);
-    if (btnEliminar) {
-        btnEliminar.disabled = true;
-        btnEliminar.innerHTML = '<i class="bi bi-hourglass"></i>';
-    }
-
-    fetch(`/eliminar-registro-transito/${registroId}`, {
-        method: 'DELETE',
-        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor');
+        const btn = document.getElementById('btnGuardarTransito');
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
+        const datosAEnviar = currentData.filter(fila => fila.GUIA && fila.GUIA.trim() !== "");
+        if (datosAEnviar.length === 0) {
+            mostrarAlerta("No hay datos nuevos o modificados para guardar.", "warning");
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
+            return;
         }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            // Eliminar la fila del array currentData
-            currentData.splice(indexFila, 1);
-            
-            // Si estamos viendo datos iniciales, actualizamos también el dataset correspondiente
-            if (vistaActual === "general") {
-                datosGeneralInit = datosGeneralInit.filter(item => item.id !== registroId);
-            } else {
-                datosRefineriaInit = datosRefineriaInit.filter(item => item.id !== registroId);
-            }
-            
+        fetch(`/guardar-registro-transito-${vistaActual}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: JSON.stringify(datosAEnviar)
+        }).then(res => res.json().then(data => ({
+            ok: res.ok,
+            data
+        }))).then(({
+            ok,
+            data
+        }) => {
+            if (!ok) throw new Error(data.message || "Error del servidor");
             mostrarAlerta(data.message, "success");
-            guardarEstadoEnSesion();
-            redibujarTabla();
-        } else {
-            throw new Error(data.message || "Error al eliminar");
+            limpiarEstadoDeSesion();
+            const historialCompleto = data.datos;
+            if (vistaActual === 'general') {
+                datosGeneralInit = historialCompleto;
+            } else {
+                datosRefineriaInit = historialCompleto;
+            }
+            renderTabla();
+        }).catch(error => {
+            console.error("Error al guardar:", error);
+            mostrarAlerta(`Error: ${error.message}`, "danger");
+        }).finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
+        });
+    }
+
+    function eliminarFilaEnServidor(registroId, indexFila) {
+        if (!confirm("¿Está seguro que desea eliminar este registro permanentemente?")) {
+            return;
         }
-    })
-    .catch(error => {
-        console.error("Error al eliminar:", error);
-        mostrarAlerta(`Error al eliminar: ${error.message}`, "danger");
-    })
-    .finally(() => {
+        const btnEliminar = document.querySelector(`tr[data-index="${indexFila}"] .btn-outline-danger`);
         if (btnEliminar) {
-            btnEliminar.disabled = false;
-            btnEliminar.innerHTML = '<i class="bi bi-trash"></i>';
+            btnEliminar.disabled = true;
+            btnEliminar.innerHTML = '<i class="bi bi-hourglass"></i>';
         }
-    });
-}
+        fetch(`/eliminar-registro-transito/${registroId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        }).then(response => {
+            if (!response.ok) {
+                throw new Error('Error en la respuesta del servidor');
+            }
+            return response.json();
+        }).then(data => {
+            if (data.success) {
+                currentData.splice(indexFila, 1);
+                if (vistaActual === "general") {
+                    datosGeneralInit = datosGeneralInit.filter(item => item.id !== registroId);
+                } else {
+                    datosRefineriaInit = datosRefineriaInit.filter(item => item.id !== registroId);
+                }
+                mostrarAlerta(data.message, "success");
+                guardarEstadoEnSesion();
+                redibujarTabla();
+            } else {
+                throw new Error(data.message || "Error al eliminar");
+            }
+        }).catch(error => {
+            console.error("Error al eliminar:", error);
+            mostrarAlerta(`Error al eliminar: ${error.message}`, "danger");
+        }).finally(() => {
+            if (btnEliminar) {
+                btnEliminar.disabled = false;
+                btnEliminar.innerHTML = '<i class="bi bi-trash"></i>';
+            }
+        });
+    }
 
     function guardarEstadoEnSesion() {
-    // Guarda tanto la vista actual como los datos en un solo objeto
-    const estado = {
-        vista: vistaActual,
-        datos: currentData
-    };
-    sessionStorage.setItem('estadoTransito', JSON.stringify(estado));
-}
-
-function cargarEstadoDesdeSesion() {
-    const estadoGuardado = sessionStorage.getItem('estadoTransito');
-    if (estadoGuardado) {
-        // Si hay datos guardados, los devuelve
-        return JSON.parse(estadoGuardado);
+        const estado = {
+            vista: vistaActual,
+            datos: currentData
+        };
+        sessionStorage.setItem('estadoTransito', JSON.stringify(estado));
     }
-    // Si no hay nada, devuelve null
-    return null;
-}
 
-function limpiarEstadoDeSesion() {
-    // Elimina la memoria temporal
-    sessionStorage.removeItem('estadoTransito');
-}
+    function cargarEstadoDesdeSesion() {
+        const estadoGuardado = sessionStorage.getItem('estadoTransito');
+        if (estadoGuardado) {
+            return JSON.parse(estadoGuardado);
+        }
+        return null;
+    }
 
-    // --- Funciones de vista y estado ---
+    function limpiarEstadoDeSesion() {
+        sessionStorage.removeItem('estadoTransito');
+    }
 
     function actualizarTextosDeVista() {
+        const tipoTransitoVisualSpan = document.getElementById("tipoTransitoVisual");
+        const toggleNombreVistaSpan = document.getElementById("toggleNombreVista");
         const tipoConfigActualKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
         const tipoConfigOtraKey = vistaActual === "general" ? "REFINERIA" : "EDSM";
         const configActual = transitoConfig ? transitoConfig[tipoConfigActualKey] : null;
         const configOtra = transitoConfig ? transitoConfig[tipoConfigOtraKey] : null;
         if (tipoTransitoVisualSpan) {
-            tipoTransitoVisualSpan.textContent = configActual?.nombre_display || (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");
+            tipoTransitoVisualSpan.textContent = configActual ?.nombre_display || (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");
         }
         if (toggleNombreVistaSpan) {
-            toggleNombreVistaSpan.textContent = configOtra?.nombre_display || (vistaActual === "general" ? "Refinería" : "EDSM");
+            toggleNombreVistaSpan.textContent = configOtra ?.nombre_display || (vistaActual === "general" ? "Refinería" : "EDSM");
         }
     }
 
     function cambiarVista() {
         vistaActual = vistaActual === "general" ? "refineria" : "general";
-        guardarEstadoEnSesion(); 
+        guardarEstadoEnSesion();
         actualizarTextosDeVista();
-        renderTabla(); 
+        renderTabla();
     }
 
     function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
@@ -979,17 +1005,14 @@ function limpiarEstadoDeSesion() {
         if (alertElement) {
             setTimeout(() => {
                 const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
-                if (bsAlert) { bsAlert.close(); }
+                if (bsAlert) {
+                    bsAlert.close();
+                }
             }, duracion);
         }
     }
 
-    function verificarEstadoEdicion() {
-        // La lógica de restricción por hora sigue comentada como en tu ejemplo.
-        // Si la descomentas, funcionará como antes.
-    }
-
-    
+    function verificarEstadoEdicion() {}
 
 </script>
 {% endblock %}

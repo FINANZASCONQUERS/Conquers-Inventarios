@@ -15,6 +15,8 @@ import pandas as pd
 from flask import g
 from flask import Response
 from weasyprint import HTML, CSS
+import math
+from sqlalchemy import or_ 
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -124,9 +126,12 @@ class RegistroTransito(db.Model):
     # Columna para saber si es 'general' (EDSM) o 'refineria'
     tipo_transito = db.Column(db.String(50), nullable=False)
 
-    # El resto de las columnas de tu planilla
+    # --- NUEVA COLUMNA DE ESTADO ---
+    estado = db.Column(db.String(50), nullable=False, default='En Tránsito')
+
+    # El resto de las columnas se mantienen igual
     origen = db.Column(db.String(100))
-    fecha = db.Column(db.String(50)) # Guardamos la fecha del cargue como texto
+    fecha = db.Column(db.String(50)) 
     guia = db.Column(db.String(100))
     producto = db.Column(db.String(100))
     placa = db.Column(db.String(50))
@@ -160,7 +165,20 @@ class RegistroZisa(db.Model):
     estado = db.Column(db.String(50), default='Disponible', nullable=False)
 
     def __repr__(self):
-        return f'<RegistroZisa id={self.id} carrotanque={self.carrotanque}>'    
+        return f'<RegistroZisa id={self.id} carrotanque={self.carrotanque}>'  
+
+class DefinicionCrudo(db.Model):
+    __tablename__ = 'definiciones_crudo'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    api = db.Column(db.Float)
+    sulfur = db.Column(db.Float, nullable=True)      
+    viscosity = db.Column(db.Float, nullable=True)    
+    curva_json = db.Column(db.Text, nullable=False)
+
+    def __repr__(self):
+        return f'<DefinicionCrudo {self.nombre}>'
     
 
     
@@ -216,14 +234,14 @@ USUARIOS = {
     "password": generate_password_hash("Conquers2025"),
     "nombre": "Omar Morales",
     "rol": "viewer",
-    "area": ["reportes", "planilla_precios"]
+    "area": ["reportes", "planilla_precios", "simulador_rendimiento"]
 },
 
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "David Restrepo",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento"] 
     },
 
     "finance@conquerstrading.com": {
@@ -233,12 +251,12 @@ USUARIOS = {
         "area": ["reportes", "planilla_precios"] 
     },
     
-    # Ignacio (Editor): Solo acceso a Planta.
+    # Ignacio (Editor): Solo acceso a Planta y Rendimientos
     "production@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta"] # Corregido: ya no tiene acceso a tránsito.
+        "area": ["planta", "simulador_rendimiento"] 
     },
     # Juliana (Editor): Tiene acceso a Tránsito y a Generar Guía.
     "ops@conquerstrading.com": {
@@ -539,10 +557,12 @@ def calcular_estadisticas(lista_tanques):
 @permiso_requerido('transito')
 @app.route('/transito')
 def transito():
-    # Iniciamos la consulta base
-    query = db.session.query(RegistroTransito)
 
-    # Leemos todos los posibles filtros desde la URL
+    vista_estado = request.args.get('vista_estado', 'En Tránsito')
+    # --- CAMBIO CLAVE: La consulta base ahora solo busca registros 'En Tránsito' ---
+    query_base = db.session.query(RegistroTransito).filter(RegistroTransito.estado == 'En Tránsito')
+
+    # Leemos todos los posibles filtros desde la URL (esto no cambia)
     filtros = {
         'fecha': request.args.get('fecha_cargue'),
         'guia': request.args.get('guia'),
@@ -551,24 +571,30 @@ def transito():
         'placa': request.args.get('placa')
     }
 
-    # Aplicamos los filtros a la consulta solo si tienen un valor
-    if filtros['fecha']:
-        query = query.filter(RegistroTransito.fecha == filtros['fecha'])
-    if filtros['guia']:
-        query = query.filter(RegistroTransito.guia.ilike(f"%{filtros['guia']}%"))
-    if filtros['origen']:
-        query = query.filter(RegistroTransito.origen == filtros['origen'])
-    if filtros['producto']:
-        query = query.filter(RegistroTransito.producto == filtros['producto'])
-    if filtros['placa']:
-        query = query.filter(RegistroTransito.placa.ilike(f"%{filtros['placa']}%"))
+    # Función auxiliar para aplicar los filtros de la URL
+    def aplicar_filtros_a_query(query):
+        if filtros['fecha']:
+            query = query.filter(RegistroTransito.fecha == filtros['fecha'])
+        if filtros['guia']:
+            query = query.filter(RegistroTransito.guia.ilike(f"%{filtros['guia']}%"))
+        if filtros['origen']:
+            query = query.filter(RegistroTransito.origen == filtros['origen'])
+        if filtros['producto']:
+            query = query.filter(RegistroTransito.producto == filtros['producto'])
+        if filtros['placa']:
+            query = query.filter(RegistroTransito.placa.ilike(f"%{filtros['placa']}%"))
+        return query
 
-    # Ejecutamos la consulta final
-    todos_los_registros = query.order_by(RegistroTransito.timestamp.desc()).all()
+    # Aplicamos los filtros de la URL a las consultas separadas
+    query_general = query_base.filter(RegistroTransito.tipo_transito == 'general')
+    registros_general = aplicar_filtros_a_query(query_general).order_by(RegistroTransito.timestamp.desc()).all()
 
-    # Separamos los resultados y los convertimos a diccionario
-    datos_general = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'general']
-    datos_refineria = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'refineria']
+    query_refineria = query_base.filter(RegistroTransito.tipo_transito == 'refineria')
+    registros_refineria = aplicar_filtros_a_query(query_refineria).order_by(RegistroTransito.timestamp.desc()).all()
+
+    # Convertimos los resultados a diccionario (esto no cambia)
+    datos_general = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in registros_general]
+    datos_refineria = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in registros_refineria]
 
     return render_template("transito.html",
                            nombre=session.get("nombre"),
@@ -576,8 +602,36 @@ def transito():
                            datos_refineria=datos_refineria,
                            tipo_inicial="general",
                            transito_config=cargar_transito_config(),
-                           # Pasamos los filtros de vuelta para que se muestren en los campos
                            filtros=filtros)
+
+@login_required
+@app.route('/marcar-descargado/<int:registro_id>', methods=['POST'])
+def marcar_descargado(registro_id):
+    try:
+        registro = db.session.query(RegistroTransito).get(registro_id)
+        if registro:
+            registro.estado = 'Descargado'
+            db.session.commit()
+            return jsonify(success=True, message="Registro marcado como 'Descargado'.")
+        return jsonify(success=False, message="Registro no encontrado."), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@login_required
+@app.route('/marcar-en-transito/<int:registro_id>', methods=['POST'])
+def marcar_en_transito(registro_id):
+    try:
+        registro = db.session.query(RegistroTransito).get(registro_id)
+        if registro:
+            registro.estado = 'En Tránsito'
+            db.session.commit()
+            return jsonify(success=True, message="Registro reactivado a 'En Tránsito'.")
+        return jsonify(success=False, message="Registro no encontrado."), 404
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+    
 @login_required
 @app.route('/api/add-origen', methods=['POST'])
 def agregar_origen():
@@ -891,100 +945,98 @@ def guardar_transito(tipo_transito):
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
 @login_required
-@permiso_requerido('transito')
+@permiso_requerido('transito') # <--- LÍNEA CORREGIDA
 @app.route('/subir_excel_transito', methods=['POST'])
 def subir_excel_transito():
+    """
+    Procesa un archivo Excel subido para cargar datos en la planilla de tránsito.
+    """
     if 'archivo_excel' not in request.files:
-        return jsonify({
-            'success': False,
-            'message': "No se encontró el archivo en la solicitud."
-        }), 400
+        return jsonify({'success': False, 'message': "No se encontró el archivo en la solicitud."}), 400
 
     archivo = request.files['archivo_excel']
     tipo_transito = request.form.get('tipo_transito', 'general')
-    sobrescribir = request.form.get('sobrescribirDatos', 'on') == 'on'
+    sobrescribir = request.form.get('sobrescribirDatos') == 'on'
 
     if archivo.filename == '':
-        return jsonify({
-            'success': False,
-            'message': "No se seleccionó ningún archivo."
-        }), 400
+        return jsonify({'success': False, 'message': "No se seleccionó ningún archivo."}), 400
 
     if not archivo.filename.endswith('.xlsx'):
-        return jsonify({
-            'success': False,
-            'message': "Formato de archivo no válido. Por favor, suba un archivo .xlsx"
-        }), 400
+        return jsonify({'success': False, 'message': "Formato no válido. Por favor, suba un archivo .xlsx"}), 400
 
     try:
-        workbook = openpyxl.load_workbook(archivo)
-        sheet = workbook.active
-        
-        datos_del_excel = []
-        for row in sheet.iter_rows(min_row=2, values_only=True):
-            if len(row) < 9: 
-                continue
-
-            datos_fila = {
-                'FECHA': row[0] if row[0] else datetime.now().strftime('%Y-%m-%d'),
-                'GUIA': row[1],
-                'ORIGEN': row[2],
-                'PRODUCTO': row[3],
-                'PLACA': row[4],
-                'API': float(row[5]) if row[5] and str(row[5]).strip() else None,
-                'BSW': float(row[6]) if row[6] and str(row[6]).strip() else None,
-                'NSV': float(row[7]) if row[7] and str(row[7]).strip() else None,
-                'OBSERVACIONES': row[8] if row[8] else ''
-            }
-            
-            if datos_fila.get('GUIA'):
-                datos_del_excel.append(datos_fila)
-
-        if not datos_del_excel:
-            return jsonify({
-                'success': False,
-                'message': "El archivo Excel no contenía datos válidos."
-            }), 400
-        
+        # Si se marca "Sobrescribir", se borran los registros de hoy para esa planilla.
         if sobrescribir:
             today_start = datetime.combine(date.today(), time.min)
             today_end = datetime.combine(date.today(), time.max)
             
-            db.session.query(RegistroTransito).filter(
+            num_borrados = db.session.query(RegistroTransito).filter(
                 RegistroTransito.tipo_transito == tipo_transito,
-                RegistroTransito.timestamp.between(today_start, today_end)
-            ).delete()
+                RegistroTransito.timestamp >= today_start,
+                RegistroTransito.timestamp <= today_end
+            ).delete(synchronize_session=False)
+            
+            db.session.commit()
+            print(f"Sobrescribiendo: Se eliminaron {num_borrados} registros de hoy para '{tipo_transito}'.")
 
-        for fila in datos_del_excel:
-            nuevo_registro = RegistroTransito(
-                usuario=session.get("nombre", "No identificado"),
-                tipo_transito=tipo_transito,
-                fecha=fila.get('FECHA'),
-                guia=fila.get('GUIA'),
-                origen=fila.get('ORIGEN'),
-                producto=fila.get('PRODUCTO'),
-                placa=fila.get('PLACA'),
-                api=fila.get('API'),
-                bsw=fila.get('BSW'),
-                nsv=fila.get('NSV'),
-                observaciones=fila.get('OBSERVACIONES')
-            )
-            db.session.add(nuevo_registro)
+        workbook = openpyxl.load_workbook(archivo)
+        sheet = workbook.active
         
+        nuevos_registros = []
+        filas_con_error = 0
+        
+        for row_index in range(2, sheet.max_row + 1):
+            row_data = [cell.value for cell in sheet[row_index]]
+            
+            if not any(row_data) or not row_data[1]:
+                continue
+            
+            try:
+                def safe_float(value):
+                    if value is None: return None
+                    return float(str(value).replace(',', '.'))
+
+                fecha = row_data[0]
+                if isinstance(fecha, datetime):
+                    fecha = fecha.strftime('%Y-%m-%d')
+                else:
+                    fecha = str(fecha) if fecha else None
+
+                nuevo_registro = RegistroTransito(
+                    usuario=session.get("nombre", "Carga Excel"),
+                    tipo_transito=tipo_transito,
+                    fecha=fecha,
+                    guia=str(row_data[1]),
+                    origen=str(row_data[2]),
+                    producto=str(row_data[3]),
+                    placa=str(row_data[4]),
+                    api=safe_float(row_data[5]),
+                    bsw=safe_float(row_data[6]),
+                    nsv=safe_float(row_data[7]),
+                    observaciones=str(row_data[8]) if len(row_data) > 8 and row_data[8] else ""
+                )
+                nuevos_registros.append(nuevo_registro)
+            except (ValueError, TypeError, IndexError) as e:
+                filas_con_error += 1
+                app.logger.warning(f"ADVERTENCIA: Saltando fila {row_index} del Excel por error de formato: {e}")
+                continue
+
+        if not nuevos_registros:
+            return jsonify({'success': False, 'message': "No se encontraron registros válidos para cargar en el archivo."}), 400
+        
+        db.session.add_all(nuevos_registros)
         db.session.commit()
         
-        return jsonify({
-            'success': True,
-            'message': f"Se han cargado y guardado {len(datos_del_excel)} registros desde el archivo.",
-            'count': len(datos_del_excel)
-        })
+        message = f"Se han cargado y guardado {len(nuevos_registros)} registros exitosamente."
+        if filas_con_error > 0:
+            message += f" Se saltaron {filas_con_error} filas por errores de formato."
+
+        return jsonify({'success': True, 'message': message})
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({
-            'success': False,
-            'message': f"Error al procesar el archivo Excel: {str(e)}"
-        }), 500
+        app.logger.error(f"Error crítico al procesar el archivo Excel: {e}")
+        return jsonify({'success': False, 'message': f"Error interno del servidor: {str(e)}"}), 500
 
     
 @login_required
@@ -1898,6 +1950,433 @@ def reporte_consumo():
 
 @login_required
 @permiso_requerido('zisa_inventory')
+@app.route('/exportar-inventario-zisa')
+def exportar_inventario_zisa():
+    """
+    Exporta el inventario de ZISA/FBCOL a un archivo Excel con filtros.
+    """
+    # Obtener los filtros desde los argumentos de la URL
+    empresa_filtro = request.args.get('empresa')
+    estado_filtro = request.args.get('estado')
+    
+    query = RegistroZisa.query
+
+    # Aplicar filtros a la consulta si fueron proporcionados
+    if empresa_filtro and empresa_filtro in ['ZISA', 'FBCOL']:
+        query = query.filter_by(empresa=empresa_filtro)
+    
+    if estado_filtro and estado_filtro in ['Disponible', 'Gastado']:
+        query = query.filter_by(estado=estado_filtro)
+
+    # Ejecutar la consulta
+    registros = query.order_by(RegistroZisa.fecha_carga.desc()).all()
+
+    if not registros:
+        flash('No hay datos para exportar con los filtros seleccionados.', 'warning')
+        return redirect(url_for('inventario_zisa'))
+
+    # Preparar los datos para el DataFrame de Pandas
+    datos_para_df = [{
+        'Empresa': r.empresa,
+        'Mes': r.mes,
+        'Carrotanque': r.carrotanque,
+        'Producto': r.producto,
+        'Numero SAE': r.numero_sae,
+        'Acta': r.acta,
+        'BBL Netos': r.bbl_netos,
+        'BBL Descargados/Gastados': r.bbl_descargados,
+        'Estado': r.estado,
+        'Usuario Carga': r.usuario_carga,
+        'Fecha Carga': r.fecha_carga.strftime('%Y-%m-%d %H:%M:%S') if r.fecha_carga else ''
+    } for r in registros]
+
+    df = pd.DataFrame(datos_para_df)
+
+    # Crear el archivo Excel en memoria
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Inventario_ZISA')
+    output.seek(0)
+
+    # Enviar el archivo al usuario para su descarga
+    filename = f"reporte_inventario_zisa_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+@login_required
+@app.route('/exportar-excel/<string:nombre_reporte>')
+def exportar_excel(nombre_reporte):
+    """
+    Exporta los datos del reporte especificado a un archivo Excel con filtros avanzados.
+    """
+    filtro_tipo = request.args.get('filtro_tipo')
+    valor = request.args.get('valor')
+    
+    registros_db = []
+    columnas = []
+    filename = f"reporte_{nombre_reporte}_{valor or 'general'}.xlsx"
+
+    # --- Lógica de filtrado para modelos con `timestamp` (Planta, Orion, Bita) ---
+    if nombre_reporte in ['planta', 'barcaza_orion', 'barcaza_bita']:
+        timestamp_limite = None
+        if valor:
+            try:
+                if filtro_tipo == 'dia':
+                    timestamp_limite = datetime.combine(date.fromisoformat(valor), time.max)
+                elif filtro_tipo == 'mes':
+                    ano, mes = map(int, valor.split('-'))
+                    ultimo_dia = (date(ano, mes, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                    timestamp_limite = datetime.combine(ultimo_dia, time.max)
+                elif filtro_tipo == 'trimestre':
+                    ano_str, q_str = valor.split('-Q')
+                    ano, trimestre = int(ano_str), int(q_str)
+                    mes_fin = trimestre * 3
+                    ultimo_dia = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                    timestamp_limite = datetime.combine(ultimo_dia, time.max)
+                elif filtro_tipo == 'anual':
+                    ano = int(valor)
+                    ultimo_dia = date(ano, 12, 31)
+                    timestamp_limite = datetime.combine(ultimo_dia, time.max)
+            except (ValueError, TypeError):
+                timestamp_limite = datetime.now() # Fallback seguro
+
+        if nombre_reporte == 'planta':
+            subquery_base = db.session.query(RegistroPlanta.tk, func.max(RegistroPlanta.timestamp).label('max_timestamp'))
+            subquery = subquery_base.filter(RegistroPlanta.timestamp <= timestamp_limite).group_by(RegistroPlanta.tk).subquery() if timestamp_limite else subquery_base.group_by(RegistroPlanta.tk).subquery()
+            registros_db = db.session.query(RegistroPlanta).join(subquery, (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)).all()
+            columnas = ["tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
+
+        elif nombre_reporte == 'barcaza_orion':
+            subquery_base = db.session.query(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo, func.max(RegistroBarcazaOrion.timestamp).label('max_timestamp'))
+            subquery = subquery_base.filter(RegistroBarcazaOrion.timestamp <= timestamp_limite).group_by(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).subquery() if timestamp_limite else subquery_base.group_by(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).subquery()
+            registros_db = db.session.query(RegistroBarcazaOrion).join(subquery, (RegistroBarcazaOrion.tk == subquery.c.tk) & (RegistroBarcazaOrion.grupo == subquery.c.grupo) & (RegistroBarcazaOrion.timestamp == subquery.c.max_timestamp)).all()
+            columnas = ["grupo", "tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
+
+        elif nombre_reporte == 'barcaza_bita':
+            subquery_base = db.session.query(RegistroBarcazaBita.tk, func.max(RegistroBarcazaBita.timestamp).label('max_timestamp'))
+            subquery = subquery_base.filter(RegistroBarcazaBita.timestamp <= timestamp_limite).group_by(RegistroBarcazaBita.tk).subquery() if timestamp_limite else subquery_base.group_by(RegistroBarcazaBita.tk).subquery()
+            registros_db = db.session.query(RegistroBarcazaBita).join(subquery, (RegistroBarcazaBita.tk == subquery.c.tk) & (RegistroBarcazaBita.timestamp == subquery.c.max_timestamp)).all()
+            columnas = ["tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
+
+    # --- Lógica de filtrado para Tránsito (usa la columna `fecha` que es texto) ---
+    elif nombre_reporte == 'transito':
+        query = db.session.query(RegistroTransito)
+        if valor:
+            try:
+                if filtro_tipo == 'dia':
+                    query = query.filter(RegistroTransito.fecha == valor)
+                elif filtro_tipo == 'mes':
+                    query = query.filter(RegistroTransito.fecha.like(f"{valor}-%"))
+                elif filtro_tipo == 'trimestre':
+                    ano_str, q_str = valor.split('-Q')
+                    ano, trimestre = int(ano_str), int(q_str)
+                    meses_trimestre = {1: ["01", "02", "03"], 2: ["04", "05", "06"], 3: ["07", "08", "09"], 4: ["10", "11", "12"]}[trimestre]
+                    condiciones = [RegistroTransito.fecha.like(f"{ano}-{m}-%") for m in meses_trimestre]
+                    query = query.filter(or_(*condiciones))
+                elif filtro_tipo == 'anual':
+                    query = query.filter(RegistroTransito.fecha.like(f"{valor}-%"))
+            except (ValueError, TypeError):
+                pass # Si el valor es inválido, no se filtra
+        
+        registros_db = query.order_by(RegistroTransito.fecha.desc()).all()
+        columnas = ["tipo_transito", "fecha", "guia", "origen", "producto", "placa", "nsv", "api", "bsw", "observaciones"]
+
+    if not registros_db:
+        flash("No hay datos para exportar con el filtro seleccionado.", "warning")
+        return redirect(request.referrer or url_for('dashboard_reportes'))
+
+    # Convertir los resultados a una lista de diccionarios
+    registros = [r.__dict__ for r in registros_db]
+    
+    # Crear el DataFrame y el archivo Excel
+    df = pd.DataFrame(registros)
+    # Asegurarse de que solo las columnas deseadas estén en el DataFrame final
+    df = df.reindex(columns=columnas)
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Reporte')
+    output.seek(0)
+
+    # Enviar el archivo para su descarga
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )
+
+@login_required
+@app.route('/descargar-reporte-planta-pdf')
+def descargar_reporte_planta_pdf():
+    # --- La lógica de filtros que ya tienes se mantiene igual ---
+    filtro_tipo = request.args.get('filtro_tipo', 'dia')
+    valor = request.args.get('valor')
+    
+    subquery_base = db.session.query(RegistroPlanta.tk, func.max(RegistroPlanta.timestamp).label('max_timestamp'))
+    fecha_reporte_str = f"General (últimos datos registrados al {date.today().strftime('%d/%m/%Y')})"
+    subquery_filtrada = subquery_base
+
+    if valor:
+        if filtro_tipo == 'dia':
+            fecha_obj = date.fromisoformat(valor)
+            fecha_reporte_str = f"del día {fecha_obj.strftime('%d de %B de %Y')}"
+            subquery_filtrada = subquery_base.filter(RegistroPlanta.timestamp <= datetime.combine(fecha_obj, time.max))
+        # ... (el resto de tu lógica para 'mes', 'trimestre', 'anual' va aquí)
+        elif filtro_tipo == 'mes':
+            ano, mes = map(int, valor.split('-'))
+            fecha_obj = date(ano, mes, 1)
+            fecha_reporte_str = f"del mes de {fecha_obj.strftime('%B de %Y')}"
+            ultimo_dia = (fecha_obj + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            subquery_filtrada = subquery_base.filter(RegistroPlanta.timestamp <= datetime.combine(ultimo_dia, time.max))
+        elif filtro_tipo == 'trimestre':
+            ano_str, q_str = valor.split('-Q')
+            ano = int(ano_str)
+            trimestre = int(q_str)
+            mes_fin = trimestre * 3
+            ultimo_dia_trimestre = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            fecha_reporte_str = f"del Trimestre {trimestre} de {ano}"
+            subquery_filtrada = subquery_base.filter(RegistroPlanta.timestamp <= datetime.combine(ultimo_dia_trimestre, time.max))
+        elif filtro_tipo == 'anual':
+            ano = int(valor)
+            ultimo_dia_ano = date(ano, 12, 31)
+            fecha_reporte_str = f"del Año {ano}"
+            subquery_filtrada = subquery_base.filter(RegistroPlanta.timestamp <= datetime.combine(ultimo_dia_ano, time.max))
+
+
+    subquery = subquery_filtrada.group_by(RegistroPlanta.tk).subquery()
+    registros_db = db.session.query(RegistroPlanta).join(subquery, (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)).all()
+
+    if not registros_db:
+        flash("No hay datos para generar el PDF con el filtro seleccionado.", "warning")
+        return redirect(url_for('reporte_planta'))
+
+    # ======== INICIO DE LA SOLUCIÓN DEFINITIVA ========
+    # Se crea una nueva lista de diccionarios, asegurando que los valores nulos se conviertan en 0.0
+    registros_limpios = []
+    for r in registros_db:
+        registros_limpios.append({
+            'tk': r.tk,
+            'producto': r.producto,
+            'max_cap': r.max_cap or 0.0,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0
+        })
+    # ======== FIN DE LA SOLUCIÓN DEFINITIVA ========
+
+    # Se pasa la lista de datos ya limpios a la plantilla
+    html_para_pdf = render_template('reportes_pdf/planta_pdf.html',
+                                    registros=registros_limpios,
+                                    fecha_reporte=fecha_reporte_str)
+    
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    return Response(pdf,
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment;filename=reporte_planta.pdf'})
+
+@login_required
+@app.route('/descargar-reporte-orion-pdf')
+def descargar_reporte_orion_pdf():
+    # --- La lógica de filtros se mantiene igual ---
+    fecha_str = request.args.get('fecha', date.today().isoformat())
+    try:
+        fecha_seleccionada = date.fromisoformat(fecha_str)
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+
+    # 1. Obtener los datos de la base de datos
+    subquery = (db.session.query(
+        func.max(RegistroBarcazaOrion.id).label('max_id')
+    ).filter(
+        RegistroBarcazaOrion.timestamp <= timestamp_limite
+    ).group_by(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).subquery())
+    registros_recientes = (db.session.query(RegistroBarcazaOrion)
+        .filter(RegistroBarcazaOrion.id.in_(subquery))
+        .all())
+
+    if not registros_recientes:
+        flash("No hay datos de Barcaza Orion para generar el PDF en esa fecha.", "warning")
+        return redirect(url_for('reporte_barcaza'))
+
+    # ======== INICIO DE LA SOLUCIÓN DEFINITIVA ========
+    # 2. LIMPIEZA DE DATOS: Convertir registros a diccionarios y reemplazar None por 0.0
+    todos_los_tanques_lista = []
+    for r in registros_recientes:
+        todos_los_tanques_lista.append({
+            "TK": r.tk,
+            "PRODUCTO": r.producto,
+            "MAX_CAP": r.max_cap or 0.0,
+            "BLS_60": r.bls_60 or 0.0,
+            "API": r.api or 0.0,
+            "BSW": r.bsw or 0.0,
+            "S": r.s or 0.0,
+            "grupo": r.grupo
+        })
+    # ======== FIN DE LA SOLUCIÓN DEFINITIVA ========
+
+    # 3. Agrupar datos y calcular estadísticas (usa la lista ya limpia)
+    datos_agrupados = {}
+    nombres_display = {
+        "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
+        "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
+    }
+    for tanque in todos_los_tanques_lista:
+        grupo_key = tanque.get("grupo")
+        if grupo_key in nombres_display:
+            nombre_barcaza = nombres_display[grupo_key]
+            if nombre_barcaza not in datos_agrupados:
+                datos_agrupados[nombre_barcaza] = {"tanques": []}
+            datos_agrupados[nombre_barcaza]["tanques"].append(tanque)
+    
+    for nombre, data in datos_agrupados.items():
+        data["totales"] = calcular_estadisticas(data["tanques"])
+    
+    total_consolidado = calcular_estadisticas(todos_los_tanques_lista)
+
+    # 4. Renderizar la plantilla HTML del PDF
+    html_para_pdf = render_template('reportes_pdf/orion_pdf.html',
+                                    datos_agrupados=datos_agrupados,
+                                    total_consolidado=total_consolidado,
+                                    fecha_reporte=fecha_seleccionada.strftime('%d de %B de %Y'))
+    
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    return Response(pdf,
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment;filename=reporte_barcaza_orion.pdf'})
+
+@login_required
+@app.route('/descargar-reporte-bita-pdf')
+def descargar_reporte_bita_pdf():
+    # --- Lógica para manejar los filtros avanzados ---
+    filtro_tipo = request.args.get('filtro_tipo')
+    valor = request.args.get('valor')
+    
+    subquery_base = db.session.query(RegistroBarcazaBita.tk, func.max(RegistroBarcazaBita.timestamp).label('max_timestamp'))
+    fecha_reporte_str = "General (últimos datos registrados)"
+    timestamp_limite = None
+
+    if valor:
+        try:
+            if filtro_tipo == 'dia':
+                fecha_obj = date.fromisoformat(valor)
+                fecha_reporte_str = f"del día {fecha_obj.strftime('%d de %B de %Y')}"
+                timestamp_limite = datetime.combine(fecha_obj, time.max)
+            elif filtro_tipo == 'mes':
+                ano, mes = map(int, valor.split('-'))
+                fecha_obj = date(ano, mes, 1)
+                fecha_reporte_str = f"del mes de {fecha_obj.strftime('%B de %Y')}"
+                ultimo_dia = (fecha_obj + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                timestamp_limite = datetime.combine(ultimo_dia, time.max)
+            elif filtro_tipo == 'trimestre':
+                ano_str, q_str = valor.split('-Q')
+                ano, trimestre = int(ano_str), int(q_str)
+                fecha_reporte_str = f"del Trimestre {trimestre} de {ano}"
+                mes_fin = trimestre * 3
+                ultimo_dia = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                timestamp_limite = datetime.combine(ultimo_dia, time.max)
+            elif filtro_tipo == 'anual':
+                ano = int(valor)
+                fecha_reporte_str = f"del Año {ano}"
+                ultimo_dia = date(ano, 12, 31)
+                timestamp_limite = datetime.combine(ultimo_dia, time.max)
+        except (ValueError, TypeError):
+            pass # Si hay un error en el valor, no se aplica el filtro de tiempo
+
+    # Aplicar el filtro de tiempo a la consulta
+    subquery_filtrada = subquery_base.filter(RegistroBarcazaBita.timestamp <= timestamp_limite) if timestamp_limite else subquery_base
+    subquery = subquery_filtrada.group_by(RegistroBarcazaBita.tk).subquery()
+    registros_recientes = db.session.query(RegistroBarcazaBita).join(subquery, (RegistroBarcazaBita.tk == subquery.c.tk) & (RegistroBarcazaBita.timestamp == subquery.c.max_timestamp)).all()
+
+    if not registros_recientes:
+        flash("No hay datos de Barcaza BITA para generar el PDF con el filtro seleccionado.", "warning")
+        return redirect(url_for('reporte_barcaza_bita'))
+
+    # --- Limpieza de datos para prevenir el TypeError ---
+    datos_reporte = [{
+        "TK": r.tk, "PRODUCTO": r.producto,
+        "MAX_CAP": r.max_cap or 0.0,
+        "BLS_60": r.bls_60 or 0.0,
+        "API": r.api or 0.0,
+        "BSW": r.bsw or 0.0,
+        "S": r.s or 0.0
+    } for r in registros_recientes]
+    
+    # Preparar datos y estadísticas con los datos ya limpios
+    total_consolidado = calcular_estadisticas(datos_reporte)
+    tanques_marinse = [tk for tk in datos_reporte if tk.get('TK','').startswith('MARI')]
+    tanques_oidech = [tk for tk in datos_reporte if tk.get('TK','').startswith('OID')]
+    stats_marinse = calcular_estadisticas(tanques_marinse)
+    stats_oidech = calcular_estadisticas(tanques_oidech)
+
+    # Renderizar la plantilla del PDF
+    html_para_pdf = render_template('reportes_pdf/bita_pdf.html',
+                                    tanques_marinse=tanques_marinse,
+                                    stats_marinse=stats_marinse,
+                                    tanques_oidech=tanques_oidech,
+                                    stats_oidech=stats_oidech,
+                                    total_consolidado=total_consolidado,
+                                    fecha_reporte=fecha_reporte_str)
+
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=reporte_barcaza_bita.pdf'})
+
+@login_required
+@app.route('/descargar-reporte-transito-pdf')
+def descargar_reporte_transito_pdf():
+    # 1. Obtener todos los registros de tránsito (la misma lógica que en la página del reporte)
+    todos_los_registros = db.session.query(RegistroTransito).order_by(RegistroTransito.timestamp.desc()).all()
+
+    if not todos_los_registros:
+        flash("No hay datos de Tránsito para generar el PDF.", "warning")
+        return redirect(url_for('reporte_transito'))
+
+    # 2. Consolidar los datos
+    datos_consolidados = {}
+    datos_conteo_camiones = {}
+    observaciones_camiones = {}
+    
+    for reg in todos_los_registros:
+        origen = (reg.origen or "Sin Origen").strip()
+        producto = (reg.producto or "Sin Producto").strip()
+        tipo_destino_reporte = "Refinería" if reg.tipo_transito == "refineria" else "EDSM"
+        nsv = float(reg.nsv or 0.0)
+
+        # Sumar NSV
+        datos_consolidados.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0.0)
+        datos_consolidados[tipo_destino_reporte][origen][producto] += nsv
+        
+        # Contar camiones
+        datos_conteo_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, 0)
+        datos_conteo_camiones[tipo_destino_reporte][origen][producto] += 1
+        
+        # Agrupar observaciones
+        if reg.observaciones and reg.observaciones.strip():
+            texto_completo = f"{(reg.placa or 'S/P')}: {reg.observaciones.strip()}"
+            lista_obs = observaciones_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, [])
+            lista_obs.append(texto_completo)
+
+    # 3. Renderizar la plantilla HTML del PDF
+    html_para_pdf = render_template('reportes_pdf/transito_pdf.html',
+                                    datos_consolidados=datos_consolidados,
+                                    datos_conteo_camiones=datos_conteo_camiones,
+                                    observaciones_camiones=observaciones_camiones,
+                                    fecha_reporte=date.today().strftime('%d de %B de %Y'))
+
+    # 4. Generar y devolver el PDF
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    return Response(pdf,
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment;filename=reporte_transito.pdf'})
+
+@login_required
+@permiso_requerido('zisa_inventory')
 @app.route('/descargar-reporte-pdf')
 def descargar_reporte_pdf():
     # --- PASO 1: REPETIMOS LA MISMA LÓGICA DE FILTRADO DE LA PÁGINA DEL REPORTE ---
@@ -1932,6 +2411,190 @@ def descargar_reporte_pdf():
     return Response(pdf,
                     mimetype='application/pdf',
                     headers={'Content-Disposition': 'attachment;filename=reporte_consumo.pdf'})
+
+@login_required
+@permiso_requerido('simulador_rendimiento')
+@app.route('/simulador_rendimiento')
+def simulador_rendimiento():
+    """
+    Renderiza la página del Simulador de Rendimiento de Crudo.
+    """
+    return render_template('simulador_rendimiento.html', nombre=session.get("nombre"))
+
+@login_required
+@app.route('/api/calcular_rendimiento', methods=['POST'])
+def api_calcular_rendimiento():
+    """
+    Calcula rendimiento, API, azufre y viscosidad de productos.
+    VERSIÓN FINAL Y CORREGIDA.
+    """
+    try:
+        data = request.get_json()
+        puntos_curva = data.get('distillationCurve')
+        puntos_corte = data.get('cutPoints')
+        azufre_crudo = data.get('sulfurCrude') or 0
+        api_crudo = data.get('apiCrude') or 0
+        viscosidad_crudo = data.get('viscosityCrude') or 0
+
+        if not all([puntos_curva, puntos_corte, api_crudo]) or len(puntos_curva) < 2:
+            return jsonify({"success": False, "message": "Datos incompletos."}), 400
+
+        puntos_curva.sort(key=lambda p: p['tempC'])
+
+        def interpolar_porcentaje(temp_objetivo):
+            if not puntos_curva: return 0
+            if temp_objetivo <= puntos_curva[0]['tempC']: return puntos_curva[0]['percent']
+            if temp_objetivo >= puntos_curva[-1]['tempC']: return puntos_curva[-1]['percent']
+            for i in range(len(puntos_curva) - 1):
+                p1, p2 = puntos_curva[i], puntos_curva[i+1]
+                if p1['tempC'] <= temp_objetivo <= p2['tempC']:
+                    if p2['tempC'] == p1['tempC']: return p1['percent']
+                    return p1['percent'] + (temp_objetivo - p1['tempC']) * (p2['percent'] - p1['percent']) / (p2['tempC'] - p1['tempC'])
+            return 100
+
+        # 1. Calcular Rendimientos
+        porc_nafta = interpolar_porcentaje(puntos_corte.get('nafta', 0))
+        porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
+        porc_fo4_acumulado = interpolar_porcentaje(puntos_corte.get('fo4', 0))
+        rendimientos = {
+            "NAFTA": max(0, porc_nafta),
+            "KERO": max(0, porc_kero_acumulado - porc_nafta),
+            "FO4": max(0, porc_fo4_acumulado - porc_kero_acumulado),
+            "FO6": max(0, 100 - porc_fo4_acumulado)
+        }
+        
+        ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
+
+        # 2. Calcular Azufre por Producto
+        azufre_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        if azufre_crudo > 0:
+            FACTORES_AZUFRE = {'NAFTA': 0.05, 'KERO': 0.15, 'FO4': 1.0, 'FO6': 2.5}
+            denominador_k_s = sum(rendimientos[p] * FACTORES_AZUFRE[p] for p in ORDEN_PRODUCTOS if p in rendimientos)
+            if denominador_k_s > 0:
+                k_s = (100 * azufre_crudo) / denominador_k_s
+                for p in azufre_por_producto: azufre_por_producto[p] = round(k_s * FACTORES_AZUFRE.get(p, 0), 4)
+
+        # 3. Calcular API por Producto
+        api_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        API_ESTANDAR = {'NAFTA': 65.0, 'KERO': 45.0, 'FO4': 35.0, 'FO6': 10.0}
+        def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
+        def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
+        sg_crudo_real = api_a_sg(api_crudo)
+        sg_productos_estandar = {p: api_a_sg(api) for p, api in API_ESTANDAR.items()}
+        sg_reconstituido = sum(rendimientos[p] / 100 * sg_productos_estandar[p] for p in ORDEN_PRODUCTOS if rendimientos[p] > 0)
+        factor_ajuste_sg = sg_crudo_real / sg_reconstituido if sg_reconstituido > 0 else 1
+        for p in ORDEN_PRODUCTOS:
+            sg_ajustado = sg_productos_estandar[p] * factor_ajuste_sg
+            api_por_producto[p] = round(sg_a_api(sg_ajustado), 1)
+
+        # 4. Calcular Viscosidad por Producto
+        viscosidad_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        if viscosidad_crudo > 0:
+            VISCOSIDAD_STD = {'NAFTA': 0.8, 'KERO': 2.0, 'FO4': 4.0, 'FO6': 380.0}
+            log_visc_reconstituido = sum(rendimientos[p]/100 * math.log(VISCOSIDAD_STD[p]) for p in ORDEN_PRODUCTOS if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
+            visc_reconstituido = math.exp(log_visc_reconstituido) if log_visc_reconstituido != 0 else 1
+            factor_ajuste_visc = viscosidad_crudo / visc_reconstituido if visc_reconstituido > 0 else 1
+            for p in ORDEN_PRODUCTOS:
+                viscosidad_por_producto[p] = round(VISCOSIDAD_STD[p] * factor_ajuste_visc, 2)
+
+        # 5. Devolver respuesta completa y ordenada
+        return jsonify({
+            "success": True, "order": ORDEN_PRODUCTOS,
+            "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},
+            "sulfur_by_product": {p: azufre_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
+            "api_by_product": {p: api_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
+            "viscosity_by_product": {p: viscosidad_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS}
+        })
+
+    except Exception as e:
+        app.logger.error(f"Error en /api/calcular_rendimiento: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
+
+@login_required
+@app.route('/api/crudos_guardados', methods=['GET'])
+def get_crudos_guardados():
+    """Obtiene la lista de todos los crudos guardados desde la base de datos."""
+    crudos_db = DefinicionCrudo.query.order_by(DefinicionCrudo.nombre).all()
+    
+    if not crudos_db:
+        # Añadimos valores por defecto para los nuevos campos
+        datos_iniciales = {
+            "DOROTEA": {"api": 33.1, "sulfur": 0.197, "viscosity": 5.1, "curva": [{"percent": 5, "tempC": 126.7}, {"percent": 10, "tempC": 160.0}, {"percent": 15, "tempC": 174.4}, {"percent": 20, "tempC": 215.6}, {"percent": 30, "tempC": 260.0}, {"percent": 40, "tempC": 304.4}, {"percent": 50, "tempC": 337.8}, {"percent": 60, "tempC": 351.0}]},
+            "TULIPAN": {"api": 35.0, "sulfur": 0.3, "viscosity": 4.0, "curva": [{"percent": 5, "tempC": 82.2}, {"percent": 10, "tempC": 98.9}, {"percent": 20, "tempC": 124.4}, {"percent": 30, "tempC": 183.3}, {"percent": 40, "tempC": 224.4}, {"percent": 50, "tempC": 260.0}, {"percent": 60, "tempC": 295.6}, {"percent": 70, "tempC": 356.7}]},
+            "INDICO": {"api": 35.0,"sulfur": 0.078, "viscosity": 5.0, "curva": [{"percent": 0, "tempC": 61.6}, {"percent": 5, "tempC": 113.6}, {"percent": 10, "tempC": 138.5}, {"percent": 20, "tempC": 187.0}, {"percent": 30, "tempC": 231.2}, {"percent": 40, "tempC": 265.8}, {"percent": 50, "tempC": 297.8}, {"percent": 60, "tempC": 331.4}, {"percent": 70, "tempC": 380.2}]},
+            "JOROPO": {"api": 28.8, "sulfur": 0.20, "viscosity": 5.0, "curva": [{"percent": 0, "tempC": 143}, {"percent": 5, "tempC": 208.1}, {"percent": 10, "tempC": 235.3}, {"percent": 20, "tempC": 277.8}, {"percent": 30, "tempC": 314.1}, {"percent": 40, "tempC": 342.9}, {"percent": 50, "tempC": 374.0}]},
+            "WTI": {"api": 43.0, "sulfur": 0.103, "viscosity": 2.4, "curva": [{"percent": 5, "tempC": 60.4}, {"percent": 10, "tempC": 84.7}, {"percent": 20, "tempC": 118.6}, {"percent": 30, "tempC": 156.3}, {"percent": 40, "tempC": 207.4}, {"percent": 50, "tempC": 265.0}, {"percent": 60, "tempC": 327.0}, {"percent": 70, "tempC": 398.0}, {"percent": 80, "tempC": 498.0}]}
+        }
+        for nombre, data in datos_iniciales.items():
+            # Añadir los nuevos campos al crear el objeto
+            nuevo_crudo = DefinicionCrudo(
+                nombre=nombre, 
+                api=data['api'], 
+                sulfur=data.get('sulfur'),      # <-- AÑADIDO
+                viscosity=data.get('viscosity'),# <-- AÑADIDO
+                curva_json=json.dumps(data['curva'])
+            )
+            db.session.add(nuevo_crudo)
+        db.session.commit()
+        crudos_db = DefinicionCrudo.query.order_by(DefinicionCrudo.nombre).all()
+
+    crudos_dict = {
+        crudo.nombre: {
+            "api": crudo.api,
+            "sulfur": crudo.sulfur,            # <-- AÑADIDO
+            "viscosity": crudo.viscosity,      # <-- AÑADIDO
+            "curva": json.loads(crudo.curva_json)
+        } for crudo in crudos_db
+    }
+    return jsonify(crudos_dict)
+
+@login_required
+@app.route('/api/crudos_guardados', methods=['POST'])
+def save_crudo():
+    data = request.get_json()
+    nombre_crudo = data.get('nombre')
+    api = data.get('api')
+    sulfur = data.get('sulfur')        # <-- AÑADIDO
+    viscosity = data.get('viscosity')  # <-- AÑADIDO
+    curva = data.get('curva')
+
+    if not nombre_crudo or not curva:
+        return jsonify(success=False, message="El nombre y la curva son obligatorios."), 400
+    
+    crudo_existente = DefinicionCrudo.query.filter_by(nombre=nombre_crudo).first()
+    
+    if crudo_existente:
+        crudo_existente.api = api
+        crudo_existente.sulfur = sulfur      # <-- AÑADIDO
+        crudo_existente.viscosity = viscosity# <-- AÑADIDO
+        crudo_existente.curva_json = json.dumps(curva)
+        msg = f"Crudo '{nombre_crudo}' actualizado."
+    else:
+        nuevo_crudo = DefinicionCrudo(
+            nombre=nombre_crudo, 
+            api=api, 
+            sulfur=sulfur,                # <-- AÑADIDO
+            viscosity=viscosity,          # <-- AÑADIDO
+            curva_json=json.dumps(curva)
+        )
+        db.session.add(nuevo_crudo)
+        msg = f"Crudo '{nombre_crudo}' guardado."
+    
+    db.session.commit()
+    return jsonify(success=True, message=msg)
+
+@login_required
+@app.route('/api/crudos_guardados/<string:nombre_crudo>', methods=['DELETE'])
+def delete_crudo(nombre_crudo):
+    """Elimina un crudo guardado de la base de datos."""
+    crudo_a_eliminar = DefinicionCrudo.query.filter_by(nombre=nombre_crudo).first()
+    
+    if crudo_a_eliminar:
+        db.session.delete(crudo_a_eliminar)
+        db.session.commit()
+        return jsonify(success=True, message=f"Crudo '{nombre_crudo}' eliminado.")
+    else:
+        return jsonify(success=False, message="Crudo no encontrado."), 404
 
 
 @app.route('/')

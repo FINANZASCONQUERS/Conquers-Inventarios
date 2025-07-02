@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Planta</title>
+    <style>
+        body { font-family: sans-serif; }
+        h1 { color: #333; }
+        p { color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #0b8552; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Reporte de Inventario de Planta</h1>
+    <p>Datos correspondientes al día: <strong>{{ fecha_reporte }}</strong></p>
+    <table>
+        <thead>
+            <tr>
+                <th>Tanque (TK)</th>
+                <th>Producto</th>
+                <th>Capacidad Máx.</th>
+                <th>BLS @60°F</th>
+                <th>API</th>
+                <th>%BSW</th>
+                <th>%S</th>
+            </tr>
+        </thead>
+        <tbody>
+    {% for r in registros %}
+    <tr>
+        <td>{{ r.tk }}</td>
+        <td>{{ r.producto }}</td>
+        <td>{{ "%.2f"|format(r.max_cap) }}</td>
+        <td>{{ "%.2f"|format(r.bls_60) }}</td>
+        <td>{{ "%.2f"|format(r.api) }}</td>
+        <td>{{ "%.2f"|format(r.bsw) }}</td>
+        <td>{{ "%.2f"|format(r.s) }}</td>
+    </tr>
+    {% endfor %}
+</tbody>
+    </table>
+</body>
+</html>

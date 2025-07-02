@@ -314,10 +314,62 @@
     <a href="{{ url_for('barcaza_bita') }}" class="btn btn-secondary">
         <i class="bi bi-pencil-square me-2"></i>Volver a Planilla
     </a>
-{% endif %}
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-download me-1"></i> Descargar Reporte
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
+        </ul>
     </div>
 </div>
+
+<div class="modal fade" id="opcionesDescargaModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Seleccione una Opción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="inputDia" class="mb-3" style="display: none;">
+                    <label for="fechaValor" class="form-label"><b>Día:</b></label>
+                    <input type="date" id="fechaValor" class="form-control">
+                </div>
+                <div id="inputMes" class="mb-3" style="display: none;">
+                    <label for="mesValor" class="form-label"><b>Mes:</b></label>
+                    <input type="month" id="mesValor" class="form-control">
+                </div>
+                <div id="inputTrimestre" class="mb-3" style="display: none;">
+                    <label for="trimestreValor" class="form-label"><b>Año y Trimestre:</b></label>
+                    <div class="d-flex">
+                        <input type="number" id="trimestreAno" class="form-control me-2" placeholder="Año" min="2020" max="2099">
+                        <select id="trimestreNum" class="form-select">
+                            <option value="1">Q1 (Ene-Mar)</option>
+                            <option value="2">Q2 (Abr-Jun)</option>
+                            <option value="3">Q3 (Jul-Sep)</option>
+                            <option value="4">Q4 (Oct-Dic)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="inputAnual" class="mb-3" style="display: none;">
+                    <label for="anualValor" class="form-label"><b>Año:</b></label>
+                    <input type="number" id="anualValor" class="form-control" placeholder="Año" min="2020" max="2099">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnGenerarPdf" class="btn btn-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF</button>
+                <button type="button" id="btnGenerarExcel" class="btn btn-success"><i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel</button>
+            </div>
+        </div>
+    </div>
 </div>
+{% endif %}
+    </div>
  <!-- Filtro mejorado -->
     <form method="GET" action="{{ url_for('reporte_barcaza_bita') }}" class="p-3 bg-white border rounded-3 shadow-sm mb-4">
     <div class="row align-items-end g-3">
@@ -463,8 +515,12 @@
 
 {% block extra_js %}
 <script>
+// Datos desde Python
 const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | safe }}');
 
+// ===============================================================
+// Tus funciones existentes para los cálculos interactivos de la tabla
+// ===============================================================
 function calcularEstadisticas(listaTanques) {
     if (!listaTanques || listaTanques.length === 0) return { total_cap: 0, total_bls: 0, total_porc: 0, prom_api: 0, prom_bsw: 0, prom_s: 0 };
     const total_cap = listaTanques.reduce((s, t) => s + (parseFloat(t.MAX_CAP) || 0), 0);
@@ -483,6 +539,7 @@ function calcularEstadisticas(listaTanques) {
 }
 
 function actualizarVistaTotales(idBase, stats) {
+    // Esta función no cambia
     const format = (num, dec) => num.toFixed(dec);
     const totalRow = idBase === 'consolidado' ? document.getElementById('total-consolidado-row') : document.getElementById(`total-row-${idBase}`);
     if (!totalRow) return;
@@ -510,6 +567,7 @@ function actualizarVistaTotales(idBase, stats) {
 }
 
 function recalcularTodo() {
+    // Esta función no cambia
     const tanquesSeleccionados = [];
     document.querySelectorAll('.tank-selector:checked').forEach(checkbox => {
         const tk = checkbox.closest('tr').dataset.tk;
@@ -522,14 +580,93 @@ function recalcularTodo() {
     actualizarVistaTotales('oidech', calcularEstadisticas(tanquesSeleccionados.filter(t => t.TK.startsWith('OID'))));
 }
 
+// ===============================================================
+// Lógica unificada que se ejecuta cuando la página está cargada
+// ===============================================================
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Lógica existente para la tabla interactiva ---
     document.querySelectorAll('.tank-selector').forEach(checkbox => {
         checkbox.addEventListener('change', (event) => {
             event.target.closest('tr').classList.toggle('fila-excluida', !event.target.checked);
             recalcularTodo();
         });
     });
-    recalcularTodo();
+    if (todosLosTanques.length > 0) {
+        recalcularTodo(); // Cálculo inicial
+    }
+
+    // --- Nueva lógica para manejar las descargas de reportes ---
+    const modalElement = document.getElementById('opcionesDescargaModal');
+    if (modalElement) {
+        const descargaModal = new bootstrap.Modal(modalElement);
+        let filtroSeleccionado = '';
+
+        function prepararModal(filtro) {
+            filtroSeleccionado = filtro;
+            const hoy = new Date().toISOString();
+            const anoActual = new Date().getFullYear();
+
+            // Ocultar todos los campos de entrada primero
+            document.getElementById('inputDia').style.display = 'none';
+            document.getElementById('inputMes').style.display = 'none';
+            document.getElementById('inputTrimestre').style.display = 'none';
+            document.getElementById('inputAnual').style.display = 'none';
+
+            // Mostrar el campo de entrada correcto según el filtro seleccionado
+            if (filtro === 'dia') {
+                document.getElementById('modalLabel').innerText = 'Descargar Reporte por Día';
+                document.getElementById('inputDia').style.display = 'block';
+                document.getElementById('fechaValor').value = hoy.slice(0, 10);
+            } else if (filtro === 'mes') {
+                document.getElementById('modalLabel').innerText = 'Descargar Reporte por Mes';
+                document.getElementById('inputMes').style.display = 'block';
+                document.getElementById('mesValor').value = hoy.slice(0, 7);
+            } else if (filtro === 'trimestre') {
+                document.getElementById('modalLabel').innerText = 'Descargar Reporte por Trimestre';
+                document.getElementById('inputTrimestre').style.display = 'block';
+                document.getElementById('trimestreAno').value = anoActual;
+            } else if (filtro === 'anual') {
+                document.getElementById('modalLabel').innerText = 'Descargar Reporte Anual';
+                document.getElementById('inputAnual').style.display = 'block';
+                document.getElementById('anualValor').value = anoActual;
+            }
+        }
+
+        document.querySelectorAll('.dropdown-item[data-filtro]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                prepararModal(this.getAttribute('data-filtro'));
+                descargaModal.show();
+            });
+        });
+
+        function descargar(formato) {
+            let urlBase = (formato === 'pdf') 
+                ? "{{ url_for('descargar_reporte_bita_pdf') }}" 
+                : "{{ url_for('exportar_excel', nombre_reporte='barcaza_bita') }}";
+            
+            let params = new URLSearchParams();
+            params.append('filtro_tipo', filtroSeleccionado);
+
+            if (filtroSeleccionado === 'dia') {
+                params.append('valor', document.getElementById('fechaValor').value);
+            } else if (filtroSeleccionado === 'mes') {
+                params.append('valor', document.getElementById('mesValor').value);
+            } else if (filtroSeleccionado === 'trimestre') {
+                const ano = document.getElementById('trimestreAno').value;
+                const num = document.getElementById('trimestreNum').value;
+                params.append('valor', `${ano}-Q${num}`);
+            } else if (filtroSeleccionado === 'anual') {
+                params.append('valor', document.getElementById('anualValor').value);
+            }
+
+            window.location.href = `${urlBase}?${params.toString()}`;
+            descargaModal.hide();
+        }
+
+        document.getElementById('btnGenerarPdf').addEventListener('click', () => descargar('pdf'));
+        document.getElementById('btnGenerarExcel').addEventListener('click', () => descargar('excel'));
+    }
 });
 </script>
 {% endblock %}

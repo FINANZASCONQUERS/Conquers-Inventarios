@@ -335,11 +335,65 @@
                 </div>
                 {# Solo muestra el botón si el usuario es admin o tiene permiso para 'planta' #}
                 {% if session.rol == 'admin' or 'planta' in session.area %} 
-                <div class="action-button-group">
-                    <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                        <i class="bi bi-pencil-fill me-2"></i>
-                        <span>Volver a la Planilla</span>
-                    </a>
+                <div class="action-button-group d-flex align-items-center">
+    <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
+        <i class="bi bi-pencil-fill me-2"></i>
+        <span>Volver a la Planilla</span>
+    </a>
+
+    <div class="btn-group ms-2">  <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-download me-1"></i> Descargar Reporte
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
+            <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
+        </ul>
+    </div>
+</div>
+
+<div class="modal fade" id="opcionesDescargaModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Seleccione una Opción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="inputDia" class="mb-3" style="display: none;">
+                    <label for="fechaValor" class="form-label"><b>Día:</b></label>
+                    <input type="date" id="fechaValor" class="form-control">
+                </div>
+                <div id="inputMes" class="mb-3" style="display: none;">
+                    <label for="mesValor" class="form-label"><b>Mes:</b></label>
+                    <input type="month" id="mesValor" class="form-control">
+                </div>
+                <div id="inputTrimestre" class="mb-3" style="display: none;">
+                    <label for="trimestreValor" class="form-label"><b>Año y Trimestre:</b></label>
+                    <div class="d-flex">
+                        <input type="number" id="trimestreAno" class="form-control me-2" placeholder="Año" min="2020" max="2099">
+                        <select id="trimestreNum" class="form-select">
+                            <option value="1">Q1 (Ene-Mar)</option>
+                            <option value="2">Q2 (Abr-Jun)</option>
+                            <option value="3">Q3 (Jul-Sep)</option>
+                            <option value="4">Q4 (Oct-Dic)</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="inputAnual" class="mb-3" style="display: none;">
+                    <label for="anualValor" class="form-label"><b>Año:</b></label>
+                    <input type="number" id="anualValor" class="form-control" placeholder="Año" min="2020" max="2099">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnGenerarPdf" class="btn btn-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF</button>
+                <button type="button" id="btnGenerarExcel" class="btn btn-success"><i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
                     {% endif %}
                 </div>
             </div>
@@ -450,6 +504,84 @@
             if (porcentaje > 0) return 'low';
             return 'empty';
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+    const modalElement = document.getElementById('opcionesDescargaModal');
+    const descargaModal = new bootstrap.Modal(modalElement);
+    let filtroSeleccionado = '';
+
+    // Mostrar/ocultar los campos de fecha correctos en el modal
+    function prepararModal(filtro) {
+        filtroSeleccionado = filtro;
+        const hoy = new Date().toISOString();
+        const anoActual = new Date().getFullYear();
+
+        document.getElementById('inputDia').style.display = 'none';
+        document.getElementById('inputMes').style.display = 'none';
+        document.getElementById('inputTrimestre').style.display = 'none';
+        document.getElementById('inputAnual').style.display = 'none';
+
+        if (filtro === 'dia') {
+            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Día';
+            document.getElementById('inputDia').style.display = 'block';
+            document.getElementById('fechaValor').value = hoy.slice(0, 10);
+        } else if (filtro === 'mes') {
+            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Mes';
+            document.getElementById('inputMes').style.display = 'block';
+            document.getElementById('mesValor').value = hoy.slice(0, 7);
+        } else if (filtro === 'trimestre') {
+            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Trimestre';
+            document.getElementById('inputTrimestre').style.display = 'block';
+            document.getElementById('trimestreAno').value = anoActual;
+        } else if (filtro === 'anual') {
+            document.getElementById('modalLabel').innerText = 'Descargar Reporte Anual';
+            document.getElementById('inputAnual').style.display = 'block';
+            document.getElementById('anualValor').value = anoActual;
+        }
+    }
+
+    // Añadir evento a cada opción del menú desplegable
+    document.querySelectorAll('.dropdown-item[data-filtro]').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filtro = this.getAttribute('data-filtro');
+            prepararModal(filtro);
+            descargaModal.show();
+        });
+    });
+
+    // Construir la URL y descargar
+    function descargar(formato) {
+        let urlBase = '';
+        if (formato === 'pdf') {
+            urlBase = "{{ url_for('descargar_reporte_planta_pdf') }}";
+        } else {
+            urlBase = "{{ url_for('exportar_excel', nombre_reporte='planta') }}";
+        }
+
+        let params = new URLSearchParams();
+        params.append('filtro_tipo', filtroSeleccionado);
+
+        if (filtroSeleccionado === 'dia') {
+            params.append('valor', document.getElementById('fechaValor').value);
+        } else if (filtroSeleccionado === 'mes') {
+            params.append('valor', document.getElementById('mesValor').value);
+        } else if (filtroSeleccionado === 'trimestre') {
+            const ano = document.getElementById('trimestreAno').value;
+            const num = document.getElementById('trimestreNum').value;
+            params.append('valor', `${ano}-Q${num}`);
+        } else if (filtroSeleccionado === 'anual') {
+            params.append('valor', document.getElementById('anualValor').value);
+        }
+
+        window.location.href = `${urlBase}?${params.toString()}`;
+        descargaModal.hide();
+    }
+
+    // Eventos para los botones de la modal
+    document.getElementById('btnGenerarPdf').addEventListener('click', () => descargar('pdf'));
+    document.getElementById('btnGenerarExcel').addEventListener('click', () => descargar('excel'));
+});
 
         // Crear tarjeta de tanque
         function crearTarjetaTanque(data) {

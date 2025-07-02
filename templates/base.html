@@ -12,7 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />       
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />       
     
     <style>
         :root {
@@ -286,6 +287,7 @@
                                     <li><a class="dropdown-item" href="{{ url_for('transito') }}"><i class="bi bi-cone-striped me-2"></i>Planilla Tránsito</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}">Planilla de Precios</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i class="bi bi-chart-pie me-2"></i>Simulador Rendimiento</a></li>
                                 </ul>
                             </li>
                              {% else %}
@@ -340,6 +342,14 @@
                             <li class="nav-item">
                                 <a class="nav-link {% if request.endpoint == 'guia_transporte' %}active{% endif %}" href="{{ url_for('guia_transporte') }}">
                                     <i class="bi bi-truck me-1"></i> Generar Guía
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% if 'simulador_rendimiento' in session.get('area', []) %}
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.endpoint == 'simulador_rendimiento' %}active{% endif %}" href="{{ url_for('simulador_rendimiento') }}">
+                                    <i class="bi bi-chart-pie me-1"></i> Simulador Rendimiento
                                 </a>
                             </li>
                             {% endif %}
