@@ -16,7 +16,8 @@ from flask import g
 from flask import Response
 from weasyprint import HTML, CSS
 import math
-from sqlalchemy import or_ 
+from sqlalchemy import or_
+from flask_migrate import Migrate 
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -59,6 +60,7 @@ app.secret_key = 'clave_secreta_para_produccion_cambiar'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
+migrate = Migrate(app, db)
 
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
@@ -126,12 +128,9 @@ class RegistroTransito(db.Model):
     # Columna para saber si es 'general' (EDSM) o 'refineria'
     tipo_transito = db.Column(db.String(50), nullable=False)
 
-    # --- NUEVA COLUMNA DE ESTADO ---
-    estado = db.Column(db.String(50), nullable=False, default='En Tránsito')
-
-    # El resto de las columnas se mantienen igual
+    # El resto de las columnas de tu planilla
     origen = db.Column(db.String(100))
-    fecha = db.Column(db.String(50)) 
+    fecha = db.Column(db.String(50)) # Guardamos la fecha del cargue como texto
     guia = db.Column(db.String(100))
     producto = db.Column(db.String(100))
     placa = db.Column(db.String(50))
@@ -557,12 +556,10 @@ def calcular_estadisticas(lista_tanques):
 @permiso_requerido('transito')
 @app.route('/transito')
 def transito():
+    # Iniciamos la consulta base
+    query = db.session.query(RegistroTransito)
 
-    vista_estado = request.args.get('vista_estado', 'En Tránsito')
-    # --- CAMBIO CLAVE: La consulta base ahora solo busca registros 'En Tránsito' ---
-    query_base = db.session.query(RegistroTransito).filter(RegistroTransito.estado == 'En Tránsito')
-
-    # Leemos todos los posibles filtros desde la URL (esto no cambia)
+    # Leemos todos los posibles filtros desde la URL
     filtros = {
         'fecha': request.args.get('fecha_cargue'),
         'guia': request.args.get('guia'),
@@ -571,30 +568,24 @@ def transito():
         'placa': request.args.get('placa')
     }
 
-    # Función auxiliar para aplicar los filtros de la URL
-    def aplicar_filtros_a_query(query):
-        if filtros['fecha']:
-            query = query.filter(RegistroTransito.fecha == filtros['fecha'])
-        if filtros['guia']:
-            query = query.filter(RegistroTransito.guia.ilike(f"%{filtros['guia']}%"))
-        if filtros['origen']:
-            query = query.filter(RegistroTransito.origen == filtros['origen'])
-        if filtros['producto']:
-            query = query.filter(RegistroTransito.producto == filtros['producto'])
-        if filtros['placa']:
-            query = query.filter(RegistroTransito.placa.ilike(f"%{filtros['placa']}%"))
-        return query
+    # Aplicamos los filtros a la consulta solo si tienen un valor
+    if filtros['fecha']:
+        query = query.filter(RegistroTransito.fecha == filtros['fecha'])
+    if filtros['guia']:
+        query = query.filter(RegistroTransito.guia.ilike(f"%{filtros['guia']}%"))
+    if filtros['origen']:
+        query = query.filter(RegistroTransito.origen == filtros['origen'])
+    if filtros['producto']:
+        query = query.filter(RegistroTransito.producto == filtros['producto'])
+    if filtros['placa']:
+        query = query.filter(RegistroTransito.placa.ilike(f"%{filtros['placa']}%"))
 
-    # Aplicamos los filtros de la URL a las consultas separadas
-    query_general = query_base.filter(RegistroTransito.tipo_transito == 'general')
-    registros_general = aplicar_filtros_a_query(query_general).order_by(RegistroTransito.timestamp.desc()).all()
+    # Ejecutamos la consulta final
+    todos_los_registros = query.order_by(RegistroTransito.timestamp.desc()).all()
 
-    query_refineria = query_base.filter(RegistroTransito.tipo_transito == 'refineria')
-    registros_refineria = aplicar_filtros_a_query(query_refineria).order_by(RegistroTransito.timestamp.desc()).all()
-
-    # Convertimos los resultados a diccionario (esto no cambia)
-    datos_general = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in registros_general]
-    datos_refineria = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in registros_refineria]
+    # Separamos los resultados y los convertimos a diccionario
+    datos_general = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'general']
+    datos_refineria = [{ "id": r.id, "ORIGEN": r.origen, "FECHA": r.fecha, "GUIA": r.guia, "PRODUCTO": r.producto, "PLACA": r.placa, "API": r.api or '', "BSW": r.bsw or '', "NSV": r.nsv or '', "OBSERVACIONES": r.observaciones or '' } for r in todos_los_registros if r.tipo_transito == 'refineria']
 
     return render_template("transito.html",
                            nombre=session.get("nombre"),
