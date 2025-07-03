@@ -937,7 +937,8 @@
   }  
 
   function cambiarVista() {  
-    vistaActual = vistaActual === "general" ? "refineria" : "general";  
+    vistaActual = vistaActual === "general" ? "refineria" : "general";
+    document.getElementById('tipoTransitoHidden').value = vistaActual;  
     guardarEstadoEnSesion();  
     actualizarTextosDeVista();  
     renderTabla();  

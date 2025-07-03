@@ -17,6 +17,7 @@ from flask import Response
 from weasyprint import HTML, CSS
 import math
 from sqlalchemy import or_
+from flask_migrate import Migrate
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -59,6 +60,7 @@ app.secret_key = 'clave_secreta_para_produccion_cambiar'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
+migrate = Migrate(app, db)
 
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
@@ -122,8 +124,7 @@ class RegistroTransito(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     usuario = db.Column(db.String(100), nullable=False)
-    
-    # Columna para saber si es 'general' (EDSM) o 'refineria'
+
     tipo_transito = db.Column(db.String(50), nullable=False)
 
     # El resto de las columnas de tu planilla
@@ -592,35 +593,7 @@ def transito():
                            tipo_inicial="general",
                            transito_config=cargar_transito_config(),
                            filtros=filtros)
-
-@login_required
-@app.route('/marcar-descargado/<int:registro_id>', methods=['POST'])
-def marcar_descargado(registro_id):
-    try:
-        registro = db.session.query(RegistroTransito).get(registro_id)
-        if registro:
-            registro.estado = 'Descargado'
-            db.session.commit()
-            return jsonify(success=True, message="Registro marcado como 'Descargado'.")
-        return jsonify(success=False, message="Registro no encontrado."), 404
-    except Exception as e:
-        db.session.rollback()
-        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
-
-@login_required
-@app.route('/marcar-en-transito/<int:registro_id>', methods=['POST'])
-def marcar_en_transito(registro_id):
-    try:
-        registro = db.session.query(RegistroTransito).get(registro_id)
-        if registro:
-            registro.estado = 'En Tránsito'
-            db.session.commit()
-            return jsonify(success=True, message="Registro reactivado a 'En Tránsito'.")
-        return jsonify(success=False, message="Registro no encontrado."), 404
-    except Exception as e:
-        db.session.rollback()
-        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
-    
+  
 @login_required
 @app.route('/api/add-origen', methods=['POST'])
 def agregar_origen():
@@ -2842,9 +2815,8 @@ def init_db_command():
     db.create_all()
     print("Base de datos inicializada y tablas creadas.")
 
-
-#with app.app_context():
-#db.create_all()
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)
