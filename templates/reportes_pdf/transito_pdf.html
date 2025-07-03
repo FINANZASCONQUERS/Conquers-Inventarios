@@ -2,44 +2,198 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Reporte Consolidado de Tránsito</title>
+    <title>Reporte Consolidado de Tránsito - {{ periodo }}</title>
     <style>
-        @page { size: letter landscape; margin: 1.5cm; }
-        body { font-family: sans-serif; font-size: 9px; }
-        h1 { color: #333; text-align: center; }
-        h2 { color: #0b8552; border-bottom: 2px solid #0b8552; padding-bottom: 5px; margin-top: 20px;}
-        p { color: #555; text-align: center; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 5px; text-align: left; }
-        .header-main th { background-color: #0b8552; color: white; text-align: center; }
-        .group-header td { background-color: #e8f5e9; font-weight: bold; }
-        .obs-list { padding-left: 15px; margin: 0; }
+        @page { 
+            size: letter landscape; 
+            margin: 1.5cm; 
+            @top-center {
+                content: "Petróleos de Venezuela, S.A. (PDVSA)";
+                font-size: 10pt;
+                color: #555;
+            }
+            @bottom-center {
+                content: "Confidencial - Uso interno";
+                font-size: 8pt;
+                color: #999;
+            }
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-size: 9pt; 
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0b8552;
+            padding-bottom: 10px;
+        }
+        
+        .logo {
+            height: 50px;
+            margin-bottom: 10px;
+        }
+        
+        h1 { 
+            color: #0b8552; 
+            font-size: 16pt;
+            margin: 5px 0;
+        }
+        
+        .subtitle {
+            color: #555;
+            font-size: 10pt;
+            font-weight: normal;
+            margin: 5px 0 15px;
+        }
+        
+        .periodo {
+            background-color: #0b8552;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 8pt;
+            color: #666;
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px;
+            page-break-inside: avoid;
+        }
+        
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 6px; 
+            text-align: left; 
+            vertical-align: top;
+        }
+        
+        .header-main th { 
+            background-color: #0b8552; 
+            color: white; 
+            text-align: center;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+        
+        .group-header td { 
+            background-color: #e8f5e9; 
+            font-weight: bold;
+            border-bottom: 2px solid #0b8552;
+        }
+        
+        .obs-list { 
+            padding-left: 15px; 
+            margin: 0; 
+            font-size: 8pt;
+        }
+        
+        .obs-list li {
+            margin-bottom: 3px;
+        }
+        
+        .total-row {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .right-align {
+            text-align: right;
+        }
+        
+        .center-align {
+            text-align: center;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            font-size: 8pt;
+            color: #999;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        
+        .page-break {
+            page-break-after: always;
+        }
     </style>
 </head>
 <body>
-    <h1>Reporte Consolidado de Tránsito</h1>
-    <p>Reporte generado el: <strong>{{ fecha_reporte }}</strong></p>
+    <div class="header">
+        <!-- Puedes reemplazar esto con el logo real de tu empresa -->
+        <div class="logo">[LOGO DE LA EMPRESA]</div>
+        <h1>REPORTE CONSOLIDADO DE TRÁNSITO DE HIDROCARBUROS</h1>
+        <div class="subtitle">Gerencia de Transporte y Distribución - Departamento de Logística</div>
+        
+        <div class="periodo">
+            {% if periodo_tipo == 'dia' %}
+                Reporte Diario - {{ periodo }}
+            {% elif periodo_tipo == 'mes' %}
+                Reporte Mensual - {{ periodo }}
+            {% elif periodo_tipo == 'trimestre' %}
+                Reporte Trimestral - {{ periodo }}
+            {% elif periodo_tipo == 'anual' %}
+                Reporte Anual - {{ periodo }}
+            {% else %}
+                Reporte Periódico - {{ periodo }}
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="info-line">
+        <span>Generado por: {{ usuario }}</span>
+        <span>Fecha de generación: {{ fecha_reporte }}</span>
+        <span>Versión del reporte: 2.1</span>
+    </div>
 
     {% for tipo_destino, origenes in datos_consolidados.items() %}
-    <h2>Destino: {{ tipo_destino }}</h2>
+    <h2 style="color: #0b8552; border-bottom: 2px solid #0b8552; padding-bottom: 5px; margin-top: 25px;">
+        DESTINO: {{ tipo_destino|upper }}
+    </h2>
+    
     <table class="main-table">
         <thead class="header-main">
             <tr>
-                <th>Origen</th>
-                <th>Producto</th>
-                <th>Total NSV (Barriles)</th>
-                <th>N° de Viajes</th>
-                <th>Observaciones</th>
+                <th style="width: 20%;">Origen</th>
+                <th style="width: 25%;">Producto</th>
+                <th style="width: 15%;">Total NSV (Barriles)</th>
+                <th style="width: 10%;">N° de Viajes</th>
+                <th style="width: 30%;">Observaciones</th>
             </tr>
         </thead>
         <tbody>
             {% for origen, productos in origenes.items() %}
+                {% if loop.first %}
+                <tr class="group-header">
+                    <td colspan="5">ORIGEN: {{ origen|upper }}</td>
+                </tr>
+                {% else %}
+                <tr class="group-header">
+                    <td colspan="5" style="border-top: 2px solid #0b8552;">ORIGEN: {{ origen|upper }}</td>
+                </tr>
+                {% endif %}
+                
                 {% for producto, total_nsv in productos.items() %}
                 <tr>
                     <td>{{ origen }}</td>
                     <td>{{ producto }}</td>
-                    <td style="text-align: right;">{{ "%.2f"|format(total_nsv) }}</td>
-                    <td style="text-align: center;">{{ datos_conteo_camiones[tipo_destino][origen][producto] }}</td>
+                    <td class="right-align">{{ "%.2f"|format(total_nsv) }}</td>
+                    <td class="center-align">{{ datos_conteo_camiones[tipo_destino][origen][producto] }}</td>
                     <td>
                         {% set lista_obs = observaciones_camiones.get(tipo_destino, {}).get(origen, {}).get(producto, []) %}
                         {% if lista_obs %}
@@ -54,10 +208,48 @@
                     </td>
                 </tr>
                 {% endfor %}
+                
+                <!-- Total por origen -->
+                <tr class="total-row">
+                    <td colspan="2">TOTAL {{ origen|upper }}</td>
+                    <td class="right-align">{{ "%.2f"|format(totales_por_origen[tipo_destino][origen]) }}</td>
+                    <td class="center-align">{{ total_viajes_por_origen[tipo_destino][origen] }}</td>
+                    <td></td>
+                </tr>
             {% endfor %}
+            
+            <!-- Total por destino -->
+            <tr class="total-row" style="background-color: #e0f2f1;">
+                <td colspan="2">TOTAL {{ tipo_destino|upper }}</td>
+                <td class="right-align">{{ "%.2f"|format(totales_por_destino[tipo_destino]) }}</td>
+                <td class="center-align">{{ total_viajes_por_destino[tipo_destino] }}</td>
+                <td></td>
+            </tr>
         </tbody>
     </table>
     {% endfor %}
-
+    
+    <!-- Totales generales -->
+    <table style="margin-top: 30px;">
+        <tr class="total-row" style="background-color: #b2dfdb;">
+            <td style="width: 45%; font-size: 10pt; border: none;">TOTAL GENERAL (TODOS LOS DESTINOS)</td>
+            <td style="width: 15%; text-align: right; font-size: 10pt; border: none;">{{ "%.2f"|format(total_general_nsv) }} Bbl</td>
+            <td style="width: 10%; text-align: center; font-size: 10pt; border: none;">{{ total_general_viajes }}</td>
+            <td style="width: 30%; border: none;"></td>
+        </tr>
+    </table>
+    
+    <div class="footer">
+        Documento controlado | Última actualización: {{ fecha_actualizacion }} | 
+        {% if periodo_tipo == 'dia' %}
+            Reporte diario generado automáticamente
+        {% elif periodo_tipo == 'mes' %}
+            Consolidado mensual - Validado por supervisión
+        {% elif periodo_tipo == 'trimestre' %}
+            Reporte trimestral - Revisado por gerencia
+        {% elif periodo_tipo == 'anual' %}
+            Resumen anual - Aprobado por dirección
+        {% endif %}
+    </div>
 </body>
 </html>

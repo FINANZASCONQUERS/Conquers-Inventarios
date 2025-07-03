@@ -276,10 +276,24 @@ USUARIOS = {
         "nombre": "Daniela Cuadrado",
         "rol": "editor",
         "area": ["zisa_inventory"] 
-    }
-}
+    },
 
-    
+    "felipe.delavega@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Felipe De La Vega",
+        "rol": "editor",
+        "area": ["simulador_rendimiento"] 
+    },
+
+        "accountingzf@conquerstrading.com": { 
+        "password": generate_password_hash("Conquers2025"),       
+        "nombre": "Kelly Suarez",
+        "rol": "editor",
+        "area": ["contabilidad"] 
+    }
+
+}
+   
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
@@ -550,6 +564,20 @@ def calcular_estadisticas(lista_tanques):
         'prom_bsw': suma_ponderada_bsw,
         'prom_s': suma_ponderada_s
     }
+
+def permiso_exclusivo(email_requerido):
+    """
+    Decorador que da acceso SOLO al email especificado. Nadie más puede entrar.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if session.get('email') != email_requerido:
+                flash("No tiene permiso para acceder a esta página.", "danger")
+                return redirect(url_for('home'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 @login_required
 @permiso_requerido('transito')
@@ -2376,6 +2404,13 @@ def descargar_reporte_pdf():
 
 @login_required
 @permiso_requerido('simulador_rendimiento')
+@app.route('/inicio-simulador')
+def home_simulador():
+    """Página de inicio para el área del simulador."""
+    return render_template('home_simulador.html')
+
+@login_required
+@permiso_requerido('simulador_rendimiento')
 @app.route('/simulador_rendimiento')
 def simulador_rendimiento():
     """
@@ -2438,7 +2473,7 @@ def api_calcular_rendimiento():
 
         # 3. Calcular API por Producto
         api_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
-        API_ESTANDAR = {'NAFTA': 65.0, 'KERO': 45.0, 'FO4': 35.0, 'FO6': 10.0}
+        API_ESTANDAR = {'NAFTA': 60.0, 'KERO': 45.0, 'FO4': 32.0, 'FO6': 18.0}
         def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
         def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
         sg_crudo_real = api_a_sg(api_crudo)
@@ -2557,29 +2592,85 @@ def delete_crudo(nombre_crudo):
         return jsonify(success=True, message=f"Crudo '{nombre_crudo}' eliminado.")
     else:
         return jsonify(success=False, message="Crudo no encontrado."), 404
+    
+@login_required
+@permiso_exclusivo('accountingzf@conquerstrading.com')
+@app.route('/inicio-contabilidad')
+def home_contabilidad():
+    """Página de inicio exclusiva para Contabilidad."""
+    return render_template('home_contabilidad.html')
+    
+@login_required
+@permiso_requerido('accountingzf@conquerstrading.com')
+@app.route('/consolidar-facturas')
+def consolidar_facturas():
+    return render_template('consolidar_facturas.html', nombre=session.get("nombre"))
 
+@login_required
+@permiso_requerido('accountingzf@conquerstrading.com')
+@app.route('/api/comparar_facturas', methods=['POST'])
+def api_comparar_facturas():
+    if 'odoo_file' not in request.files or 'dian_file' not in request.files:
+        return jsonify(success=False, message="Ambos archivos son requeridos."), 400
 
+    odoo_file = request.files['odoo_file']
+    dian_file = request.files['dian_file']
+
+    try:
+        # Usar un motor que soporte .xlsx
+        df_odoo = pd.read_excel(odoo_file, engine='openpyxl')
+        df_dian = pd.read_excel(dian_file, engine='openpyxl')
+
+        # --- Lógica de Consolidación ---
+        if 'REFERENCIA' not in df_odoo.columns:
+            return jsonify(success=False, message="La columna 'REFERENCIA' no se encontró en el archivo de Odoo."), 400
+        if 'PREFIJO' not in df_dian.columns or 'FOLIO' not in df_dian.columns:
+            return jsonify(success=False, message="Las columnas 'PREFIJO' y/o 'FOLIO' no se encontraron en el archivo de la DIAN."), 400
+
+        # Unificar columnas de la DIAN en una sola para comparar
+        df_dian['PREFIJO-FOLIO'] = df_dian['PREFIJO'].astype(str) + df_dian['FOLIO'].astype(str)
+        
+        set_odoo = set(df_odoo['REFERENCIA'].dropna().astype(str))
+        set_dian = set(df_dian['PREFIJO-FOLIO'].dropna().astype(str))
+
+        facturas_faltantes = sorted(list(set_odoo - set_dian))
+
+        return jsonify(
+            success=True,
+            message="Comparación completada.",
+            faltantes=facturas_faltantes,
+            conteo=len(facturas_faltantes)
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error al comparar archivos: {e}")
+        return jsonify(success=False, message=f"Ocurrió un error al procesar los archivos: {str(e)}"), 500
+    
 @app.route('/')
 def home():
     """Redirige al usuario a su página de inicio correcta después de iniciar sesión."""
     if 'email' not in session:
         return redirect(url_for('login'))
 
-    # Si el rol es 'admin', siempre va al dashboard completo.
+    # --- 1. PRIMERO: Revisa si es el usuario exclusivo ---
+    if session.get('email') == 'accountingzf@conquerstrading.com':
+        return redirect(url_for('home_contabilidad'))
+
+    # --- 2. SEGUNDO: Revisa si es el administrador ---
     if session.get('rol') == 'admin':
         return redirect(url_for('dashboard_reportes'))
     
+    # --- 3. TERCERO: Revisa los otros roles ---
     user_areas = session.get('area', [])
 
-    # Redirección para el área de Logística (Generar Guía)
+    if 'simulador_rendimiento' in user_areas and len(user_areas) == 1:
+        return redirect(url_for('home_simulador'))
     if 'guia_transporte' in user_areas and len(user_areas) == 1:
         return redirect(url_for('home_logistica'))
-
-    # Redirección para el área de Inventario SIZA
     if 'zisa_inventory' in user_areas and len(user_areas) == 1:
         return redirect(url_for('home_siza'))
 
-    # Todos los demás usuarios (o con múltiples permisos) van al dashboard general.
+    # Redirección por defecto
     return redirect(url_for('dashboard_reportes'))
 
 @login_required
