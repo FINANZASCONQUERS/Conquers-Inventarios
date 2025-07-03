@@ -17,7 +17,6 @@ from flask import Response
 from weasyprint import HTML, CSS
 import math
 from sqlalchemy import or_
-from flask_migrate import Migrate 
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -60,7 +59,6 @@ app.secret_key = 'clave_secreta_para_produccion_cambiar'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
-migrate = Migrate(app, db)
 
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
@@ -2845,8 +2843,8 @@ def init_db_command():
     print("Base de datos inicializada y tablas creadas.")
 
 
-with app.app_context():
-    db.create_all()
+#with app.app_context():
+#db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)
