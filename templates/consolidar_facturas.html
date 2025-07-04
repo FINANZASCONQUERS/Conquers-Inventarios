@@ -1,132 +1,131 @@
-{% extends "base.html" %}
+    {% extends "base.html" %}
 
-{% block title %}Consolidar Facturas{% endblock %}
+    {% block title %}Consolidar Facturas{% endblock %}
 
-{% block content %}
-<div class="container-fluid px-4 py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 fw-bold text-primary">
-                <i class="bi bi-file-earmark-diff-fill me-2"></i>Consolidación de Facturas (Odoo vs. DIAN)
-            </h1>
-            <p class="text-muted">Compare los reportes para encontrar las facturas que faltan en la DIAN.</p>
+    {% block content %}
+    <div class="container-fluid px-4 py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 fw-bold text-primary"><i class="bi bi-file-earmark-diff-fill me-2"></i>Consolidación de Facturas (DIAN vs. Odoo)</h1>
         </div>
-    </div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">
-                <i class="bi bi-upload me-2"></i>Paso 1: Cargar Archivos Excel
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label for="odooFile" class="form-label"><b>Reporte de Odoo (.xlsx)</b></label>
-                    <input class="form-control" type="file" id="odooFile" accept=".xlsx">
-                </div>
-                <div class="col-md-6">
-                    <label for="dianFile" class="form-label"><b>Reporte de la DIAN (.xlsx)</b></label>
-                    <input class="form-control" type="file" id="dianFile" accept=".xlsx">
-                </div>
-            </div>
-            <div class="d-grid gap-2 mt-3">
-                <button class="btn btn-primary" type="button" id="btnComparar">
-                    <i class="bi bi-arrow-repeat me-2"></i>Comparar Archivos
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="resultadosContainer" class="mt-4" style="display: none;">
-        <div class="card shadow-sm">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                 <h5 class="mb-0">
-                    <i class="bi bi-search me-2"></i>Resultados de la Comparación
-                </h5>
-                <span id="conteoFaltantes" class="badge bg-danger rounded-pill"></span>
-            </div>
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-upload me-2"></i>Paso 1: Cargar Archivos</h5></div>
             <div class="card-body">
-                <h6>Facturas en Odoo que faltan en la DIAN:</h6>
-                <div id="listaFaltantes" class="list-group">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="odooFile" class="form-label"><b>Reporte de Odoo (.xlsx)</b></label>
+                        <input class="form-control" type="file" id="odooFile" accept=".xlsx">
                     </div>
+                    <div class="col-md-6">
+                        <label for="dianFile" class="form-label"><b>Reporte de la DIAN (.xlsx)</b></label>
+                        <input class="form-control" type="file" id="dianFile" accept=".xlsx">
+                    </div>
+                </div>
+                <div class="d-grid gap-2 mt-3">
+                    <button class="btn btn-primary" type="button" id="btnComparar"><i class="bi bi-arrow-repeat me-2"></i>Comparar Archivos</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Cargando...</span></div>
+            <p class="mt-2">Comparando archivos...</p>
+        </div>
+
+        <div id="resultadosContainer" class="mt-4" style="display: none;">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-search me-2"></i>Facturas en DIAN que Faltan en Odoo</h5>
+                    <div class="ms-auto w-50">
+            <input type="text" id="filtroResultados" class="form-control form-control-sm" placeholder="Buscar en resultados...">
+        </div>
+        <span id="conteoFaltantes" class="badge bg-light text-danger rounded-pill ms-2"></span>
+    </div>
+                </div>
+                <div id="listaFaltantes" class="list-group list-group-flush"></div>
             </div>
         </div>
     </div>
-    
-    <div id="loadingSpinner" class="text-center mt-4" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Cargando...</span>
-        </div>
-        <p class="mt-2">Comparando archivos, por favor espere...</p>
-    </div>
+    {% endblock %}
+    {% block extra_js %}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnComparar = document.getElementById('btnComparar');
+        const odooFileInput = document.getElementById('odooFile');
+        const dianFileInput = document.getElementById('dianFile');
+        const resultadosContainer = document.getElementById('resultadosContainer');
+        const listaFaltantes = document.getElementById('listaFaltantes');
+        const conteoFaltantes = document.getElementById('conteoFaltantes');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const filtroInput = document.getElementById('filtroResultados'); // Se obtiene el input del filtro
 
-</div>
-{% endblock %}
+        // --- INICIO: LÓGICA PARA EL FILTRO DE BÚSQUEDA ---
+        if (filtroInput) {
+            filtroInput.addEventListener('keyup', function() {
+                const filtroTexto = this.value.toUpperCase();
+                const items = document.querySelectorAll('#listaFaltantes .list-group-item');
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const btnComparar = document.getElementById('btnComparar');
-    const odooFileInput = document.getElementById('odooFile');
-    const dianFileInput = document.getElementById('dianFile');
-    const resultadosContainer = document.getElementById('resultadosContainer');
-    const listaFaltantes = document.getElementById('listaFaltantes');
-    const conteoFaltantes = document.getElementById('conteoFaltantes');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-
-    btnComparar.addEventListener('click', function() {
-        if (!odooFileInput.files.length || !dianFileInput.files.length) {
-            alert('Por favor, seleccione ambos archivos para poder comparar.');
-            return;
+                items.forEach(item => {
+                    const textoItem = item.textContent.toUpperCase();
+                    if (textoItem.includes(filtroTexto)) {
+                        item.style.display = ''; // Muestra el elemento si coincide
+                    } else {
+                        item.style.display = 'none'; // Oculta el elemento si no coincide
+                    }
+                });
+            });
         }
+        // --- FIN: LÓGICA PARA EL FILTRO DE BÚSQUEDA ---
 
-        // Mostrar spinner y ocultar resultados anteriores
-        loadingSpinner.style.display = 'block';
-        resultadosContainer.style.display = 'none';
-        listaFaltantes.innerHTML = '';
-
-        const formData = new FormData();
-        formData.append('odoo_file', odooFileInput.files[0]);
-        formData.append('dian_file', dianFileInput.files[0]);
-
-        fetch("{{ url_for('api_comparar_facturas') }}", {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                // Intenta obtener el mensaje de error del JSON que envía el servidor
-                return response.json().then(err => { throw new Error(err.message || 'Error desconocido en el servidor.'); });
+        btnComparar.addEventListener('click', function() {
+            if (!odooFileInput.files.length || !dianFileInput.files.length) {
+                alert('Por favor, seleccione ambos archivos.'); return;
             }
-            return response.json();
-        })
-        .then(data => {
-            loadingSpinner.style.display = 'none';
-            if (data.success) {
-                conteoFaltantes.textContent = `${data.conteo} Factura(s) Faltante(s)`;
-                if (data.faltantes.length > 0) {
-                    data.faltantes.forEach(factura => {
-                        const item = document.createElement('a');
-                        item.href = "#";
-                        item.className = "list-group-item list-group-item-action";
-                        item.textContent = factura;
-                        listaFaltantes.appendChild(item);
-                    });
+
+            loadingSpinner.style.display = 'block';
+            resultadosContainer.style.display = 'none';
+            listaFaltantes.innerHTML = '';
+            filtroInput.value = ''; // Limpia el filtro en cada nueva búsqueda
+
+            const formData = new FormData();
+            formData.append('odoo_file', odooFileInput.files[0]);
+            formData.append('dian_file', dianFileInput.files[0]);
+
+            fetch("{{ url_for('api_comparar_facturas') }}", { method: 'POST', body: formData })
+            .then(response => {
+                if (!response.ok) return response.json().then(err => { throw new Error(err.message || 'Error en el servidor'); });
+                return response.json();
+            })
+            .then(data => {
+                loadingSpinner.style.display = 'none';
+                if (data.success) {
+                    const faltantes = data.faltantes || [];
+                    conteoFaltantes.textContent = `${faltantes.length} Faltante(s)`;
+                    
+                    if (faltantes.length > 0) {
+                        faltantes.forEach(factura => {
+                            const item = document.createElement('div');
+                            item.className = "list-group-item";
+                            item.innerHTML = `
+                                <div>
+                                    <strong class="d-block">Factura: ${factura.factura}</strong>
+                                    <small class="text-muted">Emisor (DIAN): ${factura.emisor}</small>
+                                </div>`;
+                            listaFaltantes.appendChild(item);
+                        });
+                    } else {
+                        listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! Todas las facturas de la DIAN están en Odoo.</div>';
+                    }
+                    resultadosContainer.style.display = 'block';
                 } else {
-                    listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! No se encontraron facturas faltantes.</div>';
+                    alert(`Error: ${data.message}`);
                 }
-                resultadosContainer.style.display = 'block';
-            } else {
-                // Si el servidor envía success=False, muestra el mensaje
-                alert(`Error en la comparación: ${data.message}`);
-            }
-        })
-        .catch(error => {
-            loadingSpinner.style.display = 'none';
-            alert(`Error de conexión o procesamiento: ${error.message}`);
+            })
+            .catch(error => {
+                loadingSpinner.style.display = 'none';
+                alert(`Error de conexión: ${error.message}`);
+            });
         });
     });
-});
-</script>
-{% endblock %}
+    </script>
+    {% endblock %}

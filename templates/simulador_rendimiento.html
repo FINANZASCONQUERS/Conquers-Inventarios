@@ -2,201 +2,425 @@
 
 {% block title %}Simulador de Rendimiento de Crudo{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+    /* ----- Paleta de Colores y Estilos Globales ----- */
+    :root {
+        --primary-color: #0d6efd;
+        --secondary-color: #6c757d;
+        --success-color: #198754;
+        --warning-color: #ffc107;
+        --light-gray: #f8f9fa;
+        --border-color: #dee2e6;
+        --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    body {
+        background-color: var(--light-gray);
+    }
+
+    /* ----- Estilo de las Tarjetas (Cards) ----- */
+    .card {
+        border: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        transition: box-shadow 0.3s ease-in-out;
+    }
+
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+    }
+
+    .card-header {
+        font-weight: 600;
+    }
+    
+    .card-header .actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    /* ----- Estilo de la Tabla de Resultados Profesional ----- */
+    .results-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid var(--border-color);
+        border-radius: 0.375rem;
+        overflow: hidden; /* Para que el border-radius afecte a las celdas */
+    }
+
+    .results-table thead th {
+        background-color: #343a40;
+        color: white;
+        text-align: center;
+        vertical-align: middle;
+        font-weight: 600;
+        border-bottom: 2px solid var(--primary-color);
+    }
+
+    .results-table tbody tr.crude-header-row td {
+        font-weight: bold;
+        font-size: 1.1rem;
+        padding: 0.75rem;
+        border-top: 2px solid var(--border-color);
+    }
+
+    .results-table tbody tr:not(.crude-header-row):nth-child(odd) {
+        background-color: #f8f9fa;
+    }
+    
+    .results-table td, .results-table th {
+        padding: 0.5rem;
+        text-align: center;
+    }
+    
+    .results-table td:first-child {
+        text-align: left;
+        font-weight: 500;
+    }
+
+    /* ----- Estilo para Indicadores de Carga ----- */
+    .btn .spinner-border-sm {
+        display: none;
+    }
+    .btn.loading .spinner-border-sm {
+        display: inline-block;
+    }
+    .btn.loading .btn-text {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 text-primary"><i class="fas fa-chart-pie me-2"></i>Simulador de Rendimiento de Crudo</h2>
+        <h2 class="h3 text-primary font-weight-bold"><i class="fas fa-chart-pie me-2"></i>Simulador de Rendimiento de Crudo</h2>
         <span class="text-muted">Bienvenido, {{ nombre }}</span>
     </div>
 
     <div class="row g-4">
-        <div class="col-lg-6">
-            <div class="card shadow-sm mb-4">
-                 <div class="card-header bg-secondary text-white">
+        <div class="col-lg-6 d-flex flex-column gap-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
                     <h5 class="mb-0">Gestión de Crudos</h5>
                 </div>
                 <div class="card-body">
-                    <label for="saved-crudes-select" class="form-label"><b>Cargar Crudo Guardado</b></label>
                     <div class="input-group">
+                        <label for="saved-crudes-select" class="input-group-text"><i class="fas fa-database me-2"></i>Cargar</label>
                         <select class="form-select" id="saved-crudes-select" aria-label="Cargar Crudo Guardado">
-                            <option selected disabled>Selecciona un crudo para cargar...</option>
+                            <option selected disabled>Selecciona un crudo...</option>
                         </select>
-                        <button class="btn btn-primary" type="button" id="btn-load-crude">Cargar</button>
-                        <button class="btn btn-outline-danger" type="button" id="btn-delete-crude" title="Eliminar crudo seleccionado"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-primary" type="button" id="btn-load-crude" title="Cargar Crudo">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" type="button" id="btn-delete-crude" title="Eliminar crudo seleccionado">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div class="card shadow-sm mb-4">
+            <div class="card">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Paso 1: Define Propiedades y Cortes (°C)</h5>
+                    <h5 class="mb-0">Paso 1: Propiedades y Cortes (°C)</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-6 col-md-3"><label for="crude-api" class="form-label"><b>API Crudo</b></label><input type="number" id="crude-api" class="form-control" value="32.0" step="0.1"></div>
-                        <div class="col-6 col-md-3"><label for="crude-sulfur" class="form-label"><b>% Azufre</b></label><input type="number" id="crude-sulfur" class="form-control" value="1.2" step="0.01"></div>
-                        <div class="col-6 col-md-3"><label for="crude-viscosity" class="form-label"><b>Viscosidad</b></label><input type="number" id="crude-viscosity" class="form-control" value="6.0" step="0.1" title="cSt @ 40°C"></div>
-                        <div class="col-12"><hr></div>
-                        <div class="col-4 col-md-4"><label for="cut-nafta" class="form-label"><b>NAFTA</b></label><input type="number" id="cut-nafta" class="form-control" value="150"></div>
-                        <div class="col-4 col-md-4"><label for="cut-kero" class="form-label"><b>KERO</b></label><input type="number" id="cut-kero" class="form-control" value="240"></div>
-                        <div class="col-4 col-md-4"><label for="cut-fo4" class="form-label"><b>FO4</b></label><input type="number" id="cut-fo4" class="form-control" value="350"></div>
+                        <div class="col-sm-4"><label for="crude-api" class="form-label"><b>API Crudo</b></label><input type="number" id="crude-api" class="form-control" value="32.0" step="0.1"></div>
+                        <div class="col-sm-4"><label for="crude-sulfur" class="form-label"><b>% Azufre</b></label><input type="number" id="crude-sulfur" class="form-control" value="1.2" step="0.01"></div>
+                        <div class="col-sm-4"><label for="crude-viscosity" class="form-label"><b>Viscosidad</b></label><input type="number" id="crude-viscosity" class="form-control" value="6.0" step="0.1" title="cSt @ 40°C"></div>
+                        <div class="col-12"><hr class="my-2"></div>
+                        <div class="col-4"><label for="cut-nafta" class="form-label"><b>NAFTA</b></label><input type="number" id="cut-nafta" class="form-control" value="150"></div>
+                        <div class="col-4"><label for="cut-kero" class="form-label"><b>KERO</b></label><input type="number" id="cut-kero" class="form-control" value="240"></div>
+                        <div class="col-4"><label for="cut-fo4" class="form-label"><b>FO4</b></label><input type="number" id="cut-fo4" class="form-control" value="350"></div>
+                        <div class="col-12 mt-3 d-flex justify-content-center">
+                            <div class="form-check form-switch fs-5">
+                                <input class="form-check-input" type="checkbox" role="switch" id="toggle-kero" checked>
+                                <label class="form-check-label" for="toggle-kero"><b>Incluir KERO</b></label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="card shadow-sm">
+            
+            <div class="card">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Paso 2: Curva de Destilación</h5>
-                    <div>
-                        <button id="btn-save-crude" class="btn btn-sm btn-warning me-2" title="Guardar la curva y propiedades actuales"><i class="fas fa-save me-1"></i>Guardar</button>
+                    <div class="actions">
+                        <button id="btn-save-crude" class="btn btn-sm btn-warning" title="Guardar la curva y propiedades actuales"><i class="fas fa-save me-1"></i>Guardar</button>
                         <button id="btn-add-point" class="btn btn-sm btn-light"><i class="fas fa-plus me-1"></i>Añadir Punto</button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
-                        <table class="table table-sm">
+                    <div class="table-responsive" style="max-height: 280px;">
+                        <table class="table table-sm table-hover">
                             <thead><tr><th>% Destilado</th><th>Temp (°F)</th><th>Temp (°C)</th><th></th></tr></thead>
                             <tbody id="distillation-curve-body"></tbody>
                         </table>
                     </div>
-                    <div class="d-grid mt-3"><button id="btn-calculate" class="btn btn-success btn-lg"><i class="fas fa-calculator me-2"></i>Calcular</button></div>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-6">
             <div class="card shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-header bg-success text-white"><h5 class="mb-0">Resultados del Cálculo</h5></div>
-                <div class="card-body" id="results-container" style="display: none;">
-                    <canvas id="yield-chart" class="mb-4"></canvas>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-striped table-hover">
-                            <thead class="table-dark"><tr><th>Producto</th><th>Rendimiento (%)</th><th>API</th><th>Azufre (%S)</th><th>Viscosidad (cSt)</th></tr></thead>
-                            <tbody id="results-table-body"></tbody>
-                        </table>
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Resultados de la Simulación</h5>
+                </div>
+                <div class="card-body p-2 p-md-3">
+                     <div id="results-container" style="display: none;">
+                        <canvas id="yield-chart" class="mb-4"></canvas>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered results-table">
+                                <thead id="results-table-head"></thead>
+                                <tbody id="results-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="message-initial" class="text-center p-5">
+                        <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Los resultados de la comparación aparecerán aquí.</p>
                     </div>
                 </div>
-                <div id="message-initial" class="card-body text-center p-5"><i class="fas fa-cogs fa-3x text-muted mb-3"></i><p class="text-muted">Los resultados aparecerán aquí.</p></div>
+                <div class="card-footer bg-light d-grid gap-2">
+                    <button id="btn-calculate" class="btn btn-success btn-lg">
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span class="btn-text"><i class="fas fa-calculator me-2"></i>Calcular y Comparar</span>
+                    </button>
+                    <button id="btn-clear-comparison" class="btn btn-outline-warning">
+                        <i class="fas fa-eraser me-2"></i>Limpiar Comparación
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    // --- Selección de Elementos DOM ---
-    const curveBody = document.getElementById('distillation-curve-body');
-    const resultsTableBody = document.getElementById('results-table-body');
-    const resultsContainer = document.getElementById('results-container');
-    const initialMessage = document.getElementById('message-initial');
-    const btnAddPoint = document.getElementById('btn-add-point');
-    const btnCalculate = document.getElementById('btn-calculate');
-    const btnLoadCrude = document.getElementById('btn-load-crude');
-    const btnSaveCrude = document.getElementById('btn-save-crude');
-    const btnDeleteCrude = document.getElementById('btn-delete-crude');
-    const savedCrudesSelect = document.getElementById('saved-crudes-select');
-    const crudeApiInput = document.getElementById('crude-api');
-    const crudeSulfurInput = document.getElementById('crude-sulfur');
-    const crudeViscosityInput = document.getElementById('crude-viscosity');
-    const totalYieldCell = document.getElementById('total-yield');
+/**
+ * Objeto CrudeSimulator para encapsular toda la lógica del simulador.
+ * Esto organiza el código, evita variables globales y lo hace más mantenible.
+ */
+const CrudeSimulator = {
+    // 1. ESTADO Y CONFIGURACIÓN
+    state: {
+        comparisonResults: [],
+        savedCrudesData: {},
+        yieldChart: null,
+    },
+    config: {
+        CHART_COLORS: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#fd7e14', '#20c997', '#6f42c1'],
+    },
+    
+    // 2. ELEMENTOS DEL DOM (CACHEADOS PARA EFICIENCIA)
+    dom: {},
 
+    /**
+     * Método de inicialización principal.
+     */
+    init() {
+        this._cacheDom();
+        this._bindEvents();
+        this.handleLoadSavedCrudes();
+    },
 
-    let yieldChart = null;
-    let savedCrudesData = {};
+    /**
+     * Almacena las referencias a los elementos del DOM en un solo lugar.
+     */
+    _cacheDom() {
+        this.dom.curveBody = document.getElementById('distillation-curve-body');
+        this.dom.resultsTableBody = document.getElementById('results-table-body');
+        this.dom.resultsTableHead = document.getElementById('results-table-head');
+        this.dom.resultsContainer = document.getElementById('results-container');
+        this.dom.initialMessage = document.getElementById('message-initial');
+        this.dom.chartCanvas = document.getElementById('yield-chart');
+        
+        // Botones
+        this.dom.btnAddPoint = document.getElementById('btn-add-point');
+        this.dom.btnCalculate = document.getElementById('btn-calculate');
+        this.dom.btnLoadCrude = document.getElementById('btn-load-crude');
+        this.dom.btnSaveCrude = document.getElementById('btn-save-crude');
+        this.dom.btnDeleteCrude = document.getElementById('btn-delete-crude');
+        this.dom.btnClearComparison = document.getElementById('btn-clear-comparison');
 
-    // --- LÓGICA DE LA INTERFAZ ---
+        // Inputs
+        this.dom.savedCrudesSelect = document.getElementById('saved-crudes-select');
+        this.dom.crudeApiInput = document.getElementById('crude-api');
+        this.dom.crudeSulfurInput = document.getElementById('crude-sulfur');
+        this.dom.crudeViscosityInput = document.getElementById('crude-viscosity');
+        this.dom.cutNaftaInput = document.getElementById('cut-nafta');
+        this.dom.cutKeroInput = document.getElementById('cut-kero');
+        this.dom.cutFo4Input = document.getElementById('cut-fo4');
+        this.dom.toggleKero = document.getElementById('toggle-kero');
+    },
 
-    // ** FUNCIÓN CORREGIDA Y MEJORADA **
-    // Arregla el error de sintaxis y calcula Fahrenheit a partir de Celsius.
-    const addCurvePoint = (p = '', tC = '') => {
+    /**
+     * Asigna todos los event listeners de la aplicación.
+     */
+    _bindEvents() {
+        this.dom.btnAddPoint.addEventListener('click', () => this._addCurvePoint());
+        this.dom.btnCalculate.addEventListener('click', () => this.handleCalculate());
+        this.dom.btnClearComparison.addEventListener('click', () => this.clearComparison());
+        this.dom.btnLoadCrude.addEventListener('click', () => this._loadSelectedCrude());
+        this.dom.btnSaveCrude.addEventListener('click', () => this.handleSaveCrude());
+        this.dom.btnDeleteCrude.addEventListener('click', () => this.handleDeleteCrude());
+        
+        // Event delegation para eficiencia
+        this.dom.curveBody.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-remove-point')) {
+                e.target.closest('tr').remove();
+            }
+        });
+        this.dom.curveBody.addEventListener('input', (e) => this._handleTempConversion(e));
+    },
+    
+    // 3. MÉTODOS DE LA INTERFAZ (UI)
+
+    /**
+     * Renderiza toda la sección de resultados (gráfica y tabla).
+     */
+    displayComparison() {
+        if (this.state.comparisonResults.length === 0) {
+            this.dom.initialMessage.style.display = 'block';
+            this.dom.resultsContainer.style.display = 'none';
+            if (this.state.yieldChart) this.state.yieldChart.destroy();
+            return;
+        }
+        this.dom.initialMessage.style.display = 'none';
+        this.dom.resultsContainer.style.display = 'block';
+        
+        this._renderChart();
+        this._renderTable();
+    },
+
+    /**
+     * Renderiza la gráfica de barras con los resultados de la comparación.
+     */
+    _renderChart() {
+        if (this.state.yieldChart) this.state.yieldChart.destroy();
+        
+        const firstResult = this.state.comparisonResults[0];
+        const productLabels = firstResult.order;
+        const datasets = this.state.comparisonResults.map((result, index) => ({
+            label: result.name,
+            data: productLabels.map(p => result.yields[p]),
+            backgroundColor: this.config.CHART_COLORS[index % this.config.CHART_COLORS.length],
+            borderColor: this.config.CHART_COLORS[index % this.config.CHART_COLORS.length],
+            borderWidth: 1,
+            borderRadius: 4
+        }));
+
+        this.state.yieldChart = new Chart(this.dom.chartCanvas.getContext('2d'), {
+            type: 'bar',
+            data: { labels: productLabels, datasets: datasets },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Comparación de Rendimientos (%)', font: { size: 16 } }
+                },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    },
+
+    /**
+     * Renderiza la tabla de resultados con formato profesional.
+     */
+    _renderTable() {
+        const productLabels = this.state.comparisonResults[0].order;
+        
+        let headerHtml = `<tr><th>Crudo / Propiedad</th>${productLabels.map(p => `<th>${p}</th>`).join('')}</tr>`;
+        this.dom.resultsTableHead.innerHTML = headerHtml;
+
+        let bodyHtml = '';
+        this.state.comparisonResults.forEach((result, index) => {
+            const color = this.config.CHART_COLORS[index % this.config.CHART_COLORS.length];
+            bodyHtml += `<tr class="crude-header-row" style="background-color: ${color}20;">
+                            <td colspan="${productLabels.length + 1}">
+                                <strong style="color: ${color};"><i class="fas fa-vial me-2"></i>${result.name.toUpperCase()}</strong>
+                            </td>
+                         </tr>`;
+            bodyHtml += `<tr><td><b>Rendimiento (%)</b></td>${productLabels.map(p => `<td>${result.yields[p]}</td>`).join('')}</tr>`;
+            bodyHtml += `<tr><td><b>API</b></td>${productLabels.map(p => `<td>${result.api_by_product[p]}</td>`).join('')}</tr>`;
+            bodyHtml += `<tr><td><b>Azufre (%S)</b></td>${productLabels.map(p => `<td>${result.sulfur_by_product[p]}</td>`).join('')}</tr>`;
+            bodyHtml += `<tr><td><b>Viscosidad (cSt)</b></td>${productLabels.map(p => `<td>${result.viscosity_by_product[p]}</td>`).join('')}</tr>`;
+        });
+        this.dom.resultsTableBody.innerHTML = bodyHtml;
+    },
+
+    /**
+     * Añade una nueva fila a la tabla de la curva de destilación.
+     */
+    _addCurvePoint(p = '', tC = '') {
         const row = document.createElement('tr');
-        const tF = tC !== '' ? ((parseFloat(tC) * 9/5) + 32).toFixed(1) : '';
-
+        const tF = tC !== '' ? ((parseFloat(tC) * 9 / 5) + 32).toFixed(1) : '';
         row.innerHTML = `
             <td><input type="number" class="form-control form-control-sm percent-input" value="${p}" placeholder="%"></td>
             <td><input type="number" class="form-control form-control-sm temp-f-input" value="${tF}" placeholder="°F"></td>
             <td><input type="number" class="form-control form-control-sm temp-c-input" value="${tC}" placeholder="°C"></td>
-            <td><button class="btn btn-sm btn-outline-danger btn-remove-point"><i class="fas fa-times"></i></button></td>
-        `;
-        curveBody.appendChild(row);
-    };
+            <td><button class="btn btn-sm btn-outline-danger btn-remove-point" title="Eliminar punto"><i class="fas fa-times"></i></button></td>`;
+        this.dom.curveBody.appendChild(row);
+    },
 
-    const displayResults = (data) => {
-        initialMessage.style.display = 'none';
-        resultsContainer.style.display = 'block';
-
-        const ctx = document.getElementById('yield-chart').getContext('2d');
-        if (yieldChart) yieldChart.destroy();
-        yieldChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.order,
-                datasets: [{
-                    label: '% Rendimiento',
-                    data: data.order.map(p => data.yields[p]),
-                    backgroundColor: ['#fd7e14', '#20c997', '#ffc107', '#0d6efd'],
-                    borderWidth: 1
-                }]
-            },
-            options: { plugins: { legend: { display: false }, title: { display: true, text: 'Rendimiento de Productos (%)' } } }
-        });
-
-        resultsTableBody.innerHTML = '';
-        data.order.forEach(producto => {
-            const row = `<tr>
-                <td><b>${producto}</b></td>
-                <td>${data.yields[producto]}</td>
-                <td>${data.api_by_product[producto]}</td>
-                <td>${data.sulfur_by_product[producto]}</td>
-                <td>${data.viscosity_by_product[producto]}</td>
-            </tr>`;
-            resultsTableBody.innerHTML += row;
-        });
-    };
+    /**
+     * Limpia los resultados de la comparación y resetea la vista.
+     */
+    clearComparison() {
+        if (confirm('¿Estás seguro de que quieres limpiar todos los resultados de la comparación?')) {
+            this.state.comparisonResults = [];
+            this.displayComparison();
+        }
+    },
     
-    // --- LÓGICA DE DATOS (API) ---
+    /**
+     * Controla el estado de carga de un botón (muestra/oculta spinner).
+     */
+    _setLoadingState(button, isLoading) {
+        if (isLoading) {
+            button.classList.add('loading');
+            button.disabled = true;
+        } else {
+            button.classList.remove('loading');
+            button.disabled = false;
+        }
+    },
 
-    const loadSavedCrudes = async () => {
-        try {
-            const response = await fetch('{{ url_for("get_crudos_guardados") }}');
-            if (!response.ok) throw new Error('Network response was not ok');
-            savedCrudesData = await response.json();
-            savedCrudesSelect.innerHTML = '<option selected disabled>Selecciona un crudo...</option>';
-            Object.keys(savedCrudesData).sort().forEach(name => savedCrudesSelect.add(new Option(name, name)));
-        } catch (error) { console.error('Error al cargar crudos:', error); }
-    };
+    // 4. MÉTODOS DE DATOS Y LÓGICA
 
-    const getFormData = () => {
+    /**
+     * Recopila todos los datos del formulario en un objeto.
+     */
+    _getFormData() {
         const curvePoints = [];
-        curveBody.querySelectorAll('tr').forEach(r => {
+        this.dom.curveBody.querySelectorAll('tr').forEach(r => {
             const p = parseFloat(r.querySelector('.percent-input').value);
             const tC = parseFloat(r.querySelector('.temp-c-input').value);
             if (!isNaN(p) && !isNaN(tC)) curvePoints.push({ percent: p, tempC: tC });
         });
         return {
-            api: parseFloat(crudeApiInput.value),
-            sulfur: parseFloat(crudeSulfurInput.value),
-            viscosity: parseFloat(crudeViscosityInput.value),
+            api: parseFloat(this.dom.crudeApiInput.value),
+            sulfur: parseFloat(this.dom.crudeSulfurInput.value),
+            viscosity: parseFloat(this.dom.crudeViscosityInput.value),
             curva: curvePoints
         };
-    };
+    },
 
-    // --- EVENT LISTENERS ---
-
-    btnAddPoint.addEventListener('click', () => addCurvePoint());
-    curveBody.addEventListener('click', (e) => { if (e.target.closest('.btn-remove-point')) e.target.closest('tr').remove(); });
-    
-    // ** LÓGICA DE CONVERSIÓN MEJORADA (USA EVENT DELEGATION) **
-    // Un solo listener para toda la tabla, más eficiente.
-    curveBody.addEventListener('input', (e) => {
+    /**
+     * Maneja la conversión automática entre °C y °F.
+     */
+    _handleTempConversion(e) {
         const target = e.target;
         if (!target.classList.contains('temp-f-input') && !target.classList.contains('temp-c-input')) return;
         
         const row = target.closest('tr');
         const fInput = row.querySelector('.temp-f-input');
         const cInput = row.querySelector('.temp-c-input');
-        const fahrenheitToCelsius = (f) => (f - 32) * 5/9;
-        const celsiusToFahrenheit = (c) => (c * 9/5) + 32;
+        const fahrenheitToCelsius = (f) => (f - 32) * 5 / 9;
+        const celsiusToFahrenheit = (c) => (c * 9 / 5) + 32;
 
         if (target === cInput) {
             const cValue = parseFloat(cInput.value);
@@ -205,65 +429,145 @@ document.addEventListener('DOMContentLoaded', function () {
             const fValue = parseFloat(fInput.value);
             cInput.value = isNaN(fValue) ? '' : fahrenheitToCelsius(fValue).toFixed(1);
         }
-    });
-
-    btnLoadCrude.addEventListener('click', () => {
-        const data = savedCrudesData[savedCrudesSelect.value];
-        if (data) {
-            crudeApiInput.value = data.api || '';
-            crudeSulfurInput.value = data.sulfur || '';
-            crudeViscosityInput.value = data.viscosity || '';
-            curveBody.innerHTML = '';
-            if (data.curva) data.curva.forEach(p => addCurvePoint(p.percent, p.tempC));
-        }
-    });
-
-    btnSaveCrude.addEventListener('click', async () => {
-        const nombre = prompt("Introduce el nombre para guardar este crudo:", "");
-        if (!nombre) return;
-        const payload = { nombre: nombre.toUpperCase(), ...getFormData() };
-        if (payload.curva.length < 1) { alert('No hay puntos en la curva para guardar.'); return; }
-        
-        const response = await fetch('{{ url_for("save_crudo") }}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        const result = await response.json();
-        alert(result.message);
-        if (result.success) await loadSavedCrudes();
-    });
-
-    btnDeleteCrude.addEventListener('click', async () => {
-        const crudeName = savedCrudesSelect.value;
-        if (!crudeName || crudeName.startsWith("Selecciona")) { alert("Selecciona un crudo para eliminar."); return; }
-        if (confirm(`¿Seguro que quieres eliminar '${crudeName}'?`)) {
-            const response = await fetch(`/api/crudos_guardados/${crudeName}`, { method: 'DELETE' });
-            const result = await response.json();
-            alert(result.message);
-            if (result.success) await loadSavedCrudes();
-        }
-    });
+    },
     
-    btnCalculate.addEventListener('click', async () => {
-        const formData = getFormData();
-        if (formData.curva.length < 2) { alert('Se necesitan al menos dos puntos válidos en la curva.'); return; }
+    /**
+     * Carga los datos del crudo seleccionado en el formulario.
+     */
+    _loadSelectedCrude() {
+        const data = this.state.savedCrudesData[this.dom.savedCrudesSelect.value];
+        if (data) {
+            this.dom.crudeApiInput.value = data.api || '';
+            this.dom.crudeSulfurInput.value = data.sulfur || '';
+            this.dom.crudeViscosityInput.value = data.viscosity || '';
+            this.dom.curveBody.innerHTML = '';
+            if (data.curva) data.curva.forEach(p => this._addCurvePoint(p.percent, p.tempC));
+        }
+    },
+
+    // 5. MANEJADORES DE EVENTOS (API CALLS)
+    
+    /**
+     * Envoltura genérica para peticiones fetch a la API.
+     */
+    async _handleApiRequest(url, options, buttonToLoad = null) {
+        if (buttonToLoad) this._setLoadingState(buttonToLoad, true);
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`Error de red: ${response.statusText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error en la petición a la API:', error);
+            alert(`Hubo un error al comunicarse con el servidor: ${error.message}`);
+            return null; // Devuelve null en caso de error
+        } finally {
+            if (buttonToLoad) this._setLoadingState(buttonToLoad, false);
+        }
+    },
+
+    async handleCalculate() {
+        const formData = this._getFormData();
+        if (formData.curva.length < 2) {
+            alert('Se necesitan al menos dos puntos válidos en la curva.');
+            return;
+        }
+
+        const defaultName = this.dom.savedCrudesSelect.value.startsWith("Selecciona") 
+            ? `Corrida ${this.state.comparisonResults.length + 1}` 
+            : this.dom.savedCrudesSelect.value;
+        const runName = prompt("Introduce un nombre para identificar este cálculo:", defaultName);
+        if (!runName) return;
 
         const payload = {
             distillationCurve: formData.curva,
             cutPoints: {
-                nafta: parseFloat(document.getElementById('cut-nafta').value),
-                kero: parseFloat(document.getElementById('cut-kero').value),
-                fo4: parseFloat(document.getElementById('cut-fo4').value)
+                nafta: parseFloat(this.dom.cutNaftaInput.value),
+                kero: parseFloat(this.dom.cutKeroInput.value),
+                fo4: parseFloat(this.dom.cutFo4Input.value)
             },
             apiCrude: formData.api,
             sulfurCrude: formData.sulfur,
-            viscosityCrude: formData.viscosity
+            viscosityCrude: formData.viscosity,
+            includeKero: this.dom.toggleKero.checked
         };
+        
+        const data = await this._handleApiRequest(
+            '{{ url_for("api_calcular_rendimiento") }}', 
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+            this.dom.btnCalculate
+        );
+        
+        if (data && data.success) {
+            data.name = runName;
+            this.state.comparisonResults.push(data);
+            this.displayComparison();
+        } else if (data) {
+            alert('Error en el cálculo: ' + data.message);
+        }
+    },
 
-        const response = await fetch('{{ url_for("api_calcular_rendimiento") }}', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        const data = await response.json();
-        if (data.success) displayResults(data); else alert('Error en el cálculo: ' + data.message);
-    });
+    async handleLoadSavedCrudes() {
+        const data = await this._handleApiRequest('{{ url_for("get_crudos_guardados") }}');
+        if (data) {
+            this.state.savedCrudesData = data;
+            this.dom.savedCrudesSelect.innerHTML = '<option selected disabled>Selecciona un crudo...</option>';
+            Object.keys(this.state.savedCrudesData).sort().forEach(name => {
+                this.dom.savedCrudesSelect.add(new Option(name, name));
+            });
+        }
+    },
 
-    // --- INICIALIZACIÓN ---
-    loadSavedCrudes();
+    async handleSaveCrude() {
+        const selectedCrudeName = this.dom.savedCrudesSelect.disabled ? "" : this.dom.savedCrudesSelect.value;
+        const nombre = prompt("Introduce el nombre para guardar este crudo:", selectedCrudeName);
+        if (!nombre) return;
+        
+        const formData = this._getFormData();
+        if (formData.curva.length < 1) {
+            alert('No hay puntos en la curva para guardar.');
+            return;
+        }
+        
+        const payload = { nombre: nombre.toUpperCase(), ...formData };
+        const result = await this._handleApiRequest(
+            '{{ url_for("save_crudo") }}', 
+            { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+        );
+
+        if (result) {
+            alert(result.message);
+            if (result.success) this.handleLoadSavedCrudes();
+        }
+    },
+
+    async handleDeleteCrude() {
+        const crudeName = this.dom.savedCrudesSelect.value;
+        if (!crudeName || crudeName.startsWith("Selecciona")) {
+            alert("Selecciona un crudo para eliminar.");
+            return;
+        }
+        if (confirm(`¿Seguro que quieres eliminar '${crudeName}'?`)) {
+            const result = await this._handleApiRequest(
+                `/api/crudos_guardados/${crudeName}`, 
+                { method: 'DELETE' }
+            );
+
+            if (result) {
+                alert(result.message);
+                if (result.success) {
+                    this.dom.curveBody.innerHTML = '';
+                    this.handleLoadSavedCrudes();
+                }
+            }
+        }
+    }
+};
+
+// Iniciar la aplicación cuando el DOM esté listo.
+document.addEventListener('DOMContentLoaded', () => {
+    CrudeSimulator.init();
 });
 </script>
 {% endblock %}

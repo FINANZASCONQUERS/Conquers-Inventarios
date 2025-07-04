@@ -18,6 +18,8 @@ from weasyprint import HTML, CSS
 import math
 from sqlalchemy import or_
 from flask_migrate import Migrate
+import numpy as np
+import re
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -2423,7 +2425,7 @@ def simulador_rendimiento():
 def api_calcular_rendimiento():
     """
     Calcula rendimiento, API, azufre y viscosidad de productos.
-    VERSIÓN FINAL Y CORREGIDA.
+    VERSIÓN FINAL Y CORREGIDA (CON TOGGLE PARA KERO).
     """
     try:
         data = request.get_json()
@@ -2432,6 +2434,8 @@ def api_calcular_rendimiento():
         azufre_crudo = data.get('sulfurCrude') or 0
         api_crudo = data.get('apiCrude') or 0
         viscosidad_crudo = data.get('viscosityCrude') or 0
+        # <<-- NUEVO: Obtener el estado del interruptor, por defecto es True
+        incluir_kero = data.get('includeKero', True)
 
         if not all([puntos_curva, puntos_corte, api_crudo]) or len(puntos_curva) < 2:
             return jsonify({"success": False, "message": "Datos incompletos."}), 400
@@ -2449,54 +2453,70 @@ def api_calcular_rendimiento():
                     return p1['percent'] + (temp_objetivo - p1['tempC']) * (p2['percent'] - p1['percent']) / (p2['tempC'] - p1['tempC'])
             return 100
 
-        # 1. Calcular Rendimientos
+        # 1. Calcular Rendimientos (Lógica condicional)
         porc_nafta = interpolar_porcentaje(puntos_corte.get('nafta', 0))
-        porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
         porc_fo4_acumulado = interpolar_porcentaje(puntos_corte.get('fo4', 0))
-        rendimientos = {
-            "NAFTA": max(0, porc_nafta),
-            "KERO": max(0, porc_kero_acumulado - porc_nafta),
-            "FO4": max(0, porc_fo4_acumulado - porc_kero_acumulado),
-            "FO6": max(0, 100 - porc_fo4_acumulado)
-        }
-        
-        ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
 
+        if incluir_kero:
+            porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
+            ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
+            rendimientos = {
+                "NAFTA": max(0, porc_nafta),
+                "KERO": max(0, porc_kero_acumulado - porc_nafta),
+                "FO4": max(0, porc_fo4_acumulado - porc_kero_acumulado),
+                "FO6": max(0, 100 - porc_fo4_acumulado)
+            }
+        else: # Si no se incluye kero
+            ORDEN_PRODUCTOS = ["NAFTA", "FO4", "FO6"]
+            rendimientos = {
+                "NAFTA": max(0, porc_nafta),
+                "KERO": 0, # Se asigna 0 para consistencia en cálculos intermedios
+                "FO4": max(0, porc_fo4_acumulado - porc_nafta), # FO4 absorbe el corte de KERO
+                "FO6": max(0, 100 - porc_fo4_acumulado)
+            }
+        
+        # El resto de los cálculos (Azufre, API, Viscosidad) son robustos
+        # y manejarán correctamente un rendimiento de 0 para KERO.
+        
         # 2. Calcular Azufre por Producto
-        azufre_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        azufre_por_producto = {}
+        FACTORES_AZUFRE = {'NAFTA': 0.05, 'KERO': 0.15, 'FO4': 1.0, 'FO6': 2.5}
         if azufre_crudo > 0:
-            FACTORES_AZUFRE = {'NAFTA': 0.05, 'KERO': 0.15, 'FO4': 1.0, 'FO6': 2.5}
-            denominador_k_s = sum(rendimientos[p] * FACTORES_AZUFRE[p] for p in ORDEN_PRODUCTOS if p in rendimientos)
-            if denominador_k_s > 0:
-                k_s = (100 * azufre_crudo) / denominador_k_s
-                for p in azufre_por_producto: azufre_por_producto[p] = round(k_s * FACTORES_AZUFRE.get(p, 0), 4)
+            # El denominador se calcula sobre todos los productos posibles para mantener consistencia.
+            # Si el rendimiento de KERO es 0, simplemente no aportará a la suma.
+            denominador_k_s = sum(rendimientos.get(p, 0) * FACTORES_AZUFRE[p] for p in FACTORES_AZUFRE)
+            k_s = (100 * azufre_crudo) / denominador_k_s if denominador_k_s > 0 else 0
+            for p in FACTORES_AZUFRE:
+                azufre_por_producto[p] = round(k_s * FACTORES_AZUFRE.get(p, 0), 4)
 
         # 3. Calcular API por Producto
-        api_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        api_por_producto = {}
         API_ESTANDAR = {'NAFTA': 60.0, 'KERO': 45.0, 'FO4': 32.0, 'FO6': 18.0}
         def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
         def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
         sg_crudo_real = api_a_sg(api_crudo)
         sg_productos_estandar = {p: api_a_sg(api) for p, api in API_ESTANDAR.items()}
-        sg_reconstituido = sum(rendimientos[p] / 100 * sg_productos_estandar[p] for p in ORDEN_PRODUCTOS if rendimientos[p] > 0)
+        # Si el rendimiento de un producto es 0, no aportará a la reconstitución.
+        sg_reconstituido = sum(rendimientos.get(p, 0) / 100 * sg_productos_estandar[p] for p in API_ESTANDAR if rendimientos.get(p, 0) > 0)
         factor_ajuste_sg = sg_crudo_real / sg_reconstituido if sg_reconstituido > 0 else 1
-        for p in ORDEN_PRODUCTOS:
+        for p in API_ESTANDAR:
             sg_ajustado = sg_productos_estandar[p] * factor_ajuste_sg
             api_por_producto[p] = round(sg_a_api(sg_ajustado), 1)
 
         # 4. Calcular Viscosidad por Producto
-        viscosidad_por_producto = {p: 0 for p in ORDEN_PRODUCTOS}
+        viscosidad_por_producto = {}
+        VISCOSIDAD_STD = {'NAFTA': 0.8, 'KERO': 2.0, 'FO4': 4.0, 'FO6': 380.0}
         if viscosidad_crudo > 0:
-            VISCOSIDAD_STD = {'NAFTA': 0.8, 'KERO': 2.0, 'FO4': 4.0, 'FO6': 380.0}
-            log_visc_reconstituido = sum(rendimientos[p]/100 * math.log(VISCOSIDAD_STD[p]) for p in ORDEN_PRODUCTOS if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
+            log_visc_reconstituido = sum(rendimientos.get(p,0)/100 * math.log(VISCOSIDAD_STD[p]) for p in VISCOSIDAD_STD if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
             visc_reconstituido = math.exp(log_visc_reconstituido) if log_visc_reconstituido != 0 else 1
             factor_ajuste_visc = viscosidad_crudo / visc_reconstituido if visc_reconstituido > 0 else 1
-            for p in ORDEN_PRODUCTOS:
+            for p in VISCOSIDAD_STD:
                 viscosidad_por_producto[p] = round(VISCOSIDAD_STD[p] * factor_ajuste_visc, 2)
 
-        # 5. Devolver respuesta completa y ordenada
+        # 5. Devolver respuesta completa y ordenada, filtrando solo los productos relevantes
         return jsonify({
-            "success": True, "order": ORDEN_PRODUCTOS,
+            "success": True, 
+            "order": ORDEN_PRODUCTOS,
             "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},
             "sulfur_by_product": {p: azufre_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
             "api_by_product": {p: api_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
@@ -2607,37 +2627,69 @@ def consolidar_facturas():
     return render_template('consolidar_facturas.html', nombre=session.get("nombre"))
 
 @login_required
-@permiso_requerido('accountingzf@conquerstrading.com')
+@permiso_exclusivo('accountingzf@conquerstrading.com')
 @app.route('/api/comparar_facturas', methods=['POST'])
 def api_comparar_facturas():
     if 'odoo_file' not in request.files or 'dian_file' not in request.files:
         return jsonify(success=False, message="Ambos archivos son requeridos."), 400
 
-    odoo_file = request.files['odoo_file']
-    dian_file = request.files['dian_file']
-
     try:
-        # Usar un motor que soporte .xlsx
-        df_odoo = pd.read_excel(odoo_file, engine='openpyxl')
-        df_dian = pd.read_excel(dian_file, engine='openpyxl')
+        df_odoo = pd.read_excel(request.files['odoo_file'], engine='openpyxl')
+        df_dian = pd.read_excel(request.files['dian_file'], engine='openpyxl')
 
-        # --- Lógica de Consolidación ---
-        if 'REFERENCIA' not in df_odoo.columns:
-            return jsonify(success=False, message="La columna 'REFERENCIA' no se encontró en el archivo de Odoo."), 400
-        if 'PREFIJO' not in df_dian.columns or 'FOLIO' not in df_dian.columns:
-            return jsonify(success=False, message="Las columnas 'PREFIJO' y/o 'FOLIO' no se encontraron en el archivo de la DIAN."), 400
+        # --- Verificación de Columnas Clave ---
+        if 'Referencia' not in df_odoo.columns:
+            return jsonify(success=False, message="La columna 'Referencia' no se encontró en el archivo de Odoo."), 400
+        if 'Prefijo' not in df_dian.columns or 'Folio' not in df_dian.columns or 'Nombre Emisor' not in df_dian.columns:
+            return jsonify(success=False, message="El archivo de la DIAN debe tener 'Prefijo', 'Folio' y 'Nombre Emisor'."), 400
 
-        # Unificar columnas de la DIAN en una sola para comparar
-        df_dian['PREFIJO-FOLIO'] = df_dian['PREFIJO'].astype(str) + df_dian['FOLIO'].astype(str)
+        # --- Función de Normalización Inteligente (Definitiva) ---
+        def normalizar_factura(ref):
+            if pd.isna(ref): return None
+            s_ref = str(ref).strip().upper()
+            
+            # Busca un prefijo de letras/guiones y luego los números
+            partes = re.match(r"([A-Z\-]+)0*(\d+)", s_ref)
+            if partes:
+                # Une el prefijo (sin guion) con el número
+                prefijo = partes.group(1).replace('-', '')
+                folio = int(partes.group(2))
+                return f"{prefijo}-{folio}"
+            
+            # Si no encuentra el patrón, devuelve solo los números y letras
+            return re.sub(r'[^A-Z0-9]', '', s_ref)
+
+        # 1. Procesar datos de Odoo
+        set_odoo = set(df_odoo['Referencia'].dropna().apply(normalizar_factura))
         
-        set_odoo = set(df_odoo['REFERENCIA'].dropna().astype(str))
-        set_dian = set(df_dian['PREFIJO-FOLIO'].dropna().astype(str))
+        # 2. Procesar datos de la DIAN
+        def unir_prefijo_folio(row):
+            prefijo = str(row['Prefijo']).strip() if pd.notna(row['Prefijo']) else ""
+            folio = str(row['Folio']).strip() if pd.notna(row['Folio']) else ""
+            # Si el prefijo está vacío, es 'nan', o ya está en el folio, usa solo el folio
+            if not prefijo or prefijo.lower() == 'nan' or prefijo in folio:
+                return folio
+            return prefijo + folio
 
-        facturas_faltantes = sorted(list(set_odoo - set_dian))
+        df_dian['referencia_completa'] = df_dian.apply(unir_prefijo_folio, axis=1)
+        
+        dian_map = {
+            normalizar_factura(row['referencia_completa']): {
+                "factura": row['referencia_completa'],
+                "emisor": str(row['Nombre Emisor']) if pd.notna(row['Nombre Emisor']) else "Sin Nombre"
+            }
+            for _, row in df_dian.dropna(subset=['referencia_completa']).iterrows()
+        }
+        set_dian = set(dian_map.keys())
 
+        # 3. Comparación Invertida: Lo que está en DIAN y falta en Odoo
+        faltantes_normalizados = sorted(list(set_dian - set_odoo))
+        
+        # Recuperar el formato original y el nombre del emisor desde el mapa de la DIAN
+        facturas_faltantes = [dian_map[key] for key in faltantes_normalizados if key in dian_map]
+        
         return jsonify(
             success=True,
-            message="Comparación completada.",
             faltantes=facturas_faltantes,
             conteo=len(facturas_faltantes)
         )
