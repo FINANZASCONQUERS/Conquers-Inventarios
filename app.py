@@ -1229,6 +1229,57 @@ def guardar_transito(tipo_transito):
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
 @login_required
+@permiso_requerido('transito')
+@app.route('/api/transito/eliminar-todo/<string:tipo_transito>', methods=['DELETE'])
+def eliminar_todo_transito(tipo_transito):
+    """
+    Elimina TODOS los registros de un tipo de tránsito específico ('general' o 'refineria').
+    """
+    # Validamos que el tipo sea uno de los esperados
+    if tipo_transito not in ['general', 'refineria']:
+        return jsonify(success=False, message="Tipo de tránsito no válido."), 400
+
+    try:
+        # Ejecuta la eliminación masiva
+        num_borrados = RegistroTransito.query.filter_by(tipo_transito=tipo_transito).delete()
+        
+        # Confirma la transacción
+        db.session.commit()
+        
+        return jsonify(success=True, message=f"Se eliminaron {num_borrados} registros de la planilla '{tipo_transito}'.")
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error en eliminación masiva de tránsito '{tipo_transito}': {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500    
+    
+@login_required
+@permiso_requerido('transito')
+@app.route('/eliminar-registro-transito/<int:id>', methods=['DELETE'])
+def eliminar_registro_transito(id):
+    """
+    Elimina un único registro de la tabla de tránsito por su ID.
+    """
+    try:
+        # Busca el registro por su ID. Si no lo encuentra, devuelve un error 404.
+        registro_a_eliminar = RegistroTransito.query.get_or_404(id)
+        
+        # Elimina el registro de la sesión de la base de datos
+        db.session.delete(registro_a_eliminar)
+        
+        # Confirma los cambios en la base de datos
+        db.session.commit()
+        
+        # Devuelve una respuesta de éxito en formato JSON
+        return jsonify(success=True, message="Registro eliminado exitosamente.")
+
+    except Exception as e:
+        # Si algo sale mal, revierte los cambios y registra el error
+        db.session.rollback()
+        app.logger.error(f"Error al eliminar registro de tránsito ID {id}: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500    
+    
+@login_required
 @permiso_requerido('transito') # <--- LÍNEA CORREGIDA
 @app.route('/subir_excel_transito', methods=['POST'])
 def subir_excel_transito():
@@ -3443,8 +3494,8 @@ def update_programacion(id):
     
     # La lógica de permisos no necesita cambios, está bien.
     permisos = {
-        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia'],
+        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'destino', 'cliente'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     }

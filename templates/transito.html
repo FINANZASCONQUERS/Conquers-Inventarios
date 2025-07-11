@@ -26,6 +26,9 @@
                 <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success">
                     <i class="bi bi-save2-fill me-1"></i> Guardar
                 </button>
+                <button id="btnEliminarTodo" class="btn btn-danger" data-tipo="{{ tipo_inicial | default('general') }}">
+                <i class="bi bi-trash3-fill me-1"></i> Eliminar Todo
+                </button>
                 <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSubirExcel">
                     <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Subir Excel
                 </button>
@@ -34,20 +37,19 @@
                 </a>
                 <div class="btn-group ms-3">
 </div>
-            </div>
-            <div class="btn-group ms-2" role="group">
-                 <button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-repeat me-1"></i>
-                    <span id="toggleNombreVista">
-                        {% set otra_vista_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
-                        {{ transito_config.get(otra_vista_key, {}).get('nombre_display', 'Otra Vista') }}
-                    </span>
-                </button>
-                <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary" title="Añadir Fila">
-                    <i class="bi bi-plus-lg"></i>
-                </button>
-            </div>
-        </div>
+<button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-repeat me-1"></i>
+            <span id="toggleNombreVista">
+                {% set otra_vista_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
+                {{ transito_config.get(otra_vista_key, {}).get('nombre_display', 'Otra Vista') }}
+            </span>
+        </button>
+        <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary" title="Añadir Fila">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+
+    </div>
+</div>
     </div>
     <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1100;"></div>
     <div id="avisoHoraLimiteContainer" class="mb-3"></div>
@@ -287,7 +289,47 @@
     const filterInputs = document.querySelectorAll('.excel-filter');  
     filterInputs.forEach(input => {  
       input.addEventListener('keyup', aplicarFiltros);  
-    });  
+    });
+    
+    // ✅ NUEVO: Evento para el botón de Eliminar Todo
+     const btnEliminarTodo = document.getElementById('btnEliminarTodo');
+        if (btnEliminarTodo) {
+            btnEliminarTodo.addEventListener('click', function() {
+                const tipo = this.dataset.tipo;
+                const nombrePlanilla = tipo === 'general' ? 'Tránsito Crudo EDSM' : 'Tránsito Crudo Refinería';
+                
+                const confirmacion = confirm(`¿Estás SEGURO de que quieres borrar TODOS los registros de la planilla "${nombrePlanilla}"? Esta acción no se puede deshacer.`);
+                
+                if (confirmacion) {
+                    this.disabled = true;
+                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Eliminando...';
+
+                    fetch(`/api/transito/eliminar-todo/${tipo}`, {
+                        method: 'DELETE',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        mostrarAlerta(data.message, data.success ? "success" : "danger");
+                        if (data.success) {
+                            // 1. Limpiamos cualquier cambio no guardado en la sesión del navegador.
+                            limpiarEstadoDeSesion();
+                            
+                            // 2. Recargamos la página para mostrar el estado completamente limpio desde el servidor.
+                            setTimeout(() => window.location.reload(), 1500);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en la solicitud de eliminación masiva:', error);
+                        mostrarAlerta('Error de conexión con el servidor.', 'danger');
+                    })
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-trash3-fill me-1"></i> Eliminar Todo';
+                    });
+                }
+            });
+        }
 
     // Cargar el estado inicial de la tabla  
     const estadoRecuperado = cargarEstadoDesdeSesion();  
@@ -938,11 +980,13 @@
 
   function cambiarVista() {  
     vistaActual = vistaActual === "general" ? "refineria" : "general";
-    document.getElementById('tipoTransitoHidden').value = vistaActual;  
+    document.getElementById('tipoTransitoHidden').value = vistaActual;
+    document.getElementById('btnEliminarTodo').dataset.tipo = vistaActual;  
     guardarEstadoEnSesion();  
     actualizarTextosDeVista();  
     renderTabla();  
-  }  
+  }
+  
 
   function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {  
     const alertContainer = document.getElementById('alert-container');  
