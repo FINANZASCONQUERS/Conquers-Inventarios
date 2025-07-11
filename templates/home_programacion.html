@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Inicio - Programación{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            
+            <div class="card shadow-sm border-light">
+                <div class="card-body p-5">
+                    <i class="fas fa-truck-loading fa-3x text-primary mb-3"></i>
+                    <h1 class="h3">Módulo de Programación de Cargue</h1>
+                    <p class="text-muted">
+                        Bienvenido, {{ nombre }}. Desde aquí puedes gestionar la programación de vehículos.
+                    </p>
+                    <a href="{{ url_for('programacion_cargue') }}" class="btn btn-primary btn-lg mt-3">
+                        <i class="fas fa-arrow-right me-2"></i>Ir a la Planilla de Programación
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

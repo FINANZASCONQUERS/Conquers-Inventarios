@@ -1,0 +1,421 @@
+{% extends "base.html" %}
+{% block title %}Programación de Cargue{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 fw-semibold text-gray-800 mb-0">
+            <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
+        </h2>
+        <button id="btn-add-row" class="btn btn-primary btn-sm rounded-pill shadow-sm">
+            <i class="fas fa-plus me-2"></i>Nueva Programación
+        </button>
+    </div>
+    
+    <div class="card border-0 shadow-lg rounded-lg overflow-hidden">
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h5 class="mb-0 text-gray-800">
+                        <i class="fas fa-calendar-alt me-2 text-primary"></i>Registros de Programación
+                    </h5>
+                </div>
+                <div class="col-md-6 text-end">
+                    <span class="badge bg-primary bg-opacity-10 text-primary">
+                        <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive-lg">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light text-uppercase">
+                        <!-- Header se generará dinámicamente -->
+                    </thead>
+                    <tbody id="schedule-table-body" class="font-sm">
+                        <!-- Contenido dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- VARIABLES Y CONFIGURACIÓN ---
+    const userEmail = "{{ email_usuario }}";
+    const userRol = "{{ rol_usuario }}";
+    const tbody = document.getElementById('schedule-table-body');
+    const thead = document.querySelector('table thead');
+    const btnAddRow = document.getElementById('btn-add-row');
+
+    const permissions = {
+        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia'],
+        'amariagallo@conquerstrading.com': ['destino', 'cliente'],
+        'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
+    };
+
+    const columnsConfig = {
+        'fecha_programacion': { width: '120px', type: 'date' },
+        'empresa_transportadora': { width: '180px' },
+        'placa': { width: '100px' },
+        'tanque': { width: '80px' },
+        'nombre_conductor': { width: '180px' },
+        'cedula_conductor': { width: '120px' },
+        'celular_conductor': { width: '120px' },
+        'hora_llegada_estimada': { width: '120px', type: 'time' },
+        'producto_a_cargar': { width: '150px' },
+        'destino': { width: '150px' },
+        'cliente': { width: '180px' },
+        'estado': { width: '130px', type: 'select', options: ['PROGRAMADO', 'CARGADO', 'DESPACHADO'] },
+        'galones': { width: '100px', type: 'number' },
+        'barriles': { width: '100px', type: 'number', readonly: true },
+        'temperatura': { width: '100px', type: 'number' },
+        'api_obs': { width: '100px', type: 'number' },
+        'api_corregido': { width: '120px', type: 'number' },
+        'precintos': { width: '120px' },
+        'numero_guia': { width: '150px' }
+    };
+
+    const allColumns = Object.keys(columnsConfig);
+    const userPermissions = permissions[userEmail] || [];
+    const isAdmin = userRol === 'admin';
+
+    // --- FUNCIONES DE RENDERIZADO Y FORMATO ---
+    function fetchAndRender() {
+        fetch("{{ url_for('handle_programacion') }}")
+            .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
+            .then(data => renderTable(data))
+            .catch(error => {
+                console.error('Error en fetchAndRender:', error);
+                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center text-danger py-3">Error al cargar la información.</td></tr>`;
+            });
+    }
+
+    function renderTable(data) {
+        let headerHtml = '<tr class="align-middle">';
+        allColumns.forEach(col => {
+            const config = columnsConfig[col];
+            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap ${userPermissions.includes(col) || isAdmin ? 'editable-column' : ''}">${formatColumnName(col)}</th>`;
+        });
+        headerHtml += '<th style="width: 100px" class="text-center">Acciones</th></tr>';
+        thead.innerHTML = headerHtml;
+
+        tbody.innerHTML = '';
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4 text-muted">No hay programaciones.</td></tr>`;
+            return;
+        }
+
+        data.forEach(row => {
+            let rowHtml = `<tr data-id="${row.id}" class="align-middle ${row.estado === 'DESPACHADO' ? 'table-success' : row.estado === 'CARGADO' ? 'table-info' : ''}">`;
+            allColumns.forEach(col => {
+                const config = columnsConfig[col];
+                const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
+                const value = row[col];
+                rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
+                                contenteditable="${isEditable}"
+                                class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''}"
+                                style="min-width: ${config.width}">
+                                ${formatCellValue(value, config)}
+                            </td>`;
+            });
+            rowHtml += `<td class="text-center">
+                            <button class="btn btn-sm btn-success btn-save"><i class="fas fa-save me-1"></i>Guardar</button>
+                        </td></tr>`;
+            tbody.innerHTML += rowHtml;
+        });
+    }
+
+    function formatColumnName(colName) {
+        return colName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    function formatCellValue(value, config) {
+        if (value === null || value === undefined || value === '') return '-';
+        switch (config.type) {
+            case 'date':
+                return new Date(value + 'T00:00:00').toLocaleDateString('es-CO', { timeZone: 'UTC' });
+            case 'time':
+                return value.slice(0, 5);
+            case 'number':
+                return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            default:
+                return value;
+        }
+    }
+
+    // --- MANEJADORES DE EVENTOS ---
+    btnAddRow.addEventListener('click', function() {
+        this.disabled = true;
+        const originalHtml = this.innerHTML;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
+
+        fetch("{{ url_for('handle_programacion') }}", { 
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                fetchAndRender();
+                showToast('success', 'Nueva programación creada');
+            } else {
+                showToast('danger', 'Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error al añadir fila:', error);
+            showToast('danger', 'Error de conexión');
+        })
+        .finally(() => {
+            this.disabled = false;
+            this.innerHTML = originalHtml;
+        });
+    });
+
+    // CÁLCULO AUTOMÁTICO DE BARRILES
+    tbody.addEventListener('input', function(e) {
+        const cell = e.target;
+        if (cell.dataset.field === 'galones' && cell.isContentEditable) {
+            const row = cell.closest('tr');
+            const barrilesCell = row.querySelector('[data-field="barriles"]');
+            const galonesValue = parseFloat(cell.textContent.replace(/\./g, '').replace(',', '.')) || 0;
+            const barrilesValue = galonesValue / 42;
+            barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    });
+
+    // MANEJADOR DE CLIC PARA GUARDAR Y ESTADO
+    tbody.addEventListener('click', function(e) {
+        const saveButton = e.target.closest('.btn-save');
+        const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
+
+        // Lógica para GUARDAR
+        if (saveButton) {
+            const row = saveButton.closest('tr');
+            const id = row.dataset.id;
+            const updatedData = { barriles: 0 };
+
+            row.querySelectorAll('td[data-field]').forEach(cell => {
+                const field = cell.dataset.field;
+                const config = columnsConfig[field];
+                let value = cell.textContent.trim();
+
+                if (value === '' || value === '-') value = null;
+                else if (config.type === 'date' && value) {
+                    const parts = value.split('/');
+                    if (parts.length === 3) value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                } else if (config.type === 'number' && value) {
+                    value = parseFloat(value.replace(/\./g, '').replace(',', '.')) || null;
+                }
+                updatedData[field] = value;
+            });
+            
+            saveButton.disabled = true;
+            saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>';
+            
+            fetch(`/api/programacion/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData)
+            })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok) {
+                    showToast('success', data.message || 'Cambios guardados');
+                    fetchAndRender(); // Refrescar para aplicar cambios de estado
+                } else {
+                    showToast('danger', 'Error: ' + (data.message || 'Ocurrió un error'));
+                }
+            })
+            .catch(error => showToast('danger', 'Error de conexión'))
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Guardar';
+            });
+
+        // Lógica para el menú de ESTADO
+        } else if (estadoCell) {
+            if (estadoCell.querySelector('select')) return;
+            
+            const originalValue = estadoCell.textContent.trim();
+            const config = columnsConfig['estado'];
+            const select = document.createElement('select');
+            select.className = 'form-select form-select-sm shadow-sm';
+            
+            config.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                if (opt === originalValue) option.selected = true;
+                select.appendChild(option);
+            });
+            
+            estadoCell.innerHTML = '';
+            estadoCell.appendChild(select);
+            select.focus();
+
+            const revertToText = () => {
+                estadoCell.textContent = select.value;
+                // Cambiar clase de la fila según estado
+                const row = estadoCell.closest('tr');
+                row.className = 'align-middle';
+                if (select.value === 'DESPACHADO') row.classList.add('table-success');
+                else if (select.value === 'CARGADO') row.classList.add('table-info');
+            };
+            
+            select.addEventListener('blur', revertToText);
+            select.addEventListener('change', revertToText);
+        }
+    });
+
+    function showToast(type, message) {
+        const toastContainer = document.getElementById('toast-container') || createToastContainer();
+        const toast = document.createElement('div');
+        
+        toast.className = `toast show align-items-center text-white bg-${type} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="${type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'} me-2"></i>
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'position-fixed top-0 end-0 p-3';
+        container.style = 'z-index: 1100';
+        document.body.appendChild(container);
+        return container;
+    }
+
+    // --- CARGA INICIAL ---
+    fetchAndRender();
+});
+</script>
+
+<style>
+    /* Estilos mejorados para la tabla */
+    .table-responsive-lg {
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #dee2e6 #f8f9fa;
+    }
+    
+    .table-responsive-lg::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+    
+    .table-responsive-lg::-webkit-scrollbar-track {
+        background: #f8f9fa;
+    }
+    
+    .table-responsive-lg::-webkit-scrollbar-thumb {
+        background-color: #dee2e6;
+        border-radius: 20px;
+    }
+    
+    .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 10;
+        font-weight: 600;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #495057;
+        border-bottom-width: 2px;
+    }
+    
+    .table td, .table th {
+        vertical-align: middle;
+        padding: 0.75rem;
+        border-color: #eff2f7;
+    }
+    
+    .table tr:hover td {
+        background-color: #f8fafc;
+    }
+    
+    .editable-cell {
+        background-color: rgba(13, 110, 253, 0.05);
+        transition: all 0.2s ease;
+        border-radius: 4px;
+    }
+    
+    .editable-cell:focus {
+        background-color: rgba(13, 110, 253, 0.1);
+        outline: 2px solid rgba(13, 110, 253, 0.3);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+    
+    .editable-column {
+        color: #0d6efd;
+    }
+    
+    .font-sm {
+        font-size: 0.875rem;
+    }
+    
+    /* Estilos para los botones */
+    .btn-sm {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.8rem;
+    }
+    
+    .btn-save {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+    
+    .btn-save:hover {
+        background-color: #1b5e20;
+        border-color: #1b5e20;
+    }
+    
+    /* Efectos de sombra y bordes */
+    .card {
+        border: none;
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
+    }
+    
+    .card-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Estilos para filas según estado */
+    .table-info {
+        --bs-table-bg: rgba(13, 202, 240, 0.1);
+    }
+    
+    .table-success {
+        --bs-table-bg: rgba(25, 135, 84, 0.1);
+    }
+</style>
+{% endblock %}

@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />       
     
     <style>
@@ -300,32 +301,21 @@
                         </li>
                         
                         <!-- Botón de acceso rápido a planillas -->
-                        {% set user_planillas = [] %}
-                        {% if 'zisa_inventory' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('inventario_zisa', 'Inventario SIZA', 'box-seam')) %}
+                         {% set user_planillas = [] %}
+                        {% if 'zisa_inventory' in session.get('area', []) %}{% set _ = user_planillas.append(('inventario_zisa', 'Inventario SIZA', 'box-seam')) %}{% endif %}
+                        {% if 'barcaza_orion' in session.get('area', []) %}{% set _ = user_planillas.append(('barcaza_orion', 'Planilla Orion', 'water')) %}{% endif %}
+                        {% if 'barcaza_bita' in session.get('area', []) %}{% set _ = user_planillas.append(('barcaza_bita', 'Planilla BITA', 'tsunami')) %}{% endif %}
+                        {% if 'planta' in session.get('area', []) %}{% set _ = user_planillas.append(('planta', 'Planilla Planta', 'buildings-fill')) %}{% endif %}
+                        {% if 'transito' in session.get('area', []) %}{% set _ = user_planillas.append(('transito', 'Planilla Tránsito', 'cone-striped')) %}{% endif %}
+                        {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
+                        {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'chart-pie')) %}{% endif %}
+                        {% if 'planilla_precios' in session.get('area', []) %}{% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
+                        {% if 'programacion_cargue' in session.get('area', []) %}
+                        {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Cargue', 'calendar-check')) %}
                         {% endif %}
-                        {% if 'barcaza_orion' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('barcaza_orion', 'Planilla Orion', 'water')) %}
+                        {% if 'control_remolcadores' in session.get('area', []) %}
+                            {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores', 'life-preserver')) %}
                         {% endif %}
-                        {% if 'barcaza_bita' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('barcaza_bita', 'Planilla BITA', 'tsunami')) %}
-                        {% endif %}
-                        {% if 'planta' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('planta', 'Planilla Planta', 'buildings-fill')) %}
-                        {% endif %}
-                        {% if 'transito' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('transito', 'Planilla Tránsito', 'cone-striped')) %}
-                        {% endif %}
-                        {% if 'guia_transporte' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}
-                        {% endif %}
-                        {% if 'simulador_rendimiento' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'chart-pie')) %}
-                        {% endif %}
-                        {% if 'planilla_precios' in session.get('area', []) %}
-                            {% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}
-                        {% endif %}
-                        
                         {% if user_planillas|length > 0 %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle quick-access-btn" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -363,6 +353,8 @@
                                     <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}"><i class="bi bi-currency-exchange me-2"></i>Planilla de Precios</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i class="bi bi-chart-pie me-2"></i>Simulador Rendimiento</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i class="bi bi-calendar-check me-2"></i>Programación de Cargue</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('control_remolcadores_page') }}"><i class="bi bi-life-preserver me-2"></i>Control Remolcadores</a></li>
                                 </ul>
                             </li>
                         {% endif %}    
@@ -451,6 +443,7 @@
     <!-- JavaScript Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     
     <script>
         // Navbar scroll effect

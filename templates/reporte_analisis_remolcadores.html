@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Análisis de Tiempos de Remolcadores{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 text-primary"><i class="fas fa-chart-line me-2"></i>Análisis de Tiempos de Remolcadores</h2>
+        <a href="{{ url_for('descargar_reporte_analisis_remolcadores_pdf') }}" class="btn btn-danger">
+            <i class="fas fa-file-pdf me-2"></i>Descargar como PDF
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    {# El filtro |safe es crucial para que se renderice el HTML del estilo de la tabla #}
+                    {{ resultados.tabla_cargado_html|safe }}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    {{ resultados.tabla_vacio_html|safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-bold">
+            Duración de Tanqueo por Mes y Maniobra
+        </div>
+        <div class="card-body text-center">
+            {# Se muestra el gráfico solo si fue generado exitosamente #}
+            {% if resultados.grafico_tanqueo_b64 %}
+                <img src="data:image/png;base64,{{ resultados.grafico_tanqueo_b64 }}" alt="Gráfico de Duración de Tanqueo" class="img-fluid">
+            {% else %}
+                <p class="text-muted my-5">No hay suficientes datos de "TANQUEO" para generar este gráfico.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card shadow-sm">
+        <div class="card-header fw-bold">
+            Total de Horas por Maniobra
+        </div>
+        <div class="card-body text-center">
+             {% if resultados.grafico_total_b64 %}
+                <img src="data:image/png;base64,{{ resultados.grafico_total_b64 }}" alt="Gráfico de Total de Horas por Maniobra" class="img-fluid">
+            {% else %}
+                <p class="text-muted my-5">No hay suficientes datos para generar el gráfico de horas totales.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

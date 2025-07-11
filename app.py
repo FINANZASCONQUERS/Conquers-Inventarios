@@ -20,6 +20,12 @@ from sqlalchemy import or_
 from flask_migrate import Migrate
 import numpy as np
 import re
+import base64
+from io import BytesIO
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -54,10 +60,209 @@ def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     except Exception as e:
         print(f"Error al formatear fecha: {e}")
         return "Fecha de registro con error de formato."
+def componer_fecha_hora(hora_str, fecha_base=None):
+    """
+    Toma una hora en formato 'HH:MM' y la combina con una fecha base
+    para crear un objeto datetime completo.
+    """
+    if not hora_str: return None
+    
+    # Si no se provee una fecha base, se usa la fecha del día actual.
+    if fecha_base is None:
+        fecha_base = date.today()
+        
+    try:
+        # Crea un objeto 'time' desde el string "HH:MM"
+        hora_obj = time.fromisoformat(hora_str)
+        # Combina la fecha base con el objeto 'time'
+        return datetime.combine(fecha_base, hora_obj)
+    except (ValueError, TypeError):
+        # Si el formato de hora es inválido (ej. "abc"), devuelve None.
+        return None
+def convertir_plot_a_base64(fig):
+    """Toma una figura de Matplotlib, la guarda en memoria y la devuelve como una cadena Base64."""
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    plt.close(fig)  # Cierra la figura para liberar memoria
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+def procesar_analisis_remolcadores(registros):
+    """
+    Toma una lista de registros, ejecuta el análisis de Pandas y devuelve
+    los resultados como HTML y gráficos en Base64.
+    """
+    if not registros:
+        return None
+
+    datos_df = [{
+        "ID": r.maniobra_id, "BARCAZA": r.barcaza, "EVENTO ANTERIO": r.evento_anterior,
+        "EVENTO ACTUAL": r.evento_actual, "HORA INICIO": r.hora_inicio, "HORA FIN": r.hora_fin,
+        "MT ENTREGADAS": float(r.mt_entregadas) if r.mt_entregadas else 0.0,
+        "CARGAS": r.carga_estado
+    } for r in registros]
+    
+    if not datos_df:
+        return None
+        
+    df = pd.DataFrame(datos_df)
+
+    if df.empty or df['HORA FIN'].isnull().all():
+        return None
+
+    # --- Lógica de preparación y fusión de datos (sin cambios) ---
+    df["HORA INICIO"] = pd.to_datetime(df["HORA INICIO"])
+    df["HORA FIN"]   = pd.to_datetime(df["HORA FIN"])
+    df.dropna(subset=['HORA INICIO', 'HORA FIN'], inplace=True)
+    
+    df["duration_hours"] = (df["HORA FIN"] - df["HORA INICIO"]).dt.total_seconds() / 3600
+    df["pair"] = (df["EVENTO ANTERIO"].astype(str).str.strip().str.upper() + " -> " + df["EVENTO ACTUAL"].astype(str).str.strip().str.upper())
+    df["trayecto_final"] = df["pair"]
+    df = df.sort_values(["ID", "HORA INICIO"]).reset_index(drop=True)
+
+    comb_rules = {
+        ("LLEGADA SPD -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "LLEGADA SPD -> LLEGADA BASE OPS",
+        ("LLEGADA SPD -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "LLEGADA SPD -> LLEGADA CONTECAR",
+        ("LLEGADA SPD -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "LLEGADA SPD -> LLEGADA FONDEO",
+        ("LLEGADA SPD -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "LLEGADA SPD -> LLEGADA SPRC",
+    }
+
+    for i in range(len(df) - 1):
+        if df.at[i, "ID"] != df.at[i + 1, "ID"]: continue
+        key = (df.at[i, "pair"], df.at[i + 1, "pair"])
+        if key in comb_rules:
+            df.at[i, "duration_hours"] += df.at[i + 1, "duration_hours"]
+            df.at[i, "HORA FIN"] = df.at[i + 1, "HORA FIN"]
+            df.at[i, "trayecto_final"] = comb_rules[key]
+            df.loc[i + 1, ["trayecto_final", "duration_hours"]] = [None, np.nan]
+
+    def convertir_a_texto_legible(horas):
+        if pd.isna(horas): return ""
+        td = timedelta(hours=horas)
+        h = int(td.total_seconds() // 3600)
+        m = int((td.total_seconds() % 3600) // 60)
+        partes = ([f"{h}h"] if h > 0 else []) + ([f"{m}m"] if m > 0 else [])
+        return " ".join(partes) or "0m"
+
+    # --- ANÁLISIS DE TRAYECTOS (Lógica de agrupación corregida) ---
+    pairs_loaded = ["LLEGADA SPD -> LLEGADA CONTECAR", "LLEGADA SPD -> LLEGADA SPRC", "LLEGADA SPD -> LLEGADA FONDEO", "ESPERAR AUTORIZACION -> AUTORIZADO"]
+    pairs_empty = ["INICIO BASE OPS -> LLEGADA SPD", "INICIO SPRC -> LLEGADA BASE OPS", "INICIO SPRC -> LLEGADA SPD", "INICIO CONTECAR -> LLEGADA BASE OPS", "INICIO CONTECAR -> LLEGADA SPD", "LLEGADA SPD -> LLEGADA BASE OPS", "INICIO FONDEO -> LLEGADA SPD", "INICIO FONDEO -> LLEGADA BASE OPS"]
+
+    df_valido = df[df["trayecto_final"].notnull() & df['CARGAS'].notna()]
+    df_loaded = df_valido[(df_valido["trayecto_final"].isin(pairs_loaded)) & (df_valido["CARGAS"].str.upper() == "LLENO")]
+    df_empty = df_valido[(df_valido["trayecto_final"].isin(pairs_empty)) & (df_valido["CARGAS"].str.upper() == "VACIO")]
+
+    # ▼▼▼ CAMBIO CLAVE: Se elimina "BARCAZA" del groupby para promediar todos los trayectos juntos ▼▼▼
+    prom_loaded = df_loaded.groupby("trayecto_final", as_index=False).agg(avg_hours=("duration_hours", "mean"), n_samples=("duration_hours", "size"))
+    prom_empty = df_empty.groupby("trayecto_final", as_index=False).agg(avg_hours=("duration_hours", "mean"), n_samples=("duration_hours", "size"))
+    
+    # Se ajustan las columnas y el formato
+    for df_prom in [prom_loaded, prom_empty]:
+        if not df_prom.empty:
+            df_prom.columns = ["Trayecto", "Promedio (h)", "Cantidad de registros"]
+            df_prom["Promedio legible"] = df_prom["Promedio (h)"].apply(convertir_a_texto_legible)
+            df_prom = df_prom[["Trayecto", "Promedio legible", "Promedio (h)", "Cantidad de registros"]]
+
+    def estilo_tablas(df_sty, titulo, color_titulo):
+        # Se ajusta el estilo para no depender de la columna "Barcaza"
+        return (df_sty.style.set_caption(f'<span style="font-size:18px; color:{color_titulo}; font-weight:bold;">{titulo}</span>')
+                .set_table_styles([{"selector": "thead", "props": [("background-color", "#f7f7f7"),("border-bottom", "2px solid #1a5f1a"),("font-weight", "bold")]},{"selector": "tbody tr", "props": [("border-bottom", "1px solid #ddd")]},{"selector": "td", "props": [("padding", "8px")]},{"selector": "caption", "props": [("caption-side", "top"), ("font-size", "0px")]},{"selector": "", "props": [("border-collapse", "collapse")]}])
+                .background_gradient(subset=['Promedio (h)'], cmap='YlGn').background_gradient(subset=['Cantidad de registros'], cmap='Blues')
+                .format({'Promedio (h)': "{:,.2f} h", 'Cantidad de registros': "{:,.0f} registros"})
+                .set_properties(subset=['Promedio legible'], **{'text-align': 'left', 'font-style': 'italic', 'color': '#2c5f2c'})
+                .set_properties(subset=['Trayecto'], **{'font-weight': '500', 'color': '#1a1a1a'}).hide(axis="index"))
+
+    tabla_cargado_html = estilo_tablas(prom_loaded, "⛴️ TRAYECTOS CON CARGA (LLENO) - TIEMPOS PROMEDIO GENERALES", "#1a5f1a").to_html(escape=False)
+    tabla_vacio_html = estilo_tablas(prom_empty, "🛳️ TRAYECTOS DE REGRESO (VACIO) - TIEMPOS PROMEDIO GENERALES", "#1a5f7a").to_html(escape=False)
+
+    # --- GRÁFICOS ---
+    grafico_tanqueo_b64 = None
+    df_tanqueo = df[df["EVENTO ACTUAL"].astype(str).str.strip().str.upper() == "TANQUEO"].copy()
+    
+    if not df_tanqueo.empty:
+        df_tanqueo["Duración Legible"] = df_tanqueo["duration_hours"].apply(convertir_a_texto_legible)
+        
+        meses_es = { 1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre' }
+        df_tanqueo["Mes"] = df_tanqueo["HORA INICIO"].dt.month.map(meses_es) + " " + df_tanqueo["HORA INICIO"].dt.year.astype(str)
+        df_tanqueo["Fecha_Orden"] = df_tanqueo["HORA INICIO"].dt.to_period("M")
+        
+        df_tanqueo_sorted = df_tanqueo.sort_values(["Fecha_Orden", "ID"]).reset_index(drop=True)
+        df_tanqueo_sorted["Etiqueta"] = df_tanqueo_sorted["Mes"] + " | ID " + df_tanqueo_sorted["ID"].astype(str)
+        
+        promedio = df_tanqueo_sorted["duration_hours"].mean()
+        promedio_texto = convertir_a_texto_legible(promedio)
+
+        fig_tanqueo, ax = plt.subplots(figsize=(18, max(8, len(df_tanqueo_sorted) * 0.5)))
+
+        # 1. Se usa barh() para barras horizontales
+        ax.barh(df_tanqueo_sorted["Etiqueta"], df_tanqueo_sorted["duration_hours"], color="#1f7a1f")
+
+        # 2. Se ajustan los nombres de los ejes y se invierte el eje Y
+        ax.set_xlabel("Horas de Tanqueo")
+        ax.set_ylabel("Mes y Maniobra ID")
+        ax.invert_yaxis()
+
+        # 3. Se ajusta la posición de las etiquetas de texto para barras horizontales
+        for index, row in df_tanqueo_sorted.iterrows():
+            duration = row['duration_hours']
+            ax.text(0.2, index, row["Duración Legible"], ha="left", va="center", color="white", fontsize=9, fontweight="bold")
+            ax.text(duration + 0.2, index, f"MT: {row['MT ENTREGADAS']:.2f}", ha="left", va="center", color="#333333", fontsize=9)
+            
+        # 4. La línea de promedio vuelve a ser vertical (axvline)
+        if pd.notna(promedio):
+            ax.axvline(x=promedio, color="red", linestyle="--", linewidth=1.5)
+            ax.text(promedio + 0.1, len(df_tanqueo_sorted) - 0.5, f" Promedio: {promedio_texto}", color="red", fontsize=10)
+        
+        ax.set_title("Duración de Tanqueo por Mes y ID", fontsize=16)
+        plt.tight_layout()
+        
+        grafico_tanqueo_b64 = convertir_plot_a_base64(fig_tanqueo)
+    grafico_total_b64 = None
+
+    grafico_total_b64 = None
+    meses_es = { 1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic' }
+    df["Mes"] = df["HORA INICIO"].dt.month.map(meses_es) + "-" + df["HORA INICIO"].dt.year.astype(str)
+    
+    df_total = df.groupby("ID", as_index=False).agg(
+        duration_hours=("duration_hours", "sum"),
+        Mes=("Mes", lambda x: ", ".join(sorted(x.unique()))),
+        BARCAZA=("BARCAZA", "first"),
+        MT_ENTREGADAS=("MT ENTREGADAS", "first")
+    )
+    if not df_total.empty:
+        df_total["Duración Legible"] = df_total["duration_hours"].apply(convertir_a_texto_legible)
+        df_total["ID_Mes"] = "ID " + df_total["ID"].astype(str) + " | " + df_total["Mes"]
+        df_total = df_total.sort_values("ID").reset_index(drop=True)
+        promedio = df_total["duration_hours"].mean()
+        promedio_texto = convertir_a_texto_legible(promedio)
+
+        fig_total, ax = plt.subplots(figsize=(18, max(10, len(df_total) * 0.6)))
+        ax.barh(df_total["ID_Mes"], df_total["duration_hours"], color="#004d99")
+        
+        for idx, row in df_total.iterrows():
+            ax.text(0.2, idx, row["Duración Legible"], va="center", ha="left", color="white", fontsize=9, fontweight='bold')
+            # 2. Se elimina el recuadro (bbox) de la etiqueta MT para que sea igual al otro gráfico
+            ax.text(row["duration_hours"] + 0.2, idx, f"MT: {row['MT_ENTREGADAS']:.2f}", va="center", ha="left", color="#333333", fontsize=9, fontweight='bold')
+        
+        if pd.notna(promedio):
+            ax.axvline(x=promedio, color='red', linestyle='--', linewidth=1.5)
+            ax.text(promedio + 0.1, 0, f"Promedio: {promedio_texto}", color='red', backgroundcolor='white')
+        
+        ax.set_title("Total de Horas por Maniobra", fontsize=14)
+        ax.set_xlabel("Total de Horas")
+        ax.set_ylabel("ID | Barcaza | Mes")
+        ax.invert_yaxis()
+        plt.tight_layout()
+        grafico_total_b64 = convertir_plot_a_base64(fig_total)
+    
+    return {
+        "tabla_cargado_html": tabla_cargado_html,
+        "tabla_vacio_html": tabla_vacio_html,
+        "grafico_tanqueo_b64": grafico_tanqueo_b64,
+        "grafico_total_b64": grafico_total_b64
+    }
 
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_para_produccion_cambiar'
-
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -101,6 +306,7 @@ class RegistroBarcazaOrion(db.Model):
 
     def __repr__(self):
         return f'<RegistroBarcazaOrion ID: {self.id}, TK: {self.tk}>'
+    
 class RegistroBarcazaBita(db.Model):
     __tablename__ = 'registros_barcaza_bita' # Nombre de la nueva tabla
 
@@ -180,7 +386,74 @@ class DefinicionCrudo(db.Model):
     def __repr__(self):
         return f'<DefinicionCrudo {self.nombre}>'
     
+class RegistroRemolcador(db.Model):
+    __tablename__ = 'registros_remolcador'
 
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # --- CAMBIOS EN EL MODELO ---
+    maniobra_id = db.Column(db.Integer, nullable=False, index=True)
+    barcaza = db.Column(db.String(100), nullable=True) # <-- NUEVA COLUMNA
+    
+    evento_anterior = db.Column(db.String(200), nullable=True)
+    hora_inicio = db.Column(db.DateTime, nullable=False)
+    evento_actual = db.Column(db.String(200), nullable=True)
+    hora_fin = db.Column(db.DateTime, nullable=True)
+    mt_entregadas = db.Column(db.Numeric(10, 2), nullable=True)
+    carga_estado = db.Column(db.String(50), nullable=True)
+    usuario_actualizacion = db.Column(db.String(100))
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # La propiedad 'duracion' ya funciona correctamente para fechas completas
+    @property
+    def duracion(self):
+        if not self.hora_fin or not self.hora_inicio:
+            return ""
+        
+        delta = self.hora_fin - self.hora_inicio
+        total_minutos = delta.total_seconds() / 60
+        horas = int(total_minutos // 60)
+        minutos = int(total_minutos % 60)
+        
+        return f"{horas}h {minutos}m"
+    
+    def __repr__(self):
+        return f'<RegistroRemolcador {self.id}>'    
+
+class ProgramacionCargue(db.Model):
+    __tablename__ = 'programacion_cargue'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Campos de Juliana y Samantha
+    fecha_programacion = db.Column(db.Date, nullable=False, default=date.today)
+    empresa_transportadora = db.Column(db.String(150))
+    placa = db.Column(db.String(50))
+    tanque = db.Column(db.String(50))
+    nombre_conductor = db.Column(db.String(150))
+    cedula_conductor = db.Column(db.String(50))
+    celular_conductor = db.Column(db.String(50))
+    hora_llegada_estimada = db.Column(db.Time)
+    producto_a_cargar = db.Column(db.String(100))
+    
+    # Campos de Ana Maria
+    destino = db.Column(db.String(150))
+    cliente = db.Column(db.String(150))
+    
+    # Campos de Refinería
+    estado = db.Column(db.String(50), default='PROGRAMADO') # Ej: PROGRAMADO, EN PROCESO, COMPLETADO
+    galones = db.Column(db.Float)
+    barriles = db.Column(db.Float)
+    temperatura = db.Column(db.Float)
+    api_obs = db.Column(db.Float)
+    api_corregido = db.Column(db.Float)
+    precintos = db.Column(db.String(200))
+    
+    # Campo de Samantha
+    numero_guia = db.Column(db.String(100))
+
+    # Auditoría
+    ultimo_editor = db.Column(db.String(100))
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -263,14 +536,14 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["transito", "guia_transporte"]
+        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue"]
     },
     # Samantha (Editor): Tiene acceso solo a Generar Guía.
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["guia_transporte"]
+        "area": ["guia_transporte", "programacion_cargue"]
     },
 
     "comex@conquerstrading.com": {
@@ -292,6 +565,25 @@ USUARIOS = {
         "nombre": "Kelly Suarez",
         "rol": "editor",
         "area": ["contabilidad"] 
+    },
+        "amariagallo@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Ana Maria Gallo",
+        "rol": "logistica_destino",
+        "area": ["programacion_cargue"] 
+    },
+
+        "refinery.control@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Control Refineria",
+        "rol": "refineria",
+        "area": ["programacion_cargue"] 
+    },
+        "opensean@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Opensean", 
+        "rol": "operador_remolcador", 
+        "area": ["control_remolcadores"]
     }
 
 }
@@ -1032,19 +1324,28 @@ def subir_excel_transito():
 
     
 @login_required
-@permiso_requerido('transito')
-@app.route('/eliminar-registro-transito/<int:registro_id>', methods=['DELETE'])
-def eliminar_registro_transito(registro_id):
+@permiso_requerido('control_remolcadores')
+@app.route('/api/registros_remolcadores/<int:id>', methods=['DELETE'])
+def eliminar_evento_remolcador(id):
+    """Elimina un único evento de la maniobra."""
+    
+    usuario_puede_eliminar = (
+        session.get('rol') == 'admin' or 
+        session.get('email') == 'ops@conquerstrading.com' or
+        session.get('email') == 'opensean@conquerstrading.com'
+    )
+
+    if not usuario_puede_eliminar:
+        return jsonify(success=False, message="No tienes permiso para eliminar este evento."), 403
+    
     try:
-        registro_a_eliminar = db.session.query(RegistroTransito).get(registro_id)
-        if registro_a_eliminar:
-            db.session.delete(registro_a_eliminar)
-            db.session.commit()
-            return jsonify(success=True, message="Registro eliminado exitosamente.")
-        else:
-            return jsonify(success=False, message="Registro no encontrado."), 404
+        registro = RegistroRemolcador.query.get_or_404(id)
+        db.session.delete(registro)
+        db.session.commit()
+        return jsonify(success=True, message="Evento eliminado correctamente.")
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"Error al eliminar evento de remolcador: {e}")
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
        
@@ -2563,6 +2864,10 @@ def get_crudos_guardados():
             "curva": json.loads(crudo.curva_json)
         } for crudo in crudos_db
     }
+    response = jsonify(crudos_dict)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
     return jsonify(crudos_dict)
 
 @login_required
@@ -2698,31 +3003,541 @@ def api_comparar_facturas():
         app.logger.error(f"Error al comparar archivos: {e}")
         return jsonify(success=False, message=f"Ocurrió un error al procesar los archivos: {str(e)}"), 500
     
+@login_required
+@permiso_requerido('control_remolcadores')    
+@app.route('/control_remolcadores')
+def control_remolcadores_page():
+    return render_template('control_remolcadores.html', nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/remolcadores/upload_excel', methods=['POST'])
+def upload_remolcadores_excel():
+    if 'excel_file' not in request.files:
+        return jsonify(success=False, message="No se encontró ningún archivo."), 400
+    
+    file = request.files['excel_file']
+    if not file.filename.endswith('.xlsx'):
+        return jsonify(success=False, message="Archivo no válido. Debe ser .xlsx"), 400
+
+    try:
+        df = pd.read_excel(file)
+        # Normaliza los nombres para ser más flexible con mayúsculas/minúsculas
+        df.columns = [str(c).strip().title() for c in df.columns]
+
+        # --- INICIO DE LA CORRECCIÓN ---
+        # Ahora requerimos todas las columnas
+        required_columns = ['Id', 'Barcaza', 'Mt Entregadas', 'Evento Anterior', 'Hora Inicio', 'Evento Actual', 'Hora Fin', 'Carga']
+        if not all(col in df.columns for col in required_columns):
+            missing = [col for col in required_columns if col not in df.columns]
+            return jsonify(success=False, message=f"Faltan columnas en el Excel: {', '.join(missing)}"), 400
+
+        nuevos_registros = []
+        # Agrupamos por 'Id' para procesar cada maniobra
+        for maniobra_id, group in df.groupby('Id'):
+            # Tomamos los valores comunes del primer registro del grupo
+            barcaza = group['Barcaza'].iloc[0] if pd.notna(group['Barcaza'].iloc[0]) else None
+            mt_entregadas = group['Mt Entregadas'].iloc[0] if pd.notna(group['Mt Entregadas'].iloc[0]) else None
+
+            for _, row in group.iterrows():
+                hora_inicio = pd.to_datetime(row['Hora Inicio'], dayfirst=True)
+                hora_fin = pd.to_datetime(row['Hora Fin'], dayfirst=True) if pd.notna(row['Hora Fin']) else None
+
+                registro = RegistroRemolcador(
+                    maniobra_id=int(maniobra_id),
+                    barcaza=barcaza,
+                    mt_entregadas=mt_entregadas,
+                    carga_estado=row['Carga'], # <-- Se lee la carga de cada fila
+                    evento_anterior=row['Evento Anterior'],
+                    hora_inicio=hora_inicio,
+                    evento_actual=row['Evento Actual'],
+                    hora_fin=hora_fin,
+                    usuario_actualizacion=session.get('nombre')
+                )
+                nuevos_registros.append(registro)
+
+        db.session.query(RegistroRemolcador).delete() # Opcional: borra los datos antiguos antes de cargar los nuevos
+        db.session.add_all(nuevos_registros)
+        db.session.commit()
+
+        return jsonify(success=True, message=f"Se han cargado {len(nuevos_registros)} eventos de {len(df.groupby('Id'))} maniobras.")
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al procesar Excel de remolcadores: {e}")
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/maniobra/<int:maniobra_id>', methods=['PUT'])
+def update_maniobra_details(maniobra_id):
+    """Actualiza la barcaza y las MT para todos los eventos de una maniobra."""
+    
+    # #{ CAMBIO 1 } - Se añade el email 'opensean@conquerstrading.com' a la lista de permisos.
+    if not (session.get('rol') == 'admin' or 
+            session.get('email') == 'ops@conquerstrading.com' or 
+            session.get('email') == 'opensean@conquerstrading.com'):
+        return jsonify(success=False, message="Permiso denegado."), 403
+
+    data = request.get_json()
+    barcaza = data.get('barcaza')
+
+    try:
+        registros = RegistroRemolcador.query.filter_by(maniobra_id=maniobra_id).all()
+        for registro in registros:
+            # Todos los roles con permiso pueden actualizar la barcaza.
+            registro.barcaza = barcaza
+            
+            # #{ CAMBIO 2 } - Se añade una condición para que solo admin y ops@conquerstrading.com
+            # puedan modificar las MT Entregadas. El usuario 'opensean' no podrá hacerlo.
+            if session.get('rol') == 'admin' or session.get('email') == 'ops@conquerstrading.com':
+                if 'mt_entregadas' in data:
+                    mt_entregadas_str = data.get('mt_entregadas')
+                    mt_entregadas = float(mt_entregadas_str) if mt_entregadas_str else None
+                    registro.mt_entregadas = mt_entregadas
+        
+        db.session.commit()
+        return jsonify(success=True, message=f"Datos de la Maniobra #{maniobra_id} actualizados.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/maniobra/<int:maniobra_id>', methods=['DELETE'])
+def eliminar_maniobra(maniobra_id):
+    """Elimina todos los registros asociados a un ID de maniobra."""
+    
+    if not (session.get('rol') == 'admin' or 
+            session.get('email') == 'ops@conquerstrading.com' or 
+            session.get('email') == 'opensean@conquerstrading.com'):
+        return jsonify(success=False, message="Permiso denegado."), 403
+
+    try:
+        num_borrados = RegistroRemolcador.query.filter_by(maniobra_id=maniobra_id).delete()
+        if num_borrados == 0:
+            return jsonify(success=False, message="No se encontró la maniobra para eliminar."), 404
+            
+        db.session.commit()
+        return jsonify(success=True, message=f"Maniobra #{maniobra_id} y sus {num_borrados} eventos han sido eliminados.")
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al eliminar maniobra: {e}")
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500 
+    
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/registros_remolcadores', methods=['GET'])
+def get_registros_remolcadores():
+    registros = RegistroRemolcador.query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
+    duraciones_totales = {}
+    if registros:
+        from itertools import groupby
+        grupos = groupby(registros, key=lambda r: r.maniobra_id)
+        for maniobra_id, grupo_eventos in grupos:
+            lista_eventos = list(grupo_eventos)
+            if not lista_eventos: continue
+            primera_hora_inicio = min(r.hora_inicio for r in lista_eventos)
+            horas_fin_validas = [r.hora_fin for r in lista_eventos if r.hora_fin]
+            if horas_fin_validas:
+                ultima_hora_fin = max(horas_fin_validas)
+                delta_total = ultima_hora_fin - primera_hora_inicio
+                horas, rem = divmod(delta_total.total_seconds(), 3600)
+                minutos, _ = divmod(rem, 60)
+                duraciones_totales[maniobra_id] = f"{int(horas)}h {int(minutos)}m"
+            else:
+                duraciones_totales[maniobra_id] = "En Proceso"
+
+    data = []
+    usuario_es_admin_o_juliana = session.get('rol') == 'admin' or session.get('email') == 'ops@conquerstrading.com'
+    usuario_es_operador = session.get('email') == 'opensean@conquerstrading.com'
+    for r in registros:
+        registro_data = {
+            "id": r.id,
+            "maniobra_id": r.maniobra_id,
+            "barcaza": r.barcaza, # <-- NUEVO
+            "evento_anterior": r.evento_anterior,
+            # Formato que entiende el input 'datetime-local'
+            "hora_inicio": r.hora_inicio.strftime('%Y-%m-%dT%H:%M'),
+            "evento_actual": r.evento_actual,
+            "hora_fin": r.hora_fin.strftime('%Y-%m-%dT%H:%M') if r.hora_fin else '',
+            "duracion": r.duracion,
+            "total_horas": duraciones_totales.get(r.maniobra_id, ""),
+            "carga_estado": r.carga_estado
+        }
+        if usuario_es_admin_o_juliana or usuario_es_operador:
+            registro_data['mt_entregadas'] = float(r.mt_entregadas) if r.mt_entregadas is not None else ''
+        
+        data.append(registro_data)
+        
+    return jsonify(data)
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/registros_remolcadores', methods=['POST'])
+def crear_registro_remolcador():
+    """Crea un nuevo evento de remolcador."""
+    data = request.get_json()
+    if not data:
+        return jsonify(success=False, message="No se recibieron datos."), 400
+
+    try:
+        maniobra_id = data.get('maniobra_id')
+
+        # Si no hay ID de maniobra, es una nueva, así que calculamos el siguiente.
+        if not maniobra_id:
+            max_id = db.session.query(func.max(RegistroRemolcador.maniobra_id)).scalar()
+            maniobra_id = (max_id or 0) + 1
+
+        # --- CORRECCIÓN 1: Manejo seguro de fechas vacías ---
+        hora_inicio_str = data.get('hora_inicio')
+        hora_fin_str = data.get('hora_fin')
+
+        hora_inicio = datetime.fromisoformat(hora_inicio_str) if hora_inicio_str else None
+        hora_fin = datetime.fromisoformat(hora_fin_str) if hora_fin_str else None
+
+        if not hora_inicio:
+            return jsonify(success=False, message="La hora de inicio es obligatoria."), 400
+
+        nuevo_registro = RegistroRemolcador(
+            maniobra_id=maniobra_id,
+            evento_anterior=data.get('evento_anterior'),
+            hora_inicio=hora_inicio,
+            evento_actual=data.get('evento_actual'),
+            hora_fin=hora_fin,
+            usuario_actualizacion=session.get('nombre')
+        )
+
+        # --- CORRECIÓN 2: Permisos actualizados para opensean ---
+        usuario_puede_gestionar = (
+            session.get('rol') == 'admin' or 
+            session.get('email') == 'ops@conquerstrading.com' or
+            session.get('email') == 'opensean@conquerstrading.com'
+        )
+        if usuario_puede_gestionar:
+            nuevo_registro.barcaza = data.get('barcaza')
+            nuevo_registro.mt_entregadas = data.get('mt_entregadas') if data.get('mt_entregadas') else None
+            nuevo_registro.carga_estado = data.get('carga_estado')
+
+        db.session.add(nuevo_registro)
+        db.session.commit()
+        
+        return jsonify(success=True, message="Evento creado exitosamente.", nuevo_maniobra_id=maniobra_id)
+
+    except ValueError as e:
+        db.session.rollback()
+        app.logger.error(f"Error de formato en la fecha al crear evento: {e}")
+        return jsonify(success=False, message=f"Formato de fecha no válido: {e}"), 400
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error al crear evento: {e}")
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/api/registros_remolcadores/<int:id>', methods=['PUT'])
+def update_registro_remolcador(id):
+    """Actualiza un evento existente, respetando los permisos de cada rol."""
+    registro = RegistroRemolcador.query.get_or_404(id)
+    data = request.get_json()
+
+    estados_carga_permitidos = ["LLENO", "VACIO", "N/A"]
+    
+    # Valores permitidos para opensean
+    eventos_anteriores_permitidos = [
+        "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
+        "INICIO BASE OPS", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC",
+        "LLEGADA BASE OPS", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
+        "LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
+    ]
+    
+    eventos_actuales_permitidos = [
+        "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", 
+        "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO CONTECAR", 
+        "INICIO FONDEO", "INICIO SPRC", "LLEGADA BASE OPS", 
+        "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD", 
+        "REUBICACION BARCAZAS", "TANQUEO"
+    ]
+
+    try:
+        # El usuario opensean solo puede modificar los campos permitidos
+        if session.get('email') == 'opensean@conquerstrading.com':
+
+            if 'carga_estado' in data and data['carga_estado'] not in estados_carga_permitidos:
+                return jsonify(success=False, message="Estado de carga no permitido"), 400
+            # Validar eventos
+            if 'evento_anterior' in data and data['evento_anterior'] not in eventos_anteriores_permitidos:
+                return jsonify(success=False, message="Evento anterior no permitido"), 400
+            if 'evento_actual' in data and data['evento_actual'] not in eventos_actuales_permitidos:
+                return jsonify(success=False, message="Evento actual no permitido"), 400
+            
+            campos_permitidos = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'carga_estado']
+            for campo in campos_permitidos:
+                if campo in data:
+                    valor = data[campo]
+                    if 'hora' in campo and valor:
+                        setattr(registro, campo, datetime.fromisoformat(valor))
+                    else:
+                        setattr(registro, campo, valor)
+        
+        # El admin o Juliana pueden editar todos los campos
+        elif session.get('rol') == 'admin' or session.get('email') == 'ops@conquerstrading.com':
+            for campo, valor in data.items():
+                if hasattr(registro, campo):
+                    if 'hora' in campo and valor:
+                        setattr(registro, campo, datetime.fromisoformat(valor))
+                    elif campo == 'carga_estado':
+                        setattr(registro, campo, valor if valor != 'N/A' else None)    
+                    elif campo != 'id':
+                        setattr(registro, campo, valor)
+        
+        registro.usuario_actualizacion = session.get('nombre')
+        db.session.commit()
+        return jsonify(success=True, message="Registro actualizado.")
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('control_remolcadores')     
+@app.route('/reporte_analisis_remolcadores')
+def reporte_analisis_remolcadores():
+    """Muestra la página web con el análisis de tiempos de remolcadores."""
+    # 1. Obtener todos los registros de la base de datos
+    registros = RegistroRemolcador.query.all()
+    
+    # 2. Procesar los datos con nuestra nueva función
+    resultados = procesar_analisis_remolcadores(registros)
+    
+    if not resultados:
+        flash("No hay suficientes datos para generar el análisis.", "warning")
+        return redirect(url_for('control_remolcadores_page'))
+        
+    # 3. Renderizar la plantilla web con los resultados
+    return render_template(
+        'reporte_analisis_remolcadores.html',
+        resultados=resultados
+    )
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/descargar_analisis_remolcadores_pdf')
+def descargar_reporte_analisis_remolcadores_pdf():
+    """Genera y descarga un PDF con el análisis completo."""
+    registros = RegistroRemolcador.query.all()
+    resultados = procesar_analisis_remolcadores(registros)
+    
+    if not resultados:
+        flash("No hay datos para generar el PDF.", "warning")
+        return redirect(url_for('reporte_analisis_remolcadores'))
+
+    # Renderiza una plantilla HTML especial para el PDF
+    html_para_pdf = render_template(
+        'reportes_pdf/analisis_remolcadores_pdf.html',
+        resultados=resultados,
+        fecha_reporte=date.today().strftime('%d de %B de %Y'),
+        now=datetime.utcnow() 
+    )
+    
+    # Convierte el HTML a PDF usando WeasyPrint
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    
+    return Response(
+        pdf,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment;filename=reporte_analisis_remolcadores.pdf'}
+    )
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/descargar_reporte_analisis_remolcadores')
+def descargar_reporte_analisis_remolcadores():
+    """Genera y descarga un PDF con el análisis completo."""
+    # 1. Obtener todos los registros de la base de datos
+    registros = RegistroRemolcador.query.all()
+    
+    # 2. Procesar los datos con tu función de análisis
+    resultados = procesar_analisis_remolcadores(registros)
+    
+    if not resultados:
+        flash("No hay datos suficientes para generar el PDF.", "warning")
+        return redirect(url_for('reporte_analisis_remolcadores'))
+
+    # 3. Renderiza una plantilla HTML especial para el PDF
+    html_para_pdf = render_template(
+        'reportes_pdf/analisis_remolcadores_pdf.html',
+        resultados=resultados,
+        fecha_reporte=date.today().strftime('%d de %B de %Y')
+    )
+    
+    # 4. Convierte el HTML a PDF usando WeasyPrint
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    
+    # 5. Devuelve el PDF como un archivo para descargar
+    return Response(
+        pdf,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment;filename=reporte_analisis_remolcadores.pdf'}
+    )
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/inicio-remolcadores')
+def home_remolcadores():
+    """Página de bienvenida exclusiva para el control de remolcadores."""
+    return render_template('home_remolcadores.html')
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/control-remolcadores')
+def control_remolcadores():
+    """Muestra la planilla de control de remolcadores."""
+    # Pasamos el rol del usuario a la plantilla para que el JavaScript sepa qué hacer.
+    return render_template('control_remolcadores.html', rol_usuario=session.get('rol'))
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/home-programacion')
+def home_programacion():
+    """Página de inicio para usuarios que solo ven la programación de cargue."""
+    return render_template('home_programacion.html', nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/programacion-cargue')
+def programacion_cargue():
+    """Muestra la página de programación de vehículos."""
+    return render_template('programacion_cargue.html', 
+                           rol_usuario=session.get('rol'), 
+                           email_usuario=session.get('email'))
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion', methods=['GET', 'POST'])
+def handle_programacion():
+    """Obtiene o crea registros de programación."""
+    if request.method == 'POST':
+        # Lógica para crear un nuevo registro vacío
+        nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'))
+        db.session.add(nuevo)
+        db.session.commit()
+        return jsonify(success=True, message="Nueva fila creada.", id=nuevo.id)
+    
+    # Lógica GET
+    registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc()).all()
+    # Convierte los datos a un formato JSON friendly
+    data = [
+        {c.name: getattr(r, c.name).isoformat() if isinstance(getattr(r, c.name), (date, time)) else getattr(r, c.name) for c in r.__table__.columns}
+        for r in registros
+    ]
+    return jsonify(data)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>', methods=['PUT'])
+def update_programacion(id):
+    """Actualiza un registro de programación con permisos por campo. (VERSIÓN CORREGIDA)"""
+    registro = ProgramacionCargue.query.get_or_404(id)
+    data = request.get_json()
+    
+    # La lógica de permisos no necesita cambios, está bien.
+    permisos = {
+        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia'],
+        'amariagallo@conquerstrading.com': ['destino', 'cliente'],
+        'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
+    }
+    
+    campos_permitidos = permisos.get(session.get('email'), [])
+    if session.get('rol') == 'admin':
+        # El admin puede editar todos los campos excepto los de auditoría que son automáticos.
+        campos_permitidos = [c.name for c in ProgramacionCargue.__table__.columns if c.name not in ['id', 'ultimo_editor', 'fecha_actualizacion']]
+
+    if not campos_permitidos:
+        return jsonify(success=False, message="No tienes permisos para editar."), 403
+
+    try:
+        # --- INICIO DE LA CORRECCIÓN ---
+        campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
+
+        for campo, valor in data.items():
+            if campo in campos_permitidos:
+                
+                # 1. Manejo específico para la fecha de programación
+                if campo == 'fecha_programacion':
+                    # Convierte el string 'YYYY-MM-DD' a un objeto `date`
+                    # Si el valor está vacío o es nulo, no hace nada para no borrar la fecha obligatoria.
+                    if valor:
+                        setattr(registro, campo, date.fromisoformat(valor))
+
+                # 2. Manejo específico para la hora de llegada
+                elif campo == 'hora_llegada_estimada':
+                    # Si hay un valor, lo convierte a objeto `time`. Si no (el usuario lo borró), lo establece a None.
+                    setattr(registro, campo, time.fromisoformat(valor) if valor else None)
+                
+                # 3. Manejo específico para todos los campos numéricos (float)
+                elif campo in campos_numericos:
+                    # Intenta convertir a float. Si el valor está vacío o no es un número, lo establece a None.
+                    try:
+                        setattr(registro, campo, float(valor) if valor is not None and valor != '' else None)
+                    except (ValueError, TypeError):
+                        setattr(registro, campo, None) # Si la conversión falla, pone None
+                
+                # 4. Para todos los demás campos (strings), simplemente asigna el valor
+                else:
+                    setattr(registro, campo, valor)
+
+        # --- FIN DE LA CORRECCIÓN ---
+
+        registro.ultimo_editor = session.get('nombre') # El nombre del usuario
+        # 'fecha_actualizacion' se actualiza automáticamente por la configuración del modelo
+        db.session.commit()
+        
+        return jsonify(success=True, message="Registro actualizado correctamente.")
+
+    except Exception as e:
+        db.session.rollback()
+        # Imprime el error en la consola del servidor para que puedas depurarlo
+        print(f"ERROR AL ACTUALIZAR PROGRAMACIÓN: {e}") 
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+ 
 @app.route('/')
 def home():
     """Redirige al usuario a su página de inicio correcta después de iniciar sesión."""
     if 'email' not in session:
         return redirect(url_for('login'))
+    
+    user_areas = session.get('area', [])
+    user_email = session.get('email')
 
-    # --- 1. PRIMERO: Revisa si es el usuario exclusivo ---
-    if session.get('email') == 'accountingzf@conquerstrading.com':
-        return redirect(url_for('home_contabilidad'))
-
-    # --- 2. SEGUNDO: Revisa si es el administrador ---
+    # --- REGLA 1: Usuarios con roles o emails exclusivos ---
     if session.get('rol') == 'admin':
         return redirect(url_for('dashboard_reportes'))
-    
-    # --- 3. TERCERO: Revisa los otros roles ---
-    user_areas = session.get('area', [])
 
-    if 'simulador_rendimiento' in user_areas and len(user_areas) == 1:
-        return redirect(url_for('home_simulador'))
-    if 'guia_transporte' in user_areas and len(user_areas) == 1:
+    # ✅ REGLA PARA SAMANTHA: Si es ella, siempre va a su home de logística.
+    if user_email == 'logistic@conquerstrading.com':
         return redirect(url_for('home_logistica'))
-    if 'zisa_inventory' in user_areas and len(user_areas) == 1:
-        return redirect(url_for('home_siza'))
+        
+    if user_email == 'accountingzf@conquerstrading.com':
+        return redirect(url_for('home_contabilidad'))
 
-    # Redirección por defecto
+    # --- REGLA 2: Usuarios con un único permiso específico ---
+    if len(user_areas) == 1:
+        area_unica = user_areas[0]
+        if area_unica == 'programacion_cargue':
+            return redirect(url_for('home_programacion'))
+        if area_unica == 'control_remolcadores':
+            return redirect(url_for('home_remolcadores'))
+        if area_unica == 'simulador_rendimiento':
+            return redirect(url_for('home_simulador'))
+        if area_unica == 'guia_transporte':
+            return redirect(url_for('home_logistica')) # Mantenemos por si hay otros usuarios con solo este permiso
+        if area_unica == 'zisa_inventory':
+            return redirect(url_for('home_siza'))
+
+    # --- REGLA 3 (POR DEFECTO): Usuarios con múltiples permisos (como Juliana) ---
+    # Si ninguna de las reglas anteriores se cumple, se les dirige al dashboard general.
     return redirect(url_for('dashboard_reportes'))
 
 @login_required
