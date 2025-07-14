@@ -2864,7 +2864,7 @@ def api_calcular_rendimiento():
 
         if incluir_kero:
             porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
-            ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
+            ORDEN_PRODUCTOS = ["NAFTA", "KERO", "GASOIL", "FO6"]
             rendimientos = {
                 "NAFTA": max(0, porc_nafta),
                 "KERO": max(0, porc_kero_acumulado - porc_nafta),
