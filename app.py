@@ -481,6 +481,15 @@ def log_request():
     print(f"➞️  {request.method} {request.path}")
 
 USUARIOS = {
+
+    # Juan Diego  (Admin): Tiene acceso a todo.
+    "numbers@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Ayala",
+        "rol": "admin",
+        "area": [] 
+    },
+
     # Carlos (Admin): Tiene acceso a todo.
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -493,7 +502,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion"] 
+        "area": ["barcaza_orion", "programacion_cargue"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
@@ -521,7 +530,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Germna Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta y Rendimientos
@@ -3496,8 +3505,10 @@ def update_programacion(id):
     permisos = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'destino', 'cliente'],
         'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente'],
+        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
-        'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
+        'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos'],
+        'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     }
     
     campos_permitidos = permisos.get(session.get('email'), [])
