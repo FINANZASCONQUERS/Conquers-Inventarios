@@ -502,7 +502,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "programacion_cargue"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
