@@ -1574,6 +1574,49 @@ def barcaza_orion():
                            nombre=session.get("nombre"),
                            fecha_seleccionada=fecha_seleccionada.isoformat())
 
+@app.cli.command("sync-orion")
+def sync_orion_tanks():
+    """
+    Revisa la planilla por defecto de Orion y añade los tanques que falten en la base de datos.
+    Este comando es seguro y no borra datos existentes.
+    """
+    try:
+        # Obtiene todos los tanques que YA existen en la base de datos
+        tanques_en_db = [r.tk for r in db.session.query(RegistroBarcazaOrion.tk).distinct()]
+        
+        nuevos_tanques_agregados = 0
+        
+        # Itera sobre la lista de tanques que DEBERÍA existir (la de tu código)
+        for tanque_plantilla in PLANILLA_BARCAZA_ORION:
+            # Revisa si el tanque de la plantilla NO está en la base de datos
+            if tanque_plantilla["TK"] not in tanques_en_db:
+                print(f"Tanque '{tanque_plantilla['TK']}' no encontrado. Añadiendo a la base de datos...")
+                
+                nuevo_registro = RegistroBarcazaOrion(
+                    usuario="system_sync", # Usuario por defecto para el registro inicial
+                    tk=tanque_plantilla["TK"],
+                    producto=tanque_plantilla["PRODUCTO"],
+                    max_cap=tanque_plantilla["MAX_CAP"],
+                    grupo=tanque_plantilla["grupo"],
+                    # Los demás campos se dejan vacíos (None/null)
+                    bls_60=None,
+                    api=None,
+                    bsw=None,
+                    s=None
+                )
+                db.session.add(nuevo_registro)
+                nuevos_tanques_agregados += 1
+
+        if nuevos_tanques_agregados > 0:
+            db.session.commit()
+            print(f"¡Éxito! Se han añadido {nuevos_tanques_agregados} tanques nuevos a la Barcaza Orion.")
+        else:
+            print("La base de datos ya está sincronizada. No se añadieron tanques nuevos.")
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"Ocurrió un error durante la sincronización: {e}")
+
 @login_required
 @permiso_requerido('barcaza_bita')
 @app.route('/barcaza_bita')
