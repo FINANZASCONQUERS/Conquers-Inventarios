@@ -1681,8 +1681,33 @@ def barcaza_bita():
 @permiso_requerido('guia_transporte') 
 @app.route('/guia_transporte')
 def guia_transporte():
-    # El if de permisos ya no es necesario aquí.
-    return render_template("guia_transporte.html", nombre=session.get("nombre"))
+    """
+    Muestra la guía de transporte. Si recibe datos en la URL, los pasa a la plantilla
+    para autocompletar el formulario. Si no, pasa datos vacíos.
+    """
+    # Creamos un diccionario para guardar los datos que vienen de la URL.
+    # Usamos .get('nombre_parametro', '') para que, si un dato no llega, no de error.
+    datos_guia = {
+        'placa': request.args.get('placa', ''),
+        'conductor': request.args.get('nombre_conductor', ''),
+        'cedula': request.args.get('cedula_conductor', ''),
+        'destino': request.args.get('destino', ''),
+        'producto': request.args.get('producto_a_cargar', ''),
+        'galones': request.args.get('galones', ''),
+        'transportadora': request.args.get('empresa_transportadora', ''),
+        'cliente': request.args.get('cliente', ''),
+        'temperatura': request.args.get('temperatura', ''),
+        'api_obs': request.args.get('api_obs', ''),
+        'api_corregido': request.args.get('api_corregido', ''),
+        'precintos': request.args.get('precintos', '')
+    }
+    
+    # Pasamos el diccionario 'datos_guia' a la plantilla HTML.
+    return render_template(
+        "guia_transporte.html", 
+        nombre=session.get("nombre"),
+        datos_guia=datos_guia
+    )
 
 @login_required
 @permiso_requerido("zisa_inventory") # Usamos el permiso que le asignamos a Daniela

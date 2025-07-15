@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
             filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
         
-        headerHtml += '<th style="width: 60px" class="text-center">Estado</th></tr>';
+        headerHtml += '<th style="width: 60px" class="text-center sticky-col">Estado</th></tr>';
         filterHtml += '<th></th></tr>'; // Celda vacía para la columna de estado de guardado
         
         thead.innerHTML = headerHtml + filterHtml;
@@ -154,10 +154,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                 style="min-width: ${config.width}"
                                 ${config.pattern ? `pattern="${config.pattern}"` : ''}>${formatCellValue(value, config)}</td>`;
             });
-            rowHtml += `<td class="text-center save-status-cell" data-id="${row.id}"></td></tr>`;
-            tbody.innerHTML += rowHtml;
-        });
-    }
+            rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}">
+                        <div class="d-flex justify-content-center align-items-center">
+                            <span class="save-indicator me-2" style="width: 16px;"></span>
+                            <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
+                                <i class="fas fa-print"></i>
+                            </button>
+                        </div>
+                    </td></tr>`;
+        tbody.innerHTML += rowHtml;
+    });
+}
     
     function applyFilters() {
         const filters = Array.from(thead.querySelectorAll('.filter-input')).reduce((acc, input) => {
@@ -221,41 +228,40 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Delegación de eventos para edición y validación
-    tbody.addEventListener('input', function(e) {
-        const cell = e.target;
-        if (!cell.classList.contains('editable-cell')) return;
-
-        if (cell.dataset.field === 'precintos') {
-            cell.textContent = cell.textContent.replace(/[^0-9-]/g, '').slice(0, 70);
-        }
-        
-        if (cell.dataset.field === 'galones') {
-            const row = cell.closest('tr');
-            const barrilesCell = row.querySelector('[data-field="barriles"]');
-            const galonesValue = parseFloat(cell.textContent.replace(/\./g, '').replace(',', '.')) || 0;
-            const barrilesValue = galonesValue / 42;
-            barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-    });
-    
-    // Delegación de eventos para autoguardado (cuando se sale de la celda)
-    tbody.addEventListener('blur', function(e) {
-        const cell = e.target;
-        if (cell.classList.contains('editable-cell')) {
-            autosaveCell(cell);
-        }
-    }, true); // Use capture phase
-
-    // Delegación para el menú desplegable de 'estado'
     tbody.addEventListener('click', function(e) {
-        const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
-        if (!estadoCell || estadoCell.querySelector('select')) return;
+    const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
+    const printButton = e.target.closest('.btn-print-guide');
 
+    if (printButton) {
+        const row = printButton.closest('tr');
+        const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
+
+        row.querySelectorAll('td[data-field]').forEach(cell => {
+            const field = cell.dataset.field;
+            let value = cell.textContent.trim();
+            
+            // ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
+            // Si la celda es de tipo 'number', le quitamos el formato.
+            if (cell.dataset.type === 'number' && value) {
+                // Quita los puntos de miles y reemplaza la coma decimal por un punto.
+                value = value.replace(/\./g, '').replace(',', '.');
+            }
+            // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+
+            if (value && value !== '-') {
+                 url.searchParams.append(field, value);
+            }
+        });
+
+        window.location.href = url.href;
+    } 
+    else if (estadoCell) {
+        // ... (la lógica del 'else if' para el estado se mantiene exactamente igual que la tenías)
+        if (estadoCell.querySelector('select')) return;
         const originalValue = estadoCell.textContent.trim();
         const config = columnsConfig['estado'];
         const select = document.createElement('select');
         select.className = 'form-select form-select-sm shadow-sm';
-        
         config.options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
@@ -263,26 +269,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (opt === originalValue) option.selected = true;
             select.appendChild(option);
         });
-        
         estadoCell.innerHTML = '';
         estadoCell.appendChild(select);
         select.focus();
-
         const handleSelectChange = () => {
             estadoCell.textContent = select.value;
             const row = estadoCell.closest('tr');
             row.setAttribute('data-estado', select.value);
-            row.className = 'align-middle'; // Reset class to re-apply CSS rule
-            autosaveCell(estadoCell); // Guardar automáticamente al cambiar
+            autosaveCell(estadoCell);
             select.removeEventListener('blur', handleSelectChange);
             select.removeEventListener('change', handleSelectChange);
         };
-        
         select.addEventListener('blur', handleSelectChange);
         select.addEventListener('change', handleSelectChange);
-    });
-
-
+    }
+});
     // --- FUNCIÓN DE AUTOGUARDADO ---
     function autosaveCell(cell) {
         const row = cell.closest('tr');
@@ -380,6 +381,29 @@ document.addEventListener('DOMContentLoaded', function() {
         font-style: italic;
     }
 
+    /* ESTILOS PARA LA COLUMNA FIJA DE ESTADO */
+.sticky-col {
+    position: -webkit-sticky; /* Compatibilidad para Safari */
+    position: sticky;
+    right: 0; /* Pega la columna al borde derecho */
+    z-index: 2; /* Se asegura que la columna esté por encima de las demás celdas */
+}
+
+/* Le damos un fondo a las celdas del cuerpo de la tabla para que no se vean transparentes
+  al hacer scroll sobre las otras filas.
+*/
+.table tbody .sticky-col {
+    background-color: #f8f9fa; 
+    border-left: 2px solid #e9ecef; /* Un borde sutil para separarla */
+}
+
+/* Nos aseguramos que la celda del encabezado mantenga su color original
+  y no el color blanco del cuerpo.
+*/
+.table thead .sticky-col {
+    background: linear-gradient(135deg, #2c3e50, #4a6491);
+}
+
     /* ESTILOS PARA ESTADOS DE FILA */
     .table tbody tr[data-estado="PROGRAMADO"] { background-color: #f8f9fa !important; }
     .table tbody tr[data-estado="CARGANDO"] td { background-color: #fff3cd !important; }
@@ -416,6 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
         font-size: 0.75rem;
         padding: 12px 15px;
         text-align: left;
+        text-transform: uppercase;
     }
     #filter-row {
         top: 45px; /* Altura aproximada de la primera fila del thead */
@@ -444,5 +469,10 @@ document.addEventListener('DOMContentLoaded', function() {
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
         cursor: text;
     }
+    .btn-xs {
+    --bs-btn-padding-y: .1rem;
+    --bs-btn-padding-x: .4rem;
+    --bs-btn-font-size: .75rem;
+}
 </style>
 {% endblock %}

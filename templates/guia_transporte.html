@@ -147,7 +147,7 @@
         .volumen { width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
         .volumen div { margin-bottom: 25px; }
         .volumen div:last-child { margin-bottom: 0; }
-        .observaciones { width: 18cm; height: 1.6cm; font-size: 18pt; position: relative;  }
+        .observaciones { position: relative;left: -40px; width: 26cm; height: 1.6cm; font-size: 18pt; position: relative;  }
         .zona-frontera { width: 3.7cm; height: 1cm; }
         .grupo-producto { display: flex; flex-direction: column; width: 100%; height: 100%; }
         .datos-producto { display: flex; justify-content: space-between; margin-top: 0.2cm; }
@@ -247,7 +247,7 @@
         <textarea class="sin-borde" style="height: 70%;"></textarea>
         <div style="text-align: left; margin-top: 5px; height: 1.6cm;">
           <strong>SELLOS:</strong> 
-          <input id="selloInput" type="text" style="width:14cm; height:1.6cm; text-align:left; -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield;">
+          <input id="selloInput" type="text" style="width:22cm; height:1.6cm; text-align:left; -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield;">
         </div>
       </div>
     </div>
@@ -419,6 +419,50 @@
     // 1. Cargar todos los datos iniciales
     await cargarDatos();
 
+    // ▼▼▼ AÑADIR ESTE BLOQUE DE CÓDIGO COMPLETO ▼▼▼
+
+    // Pasa los datos de Flask a una variable de JavaScript de forma segura.
+    const datosGuia = {{ datos_guia | tojson }};
+
+if (Object.keys(datosGuia).length > 1) { 
+    console.log("Rellenando guía con datos recibidos:", datosGuia);
+
+    // --- Rellenar campos de texto y selects ---
+    document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
+    document.getElementById('placaCabezote').value = datosGuia.placa || '';
+    document.getElementById('conductorSelect').value = datosGuia.conductor || '';
+    document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
+    document.getElementById('destinoDireccion').value = datosGuia.destino || '';
+    document.getElementById('galones').value = datosGuia.galones || '';
+    document.getElementById('selloInput').value = datosGuia.precintos || '';
+
+    // --- Cliente y Dirección ---
+    const clienteSelect = document.getElementById('clienteSelect');
+    if (datosGuia.cliente) {
+        clienteSelect.value = datosGuia.cliente;
+        // Disparamos el evento 'change' para que se ejecute la función que autocompleta la dirección.
+        clienteSelect.dispatchEvent(new Event('change')); 
+    }
+
+    // --- Producto, Temperatura y APIs ---
+    const productoSelect = document.getElementById('productoSelect');
+    if (datosGuia.producto) {
+        productoSelect.value = datosGuia.producto;
+        // Disparamos el evento para que cargue los datos por defecto del producto (Temp, API, etc.)
+        productoSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Ahora, sobrescribimos los datos por defecto con los valores REALES de la programación.
+    document.getElementById('tempF').value = datosGuia.temperatura || document.getElementById('tempF').value;
+    document.getElementById('apiObs').value = datosGuia.api_obs || document.getElementById('apiObs').value;
+    document.getElementById('apiCorr').value = datosGuia.api_corregido || document.getElementById('apiCorr').value;
+    
+    // Si se rellenaron los galones, disparamos la conversión a barriles.
+    if (document.getElementById('galones').value) {
+         convertirABarriles();
+    }
+}
+
     // 2. Definir todas las variables de los modales en un solo lugar
     const modalElCliente = document.getElementById('modalAgregarCliente');
     const modalCliente = new bootstrap.Modal(modalElCliente);
@@ -539,10 +583,10 @@
     if (selloInput) {
         selloInput.addEventListener('input', function(e) {
             let valor = this.value.replace(/[^\d]/g, '');
-            valor = valor.substring(0, 36);
+            valor = valor.substring(0, 100);
             let valorFormateado = '';
             for (let i = 0; i < valor.length; i++) {
-                if (i > 0 && i % 6 === 0) {
+                if (i > 0 && i % 8 === 0) {
                     valorFormateado += '-';
                 }
                 valorFormateado += valor[i];
@@ -552,13 +596,11 @@
         selloInput.addEventListener('paste', function(e) {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text');
-            const numeros = text.replace(/[^\d]/g, '').substring(0, 36);
+            const numeros = text.replace(/[^\d]/g, '').substring(0, 100);
             document.execCommand('insertText', false, numeros);
         });
     }
 
-    
-    // ... el resto de tu código de inicialización (fechas, PDF, sellos, etc.) ...
 });
     function configurarEventosConductores() {
         const conductorInput = document.getElementById('conductorSelect');
@@ -628,25 +670,32 @@
     }
     
     document.addEventListener('DOMContentLoaded', function() {
-        const selloInput = document.getElementById('selloInput');
-        if(selloInput) {
-            selloInput.addEventListener('input', function(e) {
-                let valor = this.value.replace(/[^\d]/g, '');
-                valor = valor.substring(0, 36);
-                let valorFormateado = '';
-                for (let i = 0; i < valor.length; i++) {
-                    if (i > 0 && i % 6 === 0) {
-                        valorFormateado += '-';
-                    }
-                    valorFormateado += valor[i];
-                }
-                this.value = valorFormateado;
-            });
-            selloInput.addEventListener('paste', function(e) {
-                e.preventDefault();
-                const text = (e.clipboardData || window.clipboardData).getData('text');
-                const numeros = text.replace(/[^\d]/g, '').substring(0, 36);
-                document.execCommand('insertText', false, numeros);
+         const selloInput = document.getElementById('selloInput');
+ if (selloInput) {
+     selloInput.addEventListener('input', function(e) {
+         // Quita cualquier caracter que no sea un número.
+         let valor = this.value.replace(/[^\d]/g, '');
+         
+         // Aplica el nuevo y único límite de 100 dígitos.
+         valor = valor.substring(0, 100); 
+         
+         // Vuelve a formatear el texto con guiones cada 6 dígitos.
+         let valorFormateado = '';
+         for (let i = 0; i < valor.length; i++) {
+             if (i > 0 && i % 6 === 0) {
+                 valorFormateado += '-';
+             }
+             valorFormateado += valor[i];
+         }
+         this.value = valorFormateado;
+     });
+
+     // Lógica para el pegado (paste)
+     selloInput.addEventListener('paste', function(e) {
+         e.preventDefault();
+         const text = (e.clipboardData || window.clipboardData).getData('text');
+         const numeros = text.replace(/[^\d]/g, '').substring(0, 100);
+         document.execCommand('insertText', false, numeros);
             });
         }
     });
