@@ -43,6 +43,8 @@
                     <tbody id="schedule-table-body" class="font-sm">
                         </tbody>
                 </table>
+                <datalist id="productos-lista">
+                    </datalist>
             </div>
         </div>
     </div>
@@ -78,7 +80,12 @@ document.addEventListener('DOMContentLoaded', function() {
         'cedula_conductor': { width: '120px' },
         'celular_conductor': { width: '120px' },
         'hora_llegada_estimada': { width: '120px', type: 'time' },
-        'producto_a_cargar': { width: '150px' },
+        // --- CONFIGURACIÓN DE COLUMNA MODIFICADA ---
+        'producto_a_cargar': { 
+            width: '150px', 
+            type: 'datalist',
+            options: ['FUEL OIL 4','FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO']
+        },
         'destino': { width: '150px' },
         'cliente': { width: '180px' },
         'estado': { width: '130px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'DESPACHADO'] },
@@ -87,14 +94,14 @@ document.addEventListener('DOMContentLoaded', function() {
         'temperatura': { width: '100px', type: 'number' },
         'api_obs': { width: '100px', type: 'number' },
         'api_corregido': { width: '120px', type: 'number' },
-        'precintos': { width: '250px', type: 'precintos', pattern: '[0-9\\-]*'}, 
+        'precintos': { width: '250px', type: 'text'}, 
         'numero_guia': { width: '150px' }
     };
 
     const allColumns = Object.keys(columnsConfig);
     const userPermissions = permissions[userEmail] || [];
     const isAdmin = userRol === 'admin';
-    let originalData = []; // Caché para los datos
+    let originalData = [];
 
     // --- FUNCIONES DE RENDERIZADO Y FILTRADO ---
     function fetchAndRender() {
@@ -119,22 +126,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderHeader() {
         let headerHtml = '<tr class="align-middle">';
         let filterHtml = '<tr id="filter-row" class="align-middle">';
-        
         allColumns.forEach(col => {
             const config = columnsConfig[col];
             headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
             filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
-        
-        headerHtml += '<th style="width: 60px" class="text-center sticky-col">Estado</th></tr>';
-        filterHtml += '<th></th></tr>'; // Celda vacía para la columna de estado de guardado
-        
+        headerHtml += '<th style="width: 80px" class="text-center sticky-col">Acciones</th></tr>'; // Modificado
+        filterHtml += '<th></th>';
         thead.innerHTML = headerHtml + filterHtml;
-        
-        // Añadir listener a los nuevos inputs de filtro
         thead.querySelector('#filter-row').addEventListener('input', applyFilters);
     }
 
+    // --- FUNCIÓN MODIFICADA PARA RENDERIZAR EL INPUT ---
     function renderBody(data) {
         tbody.innerHTML = '';
         if (data.length === 0) {
@@ -147,46 +150,48 @@ document.addEventListener('DOMContentLoaded', function() {
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
-                const value = row[col];
-                rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
-                                contenteditable="${isEditable}"
-                                class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''}"
-                                style="min-width: ${config.width}"
-                                ${config.pattern ? `pattern="${config.pattern}"` : ''}>${formatCellValue(value, config)}</td>`;
+                const value = row[col] || '';
+
+                if (config.type === 'datalist' && isEditable) {
+                    rowHtml += `<td data-field="${col}" data-type="datalist">
+                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" 
+                                           value="${value}">
+                                </td>`;
+                } else {
+                    rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
+                                    contenteditable="${isEditable}"
+                                    class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''}"
+                                    style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
+                }
             });
+            
             rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}">
-                        <div class="d-flex justify-content-center align-items-center">
-                            <span class="save-indicator me-2" style="width: 16px;"></span>
-                            <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
-                                <i class="fas fa-print"></i>
-                            </button>
-                        </div>
-                    </td></tr>`;
-        tbody.innerHTML += rowHtml;
-    });
-}
+                            <div class="d-flex justify-content-center align-items-center">
+                                <span class="save-indicator me-2" style="width: 16px;"></span>
+                                <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </div>
+                        </td></tr>`;
+            tbody.innerHTML += rowHtml;
+        });
+    }
     
     function applyFilters() {
         const filters = Array.from(thead.querySelectorAll('.filter-input')).reduce((acc, input) => {
-            if (input.value) {
-                acc[input.dataset.filterCol] = input.value.toLowerCase();
-            }
+            if (input.value) { acc[input.dataset.filterCol] = input.value.toLowerCase(); }
             return acc;
         }, {});
-
         const filteredData = originalData.filter(row => {
             return Object.keys(filters).every(col => {
-                const cellValue = String(row[col] || '').toLowerCase();
-                return cellValue.includes(filters[col]);
+                return String(row[col] || '').toLowerCase().includes(filters[col]);
             });
         });
-
         renderBody(filteredData);
     }
 
-    // --- FUNCIONES DE FORMATO ---
     function formatColumnName(colName) {
-        return colName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        return colName.replace(/_/g, ' ').toUpperCase();
     }
 
     function formatCellValue(value, config) {
@@ -198,8 +203,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return value.slice(0, 5);
             case 'number':
                 return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            case 'precintos':
-                 return value;
             default:
                 return value;
         }
@@ -209,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
     btnAddRow.addEventListener('click', function() {
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
-        
         fetch("{{ url_for('handle_programacion') }}", { method: 'POST' })
         .then(res => res.json())
         .then(data => {
@@ -227,72 +229,92 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Delegación de eventos para edición y validación
+    tbody.addEventListener('input', function(e) {
+        const cell = e.target.closest('td');
+        if (!cell) return;
+
+        if (cell.dataset.field === 'galones' && cell.isContentEditable) {
+            const row = cell.closest('tr');
+            const barrilesCell = row.querySelector('[data-field="barriles"]');
+            const galonesValue = parseFloat(cell.textContent.replace(/\./g, '').replace(',', '.')) || 0;
+            const barrilesValue = galonesValue / 42;
+            barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    });
+    
+    tbody.addEventListener('blur', function(e) {
+        if (e.target.classList.contains('editable-cell') || e.target.classList.contains('editable-input')) {
+            autosaveCell(e.target.closest('td'));
+        }
+    }, true);
+
     tbody.addEventListener('click', function(e) {
-    const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
-    const printButton = e.target.closest('.btn-print-guide');
+        const printButton = e.target.closest('.btn-print-guide');
+        if (printButton) {
+            const row = printButton.closest('tr');
+            const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
+            row.querySelectorAll('td[data-field]').forEach(cell => {
+                const field = cell.dataset.field;
+                let value;
+                const input = cell.querySelector('input.editable-input');
+                if (input) {
+                    value = input.value.trim();
+                } else {
+                    value = cell.textContent.trim();
+                }
+                
+                if (cell.dataset.type === 'number' && value) {
+                    value = value.replace(/\./g, '').replace(',', '.');
+                }
+                if (value && value !== '-') {
+                     url.searchParams.append(field, value);
+                }
+            });
+            window.location.href = url.href;
+        }
 
-    if (printButton) {
-        const row = printButton.closest('tr');
-        const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
+        const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
+        if (estadoCell && !estadoCell.querySelector('select')) {
+            const originalValue = estadoCell.textContent.trim();
+            const config = columnsConfig['estado'];
+            const select = document.createElement('select');
+            select.className = 'form-select form-select-sm shadow-sm';
+            config.options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt;
+                option.textContent = opt;
+                if (opt === originalValue) option.selected = true;
+                select.appendChild(option);
+            });
+            estadoCell.innerHTML = '';
+            estadoCell.appendChild(select);
+            select.focus();
+            const handleSelectChange = () => {
+                estadoCell.textContent = select.value;
+                autosaveCell(estadoCell);
+                select.removeEventListener('blur', handleSelectChange);
+                select.removeEventListener('change', handleSelectChange);
+            };
+            select.addEventListener('blur', handleSelectChange);
+            select.addEventListener('change', handleSelectChange);
+        }
+    });
 
-        row.querySelectorAll('td[data-field]').forEach(cell => {
-            const field = cell.dataset.field;
-            let value = cell.textContent.trim();
-            
-            // ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
-            // Si la celda es de tipo 'number', le quitamos el formato.
-            if (cell.dataset.type === 'number' && value) {
-                // Quita los puntos de miles y reemplaza la coma decimal por un punto.
-                value = value.replace(/\./g, '').replace(',', '.');
-            }
-            // ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
-
-            if (value && value !== '-') {
-                 url.searchParams.append(field, value);
-            }
-        });
-
-        window.location.href = url.href;
-    } 
-    else if (estadoCell) {
-        // ... (la lógica del 'else if' para el estado se mantiene exactamente igual que la tenías)
-        if (estadoCell.querySelector('select')) return;
-        const originalValue = estadoCell.textContent.trim();
-        const config = columnsConfig['estado'];
-        const select = document.createElement('select');
-        select.className = 'form-select form-select-sm shadow-sm';
-        config.options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            option.textContent = opt;
-            if (opt === originalValue) option.selected = true;
-            select.appendChild(option);
-        });
-        estadoCell.innerHTML = '';
-        estadoCell.appendChild(select);
-        select.focus();
-        const handleSelectChange = () => {
-            estadoCell.textContent = select.value;
-            const row = estadoCell.closest('tr');
-            row.setAttribute('data-estado', select.value);
-            autosaveCell(estadoCell);
-            select.removeEventListener('blur', handleSelectChange);
-            select.removeEventListener('change', handleSelectChange);
-        };
-        select.addEventListener('blur', handleSelectChange);
-        select.addEventListener('change', handleSelectChange);
-    }
-});
-    // --- FUNCIÓN DE AUTOGUARDADO ---
+    // --- FUNCIÓN MODIFICADA PARA GUARDAR DESDE EL INPUT ---
     function autosaveCell(cell) {
         const row = cell.closest('tr');
         const id = row.dataset.id;
         const field = cell.dataset.field;
         const config = columnsConfig[field];
-        let value = cell.textContent.trim();
-        
-        // Revertir formato para enviar a la BD
+        let value;
+
+        const input = cell.querySelector('input.editable-input');
+        if (input) {
+            value = input.value.trim();
+        } else {
+            value = cell.textContent.trim();
+        }
+
         if (value === '' || value === '-') {
             value = null;
         } else if (config.type === 'date' && value) {
@@ -300,19 +322,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (parts.length === 3) value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         } else if (config.type === 'number' && value) {
             value = parseFloat(value.replace(/\./g, '').replace(',', '.')) || null;
-        } else if (config.type === 'precintos' && value) {
-            value = value.replace(/<br>/g, '');
         }
 
         const updatedData = { [field]: value };
         
-        // Si se actualizan galones, recalcular y enviar barriles también
         if (field === 'galones') {
             updatedData.barriles = (value || 0) / 42;
         }
 
-        const statusCell = row.querySelector('.save-status-cell');
-        statusCell.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+        const statusIndicator = row.querySelector('.save-indicator');
+        statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
 
         fetch(`/api/programacion/${id}`, {
             method: 'PUT',
@@ -322,27 +341,21 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(res => res.json().then(data => ({ ok: res.ok, data })))
         .then(({ ok, data }) => {
             if (ok) {
-                statusCell.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
-                // Actualizar caché de datos localmente
-                const dataIndex = originalData.findIndex(item => item.id == id);
-                if (dataIndex > -1) {
-                    Object.assign(originalData[dataIndex], updatedData);
-                }
+                statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
             } else {
-                statusCell.innerHTML = '<i class="fas fa-times-circle text-danger" title="Error: ' + (data.message || '') + '"></i>';
-                showToast('danger', 'Error al guardar: ' + (data.message || 'Ocurrió un error'));
+                statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                showToast('danger', `Error en ${field}: ` + (data.message || 'Error'));
             }
         })
         .catch(error => {
-            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle text-danger" title="Error de conexión"></i>';
+            statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
             showToast('danger', 'Error de conexión');
         })
         .finally(() => {
-            setTimeout(() => { statusCell.innerHTML = ''; }, 3000); // Limpiar indicador después de 3 segundos
+            setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
         });
     }
 
-    // --- UTILIDADES (TOASTS) ---
     function showToast(type, message) {
         const toastContainer = document.getElementById('toast-container') || createToastContainer();
         const toast = document.createElement('div');
@@ -361,12 +374,33 @@ document.addEventListener('DOMContentLoaded', function() {
         return container;
     }
 
+    // --- CÓDIGO AÑADIDO PARA POBLAR LA LISTA DE PRODUCTOS ---
+    const datalist = document.getElementById('productos-lista');
+    if (datalist && columnsConfig.producto_a_cargar.options) {
+        columnsConfig.producto_a_cargar.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            datalist.appendChild(option);
+        });
+    }
+
     // --- CARGA INICIAL ---
     fetchAndRender();
 });
 </script>
 
 <style>
+    /* ESTILOS AÑADIDOS PARA EL INPUT EN LA TABLA */
+    .editable-input {
+        width: 100%;
+        height: 100%;
+        background-color: transparent !important;
+        padding: 0.375rem 0.75rem; /* Ajusta el padding para que coincida con otras celdas */
+    }
+    .editable-input:focus {
+        background-color: #e9ecef !important;
+    }
+    
     /* ESTILOS PARA FILTROS */
     #filter-row th {
         padding: 8px;
@@ -382,27 +416,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /* ESTILOS PARA LA COLUMNA FIJA DE ESTADO */
-.sticky-col {
-    position: -webkit-sticky; /* Compatibilidad para Safari */
-    position: sticky;
-    right: 0; /* Pega la columna al borde derecho */
-    z-index: 2; /* Se asegura que la columna esté por encima de las demás celdas */
-}
-
-/* Le damos un fondo a las celdas del cuerpo de la tabla para que no se vean transparentes
-  al hacer scroll sobre las otras filas.
-*/
-.table tbody .sticky-col {
-    background-color: #f8f9fa; 
-    border-left: 2px solid #e9ecef; /* Un borde sutil para separarla */
-}
-
-/* Nos aseguramos que la celda del encabezado mantenga su color original
-  y no el color blanco del cuerpo.
-*/
-.table thead .sticky-col {
-    background: linear-gradient(135deg, #2c3e50, #4a6491);
-}
+    .sticky-col {
+        position: -webkit-sticky;
+        position: sticky;
+        right: 0;
+        z-index: 2;
+    }
+    .table tbody .sticky-col {
+        background-color: #f8f9fa; 
+        border-left: 2px solid #e9ecef;
+    }
+    .table thead .sticky-col {
+        background: linear-gradient(135deg, #2c3e50, #4a6491);
+    }
+    .table tbody tr[data-estado="CARGANDO"] .sticky-col { background-color: #fff3cd !important; }
+    .table tbody tr[data-estado="DESPACHADO"] .sticky-col { background-color: #d4edda !important; }
 
     /* ESTILOS PARA ESTADOS DE FILA */
     .table tbody tr[data-estado="PROGRAMADO"] { background-color: #f8f9fa !important; }
@@ -411,24 +439,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     /* ESTILO ESPECIAL PARA PRECINTOS */
     td[data-field="precintos"] {
-        min-width: 250px !important;
-        white-space: normal !important;
-        word-break: keep-all;
-        line-height: 1.4;
         font-family: 'Courier New', monospace;
-        font-size: 0.9em;
-        background-color: #f8f9fa !important;
-        border-left: 2px solid #dee2e6 !important;
-        border-right: 2px solid #dee2e6 !important;
-    }
-    td[data-field="precintos"]:focus {
-        background-color: #e9ecef !important;
-        outline: 2px solid #adb5bd !important;
     }
 
     /* ESTILOS GENERALES DE LA TABLA */
     .table-responsive-lg {
-        max-height: calc(100vh - 250px); /* Ajustado para la fila de filtros */
+        max-height: calc(100vh - 250px);
         overflow-y: auto;
     }
     .table thead th {
@@ -443,16 +459,19 @@ document.addEventListener('DOMContentLoaded', function() {
         text-transform: uppercase;
     }
     #filter-row {
-        top: 45px; /* Altura aproximada de la primera fila del thead */
+        top: 45px;
         z-index: 10;
         position: sticky;
     }
     .table td {
         vertical-align: middle;
-        padding: 12px 15px;
+        padding: 0; /* Se quita el padding para que los inputs/texto interno lo manejen */
         font-size: 0.85rem;
         color: #495057;
         background-color: white;
+    }
+    .table td[contenteditable="true"] {
+        padding: 12px 15px; /* Se mantiene el padding para celdas editables normales */
     }
     .table tbody tr:hover td { background-color: #f8fafc; }
 
@@ -470,9 +489,9 @@ document.addEventListener('DOMContentLoaded', function() {
         cursor: text;
     }
     .btn-xs {
-    --bs-btn-padding-y: .1rem;
-    --bs-btn-padding-x: .4rem;
-    --bs-btn-font-size: .75rem;
-}
+        --bs-btn-padding-y: .1rem;
+        --bs-btn-padding-x: .4rem;
+        --bs-btn-font-size: .75rem;
+    }
 </style>
 {% endblock %}
