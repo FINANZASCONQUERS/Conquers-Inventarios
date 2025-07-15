@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case 'number':
                 return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             case 'precintos':
-                 return value ? value.replace(/-/g, '-<br>') : '';
+                 return value;
             default:
                 return value;
         }

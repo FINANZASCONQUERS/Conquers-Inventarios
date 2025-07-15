@@ -3716,9 +3716,15 @@ def home():
     # ✅ REGLA PARA SAMANTHA: Si es ella, siempre va a su home de logística.
     if user_email == 'logistic@conquerstrading.com':
         return redirect(url_for('home_logistica'))
-        
+    
     if user_email == 'accountingzf@conquerstrading.com':
         return redirect(url_for('home_contabilidad'))
+
+    # ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
+    # AÑADIMOS UNA REGLA EXCLUSIVA PARA EL EMAIL DE DANIELA
+    if user_email == 'comex@conquerstrading.com':
+        return redirect(url_for('home_siza'))
+    # ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
 
     # --- REGLA 2: Usuarios con un único permiso específico ---
     if len(user_areas) == 1:
@@ -3734,7 +3740,7 @@ def home():
         if area_unica == 'zisa_inventory':
             return redirect(url_for('home_siza'))
 
-    # --- REGLA 3 (POR DEFECTO): Usuarios con múltiples permisos (como Juliana) ---
+    # --- REGLA 3 (POR DEFECTO): Usuarios con múltiples permisos ---
     # Si ninguna de las reglas anteriores se cumple, se les dirige al dashboard general.
     return redirect(url_for('dashboard_reportes'))
 
