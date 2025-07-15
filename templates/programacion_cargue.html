@@ -4,14 +4,22 @@
 {% block content %}
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 fw-semibold text-gray-800 mb-0">
-            <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
-        </h2>
-        <button id="btn-add-row" class="btn btn-primary btn-sm rounded-pill shadow-sm">
+    <h2 class="h3 fw-semibold text-gray-800 mb-0">
+        <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
+    </h2>
+    
+    <div>
+        <a href="{{ url_for('exportar_programacion_cargue', formato='excel') }}" class="btn btn-success btn-sm rounded-pill shadow-sm">
+            <i class="fas fa-file-excel me-2"></i>Exportar a Excel
+        </a>
+        <a href="{{ url_for('exportar_programacion_cargue', formato='pdf') }}" class="btn btn-danger btn-sm rounded-pill shadow-sm">
+            <i class="fas fa-file-pdf me-2"></i>Exportar a PDF
+        </a>
+        <button id="btn-add-row" class="btn btn-primary btn-sm rounded-pill shadow-sm ms-2">
             <i class="fas fa-plus me-2"></i>Nueva Programación
         </button>
     </div>
-    
+</div>
     <div class="card border-0 shadow-lg rounded-lg overflow-hidden">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="row align-items-center">
@@ -31,39 +39,16 @@
             <div class="table-responsive-lg">
                 <table class="table align-middle mb-0">
                     <thead class="bg-primary text-white">
-                        <tr>
-                            <th class="ps-4 py-3 text-uppercase fw-semibold small">#</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Placa</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Conductor</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Fecha Cargue</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Hora Cargue</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Producto</th>
-                            <th class="py-3 text-uppercase fw-semibold small">Estado</th>
-                            <th class="pe-4 py-3 text-uppercase fw-semibold small text-end">Acciones</th>
-                        </tr>
-                    </thead>
+                        </thead>
                     <tbody id="schedule-table-body" class="font-sm">
-                        <!-- Contenido dinámico -->
-                        <tr>
-                            <td class="ps-4 align-middle">1</td>
-                            <td class="align-middle">ABC-123</td>
-                            <td class="align-middle">Juan Pérez</td>
-                            <td class="align-middle">15/07/2023</td>
-                            <td class="align-middle">08:00 AM</td>
-                            <td class="align-middle">Cemento</td>
-                            <td class="align-middle"><span class="badge bg-success">Programado</span></td>
-                            <td class="pe-4 align-middle text-end">
-                                <button class="btn btn-sm btn-outline-primary">Editar</button>
-                            </td>
-                        </tr>
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-Mejoras realizadas:
+
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -102,42 +87,63 @@ document.addEventListener('DOMContentLoaded', function() {
         'temperatura': { width: '100px', type: 'number' },
         'api_obs': { width: '100px', type: 'number' },
         'api_corregido': { width: '120px', type: 'number' },
-        'precintos': { width: '120px' },
+        'precintos': { width: '250px', type: 'precintos', pattern: '[0-9\\-]*'}, 
         'numero_guia': { width: '150px' }
     };
 
     const allColumns = Object.keys(columnsConfig);
     const userPermissions = permissions[userEmail] || [];
     const isAdmin = userRol === 'admin';
+    let originalData = []; // Caché para los datos
 
-    // --- FUNCIONES DE RENDERIZADO Y FORMATO ---
+    // --- FUNCIONES DE RENDERIZADO Y FILTRADO ---
     function fetchAndRender() {
         fetch("{{ url_for('handle_programacion') }}")
             .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
-            .then(data => renderTable(data))
+            .then(data => {
+                originalData = data;
+                renderTable(data);
+            })
             .catch(error => {
                 console.error('Error en fetchAndRender:', error);
-                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center text-danger py-3">Error al cargar la información.</td></tr>`;
+                thead.innerHTML = '';
+                tbody.innerHTML = `<tr><td colspan="100%" class="text-center text-danger py-3">Error al cargar la información.</td></tr>`;
             });
     }
 
     function renderTable(data) {
+        renderHeader();
+        renderBody(data);
+    }
+    
+    function renderHeader() {
         let headerHtml = '<tr class="align-middle">';
+        let filterHtml = '<tr id="filter-row" class="align-middle">';
+        
         allColumns.forEach(col => {
             const config = columnsConfig[col];
-            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap ${userPermissions.includes(col) || isAdmin ? 'editable-column' : ''}">${formatColumnName(col)}</th>`;
+            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
+            filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
-        headerHtml += '<th style="width: 100px" class="text-center">Acciones</th></tr>';
-        thead.innerHTML = headerHtml;
+        
+        headerHtml += '<th style="width: 60px" class="text-center">Estado</th></tr>';
+        filterHtml += '<th></th></tr>'; // Celda vacía para la columna de estado de guardado
+        
+        thead.innerHTML = headerHtml + filterHtml;
+        
+        // Añadir listener a los nuevos inputs de filtro
+        thead.querySelector('#filter-row').addEventListener('input', applyFilters);
+    }
 
+    function renderBody(data) {
         tbody.innerHTML = '';
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4 text-muted">No hay programaciones.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4 text-muted">No hay programaciones que coincidan con los filtros.</td></tr>`;
             return;
         }
 
         data.forEach(row => {
-            let rowHtml = `<tr data-id="${row.id}" class="align-middle ${row.estado === 'DESPACHADO' ? 'table-success' : row.estado === 'CARGADO' ? 'table-info' : ''}">`;
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" class="align-middle">`;
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
@@ -145,23 +151,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
                                 contenteditable="${isEditable}"
                                 class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''}"
-                                style="min-width: ${config.width}">
-                                ${formatCellValue(value, config)}
-                            </td>`;
+                                style="min-width: ${config.width}"
+                                ${config.pattern ? `pattern="${config.pattern}"` : ''}>${formatCellValue(value, config)}</td>`;
             });
-            rowHtml += `<td class="text-center">
-                            <button class="btn btn-sm btn-success btn-save"><i class="fas fa-save me-1"></i>Guardar</button>
-                        </td></tr>`;
+            rowHtml += `<td class="text-center save-status-cell" data-id="${row.id}"></td></tr>`;
             tbody.innerHTML += rowHtml;
         });
     }
+    
+    function applyFilters() {
+        const filters = Array.from(thead.querySelectorAll('.filter-input')).reduce((acc, input) => {
+            if (input.value) {
+                acc[input.dataset.filterCol] = input.value.toLowerCase();
+            }
+            return acc;
+        }, {});
 
+        const filteredData = originalData.filter(row => {
+            return Object.keys(filters).every(col => {
+                const cellValue = String(row[col] || '').toLowerCase();
+                return cellValue.includes(filters[col]);
+            });
+        });
+
+        renderBody(filteredData);
+    }
+
+    // --- FUNCIONES DE FORMATO ---
     function formatColumnName(colName) {
         return colName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
 
     function formatCellValue(value, config) {
-        if (value === null || value === undefined || value === '') return '-';
+        if (value === null || value === undefined || value === '') return '';
         switch (config.type) {
             case 'date':
                 return new Date(value + 'T00:00:00').toLocaleDateString('es-CO', { timeZone: 'UTC' });
@@ -169,6 +191,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return value.slice(0, 5);
             case 'number':
                 return Number(value).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            case 'precintos':
+                 return value ? value.replace(/-/g, '-<br>') : '';
             default:
                 return value;
         }
@@ -177,38 +201,35 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- MANEJADORES DE EVENTOS ---
     btnAddRow.addEventListener('click', function() {
         this.disabled = true;
-        const originalHtml = this.innerHTML;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
-
-        fetch("{{ url_for('handle_programacion') }}", { 
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
+        
+        fetch("{{ url_for('handle_programacion') }}", { method: 'POST' })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                fetchAndRender();
                 showToast('success', 'Nueva programación creada');
+                fetchAndRender();
             } else {
                 showToast('danger', 'Error: ' + data.message);
             }
         })
-        .catch(error => {
-            console.error('Error al añadir fila:', error);
-            showToast('danger', 'Error de conexión');
-        })
+        .catch(error => showToast('danger', 'Error de conexión'))
         .finally(() => {
             this.disabled = false;
-            this.innerHTML = originalHtml;
+            this.innerHTML = `<i class="fas fa-plus me-2"></i>Nueva Programación`;
         });
     });
 
-    // CÁLCULO AUTOMÁTICO DE BARRILES
+    // Delegación de eventos para edición y validación
     tbody.addEventListener('input', function(e) {
         const cell = e.target;
-        if (cell.dataset.field === 'galones' && cell.isContentEditable) {
+        if (!cell.classList.contains('editable-cell')) return;
+
+        if (cell.dataset.field === 'precintos') {
+            cell.textContent = cell.textContent.replace(/[^0-9-]/g, '').slice(0, 70);
+        }
+        
+        if (cell.dataset.field === 'galones') {
             const row = cell.closest('tr');
             const barrilesCell = row.querySelector('[data-field="barriles"]');
             const galonesValue = parseFloat(cell.textContent.replace(/\./g, '').replace(',', '.')) || 0;
@@ -216,122 +237,125 @@ document.addEventListener('DOMContentLoaded', function() {
             barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
     });
-
-    // MANEJADOR DE CLIC PARA GUARDAR Y ESTADO
-    tbody.addEventListener('click', function(e) {
-        const saveButton = e.target.closest('.btn-save');
-        const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
-
-        // Lógica para GUARDAR
-        if (saveButton) {
-            const row = saveButton.closest('tr');
-            const id = row.dataset.id;
-            const updatedData = { barriles: 0 };
-
-            row.querySelectorAll('td[data-field]').forEach(cell => {
-                const field = cell.dataset.field;
-                const config = columnsConfig[field];
-                let value = cell.textContent.trim();
-
-                if (value === '' || value === '-') value = null;
-                else if (config.type === 'date' && value) {
-                    const parts = value.split('/');
-                    if (parts.length === 3) value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                } else if (config.type === 'number' && value) {
-                    value = parseFloat(value.replace(/\./g, '').replace(',', '.')) || null;
-                }
-                updatedData[field] = value;
-            });
-            
-            saveButton.disabled = true;
-            saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>';
-            
-            fetch(`/api/programacion/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedData)
-            })
-            .then(res => res.json().then(data => ({ ok: res.ok, data })))
-            .then(({ ok, data }) => {
-                if (ok) {
-                    showToast('success', data.message || 'Cambios guardados');
-                    fetchAndRender(); // Refrescar para aplicar cambios de estado
-                } else {
-                    showToast('danger', 'Error: ' + (data.message || 'Ocurrió un error'));
-                }
-            })
-            .catch(error => showToast('danger', 'Error de conexión'))
-            .finally(() => {
-                saveButton.disabled = false;
-                saveButton.innerHTML = '<i class="fas fa-save me-1"></i>Guardar';
-            });
-
-        // Lógica para el menú de ESTADO
-        } else if (estadoCell) {
-            if (estadoCell.querySelector('select')) return;
-            
-            const originalValue = estadoCell.textContent.trim();
-            const config = columnsConfig['estado'];
-            const select = document.createElement('select');
-            select.className = 'form-select form-select-sm shadow-sm';
-            
-            config.options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt;
-                option.textContent = opt;
-                if (opt === originalValue) option.selected = true;
-                select.appendChild(option);
-            });
-            
-            estadoCell.innerHTML = '';
-            estadoCell.appendChild(select);
-            select.focus();
-
-            const revertToText = () => {
-                estadoCell.textContent = select.value;
-                // Cambiar clase de la fila según estado
-                const row = estadoCell.closest('tr');
-                row.className = 'align-middle';
-                if (select.value === 'DESPACHADO') row.classList.add('table-success');
-                else if (select.value === 'CARGADO') row.classList.add('table-info');
-            };
-            
-            select.addEventListener('blur', revertToText);
-            select.addEventListener('change', revertToText);
+    
+    // Delegación de eventos para autoguardado (cuando se sale de la celda)
+    tbody.addEventListener('blur', function(e) {
+        const cell = e.target;
+        if (cell.classList.contains('editable-cell')) {
+            autosaveCell(cell);
         }
+    }, true); // Use capture phase
+
+    // Delegación para el menú desplegable de 'estado'
+    tbody.addEventListener('click', function(e) {
+        const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
+        if (!estadoCell || estadoCell.querySelector('select')) return;
+
+        const originalValue = estadoCell.textContent.trim();
+        const config = columnsConfig['estado'];
+        const select = document.createElement('select');
+        select.className = 'form-select form-select-sm shadow-sm';
+        
+        config.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            option.textContent = opt;
+            if (opt === originalValue) option.selected = true;
+            select.appendChild(option);
+        });
+        
+        estadoCell.innerHTML = '';
+        estadoCell.appendChild(select);
+        select.focus();
+
+        const handleSelectChange = () => {
+            estadoCell.textContent = select.value;
+            const row = estadoCell.closest('tr');
+            row.setAttribute('data-estado', select.value);
+            row.className = 'align-middle'; // Reset class to re-apply CSS rule
+            autosaveCell(estadoCell); // Guardar automáticamente al cambiar
+            select.removeEventListener('blur', handleSelectChange);
+            select.removeEventListener('change', handleSelectChange);
+        };
+        
+        select.addEventListener('blur', handleSelectChange);
+        select.addEventListener('change', handleSelectChange);
     });
 
+
+    // --- FUNCIÓN DE AUTOGUARDADO ---
+    function autosaveCell(cell) {
+        const row = cell.closest('tr');
+        const id = row.dataset.id;
+        const field = cell.dataset.field;
+        const config = columnsConfig[field];
+        let value = cell.textContent.trim();
+        
+        // Revertir formato para enviar a la BD
+        if (value === '' || value === '-') {
+            value = null;
+        } else if (config.type === 'date' && value) {
+            const parts = value.split('/');
+            if (parts.length === 3) value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        } else if (config.type === 'number' && value) {
+            value = parseFloat(value.replace(/\./g, '').replace(',', '.')) || null;
+        } else if (config.type === 'precintos' && value) {
+            value = value.replace(/<br>/g, '');
+        }
+
+        const updatedData = { [field]: value };
+        
+        // Si se actualizan galones, recalcular y enviar barriles también
+        if (field === 'galones') {
+            updatedData.barriles = (value || 0) / 42;
+        }
+
+        const statusCell = row.querySelector('.save-status-cell');
+        statusCell.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+
+        fetch(`/api/programacion/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok) {
+                statusCell.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                // Actualizar caché de datos localmente
+                const dataIndex = originalData.findIndex(item => item.id == id);
+                if (dataIndex > -1) {
+                    Object.assign(originalData[dataIndex], updatedData);
+                }
+            } else {
+                statusCell.innerHTML = '<i class="fas fa-times-circle text-danger" title="Error: ' + (data.message || '') + '"></i>';
+                showToast('danger', 'Error al guardar: ' + (data.message || 'Ocurrió un error'));
+            }
+        })
+        .catch(error => {
+            statusCell.innerHTML = '<i class="fas fa-exclamation-triangle text-danger" title="Error de conexión"></i>';
+            showToast('danger', 'Error de conexión');
+        })
+        .finally(() => {
+            setTimeout(() => { statusCell.innerHTML = ''; }, 3000); // Limpiar indicador después de 3 segundos
+        });
+    }
+
+    // --- UTILIDADES (TOASTS) ---
     function showToast(type, message) {
         const toastContainer = document.getElementById('toast-container') || createToastContainer();
         const toast = document.createElement('div');
-        
         toast.className = `toast show align-items-center text-white bg-${type} border-0`;
-        toast.setAttribute('role', 'alert');
-        toast.setAttribute('aria-live', 'assertive');
-        toast.setAttribute('aria-atomic', 'true');
-        toast.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    <i class="${type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'} me-2"></i>
-                    ${message}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-        `;
-        
+        toast.innerHTML = `<div class="d-flex"><div class="toast-body"><i class="${type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'} me-2"></i>${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
         toastContainer.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 5000);
+        setTimeout(() => toast.remove(), 5000);
     }
 
     function createToastContainer() {
         const container = document.createElement('div');
         container.id = 'toast-container';
         container.className = 'position-fixed top-0 end-0 p-3';
-        container.style = 'z-index: 1100';
+        container.style.zIndex = '1100';
         document.body.appendChild(container);
         return container;
     }
@@ -342,143 +366,83 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-    /* Estilos mejorados para la tabla */
+    /* ESTILOS PARA FILTROS */
+    #filter-row th {
+        padding: 8px;
+        background-color: #f8f9fa;
+    }
+    .filter-input {
+        width: 100%;
+        border: 1px solid #dee2e6;
+    }
+    .filter-input::placeholder {
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    /* ESTILOS PARA ESTADOS DE FILA */
+    .table tbody tr[data-estado="PROGRAMADO"] { background-color: #f8f9fa !important; }
+    .table tbody tr[data-estado="CARGANDO"] td { background-color: #fff3cd !important; }
+    .table tbody tr[data-estado="DESPACHADO"] td { background-color: #d4edda !important; }
+
+    /* ESTILO ESPECIAL PARA PRECINTOS */
+    td[data-field="precintos"] {
+        min-width: 250px !important;
+        white-space: normal !important;
+        word-break: keep-all;
+        line-height: 1.4;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+        background-color: #f8f9fa !important;
+        border-left: 2px solid #dee2e6 !important;
+        border-right: 2px solid #dee2e6 !important;
+    }
+    td[data-field="precintos"]:focus {
+        background-color: #e9ecef !important;
+        outline: 2px solid #adb5bd !important;
+    }
+
+    /* ESTILOS GENERALES DE LA TABLA */
     .table-responsive-lg {
-        max-height: calc(100vh - 220px);
+        max-height: calc(100vh - 250px); /* Ajustado para la fila de filtros */
         overflow-y: auto;
-        scrollbar-width: thin;
-        scrollbar-color: #dee2e6 #f8f9fa;
     }
-    
-    .table-responsive-lg::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
-    
-    .table-responsive-lg::-webkit-scrollbar-track {
-        background: #f8f9fa;
-    }
-    
-    .table-responsive-lg::-webkit-scrollbar-thumb {
-        background-color: #dee2e6;
-        border-radius: 20px;
-    }
-    
-    /* Encabezados de tabla mejorados */
     .table thead th {
         position: sticky;
         top: 0;
         background: linear-gradient(135deg, #2c3e50, #4a6491);
         color: white;
         z-index: 10;
-        font-weight: 600;
         font-size: 0.75rem;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-        border: none;
         padding: 12px 15px;
         text-align: left;
     }
-    
-    .table thead th:first-child {
-        border-top-left-radius: 6px;
+    #filter-row {
+        top: 45px; /* Altura aproximada de la primera fila del thead */
+        z-index: 10;
+        position: sticky;
     }
-    
-    .table thead th:last-child {
-        border-top-right-radius: 6px;
-    }
-    
-    /* Celdas de datos */
     .table td {
         vertical-align: middle;
         padding: 12px 15px;
-        border-bottom: 1px solid #e9ecef;
         font-size: 0.85rem;
         color: #495057;
         background-color: white;
     }
-    
-    /* Efecto hover para filas */
-    .table tbody tr:hover td {
-        background-color: #f8fafc;
-    }
-    
-    /* Estilo para celdas editables */
+    .table tbody tr:hover td { background-color: #f8fafc; }
+
+    /* ESTILO PARA CELDAS EDITABLES */
     .editable-cell {
         background-color: rgba(13, 110, 253, 0.05);
         transition: all 0.2s ease;
         border-radius: 4px;
+        cursor: pointer;
     }
-    
     .editable-cell:focus {
         background-color: rgba(13, 110, 253, 0.1);
         outline: 2px solid rgba(13, 110, 253, 0.3);
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-    }
-    
-    /* Bordes y sombras para la tabla */
-    .card {
-        border: none;
-        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.08);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    
-    .card-header {
-        background-color: white;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        padding: 1.25rem 1.5rem;
-    }
-    
-    /* Estilos para los botones de acción */
-    .btn-sm {
-        padding: 0.35rem 0.75rem;
-        font-size: 0.8rem;
-        border-radius: 4px;
-    }
-    
-    .btn-save {
-        background-color: #28a745;
-        border-color: #28a745;
-        color: white;
-        transition: all 0.2s;
-    }
-    
-    .btn-save:hover {
-        background-color: #218838;
-        border-color: #1e7e34;
-        transform: translateY(-1px);
-    }
-    
-    /* Efecto de sombra para botones */
-    .btn {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    
-    .btn:hover {
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    }
-    
-    /* Estilos para filas según estado */
-    .table-info td {
-        background-color: rgba(23, 162, 184, 0.08);
-    }
-    
-    .table-success td {
-        background-color: rgba(40, 167, 69, 0.08);
-    }
-    
-    /* Badges para estados */
-    .badge {
-        font-size: 0.75rem;
-        font-weight: 500;
-        padding: 0.35em 0.65em;
-        border-radius: 4px;
-    }
-    
-    /* Separación entre filas */
-    .table tbody tr:not(:last-child) td {
-        border-bottom: 1px solid #e9ecef;
+        cursor: text;
     }
 </style>
 {% endblock %}

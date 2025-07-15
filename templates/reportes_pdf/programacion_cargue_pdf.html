@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Programación de Cargue</title>
+    <style>
+        @page { 
+            size: portrait; /* Cambiamos a página vertical */
+            margin: 1.5cm; 
+        }
+        body { 
+            font-family: sans-serif; 
+            font-size: 9px;
+            color: #333;
+        }
+        .header h1 { 
+            text-align: center; 
+            color: #2c3e50; 
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        .header p { 
+            text-align: center; 
+            color: #666; 
+            font-size: 11px;
+            margin-top: 0;
+        }
+        /* Contenedor para cada registro individual */
+        .record-container {
+            border: 1px solid #b0bec5;
+            border-radius: 8px;
+            margin-bottom: 15px; /* Espacio entre registros */
+            padding: 10px;
+            page-break-inside: avoid; /* Evita que un registro se parta entre dos páginas */
+            background-color: #fcfcfc;
+        }
+        .record-header {
+            border-bottom: 1px solid #b0bec5;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .record-header .placa {
+            color: #0d47a1;
+        }
+        .record-header .estado {
+            float: right; /* Alinea el estado a la derecha */
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            font-size: 10px;
+        }
+        /* Estilos para los diferentes estados */
+        .estado-PROGRAMADO { background-color: #546e7a; }
+        .estado-CARGANDO { background-color: #fbc02d; color: #333; }
+        .estado-DESPACHADO { background-color: #388e3c; }
+
+        /* Contenedor para las dos tablas (programación y medición) */
+        .details-wrapper {
+            display: flex;
+            justify-content: space-between;
+        }
+        .details-table {
+            width: 49%; /* Cada tabla ocupa casi la mitad */
+            border-collapse: collapse;
+        }
+        .details-table td {
+            border: 1px solid #eceff1;
+            padding: 5px;
+        }
+        .details-table td:first-child {
+            font-weight: bold;
+            background-color: #f5f5f5;
+            width: 40%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reporte de Programación de Vehículos</h1>
+        <p>Generado el: {{ fecha_reporte }}</p>
+    </div>
+
+    {% if registros %}
+        {% for r in registros %}
+        <div class="record-container">
+            <div class="record-header">
+                <span class="estado estado-{{ r.estado or 'PROGRAMADO' }}">{{ r.estado or 'PROGRAMADO' }}</span>
+                <span class="placa">Placa: {{ r.placa or 'N/A' }}</span> | {{ r.producto_a_cargar or 'Sin Producto' }}
+            </div>
+
+            <div class="details-wrapper">
+                <table class="details-table">
+                    <tr><td>Fecha Programación</td><td>{{ r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '' }}</td></tr>
+                    <tr><td>Hora Estimada</td><td>{{ r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '' }}</td></tr>
+                    <tr><td>Transportadora</td><td>{{ r.empresa_transportadora or '' }}</td></tr>
+                    <tr><td>Tanque</td><td>{{ r.tanque or '' }}</td></tr>
+                    <tr><td>Conductor</td><td>{{ r.nombre_conductor or '' }}</td></tr>
+                    <tr><td>Cédula</td><td>{{ r.cedula_conductor or '' }}</td></tr>
+                    <tr><td>Celular</td><td>{{ r.celular_conductor or '' }}</td></tr>
+                    <tr><td>Destino</td><td>{{ r.destino or '' }}</td></tr>
+                    <tr><td>Cliente</td><td>{{ r.cliente or '' }}</td></tr>
+                    <tr><td>Número de Guía</td><td>{{ r.numero_guia or '' }}</td></tr>
+                </table>
+
+                <table class="details-table">
+                    <tr><td>Galones</td><td>{{ '%.2f'|format(r.galones) if r.galones is not none else '' }}</td></tr>
+                    <tr><td>Barriles</td><td>{{ '%.2f'|format(r.barriles) if r.barriles is not none else '' }}</td></tr>
+                    <tr><td>Temperatura (°F)</td><td>{{ '%.2f'|format(r.temperatura) if r.temperatura is not none else '' }}</td></tr>
+                    <tr><td>API Observado</td><td>{{ '%.2f'|format(r.api_obs) if r.api_obs is not none else '' }}</td></tr>
+                    <tr><td>API Corregido</td><td>{{ '%.2f'|format(r.api_corregido) if r.api_corregido is not none else '' }}</td></tr>
+                    <tr><td colspan="2" style="font-weight: bold; background-color: #f5f5f5;">Precintos</td></tr>
+                    <tr><td colspan="2" style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">{{ r.precintos or 'Sin precintos' }}</td></tr>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No hay registros para mostrar.</p>
+    {% endif %}
+</body>
+</html>

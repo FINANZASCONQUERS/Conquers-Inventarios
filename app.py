@@ -559,7 +559,14 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Daniela Cuadrado",
         "rol": "editor",
-        "area": ["zisa_inventory"] 
+        "area": ["zisa_inventory", "programacion_cargue"] 
+    },
+
+    "comexzf@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Shirli Diaz",
+        "rol": "editor",
+        "area": ["programacion_cargue"] 
     },
 
     "felipe.delavega@conquerstrading.com": {
@@ -2864,7 +2871,7 @@ def api_calcular_rendimiento():
 
         if incluir_kero:
             porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
-            ORDEN_PRODUCTOS = ["NAFTA", "KERO", "GASOIL", "FO6"]
+            ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
             rendimientos = {
                 "NAFTA": max(0, porc_nafta),
                 "KERO": max(0, porc_kero_acumulado - porc_nafta),
@@ -3608,6 +3615,90 @@ def update_programacion(id):
         # Imprime el error en la consola del servidor para que puedas depurarlo
         print(f"ERROR AL ACTUALIZAR PROGRAMACIÓN: {e}") 
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+    
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/exportar_programacion_cargue/<string:formato>')
+def exportar_programacion_cargue(formato):
+    """
+    Genera un reporte de todos los registros de Programación de Cargue
+    en formato Excel o PDF.
+    """
+    # 1. Obtener todos los registros de la base de datos
+    try:
+        registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc(), ProgramacionCargue.hora_llegada_estimada.asc()).all()
+    except Exception as e:
+        flash(f"Error al consultar la base de datos: {e}", "danger")
+        return redirect(url_for('programacion_cargue'))
+
+    if not registros:
+        flash("No hay registros guardados para generar un reporte.", "warning")
+        return redirect(url_for('programacion_cargue'))
+
+    # 2. Lógica para generar el archivo EXCEL
+    if formato == 'excel':
+        # Preparamos los datos en una lista de diccionarios
+        datos_para_df = [{
+            'Fecha Programación': r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '',
+            'Hora Estimada': r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '',
+            'Empresa Transportadora': r.empresa_transportadora,
+            'Placa': r.placa,
+            'Conductor': r.nombre_conductor,
+            'Cédula': r.cedula_conductor,
+            'Celular': r.celular_conductor,
+            'Producto': r.producto_a_cargar,
+            'Destino': r.destino,
+            'Cliente': r.cliente,
+            'Estado': r.estado,
+            'Número Guía': r.numero_guia,
+            'Galones': r.galones,
+            'Barriles': r.barriles,
+            'Temperatura': r.temperatura,
+            'API Observado': r.api_obs,
+            'API Corregido': r.api_corregido,
+            'Precintos': r.precintos,
+            'Último Editor': r.ultimo_editor,
+            'Fecha Actualización': r.fecha_actualizacion.strftime('%Y-%m-%d %H:%M') if r.fecha_actualizacion else ''
+        } for r in registros]
+
+        df = pd.DataFrame(datos_para_df)
+
+        # Creamos el archivo Excel en memoria
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Programacion_Cargue')
+        output.seek(0)
+
+        # Enviamos el archivo al navegador
+        filename = f"reporte_programacion_cargue_{date.today().strftime('%Y-%m-%d')}.xlsx"
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    # 3. Lógica para generar el archivo PDF
+    elif formato == 'pdf':
+        # Renderizamos una plantilla HTML especial para el PDF
+        html_para_pdf = render_template(
+            'reportes_pdf/programacion_cargue_pdf.html',
+            registros=registros,
+            fecha_reporte=datetime.now().strftime('%d de %B de %Y')
+        )
+        
+        # Usamos WeasyPrint para convertir el HTML a PDF
+        pdf = HTML(string=html_para_pdf).write_pdf()
+        
+        # Devolvemos el PDF como una descarga
+        return Response(
+            pdf,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': 'attachment;filename=reporte_programacion_cargue.pdf'}
+        )
+
+    # Si el formato no es ni 'excel' ni 'pdf', redirigimos
+    return redirect(url_for('programacion_cargue'))    
  
 @app.route('/')
 def home():
