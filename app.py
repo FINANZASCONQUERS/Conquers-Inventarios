@@ -1586,30 +1586,36 @@ def sync_orion_tanks():
     """
     Revisa la planilla por defecto de Orion y añade los tanques que falten en la base de datos.
     Este comando es seguro y no borra datos existentes.
+    VERSIÓN CORREGIDA: Revisa la tupla (TK, grupo) para evitar conflictos.
     """
     try:
-        # Obtiene todos los tanques que YA existen en la base de datos
-        tanques_en_db = [r.tk for r in db.session.query(RegistroBarcazaOrion.tk).distinct()]
+        # Obtenemos una lista de tuplas (tk, grupo) que ya existen en la base de datos
+        tanques_existentes_tuplas = db.session.query(
+            RegistroBarcazaOrion.tk, 
+            RegistroBarcazaOrion.grupo
+        ).distinct().all()
+        
+        # Convertimos la lista de tuplas a un set para búsquedas rápidas y eficientes
+        set_tanques_db = set(tanques_existentes_tuplas)
         
         nuevos_tanques_agregados = 0
         
-        # Itera sobre la lista de tanques que DEBERÍA existir (la de tu código)
+        # Iteramos sobre la lista de tanques que DEBERÍA existir (la de tu código)
         for tanque_plantilla in PLANILLA_BARCAZA_ORION:
-            # Revisa si el tanque de la plantilla NO está en la base de datos
-            if tanque_plantilla["TK"] not in tanques_en_db:
-                print(f"Tanque '{tanque_plantilla['TK']}' no encontrado. Añadiendo a la base de datos...")
+            tk_plantilla = tanque_plantilla["TK"]
+            grupo_plantilla = tanque_plantilla["grupo"]
+            
+            # Revisamos si la combinación (tk, grupo) NO está en nuestro set de la BD
+            if (tk_plantilla, grupo_plantilla) not in set_tanques_db:
+                print(f"Tanque '{tk_plantilla}' del grupo '{grupo_plantilla}' no encontrado. Añadiendo...")
                 
                 nuevo_registro = RegistroBarcazaOrion(
-                    usuario="system_sync", # Usuario por defecto para el registro inicial
-                    tk=tanque_plantilla["TK"],
+                    usuario="system_sync",
+                    tk=tk_plantilla,
                     producto=tanque_plantilla["PRODUCTO"],
                     max_cap=tanque_plantilla["MAX_CAP"],
-                    grupo=tanque_plantilla["grupo"],
-                    # Los demás campos se dejan vacíos (None/null)
-                    bls_60=None,
-                    api=None,
-                    bsw=None,
-                    s=None
+                    grupo=grupo_plantilla,
+                    bls_60=None, api=None, bsw=None, s=None
                 )
                 db.session.add(nuevo_registro)
                 nuevos_tanques_agregados += 1
