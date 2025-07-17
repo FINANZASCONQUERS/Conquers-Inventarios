@@ -3165,11 +3165,8 @@ def upload_remolcadores_excel():
 
     try:
         df = pd.read_excel(file)
-        # Normaliza los nombres para ser más flexible con mayúsculas/minúsculas
         df.columns = [str(c).strip().title() for c in df.columns]
 
-        # --- INICIO DE LA CORRECCIÓN ---
-        # Ahora requerimos todas las columnas
         required_columns = ['Id', 'Barcaza', 'Mt Entregadas', 'Evento Anterior', 'Hora Inicio', 'Evento Actual', 'Hora Fin', 'Carga']
         if not all(col in df.columns for col in required_columns):
             missing = [col for col in required_columns if col not in df.columns]
@@ -3178,11 +3175,15 @@ def upload_remolcadores_excel():
         nuevos_registros = []
         # Agrupamos por 'Id' para procesar cada maniobra
         for maniobra_id, group in df.groupby('Id'):
-            # Tomamos los valores comunes del primer registro del grupo
-            barcaza = group['Barcaza'].iloc[0] if pd.notna(group['Barcaza'].iloc[0]) else None
-            mt_entregadas = group['Mt Entregadas'].iloc[0] if pd.notna(group['Mt Entregadas'].iloc[0]) else None
-
             for _, row in group.iterrows():
+                # --- INICIO DE LA CORRECCIÓN ---
+                # Se leen los valores de CADA fila individualmente.
+                barcaza = row['Barcaza'] if pd.notna(row['Barcaza']) else None
+                mt_val = row['Mt Entregadas']
+                # Se convierte el valor a un float estándar de Python para evitar errores en la base de datos.
+                mt_entregadas = float(mt_val) if pd.notna(mt_val) else None
+                # --- FIN DE LA CORRECCIÓN ---
+
                 hora_inicio = pd.to_datetime(row['Hora Inicio'], dayfirst=True)
                 hora_fin = pd.to_datetime(row['Hora Fin'], dayfirst=True) if pd.notna(row['Hora Fin']) else None
 
@@ -3190,7 +3191,7 @@ def upload_remolcadores_excel():
                     maniobra_id=int(maniobra_id),
                     barcaza=barcaza,
                     mt_entregadas=mt_entregadas,
-                    carga_estado=row['Carga'], # <-- Se lee la carga de cada fila
+                    carga_estado=row['Carga'],
                     evento_anterior=row['Evento Anterior'],
                     hora_inicio=hora_inicio,
                     evento_actual=row['Evento Actual'],
@@ -3199,7 +3200,7 @@ def upload_remolcadores_excel():
                 )
                 nuevos_registros.append(registro)
 
-        db.session.query(RegistroRemolcador).delete() # Opcional: borra los datos antiguos antes de cargar los nuevos
+        db.session.query(RegistroRemolcador).delete()
         db.session.add_all(nuevos_registros)
         db.session.commit()
 
@@ -3208,7 +3209,7 @@ def upload_remolcadores_excel():
     except Exception as e:
         db.session.rollback()
         app.logger.error(f"Error al procesar Excel de remolcadores: {e}")
-        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+        return jsonify(success=False, message=f"Error interno al procesar el archivo: {str(e)}"), 500
 
 @login_required
 @permiso_requerido('control_remolcadores')

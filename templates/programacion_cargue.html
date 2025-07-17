@@ -4,26 +4,26 @@
 {% block content %}
 <div class="container-fluid mt-4 px-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="h3 fw-semibold text-gray-800 mb-0">
-        <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
-    </h2>
+        <h2 class="h3 fw-semibold text-gray-800 mb-0">
+            <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
+        </h2>    
+        <div class="d-flex align-items-center">
+            <div class="btn-group me-3" role="group">
+                <button type="button" class="btn btn-outline-success btn-sm rounded-3 export-btn" 
+                        data-bs-toggle="modal" data-bs-target="#reportModal" data-format="excel">
+                    <i class="fas fa-file-excel me-1"></i> Excel
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm rounded-3 export-btn" 
+                        data-bs-toggle="modal" data-bs-target="#reportModal" data-format="pdf">
+                    <i class="fas fa-file-pdf me-1"></i> PDF
+                </button>
+            </div>
+            <button id="btn-add-row" class="btn btn-primary btn-sm rounded-3 shadow-sm">
+                <i class="fas fa-plus-circle me-1"></i> Nueva Programación
+            </button>
+        </div>
+    </div>
     
-    <div>
-        <div>
-    <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm export-btn" 
-            data-bs-toggle="modal" data-bs-target="#reportModal" data-format="excel">
-        <i class="fas fa-file-excel me-2"></i>Exportar a Excel
-    </button>
-    <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm export-btn" 
-            data-bs-toggle="modal" data-bs-target="#reportModal" data-format="pdf">
-        <i class="fas fa-file-pdf me-2"></i>Exportar a PDF
-    </button>
-    </div>
-        <button id="btn-add-row" class="btn btn-primary btn-sm rounded-pill shadow-sm ms-2">
-            <i class="fas fa-plus me-2"></i>Nueva Programación
-        </button>
-    </div>
-</div>
     <div class="card border-0 shadow-lg rounded-lg overflow-hidden">
         <div class="card-header bg-white py-3 border-bottom">
             <div class="row align-items-center">
@@ -33,7 +33,7 @@
                     </h5>
                 </div>
                 <div class="col-md-6 text-end">
-                    <span class="badge bg-primary bg-opacity-10 text-primary">
+                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
                         <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                     </span>
                 </div>
@@ -53,35 +53,50 @@
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="reportModalLabel">Opciones del Reporte</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="reportModalLabel">
+                    <i class="fas fa-file-export me-2"></i>Opciones del Reporte
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Selecciona un rango de fechas para generar tu reporte. Si dejas los campos vacíos, se exportarán todos los registros.</p>
-                <div class="row">
+                <p class="text-muted mb-4">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Selecciona un rango de fechas para generar tu reporte. Si dejas los campos vacíos, se exportarán todos los registros.
+                </p>
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <label for="fecha_inicio" class="form-label">Fecha de Inicio:</label>
-                        <input type="date" class="form-control" id="fecha_inicio">
+                        <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="far fa-calendar-alt text-primary"></i></span>
+                            <input type="date" class="form-control" id="fecha_inicio">
+                        </div>
                     </div>
                     <div class="col-md-6">
-                        <label for="fecha_fin" class="form-label">Fecha de Fin:</label>
-                        <input type="date" class="form-control" id="fecha_fin">
+                        <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light"><i class="far fa-calendar-alt text-primary"></i></span>
+                            <input type="date" class="form-control" id="fecha_fin">
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btn-generate-report">Generar Reporte</button>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary rounded-2 px-4" id="btn-generate-report">
+                    <i class="fas fa-file-export me-1"></i> Generar Reporte
+                </button>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
