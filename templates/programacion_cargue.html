@@ -9,12 +9,16 @@
     </h2>
     
     <div>
-        <a href="{{ url_for('exportar_programacion_cargue', formato='excel') }}" class="btn btn-success btn-sm rounded-pill shadow-sm">
-            <i class="fas fa-file-excel me-2"></i>Exportar a Excel
-        </a>
-        <a href="{{ url_for('exportar_programacion_cargue', formato='pdf') }}" class="btn btn-danger btn-sm rounded-pill shadow-sm">
-            <i class="fas fa-file-pdf me-2"></i>Exportar a PDF
-        </a>
+        <div>
+    <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm export-btn" 
+            data-bs-toggle="modal" data-bs-target="#reportModal" data-format="excel">
+        <i class="fas fa-file-excel me-2"></i>Exportar a Excel
+    </button>
+    <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm export-btn" 
+            data-bs-toggle="modal" data-bs-target="#reportModal" data-format="pdf">
+        <i class="fas fa-file-pdf me-2"></i>Exportar a PDF
+    </button>
+    </div>
         <button id="btn-add-row" class="btn btn-primary btn-sm rounded-pill shadow-sm ms-2">
             <i class="fas fa-plus me-2"></i>Nueva Programación
         </button>
@@ -45,6 +49,33 @@
                 </table>
                 <datalist id="productos-lista">
                     </datalist>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="reportModalLabel">Opciones del Reporte</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selecciona un rango de fechas para generar tu reporte. Si dejas los campos vacíos, se exportarán todos los registros.</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="fecha_inicio" class="form-label">Fecha de Inicio:</label>
+                        <input type="date" class="form-control" id="fecha_inicio">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="fecha_fin" class="form-label">Fecha de Fin:</label>
+                        <input type="date" class="form-control" id="fecha_fin">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-generate-report">Generar Reporte</button>
             </div>
         </div>
     </div>
@@ -97,6 +128,42 @@ document.addEventListener('DOMContentLoaded', function() {
         'precintos': { width: '250px', type: 'text'}, 
         'numero_guia': { width: '150px' }
     };
+    const reportModal = document.getElementById('reportModal');
+let exportFormat = ''; // Variable para guardar si es 'excel' o 'pdf'
+
+// Cuando el modal se está por abrir, guardamos el formato del botón que se presionó.
+reportModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    exportFormat = button.getAttribute('data-format');
+});
+
+// Cuando se hace clic en "Generar Reporte" dentro del modal.
+document.getElementById('btn-generate-report').addEventListener('click', function() {
+    const fechaInicio = document.getElementById('fecha_inicio').value;
+    const fechaFin = document.getElementById('fecha_fin').value;
+
+    // Construimos la URL base para la exportación.
+    let url = `/exportar_programacion_cargue/${exportFormat}`;
+    
+    // Añadimos las fechas como parámetros a la URL.
+    const params = new URLSearchParams();
+    if (fechaInicio) {
+        params.append('fecha_inicio', fechaInicio);
+    }
+    if (fechaFin) {
+        params.append('fecha_fin', fechaFin);
+    }
+
+    // Si hay parámetros, los añadimos a la URL.
+    if (params.toString()) {
+        url += `?${params.toString()}`;
+    }
+
+    // Cerramos el modal y abrimos la URL para descargar el archivo.
+    const modalInstance = bootstrap.Modal.getInstance(reportModal);
+    modalInstance.hide();
+    window.location.href = url;
+});
 
     const allColumns = Object.keys(columnsConfig);
     const userPermissions = permissions[userEmail] || [];

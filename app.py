@@ -60,6 +60,7 @@ def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     except Exception as e:
         print(f"Error al formatear fecha: {e}")
         return "Fecha de registro con error de formato."
+        
 def componer_fecha_hora(hora_str, fecha_base=None):
     """
     Toma una hora en formato 'HH:MM' y la combina con una fecha base
@@ -3652,18 +3653,36 @@ def update_programacion(id):
 @app.route('/exportar_programacion_cargue/<string:formato>')
 def exportar_programacion_cargue(formato):
     """
-    Genera un reporte de todos los registros de Programación de Cargue
-    en formato Excel o PDF.
+    Genera un reporte de Programación de Cargue en Excel o PDF,
+    filtrando por un rango de fechas si se proporciona.
     """
-    # 1. Obtener todos los registros de la base de datos
     try:
-        registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc(), ProgramacionCargue.hora_llegada_estimada.asc()).all()
+        # Leemos las fechas desde los parámetros de la URL.
+        fecha_inicio_str = request.args.get('fecha_inicio')
+        fecha_fin_str = request.args.get('fecha_fin')
+
+        # Empezamos la consulta base.
+        query = ProgramacionCargue.query
+
+        # Aplicamos el filtro de fecha de inicio si existe.
+        if fecha_inicio_str:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            query = query.filter(ProgramacionCargue.fecha_programacion >= fecha_inicio_obj)
+
+        # Aplicamos el filtro de fecha de fin si existe.
+        if fecha_fin_str:
+            fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date()
+            query = query.filter(ProgramacionCargue.fecha_programacion <= fecha_fin_obj)
+
+        # Ejecutamos la consulta final ya filtrada.
+        registros = query.order_by(ProgramacionCargue.fecha_programacion.desc()).all()
+
     except Exception as e:
-        flash(f"Error al consultar la base de datos: {e}", "danger")
+        flash(f"Error al procesar las fechas: {e}", "danger")
         return redirect(url_for('programacion_cargue'))
 
     if not registros:
-        flash("No hay registros guardados para generar un reporte.", "warning")
+        flash("No hay registros para generar un reporte con el filtro seleccionado.", "warning")
         return redirect(url_for('programacion_cargue'))
 
     # 2. Lógica para generar el archivo EXCEL
@@ -4009,7 +4028,7 @@ def init_db_command():
     print("Base de datos inicializada y tablas creadas.")
 
 with app.app_context():
-    db.create_all()
+ db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True)

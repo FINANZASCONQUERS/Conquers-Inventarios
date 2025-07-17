@@ -31,7 +31,7 @@
         <div class="card-body">
             <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-primary" id="btn-iniciar-maniobra"><i class="fas fa-plus me-2"></i>Iniciar Maniobra</button>
-                <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#uploadExcelModal"><i class="fas fa-file-upload me-2"></i>Cargar Excel</button>
+                <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#uploadExcelModal"><i class="fas fa-file-excel me-2"></i>Cargar Excel</button>
             </div>
             <div id="contenedor-maniobras">
                 <p class="text-center text-muted py-5">Cargando registros...</p>
@@ -54,6 +54,21 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="uploadPdfModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Cargar Datos desde PDF</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p class="small text-muted">Sube el archivo <strong>.json</strong> generado a partir del análisis del PDF.</p>
+                <form id="upload-pdf-form">
+                    <input class="form-control" type="file" id="pdf_file" name="pdf_file" accept=".json" required>
+                    <button type="submit" class="btn btn-danger mt-3">Subir y Procesar Archivo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -68,32 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const barcazas = ["MANZANILLO", "CR", "MARGOTH", "ODISEA", "MARINSE", "OIDECH"];
     const estadosCarga = ["LLENO", "VACIO", "N/A"];
     const camposEditablesOperador = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'barcaza', 'carga_estado'];
-    
-    // Listas de opciones para los menús
-    const eventoAnteriorOptions = [
-        "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
-        "INICIO BASE OPS", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC",
-        "LLEGADA BASE OPS", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
-        "LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
-    ];
-    const eventoActualOptions = [
-        "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", 
-        "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO CONTECAR", 
-        "INICIO FONDEO", "INICIO SPRC", "LLEGADA BASE OPS", 
-        "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD", 
-        "REUBICACION BARCAZAS", "TANQUEO"
-    ];
 
     // --- FUNCIONES DE RENDERIZADO (VISTA) ---
     
     function renderizarFila(r, esUltimoEvento = false) {
         const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
         
-        // Generar opciones para los selects
-        const selectAnteriorHTML = eventoAnteriorOptions.map(opt => `<option value="${opt}" ${r.evento_anterior === opt ? 'selected' : ''}>${opt}</option>`).join('');
-        const selectActualHTML = eventoActualOptions.map(opt => `<option value="${opt}" ${r.evento_actual === opt ? 'selected' : ''}>${opt}</option>`).join('');
-        
-        // Generar badge para el estado de carga
         const cargaSeleccionada = r.carga_estado || 'N/A';
         const selectCargaHTML = estadosCarga.map(opt => `<option value="${opt}" ${cargaSeleccionada === opt ? 'selected' : ''}>${opt}</option>`).join('');
         const cargaHtml = `<td>
@@ -102,13 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </select>
         </td>`;
 
-        // Mostrar Total de Horas solo en la última fila del grupo
         const totalHorasHtml = esUltimoEvento ? `<td class="total-horas">${r.total_horas || ''}</td>` : '<td></td>';
 
+        // ================== CAMBIO: Se usan <input> en lugar de <select> para eventos ==================
         let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class="evento-actual"' : ''}>
-            <td><select class="form-select form-select-sm" data-field="evento_anterior" ${!esEditable('evento_anterior') ? 'disabled' : ''}><option value="">--</option>${selectAnteriorHTML}</select></td>
+            <td><input type="text" data-field="evento_anterior" class="form-control form-control-sm" value="${r.evento_anterior || ''}" ${!esEditable('evento_anterior') ? 'readonly' : ''}></td>
             <td><input type="datetime-local" data-field="hora_inicio" class="form-control form-control-sm" value="${r.hora_inicio || ''}" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
-            <td><select class="form-select form-select-sm" data-field="evento_actual" ${!esEditable('evento_actual') ? 'disabled' : ''}><option value="">--</option>${selectActualHTML}</select></td>
+            <td><input type="text" data-field="evento_actual" class="form-control form-control-sm" value="${r.evento_actual || ''}" ${!esEditable('evento_actual') ? 'readonly' : ''}></td>
             <td><input type="datetime-local" data-field="hora_fin" class="form-control form-control-sm" value="${r.hora_fin || ''}" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
             <td class="text-muted">${r.duracion || ''}</td>
             ${totalHorasHtml}
@@ -136,7 +131,6 @@ document.addEventListener('DOMContentLoaded', function() {
             grupoDiv.className = 'maniobra-group';
             grupoDiv.dataset.maniobraId = maniobra_id;
             
-            // Opciones para barcaza
             const barcazaOptions = barcazas.map(b => `<option value="${b}" ${b === eventos[0].barcaza ? 'selected' : ''}>${b}</option>`).join('');
             
             let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
@@ -203,9 +197,8 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (target.classList.contains('btn-save-evento')) {
             const tr = target.closest('tr');
             const datosFila = {};
-            tr.querySelectorAll('[data-field]').forEach(el => datosFila[el.dataset.field] = el.tagName === 'TD' ? el.innerText : el.value);
+            tr.querySelectorAll('[data-field]').forEach(el => datosFila[el.dataset.field] = el.value);
             
-            // Obtener datos de la cabecera de la maniobra
             const barcazaInput = grupoDiv.querySelector('.barcaza-maniobra-input');
             if (barcazaInput) datosFila.barcaza = barcazaInput.value;
             
@@ -222,12 +215,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 apiRequest(`/api/maniobra/${maniobra_id}`, { method: 'DELETE' });
             }
         } else if (target.classList.contains('btn-guardar-maniobra')) {
-            // Actualizar todos los eventos de la maniobra con los datos de la cabecera
             const barcaza = grupoDiv.querySelector('.barcaza-maniobra-input').value;
             
-            const datos = {
-                barcaza: barcaza
-            };
+            const datos = { barcaza: barcaza };
             
             if (esAdminOJuliana) {
                 const mtEntregadas = grupoDiv.querySelector('.mt-maniobra-input').value;
@@ -247,19 +237,12 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const fileInput = document.getElementById('excel_file');
         const file = fileInput.files[0];
-        
-        if (!file) {
-            alert('Por favor seleccione un archivo Excel');
-            return;
-        }
+        if (!file) { alert('Por favor seleccione un archivo Excel'); return; }
         
         const formData = new FormData();
         formData.append('excel_file', file);
         
-        fetch('/api/remolcadores/upload_excel', {
-            method: 'POST',
-            body: formData
-        })
+        fetch('/api/remolcadores/upload_excel', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
             alert(data.message);
@@ -268,10 +251,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 bootstrap.Modal.getInstance(document.getElementById('uploadExcelModal')).hide();
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error al cargar el archivo Excel');
-        });
+        .catch(error => alert('Error al cargar el archivo Excel'));
+    });
+
+    // --- NUEVO MANEJADOR PARA EL FORMULARIO DE PDF ---
+    document.getElementById('upload-pdf-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('pdf_file');
+        const file = fileInput.files[0];
+        if (!file) { alert('Por favor seleccione un archivo JSON'); return; }
+
+        const formData = new FormData();
+        formData.append('pdf_file', file); // El nombre del campo debe coincidir con el backend
+
+        fetch('/api/remolcadores/upload_pdf', { method: 'POST', body: formData })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) {
+                cargarRegistros();
+                bootstrap.Modal.getInstance(document.getElementById('uploadPdfModal')).hide();
+            }
+        })
+        .catch(error => alert('Error al cargar el archivo.'));
     });
 
     document.getElementById('btn-iniciar-maniobra').addEventListener('click', function() {
