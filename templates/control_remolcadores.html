@@ -27,6 +27,30 @@
         {% endif %}
     </div>
 
+    <div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+    <div class="col-md-4">
+        <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
+        <input type="date" class="form-control form-control-sm" id="fecha_inicio">
+    </div>
+    <div class="col-md-4">
+        <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
+        <input type="date" class="form-control form-control-sm" id="fecha_fin">
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+        <button id="btn-filtrar" class="btn btn-primary btn-sm w-100">
+            <i class="fas fa-filter me-2"></i>Filtrar
+        </button>
+        <button id="btn-limpiar-filtro" class="btn btn-outline-secondary btn-sm w-100">
+            <i class="fas fa-times me-2"></i>Limpiar
+        </button>
+    </div>
+    </div>
+        </div>
+    </div>
+</div>
+
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="d-flex gap-2 mb-3">
@@ -80,11 +104,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const esOperadorOpensean = userEmail === 'opensean@conquerstrading.com';
     
     const contenedor = document.getElementById('contenedor-maniobras');
-    const barcazas = ["MANZANILLO", "CR", "MARGOTH", "ODISEA", "MARINSE", "OIDECH"];
+    const btnLimpiarFiltro = document.getElementById('btn-limpiar-filtro');
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const fechaFinInput = document.getElementById('fecha_fin');
+    const btnIniciarManiobra = document.getElementById('btn-iniciar-maniobra');
+    const btnFiltrar = document.getElementById('btn-filtrar');
+    btnLimpiarFiltro.addEventListener('click', function() {
+        // 1. Limpia los campos de fecha
+        fechaInicioInput.value = '';
+        fechaFinInput.value = '';
+        
+        // 2. Vuelve a cargar todos los datos sin filtros
+        fetchAndRenderRemolcadores();
+    });
+
+    const barcazas = ["MANZANILLO", "CR", "MARGOTH", "ODISEA", "MARINSE", "OIL TECH"];
     const estadosCarga = ["LLENO", "VACIO", "N/A"];
     const camposEditablesOperador = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'barcaza', 'carga_estado'];
-
+    
     // --- FUNCIONES DE RENDERIZADO (VISTA) ---
+
+    function fetchAndRenderRemolcadores() {
+        const fechaInicio = fechaInicioInput.value;
+        const fechaFin = fechaFinInput.value;
+
+        const params = new URLSearchParams();
+        if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+        if (fechaFin) params.append('fecha_fin', fechaFin);
+        
+        const apiUrl = `/api/registros_remolcadores?${params.toString()}`;
+        
+        contenedor.innerHTML = '<p class="text-center text-muted py-5">Cargando registros...</p>';
+
+        fetch(apiUrl)
+            .then(response => response.ok ? response.json() : Promise.reject('Error de red'))
+            .then(data => {
+                renderizarGrupos(data); // Llama a la función que dibuja las maniobras
+            })
+            .catch(error => {
+                console.error('Error al cargar los datos:', error);
+                contenedor.innerHTML = '<p class="text-center text-danger py-5">Error al cargar la información.</p>';
+            });
+    }
     
     function renderizarFila(r, esUltimoEvento = false) {
         const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
@@ -167,7 +228,19 @@ document.addEventListener('DOMContentLoaded', function() {
             contenedor.appendChild(grupoDiv);
         });
     }
-    
+    const hoy = new Date();
+    const haceUnMes = new Date();
+    haceUnMes.setDate(hoy.getDate() - 30);
+    fechaFinInput.value = hoy.toISOString().split('T')[0];
+    fechaInicioInput.value = haceUnMes.toISOString().split('T')[0];
+
+    // --- EVENTOS DE CLICK ---
+    btnFiltrar.addEventListener('click', fetchAndRenderRemolcadores);
+    btnLimpiarFiltro.addEventListener('click', () => {
+        fechaInicioInput.value = '';
+        fechaFinInput.value = '';
+        fetchAndRenderRemolcadores();
+    });
     // --- LÓGICA DE EVENTOS ---
     async function apiRequest(url, options) {
         try {
@@ -186,7 +259,32 @@ document.addEventListener('DOMContentLoaded', function() {
         const maniobra_id = grupoDiv.dataset.maniobraId;
 
         if (target.classList.contains('btn-agregar-evento-grupo')) {
-            grupoDiv.querySelector('tbody').insertAdjacentHTML('beforeend', renderizarFila({ id: 'new', maniobra_id }));
+    // 1. Encontrar la última fila de la tabla de la maniobra actual.
+    const tbody = grupoDiv.querySelector('tbody');
+    const ultimaFila = tbody.querySelector('tr:last-child');
+
+    let eventoAnteriorNuevo = '';
+    let horaInicioNueva = '';
+
+    // 2. Si existe una última fila, copiar los datos.
+    if (ultimaFila) {
+        const eventoActualPrevio = ultimaFila.querySelector('[data-field="evento_actual"]').value;
+        const horaFinPrevia = ultimaFila.querySelector('[data-field="hora_fin"]').value;
+
+        eventoAnteriorNuevo = eventoActualPrevio;
+        horaInicioNueva = horaFinPrevia;
+    }
+
+    // 3. Crear el objeto de datos para la nueva fila con la información copiada.
+    const datosNuevaFila = {
+        id: 'new',
+        maniobra_id: maniobra_id,
+        evento_anterior: eventoAnteriorNuevo,
+        hora_inicio: horaInicioNueva
+    };
+
+    // 4. Añadir la nueva fila ya pre-rellenada.
+    tbody.insertAdjacentHTML('beforeend', renderizarFila(datosNuevaFila));
         } else if (target.classList.contains('btn-remove-evento')) {
             const tr = target.closest('tr');
             if (tr.dataset.id === 'new') {

@@ -5,10 +5,36 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="h3 text-primary"><i class="fas fa-chart-line me-2"></i>Análisis de Tiempos de Remolcadores</h2>
-        <a href="{{ url_for('descargar_reporte_analisis_remolcadores_pdf') }}" class="btn btn-danger">
+        <a href="{{ url_for('descargar_reporte_analisis_remolcadores_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin) }}" class="btn btn-danger">
             <i class="fas fa-file-pdf me-2"></i>Descargar como PDF
         </a>
     </div>
+    <div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('reporte_analisis_remolcadores') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
+                    <input type="date" class="form-control form-control-sm" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.fecha_inicio or '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
+                    <input type="date" class="form-control form-control-sm" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin or '' }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-filter me-2"></i>Filtrar Reporte
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('reporte_analisis_remolcadores') }}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fas fa-times me-2"></i>Limpiar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
     <div class="row">
         <div class="col-lg-6 mb-4">
