@@ -3615,11 +3615,10 @@ def handle_programacion():
     registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc()).all()
     # Convierte los datos a un formato JSON friendly
     data = [
-        {c.name: getattr(r, c.name).isoformat() if isinstance(getattr(r, c.name), (date, time)) else getattr(r, c.name) for c in r.__table__.columns}
+        {c.name: getattr(r, c.name).isoformat() if isinstance(getattr(r, c.name), (datetime, date, time)) else getattr(r, c.name) for c in r.__table__.columns}
         for r in registros
     ]
     return jsonify(data)
-
 @login_required
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>', methods=['PUT'])
