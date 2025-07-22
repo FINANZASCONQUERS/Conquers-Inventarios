@@ -100,6 +100,19 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- SETUP DE PERMISOS Y VARIABLES ---
     const userEmail = "{{ session.email }}";
+      const eventoAnteriorOptions = [
+        "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
+        "INICIO BASE OPS", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC",
+        "LLEGADA BASE OPS", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
+        "LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
+    ];
+    const eventoActualOptions = [
+    "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION",
+    "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO CONTECAR",
+    "INICIO FONDEO", "INICIO SPRC", "LLEGADA BASE OPS",
+    "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
+    "REUBICACION BARCAZAS", "TANQUEO", "LLEGADA SPRC"
+    ];
     const esAdminOJuliana = "{{ session.rol }}" === 'admin' || userEmail === 'ops@conquerstrading.com';
     const esOperadorOpensean = userEmail === 'opensean@conquerstrading.com';
     
@@ -148,35 +161,50 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function renderizarFila(r, esUltimoEvento = false) {
-        const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
-        
-        const cargaSeleccionada = r.carga_estado || 'N/A';
-        const selectCargaHTML = estadosCarga.map(opt => `<option value="${opt}" ${cargaSeleccionada === opt ? 'selected' : ''}>${opt}</option>`).join('');
-        const cargaHtml = `<td>
-            <select class="form-select form-select-sm" data-field="carga_estado" ${!esEditable('carga_estado') ? 'disabled' : ''}>
-                ${selectCargaHTML}
-            </select>
-        </td>`;
+    const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
+    
+    const selectAnteriorHTML = eventoAnteriorOptions.map(opt => `<option value="${opt}" ${r.evento_anterior === opt ? 'selected' : ''}>${opt}</option>`).join('');
+    const eventoAnteriorDropdown = `<td>
+        <select class="form-select form-select-sm" data-field="evento_anterior" ${!esEditable('evento_anterior') ? 'disabled' : ''}>
+            <option value="">--</option>
+            ${selectAnteriorHTML}
+        </select>
+    </td>`;
 
-        const totalHorasHtml = esUltimoEvento ? `<td class="total-horas">${r.total_horas || ''}</td>` : '<td></td>';
+    const selectActualHTML = eventoActualOptions.map(opt => `<option value="${opt}" ${r.evento_actual === opt ? 'selected' : ''}>${opt}</option>`).join('');
+    const eventoActualDropdown = `<td>
+        <select class="form-select form-select-sm" data-field="evento_actual" ${!esEditable('evento_actual') ? 'disabled' : ''}>
+            <option value="">--</option>
+            ${selectActualHTML}
+        </select>
+    </td>`;
 
-        // ================== CAMBIO: Se usan <input> en lugar de <select> para eventos ==================
-        let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class="evento-actual"' : ''}>
-            <td><input type="text" data-field="evento_anterior" class="form-control form-control-sm" value="${r.evento_anterior || ''}" ${!esEditable('evento_anterior') ? 'readonly' : ''}></td>
-            <td><input type="datetime-local" data-field="hora_inicio" class="form-control form-control-sm" value="${r.hora_inicio || ''}" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
-            <td><input type="text" data-field="evento_actual" class="form-control form-control-sm" value="${r.evento_actual || ''}" ${!esEditable('evento_actual') ? 'readonly' : ''}></td>
-            <td><input type="datetime-local" data-field="hora_fin" class="form-control form-control-sm" value="${r.hora_fin || ''}" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
-            <td class="text-muted">${r.duracion || ''}</td>
-            ${totalHorasHtml}
-            ${cargaHtml}
-            <td>
-                <button class="btn btn-sm btn-primary btn-save-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}>Guardar</button>
-                <button class="btn btn-sm btn-outline-danger btn-remove-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-times"></i></button>
-            </td>
-        </tr>`;
-        
-        return filaHtml;
-    }
+    const cargaSeleccionada = r.carga_estado || 'N/A';
+    const selectCargaHTML = estadosCarga.map(opt => `<option value="${opt}" ${cargaSeleccionada === opt ? 'selected' : ''}>${opt}</option>`).join('');
+    const cargaHtml = `<td>
+        <select class="form-select form-select-sm" data-field="carga_estado" ${!esEditable('carga_estado') ? 'disabled' : ''}>
+            ${selectCargaHTML}
+        </select>
+    </td>`;
+
+    const totalHorasHtml = esUltimoEvento ? `<td class="total-horas">${r.total_horas || ''}</td>` : '<td></td>';
+
+    let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class="evento-actual"' : ''}>
+        ${eventoAnteriorDropdown}
+        <td><input type="datetime-local" data-field="hora_inicio" class="form-control form-control-sm" value="${r.hora_inicio || ''}" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
+        ${eventoActualDropdown}
+        <td><input type="datetime-local" data-field="hora_fin" class="form-control form-control-sm" value="${r.hora_fin || ''}" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
+        <td class="text-muted">${r.duracion || ''}</td>
+        ${totalHorasHtml}
+        ${cargaHtml}
+        <td>
+            <button class="btn btn-sm btn-primary btn-save-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}>Guardar</button>
+            <button class="btn btn-sm btn-outline-danger btn-remove-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-times"></i></button>
+        </td>
+    </tr>`;
+    
+    return filaHtml;
+}
 
     function renderizarGrupos(data) {
         contenedor.innerHTML = '';
@@ -193,13 +221,17 @@ document.addEventListener('DOMContentLoaded', function() {
             grupoDiv.dataset.maniobraId = maniobra_id;
             
             const barcazaOptions = barcazas.map(b => `<option value="${b}" ${b === eventos[0].barcaza ? 'selected' : ''}>${b}</option>`).join('');
+            const puedeEditarHeader = esAdminOJuliana || esOperadorOpensean;
             
             let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
                 <div class="col-md-auto"><h5>Maniobra #${maniobra_id}</h5></div>
-                <div class="col-md-3"><label class="form-label-sm">Barcaza</label>
-                    <select class="form-select form-select-sm barcaza-maniobra-input" ${!esAdminOJuliana && !esOperadorOpensean ? 'disabled' : ''}>
+                <div class="col-md-2"><label class="form-label-sm">Barcaza</label>
+                    <select class="form-select form-select-sm barcaza-maniobra-input" ${!puedeEditarHeader ? 'disabled' : ''}>
                         <option value="">--</option>${barcazaOptions}
                     </select>
+                </div>
+                <div class="col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
+                    <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input" value="${eventos[0].nombre_barco || ''}" ${!puedeEditarHeader ? 'disabled' : ''}>
                 </div>`;
                 
             if (esAdminOJuliana) {
@@ -210,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             cabeceraHtml += `<div class="col-md-auto ms-auto text-end">
                 <button class="btn btn-sm btn-outline-primary btn-agregar-evento-grupo"><i class="fas fa-plus"></i> Evento</button>
-                ${(esAdminOJuliana || esOperadorOpensean) ? 
+                ${puedeEditarHeader ? 
                   `<button class="btn btn-sm btn-secondary btn-guardar-maniobra">Guardar Maniobra</button>
                    <button class="btn btn-sm btn-outline-danger btn-eliminar-maniobra"><i class="fas fa-trash"></i></button>` : ''}
             </div></div></div>`;
@@ -228,11 +260,6 @@ document.addEventListener('DOMContentLoaded', function() {
             contenedor.appendChild(grupoDiv);
         });
     }
-    const hoy = new Date();
-    const haceUnMes = new Date();
-    haceUnMes.setDate(hoy.getDate() - 30);
-    fechaFinInput.value = hoy.toISOString().split('T')[0];
-    fechaInicioInput.value = haceUnMes.toISOString().split('T')[0];
 
     // --- EVENTOS DE CLICK ---
     btnFiltrar.addEventListener('click', fetchAndRenderRemolcadores);
@@ -259,32 +286,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const maniobra_id = grupoDiv.dataset.maniobraId;
 
         if (target.classList.contains('btn-agregar-evento-grupo')) {
-    // 1. Encontrar la última fila de la tabla de la maniobra actual.
-    const tbody = grupoDiv.querySelector('tbody');
-    const ultimaFila = tbody.querySelector('tr:last-child');
+            const tbody = grupoDiv.querySelector('tbody');
+            const ultimaFila = tbody.querySelector('tr:last-child');
+            let eventoAnteriorNuevo = '';
+            let horaInicioNueva = '';
 
-    let eventoAnteriorNuevo = '';
-    let horaInicioNueva = '';
+            if (ultimaFila) {
+                const eventoActualPrevio = ultimaFila.querySelector('[data-field="evento_actual"]').value;
+                const horaFinPrevia = ultimaFila.querySelector('[data-field="hora_fin"]').value;
+                eventoAnteriorNuevo = eventoActualPrevio;
+                horaInicioNueva = horaFinPrevia;
+            }
 
-    // 2. Si existe una última fila, copiar los datos.
-    if (ultimaFila) {
-        const eventoActualPrevio = ultimaFila.querySelector('[data-field="evento_actual"]').value;
-        const horaFinPrevia = ultimaFila.querySelector('[data-field="hora_fin"]').value;
+            const datosNuevaFila = {
+                id: 'new', maniobra_id: maniobra_id,
+                evento_anterior: eventoAnteriorNuevo, hora_inicio: horaInicioNueva
+            };
 
-        eventoAnteriorNuevo = eventoActualPrevio;
-        horaInicioNueva = horaFinPrevia;
-    }
-
-    // 3. Crear el objeto de datos para la nueva fila con la información copiada.
-    const datosNuevaFila = {
-        id: 'new',
-        maniobra_id: maniobra_id,
-        evento_anterior: eventoAnteriorNuevo,
-        hora_inicio: horaInicioNueva
-    };
-
-    // 4. Añadir la nueva fila ya pre-rellenada.
-    tbody.insertAdjacentHTML('beforeend', renderizarFila(datosNuevaFila));
+            tbody.insertAdjacentHTML('beforeend', renderizarFila(datosNuevaFila));
         } else if (target.classList.contains('btn-remove-evento')) {
             const tr = target.closest('tr');
             if (tr.dataset.id === 'new') {
@@ -299,6 +318,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const barcazaInput = grupoDiv.querySelector('.barcaza-maniobra-input');
             if (barcazaInput) datosFila.barcaza = barcazaInput.value;
+
+            const nombreBarcoInput = grupoDiv.querySelector('.nombre-barco-maniobra-input');
+            if (nombreBarcoInput) datosFila.nombre_barco = nombreBarcoInput.value;
             
             const mtEntregadasInput = grupoDiv.querySelector('.mt-maniobra-input');
             if (mtEntregadasInput && esAdminOJuliana) datosFila.mt_entregadas = mtEntregadasInput.value;
@@ -314,8 +336,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } else if (target.classList.contains('btn-guardar-maniobra')) {
             const barcaza = grupoDiv.querySelector('.barcaza-maniobra-input').value;
+            const nombreBarco = grupoDiv.querySelector('.nombre-barco-maniobra-input').value;
             
-            const datos = { barcaza: barcaza };
+            const datos = { barcaza: barcaza, nombre_barco: nombreBarco };
             
             if (esAdminOJuliana) {
                 const mtEntregadas = grupoDiv.querySelector('.mt-maniobra-input').value;
@@ -360,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!file) { alert('Por favor seleccione un archivo JSON'); return; }
 
         const formData = new FormData();
-        formData.append('pdf_file', file); // El nombre del campo debe coincidir con el backend
+        formData.append('pdf_file', file);
 
         fetch('/api/remolcadores/upload_pdf', { method: 'POST', body: formData })
         .then(response => response.json())
@@ -382,6 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         grupoDiv.className = 'maniobra-group';
         grupoDiv.dataset.maniobraId = 'NUEVA';
         
+        // Se construye la cabecera
         let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
             <div class="col-md-auto"><h5>Nueva Maniobra</h5></div>
             <div class="col-md-3"><label class="form-label-sm">Barcaza</label>
@@ -389,10 +413,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     <option value="">--</option>${barcazas.map(b => `<option value="${b}">${b}</option>`).join('')}
                 </select>
             </div>
-            <div class="col-md-2"><label class="form-label-sm">MT Entregadas</label>
+             <div class="col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
+                <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input">
+            </div>`;
+
+        // ✅ Se añade el campo MT Entregadas SOLO si el usuario tiene permiso
+        if (esAdminOJuliana) {
+            cabeceraHtml += `<div class="col-md-2"><label class="form-label-sm">MT Entregadas</label>
                 <input type="number" step="0.01" class="form-control form-control-sm mt-maniobra-input">
-            </div>
-            <div class="col-md-auto ms-auto text-end">
+            </div>`;
+        }
+            
+        cabeceraHtml += `<div class="col-md-auto ms-auto text-end">
+                <button class="btn btn-sm btn-outline-primary btn-agregar-evento-grupo"><i class="fas fa-plus"></i> Evento</button>
                 <button class="btn btn-sm btn-secondary btn-guardar-maniobra">Guardar Maniobra</button>
             </div>
         </div></div>`;

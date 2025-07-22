@@ -25,7 +25,7 @@ from io import BytesIO
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+from itertools import groupby
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -381,7 +381,7 @@ class RegistroRemolcador(db.Model):
     # --- CAMBIOS EN EL MODELO ---
     maniobra_id = db.Column(db.Integer, nullable=False, index=True)
     barcaza = db.Column(db.String(100), nullable=True) # <-- NUEVA COLUMNA
-    
+    nombre_barco = db.Column(db.String(100), nullable=True)
     evento_anterior = db.Column(db.String(200), nullable=True)
     hora_inicio = db.Column(db.DateTime, nullable=False)
     evento_actual = db.Column(db.String(200), nullable=True)
@@ -3173,7 +3173,10 @@ def upload_remolcadores_excel():
 
                 hora_inicio = pd.to_datetime(row['Hora Inicio'], dayfirst=True)
                 hora_fin = pd.to_datetime(row['Hora Fin'], dayfirst=True) if pd.notna(row['Hora Fin']) else None
-
+                nombre_barco_valor = None # Valor por defecto si la columna no existe
+                if 'Nombre Del Barco' in df.columns:
+                    # Si la columna existe, se lee su valor. Si la celda está vacía, se guarda como None.
+                    nombre_barco_valor = row['Nombre Del Barco'] if pd.notna(row['Nombre Del Barco']) else None
                 registro = RegistroRemolcador(
                     maniobra_id=int(maniobra_id),
                     barcaza=barcaza,
@@ -3212,12 +3215,14 @@ def update_maniobra_details(maniobra_id):
 
     data = request.get_json()
     barcaza = data.get('barcaza')
+    nombre_barco = data.get('nombre_barco')
 
     try:
         registros = RegistroRemolcador.query.filter_by(maniobra_id=maniobra_id).all()
         for registro in registros:
             # Todos los roles con permiso pueden actualizar la barcaza.
             registro.barcaza = barcaza
+            registro.nombre_barco = nombre_barco
             
             # #{ CAMBIO 2 } - Se añade una condición para que solo admin y ops@conquerstrading.com
             # puedan modificar las MT Entregadas. El usuario 'opensean' no podrá hacerlo.
@@ -3261,48 +3266,67 @@ def eliminar_maniobra(maniobra_id):
 @app.route('/api/registros_remolcadores', methods=['GET'])
 def get_registros_remolcadores():
     try:
-        # Leemos las fechas que vienen como parámetros en la URL
+        # Tu lógica de filtrado por fecha está bien
         fecha_inicio_str = request.args.get('fecha_inicio')
         fecha_fin_str = request.args.get('fecha_fin')
 
-        # Empezamos la consulta a la base de datos
         query = RegistroRemolcador.query
 
-        # Si se proporcionó una fecha de inicio, la convertimos y filtramos la consulta
         if fecha_inicio_str:
             fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
             query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
 
-        # Si se proporcionó una fecha de fin, filtramos la consulta
-        # Se incluye el día completo hasta las 23:59:59
         if fecha_fin_str:
             fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
             fecha_fin_obj_end_of_day = datetime.combine(fecha_fin_obj, time.max)
             query = query.filter(RegistroRemolcador.hora_inicio <= fecha_fin_obj_end_of_day)
 
-        # Ejecutamos la consulta ya filtrada
         registros = query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
         
-        # --- El resto de tu lógica para procesar los datos se mantiene igual ---
+        # --- ✅ INICIO DE LA LÓGICA CORREGIDA PARA CALCULAR EL TOTAL DE HORAS ---
         duraciones_totales = {}
         if registros:
-            # (Tu lógica para calcular duraciones totales)
-            pass
+            # Agrupa todos los eventos por su ID de maniobra
+            grupos = groupby(registros, key=lambda r: r.maniobra_id)
+            
+            for maniobra_id, grupo_eventos in grupos:
+                lista_eventos = list(grupo_eventos)
+                if not lista_eventos: continue
+                
+                # Encuentra la primera hora de inicio y la última hora de fin de la maniobra
+                primera_hora_inicio = min(r.hora_inicio for r in lista_eventos)
+                horas_fin_validas = [r.hora_fin for r in lista_eventos if r.hora_fin]
+                
+                if horas_fin_validas:
+                    ultima_hora_fin = max(horas_fin_validas)
+                    # Calcula la diferencia total
+                    delta_total = ultima_hora_fin - primera_hora_inicio
+                    horas, rem = divmod(delta_total.total_seconds(), 3600)
+                    minutos, _ = divmod(rem, 60)
+                    duraciones_totales[maniobra_id] = f"{int(horas)}h {int(minutos)}m"
+                else:
+                    duraciones_totales[maniobra_id] = "En Proceso"
+        # --- ✅ FIN DE LA LÓGICA DE CÁLCULO ---
 
         data = []
+        es_opensean = session.get('email') == 'opensean@conquerstrading.com'
         for r in registros:
             registro_data = {
                 "id": r.id,
                 "maniobra_id": r.maniobra_id,
                 "barcaza": r.barcaza,
+                "nombre_barco": r.nombre_barco,
                 "evento_anterior": r.evento_anterior,
-                "hora_inicio": r.hora_inicio.isoformat(),
+                "hora_inicio": r.hora_inicio.strftime('%Y-%m-%dT%H:%M'), # Formato para <input>
                 "evento_actual": r.evento_actual,
-                "hora_fin": r.hora_fin.isoformat() if r.hora_fin else '',
+                "hora_fin": r.hora_fin.strftime('%Y-%m-%dT%H:%M') if r.hora_fin else '',
                 "duracion": r.duracion,
                 "carga_estado": r.carga_estado,
-                "mt_entregadas": float(r.mt_entregadas) if r.mt_entregadas is not None else ''
+                "total_horas": duraciones_totales.get(r.maniobra_id, "")
             }
+            if not es_opensean:
+                registro_data["mt_entregadas"] = float(r.mt_entregadas) if r.mt_entregadas is not None else ''
+
             data.append(registro_data)
             
         return jsonify(data)
@@ -3355,8 +3379,13 @@ def crear_registro_remolcador():
         )
         if usuario_puede_gestionar:
             nuevo_registro.barcaza = data.get('barcaza')
+            nuevo_registro.nombre_barco = data.get('nombre_barco')
             nuevo_registro.mt_entregadas = data.get('mt_entregadas') if data.get('mt_entregadas') else None
             nuevo_registro.carga_estado = data.get('carga_estado')
+
+        if session.get('rol') == 'admin' or session.get('email') == 'ops@conquerstrading.com':
+            if 'mt_entregadas' in data:
+                nuevo_registro.mt_entregadas = data.get('mt_entregadas') if data.get('mt_entregadas') else None
 
         db.session.add(nuevo_registro)
         db.session.commit()
@@ -3410,7 +3439,7 @@ def update_registro_remolcador(id):
             if 'evento_actual' in data and data['evento_actual'] not in eventos_actuales_permitidos:
                 return jsonify(success=False, message="Evento actual no permitido"), 400
             
-            campos_permitidos = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'carga_estado']
+            campos_permitidos = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'carga_estado', 'nombre_barco']
             for campo in campos_permitidos:
                 if campo in data:
                     valor = data[campo]
@@ -4075,4 +4104,4 @@ with app.app_context():
  db.create_all()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) 
