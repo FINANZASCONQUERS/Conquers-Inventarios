@@ -125,6 +125,11 @@ def procesar_analisis_remolcadores(registros):
         ("LLEGADA SPD -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "LLEGADA SPD -> LLEGADA CONTECAR",
         ("LLEGADA SPD -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "LLEGADA SPD -> LLEGADA FONDEO",
         ("LLEGADA SPD -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "LLEGADA SPD -> LLEGADA SPRC",
+    
+        ("LLEGADA BITA -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "LLEGADA BITA -> LLEGADA BASE OPS",
+        ("LLEGADA BITA -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "LLEGADA BITA -> LLEGADA CONTECAR",
+        ("LLEGADA BITA -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "LLEGADA BITA -> LLEGADA FONDEO",
+        ("LLEGADA BITA -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "LLEGADA BITA -> LLEGADA SPRC",
     }
 
     for i in range(len(df) - 1):
@@ -145,8 +150,8 @@ def procesar_analisis_remolcadores(registros):
         return " ".join(partes) or "0m"
 
     # --- ANÁLISIS DE TRAYECTOS (sin cambios) ---
-    pairs_loaded = ["LLEGADA SPD -> LLEGADA CONTECAR", "LLEGADA SPD -> LLEGADA SPRC", "LLEGADA SPD -> LLEGADA FONDEO", "ESPERAR AUTORIZACION -> AUTORIZADO"]
-    pairs_empty = ["INICIO BASE OPS -> LLEGADA SPD", "INICIO SPRC -> LLEGADA BASE OPS", "INICIO SPRC -> LLEGADA SPD", "INICIO CONTECAR -> LLEGADA BASE OPS", "INICIO CONTECAR -> LLEGADA SPD", "LLEGADA SPD -> LLEGADA BASE OPS", "INICIO FONDEO -> LLEGADA SPD", "INICIO FONDEO -> LLEGADA BASE OPS"]
+    pairs_loaded = ["LLEGADA SPD -> LLEGADA CONTECAR", "LLEGADA SPD -> LLEGADA SPRC", "LLEGADA SPD -> LLEGADA FONDEO", "ESPERAR AUTORIZACION -> AUTORIZADO", "LLEGADA BITA -> LLEGADA CONTECAR", "LLEGADA BITA -> LLEGADA SPRC", "LLEGADA BITA -> LLEGADA FONDEO"]
+    pairs_empty = ["INICIO BASE OPS -> LLEGADA SPD", "INICIO SPRC -> LLEGADA BASE OPS", "INICIO SPRC -> LLEGADA SPD", "INICIO CONTECAR -> LLEGADA BASE OPS", "INICIO CONTECAR -> LLEGADA SPD", "LLEGADA SPD -> LLEGADA BASE OPS", "INICIO FONDEO -> LLEGADA SPD", "INICIO FONDEO -> LLEGADA BASE OPS", "INICIO BASE OPS -> LLEGADA BITA", "INICIO SPRC -> LLEGADA BITA", "INICIO CONTECAR -> LLEGADA BITA", "INICIO FONDEO -> LLEGADA BITA", "LLEGADA BITA -> LLEGADA BASE OPS"]
     df_valido = df[df["trayecto_final"].notnull() & df['CARGAS'].notna()]
     df_loaded = df_valido[(df_valido["trayecto_final"].isin(pairs_loaded)) & (df_valido["CARGAS"].str.upper() == "LLENO")]
     df_empty = df_valido[(df_valido["trayecto_final"].isin(pairs_empty)) & (df_valido["CARGAS"].str.upper() == "VACIO")]
@@ -427,7 +432,7 @@ class ProgramacionCargue(db.Model):
     cliente = db.Column(db.String(150))
     
     # Campos de Refinería
-    estado = db.Column(db.String(50), default='PROGRAMADO') # Ej: PROGRAMADO, EN PROCESO, COMPLETADO
+    estado = db.Column(db.String(50), default='PROGRAMADO') 
     galones = db.Column(db.Float)
     barriles = db.Column(db.Float)
     temperatura = db.Column(db.Float)
@@ -3416,15 +3421,15 @@ def update_registro_remolcador(id):
     # Valores permitidos para opensean
     eventos_anteriores_permitidos = [
         "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
-        "INICIO BASE OPS", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC",
-        "LLEGADA BASE OPS", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
+        "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC",
+        "LLEGADA BASE OPS", "LLEGADA BITA", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
         "LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
     ]
     
     eventos_actuales_permitidos = [
         "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", 
-        "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO CONTECAR", 
-        "INICIO FONDEO", "INICIO SPRC", "LLEGADA BASE OPS", 
+        "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR", 
+        "INICIO FONDEO", "INICIO SPRC", "LLEGADA BASE OPS", "LLEGADA BITA",
         "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD", 
         "REUBICACION BARCAZAS", "TANQUEO"
     ]
