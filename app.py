@@ -3154,32 +3154,33 @@ def upload_remolcadores_excel():
         df = pd.read_excel(file)
         df.columns = [str(c).strip().title() for c in df.columns]
 
+        # ✅ 1. Renombrar 'Barco' a 'Nombre Del Barco' si la columna existe
+        if 'Barco' in df.columns:
+            df.rename(columns={'Barco': 'Nombre Del Barco'}, inplace=True)
+
         required_columns = ['Id', 'Barcaza', 'Mt Entregadas', 'Evento Anterior', 'Hora Inicio', 'Evento Actual', 'Hora Fin', 'Carga']
         if not all(col in df.columns for col in required_columns):
             missing = [col for col in required_columns if col not in df.columns]
-            return jsonify(success=False, message=f"Faltan columnas en el Excel: {', '.join(missing)}"), 400
+            return jsonify(success=False, message=f"Faltan columnas obligatorias en el Excel: {', '.join(missing)}"), 400
 
         nuevos_registros = []
-        # Agrupamos por 'Id' para procesar cada maniobra
         for maniobra_id, group in df.groupby('Id'):
             for _, row in group.iterrows():
-                # --- INICIO DE LA CORRECCIÓN ---
-                # Se leen los valores de CADA fila individualmente.
                 barcaza = row['Barcaza'] if pd.notna(row['Barcaza']) else None
                 mt_val = row['Mt Entregadas']
-                # Se convierte el valor a un float estándar de Python para evitar errores en la base de datos.
                 mt_entregadas = float(mt_val) if pd.notna(mt_val) else None
-                # --- FIN DE LA CORRECCIÓN ---
-
                 hora_inicio = pd.to_datetime(row['Hora Inicio'], dayfirst=True)
                 hora_fin = pd.to_datetime(row['Hora Fin'], dayfirst=True) if pd.notna(row['Hora Fin']) else None
-                nombre_barco_valor = None # Valor por defecto si la columna no existe
+
+                # Lógica para manejar el campo opcional 'Nombre Del Barco'
+                nombre_barco_valor = None
                 if 'Nombre Del Barco' in df.columns:
-                    # Si la columna existe, se lee su valor. Si la celda está vacía, se guarda como None.
                     nombre_barco_valor = row['Nombre Del Barco'] if pd.notna(row['Nombre Del Barco']) else None
+                
                 registro = RegistroRemolcador(
                     maniobra_id=int(maniobra_id),
                     barcaza=barcaza,
+                    nombre_barco=nombre_barco_valor, # ✅ 2. Asignar el valor a la nueva columna
                     mt_entregadas=mt_entregadas,
                     carga_estado=row['Carga'],
                     evento_anterior=row['Evento Anterior'],
@@ -3190,6 +3191,7 @@ def upload_remolcadores_excel():
                 )
                 nuevos_registros.append(registro)
 
+        # Usar el nombre correcto de la tabla que descubrimos ('registro_remolcador')
         db.session.query(RegistroRemolcador).delete()
         db.session.add_all(nuevos_registros)
         db.session.commit()
