@@ -26,6 +26,8 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from itertools import groupby
+import io
+from flask import Response
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -3605,6 +3607,83 @@ def descargar_reporte_analisis_remolcadores():
         mimetype='application/pdf',
         headers={'Content-Disposition': 'attachment;filename=reporte_analisis_remolcadores.pdf'}
     )
+
+@login_required
+@permiso_requerido('control_remolcadores')
+@app.route('/download_remolcadores_excel')
+def download_remolcadores_excel():
+    try:
+        # 1. Obtener registros (con filtros)
+        fecha_inicio_str = request.args.get('fecha_inicio')
+        fecha_fin_str = request.args.get('fecha_fin')
+        query = RegistroRemolcador.query
+
+        if fecha_inicio_str:
+            fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+            query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+        if fecha_fin_str:
+            fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
+            query = query.filter(RegistroRemolcador.hora_inicio <= datetime.combine(fecha_fin_obj, time.max))
+        
+        # Ordenar es clave para agrupar correctamente
+        registros = query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
+
+        # ✅ 2. AÑADIR LÓGICA PARA CALCULAR EL TOTAL DE HORAS POR MANIOBRA
+        duraciones_totales = {}
+        if registros:
+            grupos = groupby(registros, key=lambda r: r.maniobra_id)
+            for maniobra_id, grupo_eventos in grupos:
+                lista_eventos = list(grupo_eventos)
+                if not lista_eventos: continue
+                
+                primera_hora_inicio = min(r.hora_inicio for r in lista_eventos)
+                horas_fin_validas = [r.hora_fin for r in lista_eventos if r.hora_fin]
+                
+                if horas_fin_validas:
+                    ultima_hora_fin = max(horas_fin_validas)
+                    delta_total = ultima_hora_fin - primera_hora_inicio
+                    horas, rem = divmod(delta_total.total_seconds(), 3600)
+                    minutos, _ = divmod(rem, 60)
+                    duraciones_totales[maniobra_id] = f"{int(horas)}h {int(minutos)}m"
+                else:
+                    duraciones_totales[maniobra_id] = "En Proceso"
+
+        # ✅ 3. PREPARAR DATOS PARA EXCEL, INCLUYENDO LAS NUEVAS COLUMNAS
+        datos_para_excel = [{
+            "Maniobra ID": r.maniobra_id,
+            "Barcaza": r.barcaza,
+            "Nombre Del Barco": r.nombre_barco,
+            "Evento Anterior": r.evento_anterior,
+            "Hora Inicio": r.hora_inicio.strftime('%d/%m/%Y %I:%M %p') if r.hora_inicio else '',
+            "Evento Actual": r.evento_actual,
+            "Hora Fin": r.hora_fin.strftime('%d/%m/%Y %I:%M %p') if r.hora_fin else '',
+            "Duración": r.duracion,  # Se asume que tu modelo tiene una propiedad @property para 'duracion'
+            "Total Horas Maniobra": duraciones_totales.get(r.maniobra_id, ''),
+            "Carga": r.carga_estado,
+            "MT Entregadas": r.mt_entregadas
+        } for r in registros]
+        
+        df = pd.DataFrame(datos_para_excel)
+
+        # 4. Crear y devolver el archivo Excel
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Registros Remolcadores')
+            # Auto-ajustar el ancho de las columnas
+            for column in df:
+                column_width = max(df[column].astype(str).map(len).max(), len(column))
+                writer.sheets['Registros Remolcadores'].set_column(df.columns.get_loc(column), df.columns.get_loc(column), column_width + 1)
+        output.seek(0)
+
+        return Response(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": "attachment;filename=registros_remolcadores.xlsx"}
+        )
+
+    except Exception as e:
+        app.logger.error(f"Error al generar Excel: {e}")
+        return "Error al generar el archivo Excel.", 500
 
 @login_required
 @permiso_requerido('control_remolcadores')

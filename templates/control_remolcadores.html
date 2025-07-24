@@ -56,6 +56,10 @@
             <div class="d-flex gap-2 mb-3">
                 <button class="btn btn-primary" id="btn-iniciar-maniobra"><i class="fas fa-plus me-2"></i>Iniciar Maniobra</button>
                 <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#uploadExcelModal"><i class="fas fa-file-excel me-2"></i>Cargar Excel</button>
+                <a id="btn-descargar-excel" href="{{ url_for('download_remolcadores_excel') }}" class="btn btn-success">
+        <i class="fas fa-file-download me-2"></i>Descargar Excel
+    </a>
+</div>
             </div>
             <div id="contenedor-maniobras">
                 <p class="text-center text-muted py-5">Cargando registros...</p>
@@ -438,6 +442,19 @@ document.addEventListener('DOMContentLoaded', function() {
         grupoDiv.innerHTML = cabeceraHtml + tablaHtml;
         contenedor.insertAdjacentElement('afterbegin', grupoDiv);
     });
+
+    document.getElementById('btn-filtrar').addEventListener('click', function() {
+    const fechaInicio = fechaInicioInput.value;
+    const fechaFin = fechaFinInput.value;
+    const btnDescargar = document.getElementById('btn-descargar-excel');
+    
+    const baseUrl = "{{ url_for('download_remolcadores_excel') }}";
+    const params = new URLSearchParams();
+    if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+    if (fechaFin) params.append('fecha_fin', fechaFin);
+    
+    btnDescargar.href = `${baseUrl}?${params.toString()}`;
+});
 
     function cargarRegistros() {
         fetch('/api/registros_remolcadores').then(res => res.json()).then(renderizarGrupos);
