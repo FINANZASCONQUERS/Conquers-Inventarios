@@ -123,17 +123,17 @@ def procesar_analisis_remolcadores(registros):
     df = df.sort_values(["ID", "HORA INICIO"]).reset_index(drop=True)
 
     comb_rules = {
-        ("LLEGADA SPD -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "LLEGADA SPD -> LLEGADA BASE OPS",
-        ("LLEGADA SPD -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "LLEGADA SPD -> LLEGADA CONTECAR",
-        ("LLEGADA SPD -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "LLEGADA SPD -> LLEGADA FONDEO",
-        ("LLEGADA SPD -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "LLEGADA SPD -> LLEGADA SPRC",
-        ("LLEGADA SPD -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "LLEGADA SPD -> LLEGADA PUERTO BAHIA",
+        ("LLEGADA SPD -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "INICIO SPD -> LLEGADA BASE OPS",
+        ("LLEGADA SPD -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "INICIO SPD -> LLEGADA CONTECAR",
+        ("LLEGADA SPD -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "INICIO SPD -> LLEGADA FONDEO",
+        ("LLEGADA SPD -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "INICIO SPD -> LLEGADA SPRC",
+        ("LLEGADA SPD -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "INICIO SPD -> LLEGADA PUERTO BAHIA",
     
-        ("LLEGADA BITA -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "LLEGADA BITA -> LLEGADA BASE OPS",
-        ("LLEGADA BITA -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "LLEGADA BITA -> LLEGADA CONTECAR",
-        ("LLEGADA BITA -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "LLEGADA BITA -> LLEGADA FONDEO",
-        ("LLEGADA BITA -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "LLEGADA BITA -> LLEGADA SPRC",
-        ("LLEGADA BITA -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "LLEGADA BITA -> LLEGADA PUERTO BAHIA",
+        ("LLEGADA BITA -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "INICIO BITA -> LLEGADA BASE OPS",
+        ("LLEGADA BITA -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "INICIO BITA -> LLEGADA CONTECAR",
+        ("LLEGADA BITA -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "INICIO BITA -> LLEGADA FONDEO",
+        ("LLEGADA BITA -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "INICIO BITA -> LLEGADA SPRC",
+        ("LLEGADA BITA -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "INICIO BITA -> LLEGADA PUERTO BAHIA",
     }
 
     for i in range(len(df) - 1):
@@ -154,8 +154,29 @@ def procesar_analisis_remolcadores(registros):
         return " ".join(partes) or "0m"
 
     # --- ANÁLISIS DE TRAYECTOS (sin cambios) ---
-    pairs_loaded = ["LLEGADA SPD -> LLEGADA CONTECAR", "LLEGADA SPD -> LLEGADA SPRC", "LLEGADA SPD -> LLEGADA FONDEO", "ESPERAR AUTORIZACION -> AUTORIZADO", "LLEGADA SPD -> LLEGADA PUERTO BAHIA", "LLEGADA BITA -> LLEGADA CONTECAR", "LLEGADA BITA -> LLEGADA SPRC", "LLEGADA BITA -> LLEGADA FONDEO"]
-    pairs_empty = ["INICIO BASE OPS -> LLEGADA SPD", "INICIO SPRC -> LLEGADA BASE OPS", "INICIO SPRC -> LLEGADA SPD", "INICIO CONTECAR -> LLEGADA BASE OPS", "INICIO CONTECAR -> LLEGADA SPD", "LLEGADA SPD -> LLEGADA BASE OPS", "INICIO FONDEO -> LLEGADA SPD", "INICIO FONDEO -> LLEGADA BASE OPS", "INICIO BASE OPS -> LLEGADA BITA", "INICIO SPRC -> LLEGADA BITA", "INICIO CONTECAR -> LLEGADA BITA", "INICIO FONDEO -> LLEGADA BITA", "LLEGADA BITA -> LLEGADA BASE OPS", "INICIO PUERTO BAHIA -> LLEGADA SPD", "INICIO PUERTO BAHIA -> LLEGADA BASE OPS", "INICIO PUERTO BAHIA -> LLEGADA BITA"]
+    pairs_loaded = [
+        "INICIO SPD -> LLEGADA CONTECAR", "INICIO SPD -> LLEGADA SPRC", "INICIO SPD -> LLEGADA FONDEO", 
+        "INICIO SPD -> LLEGADA PUERTO BAHIA", "INICIO BITA -> LLEGADA CONTECAR", "INICIO BITA -> LLEGADA SPRC", 
+        "INICIO BITA -> LLEGADA FONDEO", "INICIO BITA -> LLEGADA PUERTO BAHIA", "ESPERAR AUTORIZACION -> AUTORIZADO"
+    ]
+    pairs_empty = [
+    # Viajes directos
+    "INICIO BASE OPS -> LLEGADA BITA",
+    "INICIO BASE OPS -> LLEGADA SPD",
+    "INICIO CONTECAR -> LLEGADA BASE OPS",
+    "INICIO CONTECAR -> LLEGADA BITA",
+    "INICIO CONTECAR -> LLEGADA SPD",
+    "INICIO FONDEO -> LLEGADA BASE OPS",
+    "INICIO FONDEO -> LLEGADA BITA",
+    "INICIO FONDEO -> LLEGADA SPD",
+    "INICIO PUERTO BAHIA -> LLEGADA SPD",
+    "INICIO PUERTO BAHIA -> LLEGADA BASE OPS",
+    "INICIO PUERTO BAHIA -> LLEGADA BITA",
+    "INICIO SPRC -> LLEGADA BASE OPS",
+    "INICIO SPRC -> LLEGADA SPD",
+    "INICIO BITA -> LLEGADA BASE OPS",
+    "INICIO SPD -> LLEGADA BASE OPS"
+]
     df_valido = df[df["trayecto_final"].notnull() & df['CARGAS'].notna()]
     df_loaded = df_valido[(df_valido["trayecto_final"].isin(pairs_loaded)) & (df_valido["CARGAS"].str.upper() == "LLENO")]
     df_empty = df_valido[(df_valido["trayecto_final"].isin(pairs_empty)) & (df_valido["CARGAS"].str.upper() == "VACIO")]
@@ -194,7 +215,7 @@ def procesar_analisis_remolcadores(registros):
         promedio_texto = convertir_a_texto_legible(promedio)
 
         # ▼▼▼ CAMBIO 1: Se ajusta el tamaño del gráfico para que sea más compacto ▼▼▼
-        fig_tanqueo, ax = plt.subplots(figsize=(18, max(6, len(df_tanqueo_sorted) * 0.4)))
+        fig_tanqueo, ax = plt.subplots(figsize=(11, max(6, len(df_tanqueo_sorted) * 0.4)))
         
         ax.barh(df_tanqueo_sorted["Etiqueta"], df_tanqueo_sorted["duration_hours"], color="#1f7a1f")
         ax.set_xlabel("Horas de Tanqueo")
@@ -232,7 +253,7 @@ def procesar_analisis_remolcadores(registros):
         promedio_texto = convertir_a_texto_legible(promedio)
 
         # ▼▼▼ CAMBIO 2: Se reduce el ancho del gráfico para que no se salga de la página ▼▼▼
-        fig_total, ax = plt.subplots(figsize=(25, max(8, len(df_total) * 0.5)))
+        fig_total, ax = plt.subplots(figsize=(11, max(8, len(df_total) * 0.5)))
         ax.barh(df_total["ID_Mes"], df_total["duration_hours"], color="#004d99")
         
         for idx, row in df_total.iterrows():
