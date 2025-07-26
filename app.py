@@ -215,7 +215,7 @@ def procesar_analisis_remolcadores(registros):
         promedio_texto = convertir_a_texto_legible(promedio)
 
         # ▼▼▼ CAMBIO 1: Se ajusta el tamaño del gráfico para que sea más compacto ▼▼▼
-        fig_tanqueo, ax = plt.subplots(figsize=(11, max(6, len(df_tanqueo_sorted) * 0.4)))
+        fig_tanqueo, ax = plt.subplots(figsize=(18, max(6, len(df_tanqueo_sorted) * 0.4)))
         
         ax.barh(df_tanqueo_sorted["Etiqueta"], df_tanqueo_sorted["duration_hours"], color="#1f7a1f")
         ax.set_xlabel("Horas de Tanqueo")
@@ -253,7 +253,7 @@ def procesar_analisis_remolcadores(registros):
         promedio_texto = convertir_a_texto_legible(promedio)
 
         # ▼▼▼ CAMBIO 2: Se reduce el ancho del gráfico para que no se salga de la página ▼▼▼
-        fig_total, ax = plt.subplots(figsize=(11, max(8, len(df_total) * 0.5)))
+        fig_total, ax = plt.subplots(figsize=(25, max(8, len(df_total) * 0.5)))
         ax.barh(df_total["ID_Mes"], df_total["duration_hours"], color="#004d99")
         
         for idx, row in df_total.iterrows():
@@ -2952,7 +2952,7 @@ def api_calcular_rendimiento():
 
         # 3. Calcular API por Producto
         api_por_producto = {}
-        API_ESTANDAR = {'NAFTA': 60.0, 'KERO': 45.0, 'FO4': 32.0, 'FO6': 18.0}
+        API_ESTANDAR = {'NAFTA': 56.6, 'KERO': 42, 'FO4': 30,'FO6':21}
         def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
         def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
         sg_crudo_real = api_a_sg(api_crudo)
