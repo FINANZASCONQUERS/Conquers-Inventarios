@@ -399,6 +399,7 @@ class DefinicionCrudo(db.Model):
     sulfur = db.Column(db.Float, nullable=True)      
     viscosity = db.Column(db.Float, nullable=True)    
     curva_json = db.Column(db.Text, nullable=False)
+    assay_json = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f'<DefinicionCrudo {self.nombre}>'
@@ -3021,7 +3022,8 @@ def get_crudos_guardados():
             "api": crudo.api,
             "sulfur": crudo.sulfur,            # <-- AÑADIDO
             "viscosity": crudo.viscosity,      # <-- AÑADIDO
-            "curva": json.loads(crudo.curva_json)
+            "curva": json.loads(crudo.curva_json),
+            "assay": json.loads(crudo.assay_json) if crudo.assay_json else []
         } for crudo in crudos_db
     }
     response = jsonify(crudos_dict)
@@ -3035,6 +3037,7 @@ def get_crudos_guardados():
 def save_crudo():
     data = request.get_json()
     nombre_crudo = data.get('nombre')
+    assay_data = data.get('assay')
     api = data.get('api')
     sulfur = data.get('sulfur')        # <-- AÑADIDO
     viscosity = data.get('viscosity')  # <-- AÑADIDO
@@ -3050,6 +3053,7 @@ def save_crudo():
         crudo_existente.sulfur = sulfur      # <-- AÑADIDO
         crudo_existente.viscosity = viscosity# <-- AÑADIDO
         crudo_existente.curva_json = json.dumps(curva)
+        crudo_existente.assay_json = json.dumps(assay_data)
         msg = f"Crudo '{nombre_crudo}' actualizado."
     else:
         nuevo_crudo = DefinicionCrudo(
@@ -3057,7 +3061,8 @@ def save_crudo():
             api=api, 
             sulfur=sulfur,                # <-- AÑADIDO
             viscosity=viscosity,          # <-- AÑADIDO
-            curva_json=json.dumps(curva)
+            curva_json=json.dumps(curva),
+            assay_json=json.dumps(assay_data) 
         )
         db.session.add(nuevo_crudo)
         msg = f"Crudo '{nombre_crudo}' guardado."
