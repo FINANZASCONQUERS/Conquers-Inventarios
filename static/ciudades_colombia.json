@@ -1,0 +1,5262 @@
+[
+  {
+    "nombre": "Leticia, Amazonas",
+    "lat": -4.2129211,
+    "lng": -69.9425963
+  },
+  {
+    "nombre": "Puerto Nariño, Amazonas",
+    "lat": -3.779943,
+    "lng": -70.3639773
+  },
+  {
+    "nombre": "Abejorral, Antioquia",
+    "lat": 5.7914299,
+    "lng": -75.4270381
+  },
+  {
+    "nombre": "Abriaquí, Antioquia",
+    "lat": 6.631864,
+    "lng": -76.0645258
+  },
+  {
+    "nombre": "Alejandría, Antioquia",
+    "lat": 6.3769175,
+    "lng": -75.1411601
+  },
+  {
+    "nombre": "Amagá, Antioquia",
+    "lat": 6.0406977,
+    "lng": -75.7030694
+  },
+  {
+    "nombre": "Amalfi, Antioquia",
+    "lat": 6.9070097,
+    "lng": -75.0735908
+  },
+  {
+    "nombre": "Andes, Antioquia",
+    "lat": 5.6555942,
+    "lng": -75.8778448
+  },
+  {
+    "nombre": "Angelópolis, Antioquia",
+    "lat": 6.1115405,
+    "lng": -75.7102848
+  },
+  {
+    "nombre": "Angostura, Antioquia",
+    "lat": 6.8858191,
+    "lng": -75.3349565
+  },
+  {
+    "nombre": "Anorí, Antioquia",
+    "lat": 7.0736127,
+    "lng": -75.1466433
+  },
+  {
+    "nombre": "Anzá, Antioquia",
+    "lat": 6.3034529,
+    "lng": -75.8540836
+  },
+  {
+    "nombre": "Apartadó, Antioquia",
+    "lat": 7.8849011,
+    "lng": -76.6227461
+  },
+  {
+    "nombre": "Arboletes, Antioquia",
+    "lat": 8.8528266,
+    "lng": -76.4273168
+  },
+  {
+    "nombre": "Argelia, Antioquia",
+    "lat": 5.7310785,
+    "lng": -75.1428525
+  },
+  {
+    "nombre": "Armenia, Antioquia",
+    "lat": 6.1561777,
+    "lng": -75.7870472
+  },
+  {
+    "nombre": "Barbosa, Antioquia",
+    "lat": 6.4370185,
+    "lng": -75.3313779
+  },
+  {
+    "nombre": "Bello, Antioquia",
+    "lat": 6.334997,
+    "lng": -75.5582665
+  },
+  {
+    "nombre": "Belmira, Antioquia",
+    "lat": 6.606779,
+    "lng": -75.667459
+  },
+  {
+    "nombre": "Betania, Antioquia",
+    "lat": 5.7451779,
+    "lng": -75.9768362
+  },
+  {
+    "nombre": "Betulia, Antioquia",
+    "lat": 6.1134294,
+    "lng": -75.9845433
+  },
+  {
+    "nombre": "Briceño, Antioquia",
+    "lat": 7.1104984,
+    "lng": -75.5516372
+  },
+  {
+    "nombre": "Buriticá, Antioquia",
+    "lat": 6.719853,
+    "lng": -75.9068707
+  },
+  {
+    "nombre": "Cáceres, Antioquia",
+    "lat": 7.577089,
+    "lng": -75.3514383
+  },
+  {
+    "nombre": "Caicedo, Antioquia",
+    "lat": 6.405955,
+    "lng": -75.9825592
+  },
+  {
+    "nombre": "Caldas, Antioquia",
+    "lat": 6.0918609,
+    "lng": -75.6356917
+  },
+  {
+    "nombre": "Campamento, Antioquia",
+    "lat": 6.9790857,
+    "lng": -75.2963715
+  },
+  {
+    "nombre": "Cañasgordas, Antioquia",
+    "lat": 6.7519854,
+    "lng": -76.0261638
+  },
+  {
+    "nombre": "Caracolí, Antioquia",
+    "lat": 6.4092756,
+    "lng": -74.7566979
+  },
+  {
+    "nombre": "Caramanta, Antioquia",
+    "lat": 5.5487065,
+    "lng": -75.6444056
+  },
+  {
+    "nombre": "Carepa, Antioquia",
+    "lat": 7.7585419,
+    "lng": -76.6531687
+  },
+  {
+    "nombre": "Carolina del Príncipe, Antioquia",
+    "lat": 6.7234802,
+    "lng": -75.2815889
+  },
+  {
+    "nombre": "Caucasia, Antioquia",
+    "lat": 7.9877579,
+    "lng": -75.1983745
+  },
+  {
+    "nombre": "Chigorodó, Antioquia",
+    "lat": 7.6661504,
+    "lng": -76.6766703
+  },
+  {
+    "nombre": "Cisneros, Antioquia",
+    "lat": 6.5382418,
+    "lng": -75.0871316
+  },
+  {
+    "nombre": "Ciudad Bolívar, Antioquia",
+    "lat": 5.8500342,
+    "lng": -76.0208666
+  },
+  {
+    "nombre": "Cocorná, Antioquia",
+    "lat": 6.0580111,
+    "lng": -75.1859102
+  },
+  {
+    "nombre": "Concepción, Antioquia",
+    "lat": 6.3953198,
+    "lng": -75.259323
+  },
+  {
+    "nombre": "Concordia, Antioquia",
+    "lat": 6.0457595,
+    "lng": -75.9074199
+  },
+  {
+    "nombre": "Copacabana, Antioquia",
+    "lat": 6.3461047,
+    "lng": -75.5080262
+  },
+  {
+    "nombre": "Dabeiba, Antioquia",
+    "lat": 7.0015209,
+    "lng": -76.2666243
+  },
+  {
+    "nombre": "Donmatías, Antioquia",
+    "lat": 6.4862703,
+    "lng": -75.3946313
+  },
+  {
+    "nombre": "Ebéjico, Antioquia",
+    "lat": 6.3265312,
+    "lng": -75.7685045
+  },
+  {
+    "nombre": "El Bagre, Antioquia",
+    "lat": 7.5989686,
+    "lng": -74.8046507
+  },
+  {
+    "nombre": "El Carmen de Viboral, Antioquia",
+    "lat": 6.0833063,
+    "lng": -75.3353501
+  },
+  {
+    "nombre": "El Peñol, Antioquia",
+    "lat": 6.2193495,
+    "lng": -75.1794404
+  },
+  {
+    "nombre": "El Retiro, Antioquia",
+    "lat": 6.0572745,
+    "lng": -75.502611
+  },
+  {
+    "nombre": "El Santuario, Antioquia",
+    "lat": 6.1395053,
+    "lng": -75.2656209
+  },
+  {
+    "nombre": "Entrerríos, Antioquia",
+    "lat": 6.5673837,
+    "lng": -75.5170942
+  },
+  {
+    "nombre": "Envigado, Antioquia",
+    "lat": 6.1701348,
+    "lng": -75.587415
+  },
+  {
+    "nombre": "Fredonia, Antioquia",
+    "lat": 5.9270644,
+    "lng": -75.6718221
+  },
+  {
+    "nombre": "Frontino, Antioquia",
+    "lat": 6.7721761,
+    "lng": -76.1311575
+  },
+  {
+    "nombre": "Giraldo, Antioquia",
+    "lat": 6.6804539,
+    "lng": -75.95338
+  },
+  {
+    "nombre": "Girardota, Antioquia",
+    "lat": 6.3773809,
+    "lng": -75.4459762
+  },
+  {
+    "nombre": "Gómez Plata, Antioquia",
+    "lat": 6.6815224,
+    "lng": -75.2194104
+  },
+  {
+    "nombre": "Granada, Antioquia",
+    "lat": 6.1442998,
+    "lng": -75.1844057
+  },
+  {
+    "nombre": "Guadalupe, Antioquia",
+    "lat": 6.8149918,
+    "lng": -75.2403991
+  },
+  {
+    "nombre": "Guarne, Antioquia",
+    "lat": 6.2800171,
+    "lng": -75.4426875
+  },
+  {
+    "nombre": "Guatapé, Antioquia",
+    "lat": 6.2342179,
+    "lng": -75.1617452
+  },
+  {
+    "nombre": "Heliconia, Antioquia",
+    "lat": 6.2076404,
+    "lng": -75.7339685
+  },
+  {
+    "nombre": "Hispania, Antioquia",
+    "lat": 5.799535,
+    "lng": -75.9073763
+  },
+  {
+    "nombre": "Itagüí, Antioquia",
+    "lat": 6.1724352,
+    "lng": -75.6093254
+  },
+  {
+    "nombre": "Ituango, Antioquia",
+    "lat": 7.1723319,
+    "lng": -75.7640925
+  },
+  {
+    "nombre": "Jardín, Antioquia",
+    "lat": 5.5990503,
+    "lng": -75.8191833
+  },
+  {
+    "nombre": "Jericó, Antioquia",
+    "lat": 5.7914622,
+    "lng": -75.7862133
+  },
+  {
+    "nombre": "La Ceja, Antioquia",
+    "lat": 6.7032868,
+    "lng": -75.7647704
+  },
+  {
+    "nombre": "La Estrella, Antioquia",
+    "lat": 6.1576781,
+    "lng": -75.6433878
+  },
+  {
+    "nombre": "La Pintada, Antioquia",
+    "lat": 5.7466446,
+    "lng": -75.6054273
+  },
+  {
+    "nombre": "La Unión, Antioquia",
+    "lat": 5.9737744,
+    "lng": -75.3613093
+  },
+  {
+    "nombre": "Liborina, Antioquia",
+    "lat": 6.6781311,
+    "lng": -75.8112309
+  },
+  {
+    "nombre": "Maceo, Antioquia",
+    "lat": 6.5535012,
+    "lng": -74.7877474
+  },
+  {
+    "nombre": "Marinilla, Antioquia",
+    "lat": 6.1736417,
+    "lng": -75.3346548
+  },
+  {
+    "nombre": "Medellín, Antioquia",
+    "lat": 6.2697324,
+    "lng": -75.6025597
+  },
+  {
+    "nombre": "Montebello, Antioquia",
+    "lat": 5.9458633,
+    "lng": -75.5246825
+  },
+  {
+    "nombre": "Murindó, Antioquia",
+    "lat": 6.9782419,
+    "lng": -76.8192432
+  },
+  {
+    "nombre": "Mutatá, Antioquia",
+    "lat": 7.2440678,
+    "lng": -76.436542
+  },
+  {
+    "nombre": "Nariño, Antioquia",
+    "lat": 6.3150175,
+    "lng": -75.745217
+  },
+  {
+    "nombre": "Nechí, Antioquia",
+    "lat": 8.0938077,
+    "lng": -74.7751988
+  },
+  {
+    "nombre": "Necoclí, Antioquia",
+    "lat": 8.4242821,
+    "lng": -76.784019
+  },
+  {
+    "nombre": "Olaya, Antioquia",
+    "lat": 6.6281792,
+    "lng": -75.8123079
+  },
+  {
+    "nombre": "Peque, Antioquia",
+    "lat": 7.0216424,
+    "lng": -75.9095164
+  },
+  {
+    "nombre": "Pueblorrico, Antioquia",
+    "lat": 5.7908266,
+    "lng": -75.8419104
+  },
+  {
+    "nombre": "Puerto Berrío, Antioquia",
+    "lat": 6.4899205,
+    "lng": -74.4020634
+  },
+  {
+    "nombre": "Puerto Nare, Antioquia",
+    "lat": 6.1876653,
+    "lng": -74.5828711
+  },
+  {
+    "nombre": "Puerto Triunfo, Antioquia",
+    "lat": 5.8689335,
+    "lng": -74.6407965
+  },
+  {
+    "nombre": "Remedios, Antioquia",
+    "lat": 7.0285327,
+    "lng": -74.695191
+  },
+  {
+    "nombre": "Rionegro, Antioquia",
+    "lat": 6.1536166,
+    "lng": -75.3741691
+  },
+  {
+    "nombre": "Sabanalarga, Antioquia",
+    "lat": 6.848687,
+    "lng": -75.8166534
+  },
+  {
+    "nombre": "Sabaneta, Antioquia",
+    "lat": 6.1515344,
+    "lng": -75.6153715
+  },
+  {
+    "nombre": "Salgar, Antioquia",
+    "lat": 5.9631358,
+    "lng": -75.9791386
+  },
+  {
+    "nombre": "San Andrés de Cuerquia, Antioquia",
+    "lat": 6.9148672,
+    "lng": -75.6764208
+  },
+  {
+    "nombre": "San Carlos, Antioquia",
+    "lat": 6.1481665,
+    "lng": -76.0906396
+  },
+  {
+    "nombre": "San Francisco, Antioquia",
+    "lat": 6.4782265,
+    "lng": -75.5807471
+  },
+  {
+    "nombre": "San Jerónimo, Antioquia",
+    "lat": 6.4427228,
+    "lng": -75.727937
+  },
+  {
+    "nombre": "San José de la Montaña, Antioquia",
+    "lat": 6.8510271,
+    "lng": -75.6826405
+  },
+  {
+    "nombre": "San Juan de Urabá, Antioquia",
+    "lat": 8.7609887,
+    "lng": -76.5283566
+  },
+  {
+    "nombre": "San Luis, Antioquia",
+    "lat": 6.0428128,
+    "lng": -74.9944061
+  },
+  {
+    "nombre": "San Pedro de Urabá, Antioquia",
+    "lat": 8.2778883,
+    "lng": -76.3830793
+  },
+  {
+    "nombre": "San Pedro de los Milagros, Antioquia",
+    "lat": 6.4618141,
+    "lng": -75.5560645
+  },
+  {
+    "nombre": "San Rafael, Antioquia",
+    "lat": 6.2954934,
+    "lng": -75.0280123
+  },
+  {
+    "nombre": "San Roque, Antioquia",
+    "lat": 6.4851146,
+    "lng": -75.0195044
+  },
+  {
+    "nombre": "San Vicente, Antioquia",
+    "lat": 6.2826782,
+    "lng": -75.3318244
+  },
+  {
+    "nombre": "Santa Bárbara, Antioquia",
+    "lat": 5.8743766,
+    "lng": -75.5679573
+  },
+  {
+    "nombre": "Santa Fe de Antioquia, Antioquia",
+    "lat": 6.5564008,
+    "lng": -75.8277746
+  },
+  {
+    "nombre": "Santa Rosa de Osos, Antioquia",
+    "lat": 6.6453171,
+    "lng": -75.4614576
+  },
+  {
+    "nombre": "Santo Domingo, Antioquia",
+    "lat": 6.471221,
+    "lng": -75.1643724
+  },
+  {
+    "nombre": "Segovia, Antioquia",
+    "lat": 7.081679,
+    "lng": -74.7009089
+  },
+  {
+    "nombre": "Sonsón, Antioquia",
+    "lat": 5.7106659,
+    "lng": -75.3103532
+  },
+  {
+    "nombre": "Sopetrán, Antioquia",
+    "lat": 6.5009582,
+    "lng": -75.7424979
+  },
+  {
+    "nombre": "Támesis, Antioquia",
+    "lat": 5.6652526,
+    "lng": -75.7139862
+  },
+  {
+    "nombre": "Tarazá, Antioquia",
+    "lat": 7.5804751,
+    "lng": -75.3998498
+  },
+  {
+    "nombre": "Tarso, Antioquia",
+    "lat": 5.864064,
+    "lng": -75.8217932
+  },
+  {
+    "nombre": "Titiribí, Antioquia",
+    "lat": 6.0633763,
+    "lng": -75.79373
+  },
+  {
+    "nombre": "Toledo, Antioquia",
+    "lat": 7.0109536,
+    "lng": -75.6921058
+  },
+  {
+    "nombre": "Turbo, Antioquia",
+    "lat": 8.0950848,
+    "lng": -76.728545
+  },
+  {
+    "nombre": "Uramita, Antioquia",
+    "lat": 6.8993072,
+    "lng": -76.1742258
+  },
+  {
+    "nombre": "Urrao, Antioquia",
+    "lat": 6.3168685,
+    "lng": -76.1344983
+  },
+  {
+    "nombre": "Valdivia, Antioquia",
+    "lat": 7.165519,
+    "lng": -75.438614
+  },
+  {
+    "nombre": "Valparaíso, Antioquia",
+    "lat": 5.6153841,
+    "lng": -75.6247028
+  },
+  {
+    "nombre": "Vegachí, Antioquia",
+    "lat": 6.7715902,
+    "lng": -74.7973449
+  },
+  {
+    "nombre": "Venecia, Antioquia",
+    "lat": 5.9635386,
+    "lng": -75.7339175
+  },
+  {
+    "nombre": "Vigía del Fuerte, Antioquia",
+    "lat": 6.5896299,
+    "lng": -76.8962209
+  },
+  {
+    "nombre": "Yalí, Antioquia",
+    "lat": 6.675426,
+    "lng": -74.84226
+  },
+  {
+    "nombre": "Yarumal, Antioquia",
+    "lat": 6.9625927,
+    "lng": -75.4165529
+  },
+  {
+    "nombre": "Yolombó, Antioquia",
+    "lat": 6.5981185,
+    "lng": -75.0108088
+  },
+  {
+    "nombre": "Yondó, Antioquia",
+    "lat": 7.0044426,
+    "lng": -73.9113922
+  },
+  {
+    "nombre": "Zaragoza, Antioquia",
+    "lat": 7.4925154,
+    "lng": -74.8682314
+  },
+  {
+    "nombre": "Arauca, Arauca",
+    "lat": 7.0851994,
+    "lng": -70.7577762
+  },
+  {
+    "nombre": "Cravo Norte, Arauca",
+    "lat": 6.2991553,
+    "lng": -70.20646
+  },
+  {
+    "nombre": "Fortul, Arauca",
+    "lat": 6.7928481,
+    "lng": -71.7743907
+  },
+  {
+    "nombre": "Puerto Rondón, Arauca",
+    "lat": 6.2777051,
+    "lng": -71.0999647
+  },
+  {
+    "nombre": "Tame, Arauca",
+    "lat": 6.4615077,
+    "lng": -71.7245069
+  },
+  {
+    "nombre": "Baranoa, Atlántico",
+    "lat": 10.7935815,
+    "lng": -74.9152164
+  },
+  {
+    "nombre": "Barranquilla, Atlántico",
+    "lat": 10.9938599,
+    "lng": -74.7926118
+  },
+  {
+    "nombre": "Campo de la Cruz, Atlántico",
+    "lat": 10.380131,
+    "lng": -74.8810622
+  },
+  {
+    "nombre": "Candelaria, Atlántico",
+    "lat": 10.4596531,
+    "lng": -74.8803211
+  },
+  {
+    "nombre": "Galapa, Atlántico",
+    "lat": 10.8968665,
+    "lng": -74.8859608
+  },
+  {
+    "nombre": "Juan de Acosta, Atlántico",
+    "lat": 10.8291974,
+    "lng": -75.0347039
+  },
+  {
+    "nombre": "Luruaco, Atlántico",
+    "lat": 10.6104147,
+    "lng": -75.1427518
+  },
+  {
+    "nombre": "Malambo, Atlántico",
+    "lat": 10.8653387,
+    "lng": -74.7746194
+  },
+  {
+    "nombre": "Manatí, Atlántico",
+    "lat": 10.4470319,
+    "lng": -74.9594166
+  },
+  {
+    "nombre": "Palmar de Varela, Atlántico",
+    "lat": 10.7410093,
+    "lng": -74.7534259
+  },
+  {
+    "nombre": "Piojó, Atlántico",
+    "lat": 10.7483504,
+    "lng": -75.1081639
+  },
+  {
+    "nombre": "Polonuevo, Atlántico",
+    "lat": 10.7777871,
+    "lng": -74.8537371
+  },
+  {
+    "nombre": "Ponedera, Atlántico",
+    "lat": 10.6396006,
+    "lng": -74.7501675
+  },
+  {
+    "nombre": "Puerto Colombia, Atlántico",
+    "lat": 10.9891292,
+    "lng": -74.955414
+  },
+  {
+    "nombre": "Repelón, Atlántico",
+    "lat": 10.4950081,
+    "lng": -75.1244823
+  },
+  {
+    "nombre": "Sabanagrande, Atlántico",
+    "lat": 10.7895725,
+    "lng": -74.7559172
+  },
+  {
+    "nombre": "Sabanalarga, Atlántico",
+    "lat": 10.6307159,
+    "lng": -74.9209378
+  },
+  {
+    "nombre": "Santa Lucía, Atlántico",
+    "lat": 10.3244398,
+    "lng": -74.9610815
+  },
+  {
+    "nombre": "Santo Tomás, Atlántico",
+    "lat": 10.760241,
+    "lng": -74.7561781
+  },
+  {
+    "nombre": "Soledad, Atlántico",
+    "lat": 10.9149593,
+    "lng": -74.7821054
+  },
+  {
+    "nombre": "Suán, Atlántico",
+    "lat": 10.3334603,
+    "lng": -74.8802183
+  },
+  {
+    "nombre": "Tubará, Atlántico",
+    "lat": 10.8740849,
+    "lng": -74.9779428
+  },
+  {
+    "nombre": "Usiacurí, Atlántico",
+    "lat": 10.7423787,
+    "lng": -74.9778586
+  },
+  {
+    "nombre": "Achí, Bolívar",
+    "lat": 8.5689588,
+    "lng": -74.5557643
+  },
+  {
+    "nombre": "Altos del Rosario, Bolívar",
+    "lat": 8.7920971,
+    "lng": -74.1639876
+  },
+  {
+    "nombre": "Arenal, Bolívar",
+    "lat": 8.4593685,
+    "lng": -73.9429805
+  },
+  {
+    "nombre": "Arjona, Bolívar",
+    "lat": 10.2534632,
+    "lng": -75.3427213
+  },
+  {
+    "nombre": "Arroyohondo, Bolívar",
+    "lat": 10.2512203,
+    "lng": -75.0190389
+  },
+  {
+    "nombre": "Barranco de Loba, Bolívar",
+    "lat": 8.944353,
+    "lng": -74.1058201
+  },
+  {
+    "nombre": "Calamar, Bolívar",
+    "lat": 10.2526122,
+    "lng": -74.9146691
+  },
+  {
+    "nombre": "Cantagallo, Bolívar",
+    "lat": 7.3780007,
+    "lng": -73.9150265
+  },
+  {
+    "nombre": "Cartagena de Indias, Bolívar",
+    "lat": 10.4265566,
+    "lng": -75.5441671
+  },
+  {
+    "nombre": "Cicuco, Bolívar",
+    "lat": 9.2778539,
+    "lng": -74.643809
+  },
+  {
+    "nombre": "Clemencia, Bolívar",
+    "lat": 10.5684208,
+    "lng": -75.3250644
+  },
+  {
+    "nombre": "Córdoba, Bolívar",
+    "lat": 9.5244165,
+    "lng": -74.8780482
+  },
+  {
+    "nombre": "El Carmen de Bolívar, Bolívar",
+    "lat": 9.7169432,
+    "lng": -75.1221847
+  },
+  {
+    "nombre": "El Guamo, Bolívar",
+    "lat": 10.0312607,
+    "lng": -74.9754413
+  },
+  {
+    "nombre": "El Peñón, Bolívar",
+    "lat": 8.989372,
+    "lng": -73.9477652
+  },
+  {
+    "nombre": "Hatillo de Loba, Bolívar",
+    "lat": 8.9566235,
+    "lng": -74.0770262
+  },
+  {
+    "nombre": "Magangué, Bolívar",
+    "lat": 9.2412097,
+    "lng": -74.7567413
+  },
+  {
+    "nombre": "Mahates, Bolívar",
+    "lat": 10.234262,
+    "lng": -75.186894
+  },
+  {
+    "nombre": "Margarita, Bolívar",
+    "lat": 9.1523913,
+    "lng": -74.2928131
+  },
+  {
+    "nombre": "María la Baja, Bolívar",
+    "lat": 9.9840479,
+    "lng": -75.3019515
+  },
+  {
+    "nombre": "Mompós, Bolívar",
+    "lat": 9.2415432,
+    "lng": -74.4251072
+  },
+  {
+    "nombre": "Montecristo, Bolívar",
+    "lat": 8.2956227,
+    "lng": -74.4738996
+  },
+  {
+    "nombre": "Morales, Bolívar",
+    "lat": 8.2763913,
+    "lng": -73.8680272
+  },
+  {
+    "nombre": "Norosí, Bolívar",
+    "lat": 8.5419674,
+    "lng": -74.0251545
+  },
+  {
+    "nombre": "Pinillos, Bolívar",
+    "lat": 8.9153047,
+    "lng": -74.46215
+  },
+  {
+    "nombre": "Regidor, Bolívar",
+    "lat": 8.6650933,
+    "lng": -73.8224537
+  },
+  {
+    "nombre": "Río Viejo, Bolívar",
+    "lat": 8.5869742,
+    "lng": -73.8388939
+  },
+  {
+    "nombre": "San Cristóbal, Bolívar",
+    "lat": 10.3940196,
+    "lng": -75.0651165
+  },
+  {
+    "nombre": "San Estanislao, Bolívar",
+    "lat": 10.3992064,
+    "lng": -75.1506023
+  },
+  {
+    "nombre": "San Fernando, Bolívar",
+    "lat": 9.2121136,
+    "lng": -74.3215938
+  },
+  {
+    "nombre": "San Jacinto del Cauca, Bolívar",
+    "lat": 8.2525295,
+    "lng": -74.7177669
+  },
+  {
+    "nombre": "San Jacinto, Bolívar",
+    "lat": 9.8296174,
+    "lng": -75.1218628
+  },
+  {
+    "nombre": "San Juan Nepomuceno, Bolívar",
+    "lat": 9.9512143,
+    "lng": -75.0794539
+  },
+  {
+    "nombre": "San Martín de Loba, Bolívar",
+    "lat": 8.9370479,
+    "lng": -74.038373
+  },
+  {
+    "nombre": "San Pablo, Bolívar",
+    "lat": 7.4772487,
+    "lng": -73.9234783
+  },
+  {
+    "nombre": "Santa Catalina, Bolívar",
+    "lat": 10.6044354,
+    "lng": -75.2880529
+  },
+  {
+    "nombre": "Santa Rosa, Bolívar",
+    "lat": 9.2830285,
+    "lng": -74.7498834
+  },
+  {
+    "nombre": "Santa Rosa del Sur, Bolívar",
+    "lat": 7.9635222,
+    "lng": -74.0506379
+  },
+  {
+    "nombre": "Simití, Bolívar",
+    "lat": 7.9551827,
+    "lng": -73.9449234
+  },
+  {
+    "nombre": "Soplaviento, Bolívar",
+    "lat": 10.3894704,
+    "lng": -75.1369206
+  },
+  {
+    "nombre": "Talaigua Nuevo, Bolívar",
+    "lat": 9.3032374,
+    "lng": -74.5654949
+  },
+  {
+    "nombre": "Tiquisio, Bolívar",
+    "lat": 8.5560603,
+    "lng": -74.2631684
+  },
+  {
+    "nombre": "Turbaco, Bolívar",
+    "lat": 10.3305871,
+    "lng": -75.4127345
+  },
+  {
+    "nombre": "Turbaná, Bolívar",
+    "lat": 10.2724091,
+    "lng": -75.4432009
+  },
+  {
+    "nombre": "Villanueva, Bolívar",
+    "lat": 10.4444032,
+    "lng": -75.2730468
+  },
+  {
+    "nombre": "Zambrano, Bolívar",
+    "lat": 9.7414779,
+    "lng": -74.8177731
+  },
+  {
+    "nombre": "Almeida, Boyacá",
+    "lat": 4.971164,
+    "lng": -73.3788228
+  },
+  {
+    "nombre": "Aquitania, Boyacá",
+    "lat": 5.5175808,
+    "lng": -72.88315
+  },
+  {
+    "nombre": "Arcabuco, Boyacá",
+    "lat": 5.754304,
+    "lng": -73.4364107
+  },
+  {
+    "nombre": "Belén, Boyacá",
+    "lat": 5.9894512,
+    "lng": -72.9133125
+  },
+  {
+    "nombre": "Berbeo, Boyacá",
+    "lat": 5.2261415,
+    "lng": -73.1265012
+  },
+  {
+    "nombre": "Betéitiva, Boyacá",
+    "lat": 5.9108483,
+    "lng": -72.8089216
+  },
+  {
+    "nombre": "Boavita, Boyacá",
+    "lat": 6.3289722,
+    "lng": -72.5822778
+  },
+  {
+    "nombre": "Boyacá, Boyacá",
+    "lat": 5.4545233,
+    "lng": -73.3615406
+  },
+  {
+    "nombre": "Briceño, Boyacá",
+    "lat": 5.6908712,
+    "lng": -73.9234546
+  },
+  {
+    "nombre": "Buenavista, Boyacá",
+    "lat": 5.5116548,
+    "lng": -73.943107
+  },
+  {
+    "nombre": "Busbanzá, Boyacá",
+    "lat": 5.8307833,
+    "lng": -72.8838946
+  },
+  {
+    "nombre": "Caldas, Boyacá",
+    "lat": 5.554594,
+    "lng": -73.8654589
+  },
+  {
+    "nombre": "Campohermoso, Boyacá",
+    "lat": 5.0315405,
+    "lng": -73.1044489
+  },
+  {
+    "nombre": "Cerinza, Boyacá",
+    "lat": 5.9558753,
+    "lng": -72.9478866
+  },
+  {
+    "nombre": "Chinavita, Boyacá",
+    "lat": 5.1689616,
+    "lng": -73.3687216
+  },
+  {
+    "nombre": "Chiquinquirá, Boyacá",
+    "lat": 5.6182733,
+    "lng": -73.8167476
+  },
+  {
+    "nombre": "Chíquiza, Boyacá",
+    "lat": 5.6053336,
+    "lng": -73.4849171
+  },
+  {
+    "nombre": "Chiscas, Boyacá",
+    "lat": 6.5535107,
+    "lng": -72.5003939
+  },
+  {
+    "nombre": "Chita, Boyacá",
+    "lat": 6.1871968,
+    "lng": -72.4729374
+  },
+  {
+    "nombre": "Chitaraque, Boyacá",
+    "lat": 6.0279763,
+    "lng": -73.4469335
+  },
+  {
+    "nombre": "Chivatá, Boyacá",
+    "lat": 5.5573419,
+    "lng": -73.2830433
+  },
+  {
+    "nombre": "Chivor, Boyacá",
+    "lat": 4.8886738,
+    "lng": -73.3694823
+  },
+  {
+    "nombre": "Ciénega, Boyacá",
+    "lat": 5.4097513,
+    "lng": -73.2954835
+  },
+  {
+    "nombre": "Cómbita, Boyacá",
+    "lat": 5.6336851,
+    "lng": -73.3243472
+  },
+  {
+    "nombre": "Coper, Boyacá",
+    "lat": 5.4757954,
+    "lng": -74.0452233
+  },
+  {
+    "nombre": "Corrales, Boyacá",
+    "lat": 5.8298426,
+    "lng": -72.8439007
+  },
+  {
+    "nombre": "Covarachía, Boyacá",
+    "lat": 6.5009513,
+    "lng": -72.7382915
+  },
+  {
+    "nombre": "Cubará, Boyacá",
+    "lat": 7.0020076,
+    "lng": -72.1089218
+  },
+  {
+    "nombre": "Cucaita, Boyacá",
+    "lat": 5.5431182,
+    "lng": -73.4547788
+  },
+  {
+    "nombre": "Cuítiva, Boyacá",
+    "lat": 5.5802753,
+    "lng": -72.9661605
+  },
+  {
+    "nombre": "Duitama, Boyacá",
+    "lat": 5.8277055,
+    "lng": -73.0338939
+  },
+  {
+    "nombre": "El Cocuy, Boyacá",
+    "lat": 6.4076711,
+    "lng": -72.4457503
+  },
+  {
+    "nombre": "El Espino, Boyacá",
+    "lat": 6.4825581,
+    "lng": -72.4952026
+  },
+  {
+    "nombre": "Firavitoba, Boyacá",
+    "lat": 5.669188,
+    "lng": -72.9933907
+  },
+  {
+    "nombre": "Floresta, Boyacá",
+    "lat": 5.8598286,
+    "lng": -72.9188214
+  },
+  {
+    "nombre": "Gachantivá, Boyacá",
+    "lat": 5.7516072,
+    "lng": -73.5482821
+  },
+  {
+    "nombre": "Gámeza, Boyacá",
+    "lat": 5.8019513,
+    "lng": -72.8049747
+  },
+  {
+    "nombre": "Garagoa, Boyacá",
+    "lat": 5.0822246,
+    "lng": -73.3643092
+  },
+  {
+    "nombre": "Guacamayas, Boyacá",
+    "lat": 6.4599118,
+    "lng": -72.5011643
+  },
+  {
+    "nombre": "Guateque, Boyacá",
+    "lat": 5.0062875,
+    "lng": -73.4731334
+  },
+  {
+    "nombre": "Guayatá, Boyacá",
+    "lat": 4.9647784,
+    "lng": -73.4907277
+  },
+  {
+    "nombre": "Güicán, Boyacá",
+    "lat": 6.4616779,
+    "lng": -72.4119937
+  },
+  {
+    "nombre": "Iza, Boyacá",
+    "lat": 5.6123008,
+    "lng": -72.9794775
+  },
+  {
+    "nombre": "Jenesano, Boyacá",
+    "lat": 5.3854342,
+    "lng": -73.3644324
+  },
+  {
+    "nombre": "Jericó, Boyacá",
+    "lat": 6.1464174,
+    "lng": -72.5704144
+  },
+  {
+    "nombre": "La Capilla, Boyacá",
+    "lat": 5.0957919,
+    "lng": -73.4446854
+  },
+  {
+    "nombre": "La Uvita, Boyacá",
+    "lat": 6.3180471,
+    "lng": -72.5603339
+  },
+  {
+    "nombre": "La Victoria, Boyacá",
+    "lat": 5.5235383,
+    "lng": -74.2346462
+  },
+  {
+    "nombre": "Labranzagrande, Boyacá",
+    "lat": 5.5629086,
+    "lng": -72.5779936
+  },
+  {
+    "nombre": "Macanal, Boyacá",
+    "lat": 4.972296,
+    "lng": -73.3200207
+  },
+  {
+    "nombre": "Maripí, Boyacá",
+    "lat": 5.5495156,
+    "lng": -74.0046921
+  },
+  {
+    "nombre": "Miraflores, Boyacá",
+    "lat": 5.1954684,
+    "lng": -73.1439584
+  },
+  {
+    "nombre": "Mongua, Boyacá",
+    "lat": 5.7553249,
+    "lng": -72.7982582
+  },
+  {
+    "nombre": "Monguí, Boyacá",
+    "lat": 5.7222032,
+    "lng": -72.849438
+  },
+  {
+    "nombre": "Moniquirá, Boyacá",
+    "lat": 5.8763096,
+    "lng": -73.5732077
+  },
+  {
+    "nombre": "Motavita, Boyacá",
+    "lat": 5.5763426,
+    "lng": -73.3673994
+  },
+  {
+    "nombre": "Muzo, Boyacá",
+    "lat": 5.5321291,
+    "lng": -74.1027796
+  },
+  {
+    "nombre": "Nobsa, Boyacá",
+    "lat": 5.7705609,
+    "lng": -72.9397458
+  },
+  {
+    "nombre": "Nuevo Colón, Boyacá",
+    "lat": 5.3549669,
+    "lng": -73.45722
+  },
+  {
+    "nombre": "Oicatá, Boyacá",
+    "lat": 5.5944311,
+    "lng": -73.3081529
+  },
+  {
+    "nombre": "Otanche, Boyacá",
+    "lat": 5.6599976,
+    "lng": -74.1816643
+  },
+  {
+    "nombre": "Pachavita, Boyacá",
+    "lat": 5.1405434,
+    "lng": -73.3981479
+  },
+  {
+    "nombre": "Páez, Boyacá",
+    "lat": 5.1020137,
+    "lng": -73.0521759
+  },
+  {
+    "nombre": "Paipa, Boyacá",
+    "lat": 5.7812701,
+    "lng": -73.1176532
+  },
+  {
+    "nombre": "Pajarito, Boyacá",
+    "lat": 5.2932098,
+    "lng": -72.7027682
+  },
+  {
+    "nombre": "Panqueba, Boyacá",
+    "lat": 6.4426674,
+    "lng": -72.4590342
+  },
+  {
+    "nombre": "Pauna, Boyacá",
+    "lat": 5.6573654,
+    "lng": -73.9789416
+  },
+  {
+    "nombre": "Paya, Boyacá",
+    "lat": 5.6249751,
+    "lng": -72.4234415
+  },
+  {
+    "nombre": "Paz del Río, Boyacá",
+    "lat": 5.7711841,
+    "lng": -72.8869914
+  },
+  {
+    "nombre": "Pesca, Boyacá",
+    "lat": 5.5582793,
+    "lng": -73.0514809
+  },
+  {
+    "nombre": "Pisba, Boyacá",
+    "lat": 5.71984,
+    "lng": -72.4858697
+  },
+  {
+    "nombre": "Puerto Boyacá, Boyacá",
+    "lat": 5.9756376,
+    "lng": -74.5882837
+  },
+  {
+    "nombre": "Quípama, Boyacá",
+    "lat": 5.52297,
+    "lng": -74.1812499
+  },
+  {
+    "nombre": "Ramiriquí, Boyacá",
+    "lat": 5.4005061,
+    "lng": -73.3358841
+  },
+  {
+    "nombre": "Ráquira, Boyacá",
+    "lat": 5.5380119,
+    "lng": -73.6322224
+  },
+  {
+    "nombre": "Rondón, Boyacá",
+    "lat": 5.3582102,
+    "lng": -73.2082838
+  },
+  {
+    "nombre": "Saboyá, Boyacá",
+    "lat": 5.6975265,
+    "lng": -73.7656779
+  },
+  {
+    "nombre": "Sáchica, Boyacá",
+    "lat": 5.5844857,
+    "lng": -73.5427927
+  },
+  {
+    "nombre": "Samacá, Boyacá",
+    "lat": 5.4917892,
+    "lng": -73.48529
+  },
+  {
+    "nombre": "San Eduardo, Boyacá",
+    "lat": 5.2235178,
+    "lng": -73.0771745
+  },
+  {
+    "nombre": "San José de Pare, Boyacá",
+    "lat": 6.0176196,
+    "lng": -73.5478516
+  },
+  {
+    "nombre": "San Luis de Gaceno, Boyacá",
+    "lat": 4.8206297,
+    "lng": -73.1678724
+  },
+  {
+    "nombre": "San Mateo, Boyacá",
+    "lat": 6.4017573,
+    "lng": -72.5559807
+  },
+  {
+    "nombre": "San Miguel de Sema, Boyacá",
+    "lat": 5.5189895,
+    "lng": -73.7229967
+  },
+  {
+    "nombre": "San Pablo de Borbur, Boyacá",
+    "lat": 5.6577541,
+    "lng": -74.0625068
+  },
+  {
+    "nombre": "Santa María, Boyacá",
+    "lat": 4.8613796,
+    "lng": -73.2618803
+  },
+  {
+    "nombre": "Santa Rosa de Viterbo, Boyacá",
+    "lat": 5.8744825,
+    "lng": -72.9823638
+  },
+  {
+    "nombre": "Santa Sofía, Boyacá",
+    "lat": 5.7135898,
+    "lng": -73.603146
+  },
+  {
+    "nombre": "Santana, Boyacá",
+    "lat": 6.0574905,
+    "lng": -73.4821629
+  },
+  {
+    "nombre": "Sativanorte, Boyacá",
+    "lat": 6.1319156,
+    "lng": -72.7076031
+  },
+  {
+    "nombre": "Sativasur, Boyacá",
+    "lat": 6.0935358,
+    "lng": -72.7126868
+  },
+  {
+    "nombre": "Siachoque, Boyacá",
+    "lat": 5.5130681,
+    "lng": -73.2448863
+  },
+  {
+    "nombre": "Soatá, Boyacá",
+    "lat": 6.335189,
+    "lng": -72.6803643
+  },
+  {
+    "nombre": "Socha, Boyacá",
+    "lat": 5.997488,
+    "lng": -72.6911515
+  },
+  {
+    "nombre": "Socotá, Boyacá",
+    "lat": 6.0412437,
+    "lng": -72.6365858
+  },
+  {
+    "nombre": "Sogamoso, Boyacá",
+    "lat": 5.7148307,
+    "lng": -72.9279328
+  },
+  {
+    "nombre": "Somondoco, Boyacá",
+    "lat": 4.9859635,
+    "lng": -73.432617
+  },
+  {
+    "nombre": "Sora, Boyacá",
+    "lat": 5.5668504,
+    "lng": -73.4499197
+  },
+  {
+    "nombre": "Soracá, Boyacá",
+    "lat": 5.5011281,
+    "lng": -73.3328656
+  },
+  {
+    "nombre": "Sotaquirá, Boyacá",
+    "lat": 5.765453,
+    "lng": -73.2478186
+  },
+  {
+    "nombre": "Susacón, Boyacá",
+    "lat": 6.2310843,
+    "lng": -72.6903934
+  },
+  {
+    "nombre": "Sutamarchán, Boyacá",
+    "lat": 5.6204803,
+    "lng": -73.6204419
+  },
+  {
+    "nombre": "Sutatenza, Boyacá",
+    "lat": 5.023105,
+    "lng": -73.4508227
+  },
+  {
+    "nombre": "Tasco, Boyacá",
+    "lat": 5.9099806,
+    "lng": -72.7812406
+  },
+  {
+    "nombre": "Tenza, Boyacá",
+    "lat": 5.0767291,
+    "lng": -73.4197886
+  },
+  {
+    "nombre": "Tibaná, Boyacá",
+    "lat": 5.3179886,
+    "lng": -73.3966149
+  },
+  {
+    "nombre": "Tibasosa, Boyacá",
+    "lat": 5.7455889,
+    "lng": -73.0035531
+  },
+  {
+    "nombre": "Tinjacá, Boyacá",
+    "lat": 5.5795658,
+    "lng": -73.6467385
+  },
+  {
+    "nombre": "Tipacoque, Boyacá",
+    "lat": 6.4212152,
+    "lng": -72.6913888
+  },
+  {
+    "nombre": "Toca, Boyacá",
+    "lat": 5.5651119,
+    "lng": -73.1846786
+  },
+  {
+    "nombre": "Togüí, Boyacá",
+    "lat": 5.9377577,
+    "lng": -73.5130813
+  },
+  {
+    "nombre": "Tópaga, Boyacá",
+    "lat": 5.7688893,
+    "lng": -72.8320352
+  },
+  {
+    "nombre": "Tota, Boyacá",
+    "lat": 5.5610508,
+    "lng": -72.9858895
+  },
+  {
+    "nombre": "Tunja, Boyacá",
+    "lat": 5.5324313,
+    "lng": -73.3616014
+  },
+  {
+    "nombre": "Tununguá, Boyacá",
+    "lat": 5.7300168,
+    "lng": -73.9329862
+  },
+  {
+    "nombre": "Turmequé, Boyacá",
+    "lat": 5.3240877,
+    "lng": -73.4905833
+  },
+  {
+    "nombre": "Tuta, Boyacá",
+    "lat": 5.6902219,
+    "lng": -73.2277161
+  },
+  {
+    "nombre": "Tutazá, Boyacá",
+    "lat": 6.0320585,
+    "lng": -72.8567033
+  },
+  {
+    "nombre": "Úmbita, Boyacá",
+    "lat": 5.22123,
+    "lng": -73.457038
+  },
+  {
+    "nombre": "Ventaquemada, Boyacá",
+    "lat": 5.3666155,
+    "lng": -73.5216361
+  },
+  {
+    "nombre": "Villa de Leyva, Boyacá",
+    "lat": 5.633825,
+    "lng": -73.5239684
+  },
+  {
+    "nombre": "Viracachá, Boyacá",
+    "lat": 5.4350237,
+    "lng": -73.2961677
+  },
+  {
+    "nombre": "Zetaquira, Boyacá",
+    "lat": 5.2818853,
+    "lng": -73.1678186
+  },
+  {
+    "nombre": "Aguadas, Caldas",
+    "lat": 5.613113,
+    "lng": -75.4575902
+  },
+  {
+    "nombre": "Anserma, Caldas",
+    "lat": 5.2337519,
+    "lng": -75.7856623
+  },
+  {
+    "nombre": "Aranzazu, Caldas",
+    "lat": 5.2711368,
+    "lng": -75.4904079
+  },
+  {
+    "nombre": "Belalcázar, Caldas",
+    "lat": 4.994718,
+    "lng": -75.8122627
+  },
+  {
+    "nombre": "Chinchiná, Caldas",
+    "lat": 4.9830232,
+    "lng": -75.6054129
+  },
+  {
+    "nombre": "Filadelfia, Caldas",
+    "lat": 5.2963713,
+    "lng": -75.5622217
+  },
+  {
+    "nombre": "La Dorada, Caldas",
+    "lat": 5.4457655,
+    "lng": -74.6618458
+  },
+  {
+    "nombre": "La Merced, Caldas",
+    "lat": 5.3989301,
+    "lng": -75.54777
+  },
+  {
+    "nombre": "Manizales, Caldas",
+    "lat": 5.0668907,
+    "lng": -75.5066661
+  },
+  {
+    "nombre": "Manzanares, Caldas",
+    "lat": 5.253198,
+    "lng": -75.1544544
+  },
+  {
+    "nombre": "Marmato, Caldas",
+    "lat": 5.4746415,
+    "lng": -75.5988438
+  },
+  {
+    "nombre": "Marquetalia, Caldas",
+    "lat": 5.2966038,
+    "lng": -75.0546064
+  },
+  {
+    "nombre": "Marulanda, Caldas",
+    "lat": 5.2841316,
+    "lng": -75.2595401
+  },
+  {
+    "nombre": "Neira, Caldas",
+    "lat": 5.1674333,
+    "lng": -75.5209779
+  },
+  {
+    "nombre": "Norcasia, Caldas",
+    "lat": 5.5758643,
+    "lng": -74.8881645
+  },
+  {
+    "nombre": "Pácora, Caldas",
+    "lat": 5.5272323,
+    "lng": -75.4594449
+  },
+  {
+    "nombre": "Palestina, Caldas",
+    "lat": 5.0203683,
+    "lng": -75.6223394
+  },
+  {
+    "nombre": "Pensilvania, Caldas",
+    "lat": 5.3833488,
+    "lng": -75.1609683
+  },
+  {
+    "nombre": "Riosucio, Caldas",
+    "lat": 5.4209549,
+    "lng": -75.7030623
+  },
+  {
+    "nombre": "Risaralda, Caldas",
+    "lat": 5.1635531,
+    "lng": -75.7673963
+  },
+  {
+    "nombre": "Salamina, Caldas",
+    "lat": 5.4078495,
+    "lng": -75.4880496
+  },
+  {
+    "nombre": "Samaná, Caldas",
+    "lat": 5.4127804,
+    "lng": -74.992031
+  },
+  {
+    "nombre": "San José, Caldas",
+    "lat": 5.0808725,
+    "lng": -75.7918992
+  },
+  {
+    "nombre": "Supía, Caldas",
+    "lat": 5.4533321,
+    "lng": -75.651965
+  },
+  {
+    "nombre": "Victoria, Caldas",
+    "lat": 5.3167944,
+    "lng": -74.9120079
+  },
+  {
+    "nombre": "Villamaría, Caldas",
+    "lat": 5.0449697,
+    "lng": -75.5151258
+  },
+  {
+    "nombre": "Viterbo, Caldas",
+    "lat": 5.0618565,
+    "lng": -75.8734996
+  },
+  {
+    "nombre": "Albania, Caquetá",
+    "lat": 1.3290058,
+    "lng": -75.8786065
+  },
+  {
+    "nombre": "Belén de los Andaquíes, Caquetá",
+    "lat": 1.4163944,
+    "lng": -75.8725636
+  },
+  {
+    "nombre": "Cartagena del Chairá, Caquetá",
+    "lat": 1.3345179,
+    "lng": -74.8414067
+  },
+  {
+    "nombre": "Curillo, Caquetá",
+    "lat": 1.0326931,
+    "lng": -75.9193814
+  },
+  {
+    "nombre": "El Doncello, Caquetá",
+    "lat": 1.6815919,
+    "lng": -75.2844565
+  },
+  {
+    "nombre": "El Paujil, Caquetá",
+    "lat": 1.5716432,
+    "lng": -75.3269578
+  },
+  {
+    "nombre": "Florencia, Caquetá",
+    "lat": 1.6158666,
+    "lng": -75.6143045
+  },
+  {
+    "nombre": "La Montañita, Caquetá",
+    "lat": 1.4817139,
+    "lng": -75.4356404
+  },
+  {
+    "nombre": "Milán, Caquetá",
+    "lat": 1.2900867,
+    "lng": -75.5076247
+  },
+  {
+    "nombre": "Morelia, Caquetá",
+    "lat": 1.4874697,
+    "lng": -75.724859
+  },
+  {
+    "nombre": "Puerto Rico, Caquetá",
+    "lat": 1.909392,
+    "lng": -75.1530969
+  },
+  {
+    "nombre": "San José del Fragua, Caquetá",
+    "lat": 1.3314207,
+    "lng": -75.9727503
+  },
+  {
+    "nombre": "San Vicente del Caguán, Caquetá",
+    "lat": 2.1131213,
+    "lng": -74.7697347
+  },
+  {
+    "nombre": "Solano, Caquetá",
+    "lat": 0.6987889,
+    "lng": -75.2536926
+  },
+  {
+    "nombre": "Solita, Caquetá",
+    "lat": 0.8767264,
+    "lng": -75.6190438
+  },
+  {
+    "nombre": "Valparaíso, Caquetá",
+    "lat": 1.1961248,
+    "lng": -75.7059684
+  },
+  {
+    "nombre": "Aguazul, Casanare",
+    "lat": 5.1708408,
+    "lng": -72.550846
+  },
+  {
+    "nombre": "Chámeza, Casanare",
+    "lat": 5.213808,
+    "lng": -72.8710429
+  },
+  {
+    "nombre": "Hato Corozal, Casanare",
+    "lat": 6.1535075,
+    "lng": -71.7686455
+  },
+  {
+    "nombre": "La Salina, Casanare",
+    "lat": 6.1284789,
+    "lng": -72.3342292
+  },
+  {
+    "nombre": "Maní, Casanare",
+    "lat": 4.8182904,
+    "lng": -72.2803964
+  },
+  {
+    "nombre": "Monterrey, Casanare",
+    "lat": 4.8762611,
+    "lng": -72.8968843
+  },
+  {
+    "nombre": "Nunchía, Casanare",
+    "lat": 5.638081,
+    "lng": -72.194668
+  },
+  {
+    "nombre": "Orocué, Casanare",
+    "lat": 4.789484,
+    "lng": -71.3406351
+  },
+  {
+    "nombre": "Paz de Ariporo, Casanare",
+    "lat": 5.8815393,
+    "lng": -71.892938
+  },
+  {
+    "nombre": "Pore, Casanare",
+    "lat": 5.727473,
+    "lng": -71.9928398
+  },
+  {
+    "nombre": "Recetor, Casanare",
+    "lat": 5.2297594,
+    "lng": -72.760209
+  },
+  {
+    "nombre": "Sabanalarga, Casanare",
+    "lat": 4.8564547,
+    "lng": -73.0390642
+  },
+  {
+    "nombre": "Sácama, Casanare",
+    "lat": 6.098907,
+    "lng": -72.2487665
+  },
+  {
+    "nombre": "San Luis de Palenque, Casanare",
+    "lat": 5.422039,
+    "lng": -71.7314386
+  },
+  {
+    "nombre": "Támara, Casanare",
+    "lat": 5.8296003,
+    "lng": -72.1639754
+  },
+  {
+    "nombre": "Tauramena, Casanare",
+    "lat": 5.013414,
+    "lng": -72.7507084
+  },
+  {
+    "nombre": "Trinidad, Casanare",
+    "lat": 5.4068042,
+    "lng": -71.6623713
+  },
+  {
+    "nombre": "Villanueva, Casanare",
+    "lat": 4.6148734,
+    "lng": -72.9252395
+  },
+  {
+    "nombre": "Yopal, Casanare",
+    "lat": 5.3356662,
+    "lng": -72.3936931
+  },
+  {
+    "nombre": "Almaguer, Cauca",
+    "lat": 1.9142744,
+    "lng": -76.8548514
+  },
+  {
+    "nombre": "Argelia, Cauca",
+    "lat": 2.2568076,
+    "lng": -77.2494094
+  },
+  {
+    "nombre": "Balboa, Cauca",
+    "lat": 2.042096,
+    "lng": -77.2157842
+  },
+  {
+    "nombre": "Bolívar, Cauca",
+    "lat": 1.8368156,
+    "lng": -76.9665816
+  },
+  {
+    "nombre": "Buenos Aires, Cauca",
+    "lat": 3.0165467,
+    "lng": -76.6406849
+  },
+  {
+    "nombre": "Cajibío, Cauca",
+    "lat": 2.6231693,
+    "lng": -76.5693504
+  },
+  {
+    "nombre": "Caldono, Cauca",
+    "lat": 2.796326,
+    "lng": -76.4836526
+  },
+  {
+    "nombre": "Caloto, Cauca",
+    "lat": 3.0336985,
+    "lng": -76.4085199
+  },
+  {
+    "nombre": "Corinto, Cauca",
+    "lat": 3.1733723,
+    "lng": -76.2600266
+  },
+  {
+    "nombre": "El Tambo, Cauca",
+    "lat": 2.4511923,
+    "lng": -76.8117409
+  },
+  {
+    "nombre": "Florencia, Cauca",
+    "lat": 1.6830289,
+    "lng": -77.0726877
+  },
+  {
+    "nombre": "Guachené, Cauca",
+    "lat": 3.1323331,
+    "lng": -76.3916018
+  },
+  {
+    "nombre": "Guapí, Cauca",
+    "lat": 2.5708069,
+    "lng": -77.882619
+  },
+  {
+    "nombre": "Inzá, Cauca",
+    "lat": 2.5500211,
+    "lng": -76.0643978
+  },
+  {
+    "nombre": "Jambaló, Cauca",
+    "lat": 2.7776822,
+    "lng": -76.3243788
+  },
+  {
+    "nombre": "La Sierra, Cauca",
+    "lat": 2.1763552,
+    "lng": -76.7634852
+  },
+  {
+    "nombre": "La Vega, Cauca",
+    "lat": 2.0013635,
+    "lng": -76.7772716
+  },
+  {
+    "nombre": "López de Micay, Cauca",
+    "lat": 2.847624,
+    "lng": -77.247802
+  },
+  {
+    "nombre": "Mercaderes, Cauca",
+    "lat": 1.7984873,
+    "lng": -77.1610748
+  },
+  {
+    "nombre": "Miranda, Cauca",
+    "lat": 3.2511475,
+    "lng": -76.2291572
+  },
+  {
+    "nombre": "Morales, Cauca",
+    "lat": 2.7561063,
+    "lng": -76.6298453
+  },
+  {
+    "nombre": "Padilla, Cauca",
+    "lat": 3.2254364,
+    "lng": -76.3139739
+  },
+  {
+    "nombre": "Páez, Cauca",
+    "lat": 2.9229665,
+    "lng": -76.4640462
+  },
+  {
+    "nombre": "Patía, Cauca",
+    "lat": 2.07501,
+    "lng": -77.0616762
+  },
+  {
+    "nombre": "Piamonte, Cauca",
+    "lat": 1.1185119,
+    "lng": -76.3265519
+  },
+  {
+    "nombre": "Piendamó, Cauca",
+    "lat": 2.6404294,
+    "lng": -76.5325746
+  },
+  {
+    "nombre": "Popayán, Cauca",
+    "lat": 2.4422295,
+    "lng": -76.6072368
+  },
+  {
+    "nombre": "Puerto Tejada, Cauca",
+    "lat": 3.2288972,
+    "lng": -76.4192267
+  },
+  {
+    "nombre": "Puracé, Cauca",
+    "lat": 2.3811038,
+    "lng": -76.4551183
+  },
+  {
+    "nombre": "Rosas, Cauca",
+    "lat": 2.2621018,
+    "lng": -76.7392875
+  },
+  {
+    "nombre": "San Sebastián, Cauca",
+    "lat": 1.8386665,
+    "lng": -76.7697662
+  },
+  {
+    "nombre": "Santa Rosa, Cauca",
+    "lat": 1.7018257,
+    "lng": -76.5725868
+  },
+  {
+    "nombre": "Santander de Quilichao, Cauca",
+    "lat": 3.0075752,
+    "lng": -76.4856531
+  },
+  {
+    "nombre": "Silvia, Cauca",
+    "lat": 2.6115436,
+    "lng": -76.378424
+  },
+  {
+    "nombre": "Suárez, Cauca",
+    "lat": 2.9543543,
+    "lng": -76.6948801
+  },
+  {
+    "nombre": "Sucre, Cauca",
+    "lat": 2.0382339,
+    "lng": -76.9249937
+  },
+  {
+    "nombre": "Timbío, Cauca",
+    "lat": 2.3528374,
+    "lng": -76.683012
+  },
+  {
+    "nombre": "Timbiquí, Cauca",
+    "lat": 2.7705138,
+    "lng": -77.6643122
+  },
+  {
+    "nombre": "Toribío, Cauca",
+    "lat": 2.9554697,
+    "lng": -76.2686889
+  },
+  {
+    "nombre": "Totoró, Cauca",
+    "lat": 2.5109533,
+    "lng": -76.4011501
+  },
+  {
+    "nombre": "Villa Rica, Cauca",
+    "lat": 3.1765241,
+    "lng": -76.4637676
+  },
+  {
+    "nombre": "Aguachica, Cesar",
+    "lat": 8.309416,
+    "lng": -73.603699
+  },
+  {
+    "nombre": "Agustín Codazzi, Cesar",
+    "lat": 10.0374894,
+    "lng": -73.2387011
+  },
+  {
+    "nombre": "Astrea, Cesar",
+    "lat": 9.4962322,
+    "lng": -73.9756293
+  },
+  {
+    "nombre": "Becerril, Cesar",
+    "lat": 9.7032785,
+    "lng": -73.2786054
+  },
+  {
+    "nombre": "Bosconia, Cesar",
+    "lat": 9.9730446,
+    "lng": -73.8860998
+  },
+  {
+    "nombre": "Chimichagua, Cesar",
+    "lat": 9.2576662,
+    "lng": -73.8126883
+  },
+  {
+    "nombre": "Curumaní, Cesar",
+    "lat": 9.1995316,
+    "lng": -73.5440609
+  },
+  {
+    "nombre": "El Copey, Cesar",
+    "lat": 10.1492075,
+    "lng": -73.9611708
+  },
+  {
+    "nombre": "El Paso, Cesar",
+    "lat": 9.6589481,
+    "lng": -73.7504695
+  },
+  {
+    "nombre": "Gamarra, Cesar",
+    "lat": 8.3231739,
+    "lng": -73.7437539
+  },
+  {
+    "nombre": "González, Cesar",
+    "lat": 8.3912927,
+    "lng": -73.3815389
+  },
+  {
+    "nombre": "La Jagua de Ibirico, Cesar",
+    "lat": 9.5613975,
+    "lng": -73.3328147
+  },
+  {
+    "nombre": "La Paz, Cesar",
+    "lat": 10.3866045,
+    "lng": -73.1710014
+  },
+  {
+    "nombre": "Manaure Balcón del Cesar, Cesar",
+    "lat": 10.3910411,
+    "lng": -73.0270699
+  },
+  {
+    "nombre": "Pailitas, Cesar",
+    "lat": 8.9589902,
+    "lng": -73.6216938
+  },
+  {
+    "nombre": "Pelaya, Cesar",
+    "lat": 8.6857187,
+    "lng": -73.6690054
+  },
+  {
+    "nombre": "Pueblo Bello, Cesar",
+    "lat": 10.4119057,
+    "lng": -73.5909603
+  },
+  {
+    "nombre": "Río de Oro, Cesar",
+    "lat": 8.2924446,
+    "lng": -73.385798
+  },
+  {
+    "nombre": "San Alberto, Cesar",
+    "lat": 7.7611095,
+    "lng": -73.3932831
+  },
+  {
+    "nombre": "San Diego, Cesar",
+    "lat": 10.3326328,
+    "lng": -73.1796691
+  },
+  {
+    "nombre": "San Martín, Cesar",
+    "lat": 8.0019296,
+    "lng": -73.5121466
+  },
+  {
+    "nombre": "Tamalameque, Cesar",
+    "lat": 8.8568265,
+    "lng": -73.8157539
+  },
+  {
+    "nombre": "Valledupar, Cesar",
+    "lat": 10.4651733,
+    "lng": -73.2529512
+  },
+  {
+    "nombre": "Acandí, Chocó",
+    "lat": 8.5115155,
+    "lng": -77.2790562
+  },
+  {
+    "nombre": "Bagadó, Chocó",
+    "lat": 5.4116935,
+    "lng": -76.4159671
+  },
+  {
+    "nombre": "Bahía Solano, Chocó",
+    "lat": 6.2245644,
+    "lng": -77.4034389
+  },
+  {
+    "nombre": "Bajo Baudó, Chocó",
+    "lat": 4.9537522,
+    "lng": -77.366788
+  },
+  {
+    "nombre": "Bojayá, Chocó",
+    "lat": 6.5208327,
+    "lng": -76.9724465
+  },
+  {
+    "nombre": "Cantón de San Pablo, Chocó",
+    "lat": 5.3350691,
+    "lng": -76.7272132
+  },
+  {
+    "nombre": "Cértegui, Chocó",
+    "lat": 5.3719043,
+    "lng": -76.6085751
+  },
+  {
+    "nombre": "Condoto, Chocó",
+    "lat": 5.0921969,
+    "lng": -76.6513567
+  },
+  {
+    "nombre": "El Atrato, Chocó",
+    "lat": 5.8992661,
+    "lng": -76.1424569
+  },
+  {
+    "nombre": "El Carmen de Atrato, Chocó",
+    "lat": 5.8992661,
+    "lng": -76.1424569
+  },
+  {
+    "nombre": "Istmina, Chocó",
+    "lat": 5.1593099,
+    "lng": -76.685528
+  },
+  {
+    "nombre": "Juradó, Chocó",
+    "lat": 7.1031695,
+    "lng": -77.7623252
+  },
+  {
+    "nombre": "Litoral de San Juan, Chocó",
+    "lat": 4.2596064,
+    "lng": -77.3653541
+  },
+  {
+    "nombre": "Lloró, Chocó",
+    "lat": 5.4997837,
+    "lng": -76.5426392
+  },
+  {
+    "nombre": "Medio Atrato, Chocó",
+    "lat": 5.9948862,
+    "lng": -76.7822722
+  },
+  {
+    "nombre": "Medio Baudó, Chocó",
+    "lat": 5.1926992,
+    "lng": -76.9512785
+  },
+  {
+    "nombre": "Nóvita, Chocó",
+    "lat": 4.9553855,
+    "lng": -76.6068139
+  },
+  {
+    "nombre": "Nuquí, Chocó",
+    "lat": 5.707435,
+    "lng": -77.2710963
+  },
+  {
+    "nombre": "Quibdó, Chocó",
+    "lat": 5.6923407,
+    "lng": -76.6583801
+  },
+  {
+    "nombre": "Río Iró, Chocó",
+    "lat": 5.1853204,
+    "lng": -76.4720948
+  },
+  {
+    "nombre": "Río Quito, Chocó",
+    "lat": 5.4837745,
+    "lng": -76.739573
+  },
+  {
+    "nombre": "Riosucio, Chocó",
+    "lat": 7.4365576,
+    "lng": -77.1122594
+  },
+  {
+    "nombre": "San José del Palmar, Chocó",
+    "lat": 4.8950096,
+    "lng": -76.2350277
+  },
+  {
+    "nombre": "Sipí, Chocó",
+    "lat": 4.6531991,
+    "lng": -76.644084
+  },
+  {
+    "nombre": "Tadó, Chocó",
+    "lat": 5.2639656,
+    "lng": -76.5587372
+  },
+  {
+    "nombre": "Unión Panamericana, Chocó",
+    "lat": 5.2813079,
+    "lng": -76.6293417
+  },
+  {
+    "nombre": "Unguía, Chocó",
+    "lat": 8.0412373,
+    "lng": -77.0933751
+  },
+  {
+    "nombre": "Agua de Dios, Cundinamarca",
+    "lat": 4.3772853,
+    "lng": -74.6694759
+  },
+  {
+    "nombre": "Albán, Cundinamarca",
+    "lat": 4.8780617,
+    "lng": -74.4384462
+  },
+  {
+    "nombre": "Anapoima, Cundinamarca",
+    "lat": 4.5493011,
+    "lng": -74.5359119
+  },
+  {
+    "nombre": "Anolaima, Cundinamarca",
+    "lat": 4.7616096,
+    "lng": -74.4649986
+  },
+  {
+    "nombre": "Apulo, Cundinamarca",
+    "lat": 4.520545,
+    "lng": -74.5938265
+  },
+  {
+    "nombre": "Arbeláez, Cundinamarca",
+    "lat": 4.2727954,
+    "lng": -74.4159802
+  },
+  {
+    "nombre": "Bituima, Cundinamarca",
+    "lat": 4.8720675,
+    "lng": -74.5392117
+  },
+  {
+    "nombre": "Bogotá, Cundinamarca",
+    "lat": 5.2084232,
+    "lng": -74.7294473
+  },
+  {
+    "nombre": "Bojacá, Cundinamarca",
+    "lat": 4.877971,
+    "lng": -74.0310573
+  },
+  {
+    "nombre": "Cabrera, Cundinamarca",
+    "lat": 3.9852044,
+    "lng": -74.4843363
+  },
+  {
+    "nombre": "Cajicá, Cundinamarca",
+    "lat": 4.9182649,
+    "lng": -74.0180292
+  },
+  {
+    "nombre": "Caparrapí, Cundinamarca",
+    "lat": 5.3461338,
+    "lng": -74.4916464
+  },
+  {
+    "nombre": "Cáqueza, Cundinamarca",
+    "lat": 4.4057096,
+    "lng": -73.9459215
+  },
+  {
+    "nombre": "Chaguaní, Cundinamarca",
+    "lat": 4.9496796,
+    "lng": -74.5947984
+  },
+  {
+    "nombre": "Chía, Cundinamarca",
+    "lat": 4.8660334,
+    "lng": -74.0306281
+  },
+  {
+    "nombre": "Chipaque, Cundinamarca",
+    "lat": 4.4070793,
+    "lng": -74.0697039
+  },
+  {
+    "nombre": "Choachí, Cundinamarca",
+    "lat": 4.5822005,
+    "lng": -73.9137287
+  },
+  {
+    "nombre": "Cogua, Cundinamarca",
+    "lat": 5.0607139,
+    "lng": -73.9766059
+  },
+  {
+    "nombre": "Cota, Cundinamarca",
+    "lat": 4.8093624,
+    "lng": -74.1015739
+  },
+  {
+    "nombre": "El Colegio, Cundinamarca",
+    "lat": 4.5802618,
+    "lng": -74.442374
+  },
+  {
+    "nombre": "El Peñón, Cundinamarca",
+    "lat": 5.2482295,
+    "lng": -74.2894392
+  },
+  {
+    "nombre": "El Rosal, Cundinamarca",
+    "lat": 4.3522064,
+    "lng": -74.3626422
+  },
+  {
+    "nombre": "Facatativá, Cundinamarca",
+    "lat": 4.820714,
+    "lng": -74.3598688
+  },
+  {
+    "nombre": "Fómeque, Cundinamarca",
+    "lat": 4.4871105,
+    "lng": -73.8935278
+  },
+  {
+    "nombre": "Fosca, Cundinamarca",
+    "lat": 4.3389335,
+    "lng": -73.9385092
+  },
+  {
+    "nombre": "Funza, Cundinamarca",
+    "lat": 4.7177471,
+    "lng": -74.2031547
+  },
+  {
+    "nombre": "Fusagasugá, Cundinamarca",
+    "lat": 4.3449509,
+    "lng": -74.3674249
+  },
+  {
+    "nombre": "Gachancipá, Cundinamarca",
+    "lat": 4.9920291,
+    "lng": -73.8721107
+  },
+  {
+    "nombre": "Girardot, Cundinamarca",
+    "lat": 4.3046383,
+    "lng": -74.8030739
+  },
+  {
+    "nombre": "Granada, Cundinamarca",
+    "lat": 4.5202808,
+    "lng": -74.3520944
+  },
+  {
+    "nombre": "Guaduas, Cundinamarca",
+    "lat": 5.0674669,
+    "lng": -74.5950774
+  },
+  {
+    "nombre": "Guataquí, Cundinamarca",
+    "lat": 4.5181995,
+    "lng": -74.7899996
+  },
+  {
+    "nombre": "Guayabal de Síquima, Cundinamarca",
+    "lat": 4.8782654,
+    "lng": -74.4675635
+  },
+  {
+    "nombre": "Guayabetal, Cundinamarca",
+    "lat": 4.2163422,
+    "lng": -73.8153965
+  },
+  {
+    "nombre": "Gutiérrez, Cundinamarca",
+    "lat": 4.1661933,
+    "lng": -74.0276385
+  },
+  {
+    "nombre": "Jerusalén, Cundinamarca",
+    "lat": 4.5623901,
+    "lng": -74.6942067
+  },
+  {
+    "nombre": "La Calera, Cundinamarca",
+    "lat": 4.6816639,
+    "lng": -73.9861518
+  },
+  {
+    "nombre": "La Mesa, Cundinamarca",
+    "lat": 4.6321316,
+    "lng": -74.4629388
+  },
+  {
+    "nombre": "La Palma, Cundinamarca",
+    "lat": 5.3606208,
+    "lng": -74.3905123
+  },
+  {
+    "nombre": "La Peña, Cundinamarca",
+    "lat": 5.1976554,
+    "lng": -74.3941494
+  },
+  {
+    "nombre": "La Vega, Cundinamarca",
+    "lat": 5.0734479,
+    "lng": -73.8748953
+  },
+  {
+    "nombre": "Madrid, Cundinamarca",
+    "lat": 4.736726,
+    "lng": -74.2654685
+  },
+  {
+    "nombre": "Medina, Cundinamarca",
+    "lat": 4.510562,
+    "lng": -73.3507441
+  },
+  {
+    "nombre": "Mosquera, Cundinamarca",
+    "lat": 4.7002001,
+    "lng": -74.2385058
+  },
+  {
+    "nombre": "Nariño, Cundinamarca",
+    "lat": 4.3981229,
+    "lng": -74.8279301
+  },
+  {
+    "nombre": "Nemocón, Cundinamarca",
+    "lat": 5.0673653,
+    "lng": -73.8770193
+  },
+  {
+    "nombre": "Nilo, Cundinamarca",
+    "lat": 4.3065906,
+    "lng": -74.6197608
+  },
+  {
+    "nombre": "Nimaima, Cundinamarca",
+    "lat": 5.125392,
+    "lng": -74.3853502
+  },
+  {
+    "nombre": "Nocaima, Cundinamarca",
+    "lat": 5.0697674,
+    "lng": -74.3775222
+  },
+  {
+    "nombre": "Paratebueno, Cundinamarca",
+    "lat": 4.3765197,
+    "lng": -73.2125493
+  },
+  {
+    "nombre": "Pasca, Cundinamarca",
+    "lat": 4.3078299,
+    "lng": -74.3001795
+  },
+  {
+    "nombre": "Puerto Salgar, Cundinamarca",
+    "lat": 5.4636898,
+    "lng": -74.6501244
+  },
+  {
+    "nombre": "Pulí, Cundinamarca",
+    "lat": 4.6809255,
+    "lng": -74.7135542
+  },
+  {
+    "nombre": "Quebradanegra, Cundinamarca",
+    "lat": 5.117231,
+    "lng": -74.4793643
+  },
+  {
+    "nombre": "Ricaurte, Cundinamarca",
+    "lat": 4.2777357,
+    "lng": -74.7718165
+  },
+  {
+    "nombre": "San Antonio del Tequendama, Cundinamarca",
+    "lat": 4.6161374,
+    "lng": -74.351691
+  },
+  {
+    "nombre": "San Bernardo, Cundinamarca",
+    "lat": 4.1783289,
+    "lng": -74.4222182
+  },
+  {
+    "nombre": "San Francisco, Cundinamarca",
+    "lat": 4.670858,
+    "lng": -74.1868881
+  },
+  {
+    "nombre": "San Juan de Rioseco, Cundinamarca",
+    "lat": 4.8455155,
+    "lng": -74.6225366
+  },
+  {
+    "nombre": "Sesquilé, Cundinamarca",
+    "lat": 5.0446176,
+    "lng": -73.7963901
+  },
+  {
+    "nombre": "Sibaté, Cundinamarca",
+    "lat": 4.4916256,
+    "lng": -74.2594306
+  },
+  {
+    "nombre": "Silvania, Cundinamarca",
+    "lat": 4.4039016,
+    "lng": -74.3889251
+  },
+  {
+    "nombre": "Soacha, Cundinamarca",
+    "lat": 4.5827314,
+    "lng": -74.211754
+  },
+  {
+    "nombre": "Sopó, Cundinamarca",
+    "lat": 4.9079158,
+    "lng": -73.9402326
+  },
+  {
+    "nombre": "Suesca, Cundinamarca",
+    "lat": 5.1033413,
+    "lng": -73.7990059
+  },
+  {
+    "nombre": "Tabio, Cundinamarca",
+    "lat": 4.9163961,
+    "lng": -74.0990945
+  },
+  {
+    "nombre": "Tena, Cundinamarca",
+    "lat": 4.6554712,
+    "lng": -74.3893393
+  },
+  {
+    "nombre": "Tenjo, Cundinamarca",
+    "lat": 4.8719992,
+    "lng": -74.1449702
+  },
+  {
+    "nombre": "Tibacuy, Cundinamarca",
+    "lat": 4.34872,
+    "lng": -74.4541843
+  },
+  {
+    "nombre": "Tocaima, Cundinamarca",
+    "lat": 4.4579274,
+    "lng": -74.6342234
+  },
+  {
+    "nombre": "Tocancipá, Cundinamarca",
+    "lat": 4.9657181,
+    "lng": -73.9136601
+  },
+  {
+    "nombre": "Topaipí, Cundinamarca",
+    "lat": 5.3353896,
+    "lng": -74.3026812
+  },
+  {
+    "nombre": "Ubalá, Cundinamarca",
+    "lat": 4.745638,
+    "lng": -73.5329786
+  },
+  {
+    "nombre": "Ubaque, Cundinamarca",
+    "lat": 4.501443,
+    "lng": -73.9710295
+  },
+  {
+    "nombre": "Ubaté, Cundinamarca",
+    "lat": 4.5765836,
+    "lng": -74.2176179
+  },
+  {
+    "nombre": "Une, Cundinamarca",
+    "lat": 4.2982261,
+    "lng": -74.0778924
+  },
+  {
+    "nombre": "Útica, Cundinamarca",
+    "lat": 5.1879202,
+    "lng": -74.4814775
+  },
+  {
+    "nombre": "Vergara, Cundinamarca",
+    "lat": 5.1183756,
+    "lng": -74.3451863
+  },
+  {
+    "nombre": "Vianí, Cundinamarca",
+    "lat": 4.87426,
+    "lng": -74.5624055
+  },
+  {
+    "nombre": "Villapinzón, Cundinamarca",
+    "lat": 5.2215207,
+    "lng": -73.58989
+  },
+  {
+    "nombre": "Villeta, Cundinamarca",
+    "lat": 5.0112575,
+    "lng": -74.4702304
+  },
+  {
+    "nombre": "Viotá, Cundinamarca",
+    "lat": 4.4388882,
+    "lng": -74.5233576
+  },
+  {
+    "nombre": "Yacopí, Cundinamarca",
+    "lat": 5.4587905,
+    "lng": -74.3376099
+  },
+  {
+    "nombre": "Zipaquirá, Cundinamarca",
+    "lat": 5.0234748,
+    "lng": -74.0039818
+  },
+  {
+    "nombre": "Ayapel, Córdoba",
+    "lat": 8.3116711,
+    "lng": -75.1445022
+  },
+  {
+    "nombre": "Buenavista, Córdoba",
+    "lat": 8.2215196,
+    "lng": -75.4807226
+  },
+  {
+    "nombre": "Canalete, Córdoba",
+    "lat": 8.7858918,
+    "lng": -76.2399593
+  },
+  {
+    "nombre": "Cereté, Córdoba",
+    "lat": 8.8852282,
+    "lng": -75.7922421
+  },
+  {
+    "nombre": "Chimá, Córdoba",
+    "lat": 9.1496167,
+    "lng": -75.629046
+  },
+  {
+    "nombre": "Chinú, Córdoba",
+    "lat": 9.1063553,
+    "lng": -75.3989007
+  },
+  {
+    "nombre": "Ciénaga de Oro, Córdoba",
+    "lat": 8.8746769,
+    "lng": -75.6210036
+  },
+  {
+    "nombre": "Cotorra, Córdoba",
+    "lat": 9.0400712,
+    "lng": -75.7863907
+  },
+  {
+    "nombre": "La Apartada, Córdoba",
+    "lat": 8.0484697,
+    "lng": -75.333651
+  },
+  {
+    "nombre": "Lorica, Córdoba",
+    "lat": 9.2394583,
+    "lng": -75.8139786
+  },
+  {
+    "nombre": "Los Córdobas, Córdoba",
+    "lat": 8.8922529,
+    "lng": -76.3549184
+  },
+  {
+    "nombre": "Momil, Córdoba",
+    "lat": 9.2377862,
+    "lng": -75.6763936
+  },
+  {
+    "nombre": "Montelíbano, Córdoba",
+    "lat": 7.9800534,
+    "lng": -75.4167198
+  },
+  {
+    "nombre": "Montería, Córdoba",
+    "lat": 8.7509361,
+    "lng": -75.8786806
+  },
+  {
+    "nombre": "Moñitos, Córdoba",
+    "lat": 9.2460394,
+    "lng": -76.1315965
+  },
+  {
+    "nombre": "Planeta Rica, Córdoba",
+    "lat": 8.4076739,
+    "lng": -75.5840456
+  },
+  {
+    "nombre": "Pueblo Nuevo, Córdoba",
+    "lat": 8.5009416,
+    "lng": -75.5080331
+  },
+  {
+    "nombre": "Puerto Escondido, Córdoba",
+    "lat": 9.0142629,
+    "lng": -76.2625983
+  },
+  {
+    "nombre": "Puerto Libertador, Córdoba",
+    "lat": 7.8900299,
+    "lng": -75.6695487
+  },
+  {
+    "nombre": "Purísima, Córdoba",
+    "lat": 9.2375332,
+    "lng": -75.7236088
+  },
+  {
+    "nombre": "Sahagún, Córdoba",
+    "lat": 8.9472964,
+    "lng": -75.4434972
+  },
+  {
+    "nombre": "San Andrés de Sotavento, Córdoba",
+    "lat": 9.1457678,
+    "lng": -75.5090819
+  },
+  {
+    "nombre": "San Antero, Córdoba",
+    "lat": 9.373016,
+    "lng": -75.7595056
+  },
+  {
+    "nombre": "San Bernardo del Viento, Córdoba",
+    "lat": 9.353219,
+    "lng": -75.9536761
+  },
+  {
+    "nombre": "San Carlos, Córdoba",
+    "lat": 8.7961712,
+    "lng": -75.6996344
+  },
+  {
+    "nombre": "San José de Uré, Córdoba",
+    "lat": 7.7869539,
+    "lng": -75.5336319
+  },
+  {
+    "nombre": "San Pelayo, Córdoba",
+    "lat": 8.9572178,
+    "lng": -75.8374769
+  },
+  {
+    "nombre": "Tierralta, Córdoba",
+    "lat": 8.171791,
+    "lng": -76.0601328
+  },
+  {
+    "nombre": "Tuchín, Córdoba",
+    "lat": 9.1865401,
+    "lng": -75.5551384
+  },
+  {
+    "nombre": "Valencia, Córdoba",
+    "lat": 8.2590905,
+    "lng": -76.148122
+  },
+  {
+    "nombre": "Inírida, Guainía",
+    "lat": 3.8650368,
+    "lng": -67.9259848
+  },
+  {
+    "nombre": "Calamar, Guaviare",
+    "lat": 1.9607924,
+    "lng": -72.6548396
+  },
+  {
+    "nombre": "El Retorno, Guaviare",
+    "lat": 2.3305016,
+    "lng": -72.6264183
+  },
+  {
+    "nombre": "Miraflores, Guaviare",
+    "lat": 1.3369175,
+    "lng": -71.9514805
+  },
+  {
+    "nombre": "San José del Guaviare, Guaviare",
+    "lat": 2.5716141,
+    "lng": -72.6426515
+  },
+  {
+    "nombre": "Acevedo, Huila",
+    "lat": 1.8070452,
+    "lng": -75.888501
+  },
+  {
+    "nombre": "Agrado, Huila",
+    "lat": 2.2580718,
+    "lng": -75.7712079
+  },
+  {
+    "nombre": "Algeciras, Huila",
+    "lat": 2.5246661,
+    "lng": -75.316688
+  },
+  {
+    "nombre": "Altamira, Huila",
+    "lat": 2.0644,
+    "lng": -75.7874126
+  },
+  {
+    "nombre": "Baraya, Huila",
+    "lat": 3.1523164,
+    "lng": -75.0527335
+  },
+  {
+    "nombre": "Campoalegre, Huila",
+    "lat": 2.6851032,
+    "lng": -75.3263227
+  },
+  {
+    "nombre": "Colombia, Huila",
+    "lat": 3.3758991,
+    "lng": -74.8019303
+  },
+  {
+    "nombre": "El Pital, Huila",
+    "lat": 2.8694931,
+    "lng": -75.4580245
+  },
+  {
+    "nombre": "Elías, Huila",
+    "lat": 2.0136193,
+    "lng": -75.9392336
+  },
+  {
+    "nombre": "Garzón, Huila",
+    "lat": 2.1960126,
+    "lng": -75.6274845
+  },
+  {
+    "nombre": "Gigante, Huila",
+    "lat": 2.3881745,
+    "lng": -75.5468663
+  },
+  {
+    "nombre": "Guadalupe, Huila",
+    "lat": 2.0248785,
+    "lng": -75.7564049
+  },
+  {
+    "nombre": "Hobo, Huila",
+    "lat": 2.5811045,
+    "lng": -75.4494997
+  },
+  {
+    "nombre": "Íquira, Huila",
+    "lat": 2.6499277,
+    "lng": -75.6352082
+  },
+  {
+    "nombre": "Isnos, Huila",
+    "lat": 1.9301058,
+    "lng": -76.2150064
+  },
+  {
+    "nombre": "La Argentina, Huila",
+    "lat": 2.1985723,
+    "lng": -75.9791154
+  },
+  {
+    "nombre": "La Plata, Huila",
+    "lat": 2.3894154,
+    "lng": -75.8926236
+  },
+  {
+    "nombre": "Nátaga, Huila",
+    "lat": 2.5458659,
+    "lng": -75.8091677
+  },
+  {
+    "nombre": "Neiva, Huila",
+    "lat": 2.9257038,
+    "lng": -75.2893937
+  },
+  {
+    "nombre": "Oporapa, Huila",
+    "lat": 2.0235756,
+    "lng": -75.995126
+  },
+  {
+    "nombre": "Paicol, Huila",
+    "lat": 2.4487125,
+    "lng": -75.7747485
+  },
+  {
+    "nombre": "Palermo, Huila",
+    "lat": 2.8896962,
+    "lng": -75.4346589
+  },
+  {
+    "nombre": "Palestina, Huila",
+    "lat": 1.7229505,
+    "lng": -76.1311882
+  },
+  {
+    "nombre": "Pitalito, Huila",
+    "lat": 1.8447122,
+    "lng": -76.0456886
+  },
+  {
+    "nombre": "Rivera, Huila",
+    "lat": 2.7776396,
+    "lng": -75.2572183
+  },
+  {
+    "nombre": "Saladoblanco, Huila",
+    "lat": 1.993142,
+    "lng": -76.0450355
+  },
+  {
+    "nombre": "San Agustín, Huila",
+    "lat": 1.882076,
+    "lng": -76.2728979
+  },
+  {
+    "nombre": "Santa María, Huila",
+    "lat": 2.9374927,
+    "lng": -75.5867503
+  },
+  {
+    "nombre": "Suaza, Huila",
+    "lat": 1.9772874,
+    "lng": -75.7946272
+  },
+  {
+    "nombre": "Tarqui, Huila",
+    "lat": 2.1136893,
+    "lng": -75.8251742
+  },
+  {
+    "nombre": "Tello, Huila",
+    "lat": 3.067211,
+    "lng": -75.1392845
+  },
+  {
+    "nombre": "Teruel, Huila",
+    "lat": 2.7416333,
+    "lng": -75.5683448
+  },
+  {
+    "nombre": "Tesalia, Huila",
+    "lat": 2.4855806,
+    "lng": -75.7273303
+  },
+  {
+    "nombre": "Timaná, Huila",
+    "lat": 1.9739036,
+    "lng": -75.9318572
+  },
+  {
+    "nombre": "Villavieja, Huila",
+    "lat": 3.2195402,
+    "lng": -75.2190257
+  },
+  {
+    "nombre": "Yaguará, Huila",
+    "lat": 2.6628774,
+    "lng": -75.516008
+  },
+  {
+    "nombre": "Albania, La Guajira",
+    "lat": 11.1577716,
+    "lng": -72.5992388
+  },
+  {
+    "nombre": "Barrancas, La Guajira",
+    "lat": 10.9541684,
+    "lng": -72.7888637
+  },
+  {
+    "nombre": "Dibulla, La Guajira",
+    "lat": 11.2722465,
+    "lng": -73.3114396
+  },
+  {
+    "nombre": "Distracción, La Guajira",
+    "lat": 10.8993688,
+    "lng": -72.8875669
+  },
+  {
+    "nombre": "El Molino, La Guajira",
+    "lat": 10.6523076,
+    "lng": -72.9215565
+  },
+  {
+    "nombre": "Fonseca, La Guajira",
+    "lat": 10.7773005,
+    "lng": -72.7985609
+  },
+  {
+    "nombre": "Hatonuevo, La Guajira",
+    "lat": 11.0675576,
+    "lng": -72.7600808
+  },
+  {
+    "nombre": "La Jagua del Pilar, La Guajira",
+    "lat": 10.5102023,
+    "lng": -73.0709956
+  },
+  {
+    "nombre": "Maicao, La Guajira",
+    "lat": 11.3773054,
+    "lng": -72.2387633
+  },
+  {
+    "nombre": "Manaure, La Guajira",
+    "lat": 11.7771128,
+    "lng": -72.4469366
+  },
+  {
+    "nombre": "Riohacha, La Guajira",
+    "lat": 11.5449387,
+    "lng": -72.9150522
+  },
+  {
+    "nombre": "San Juan del Cesar, La Guajira",
+    "lat": 10.7735312,
+    "lng": -73.0019165
+  },
+  {
+    "nombre": "Uribia, La Guajira",
+    "lat": 11.7148608,
+    "lng": -72.265783
+  },
+  {
+    "nombre": "Urumita, La Guajira",
+    "lat": 10.5555676,
+    "lng": -73.012513
+  },
+  {
+    "nombre": "Villanueva, La Guajira",
+    "lat": 10.6047167,
+    "lng": -72.9820362
+  },
+  {
+    "nombre": "Algarrobo, Magdalena",
+    "lat": 10.1914131,
+    "lng": -74.0618168
+  },
+  {
+    "nombre": "Aracataca, Magdalena",
+    "lat": 10.5906011,
+    "lng": -74.1876803
+  },
+  {
+    "nombre": "Ariguaní, Magdalena",
+    "lat": 9.930279,
+    "lng": -73.9590987
+  },
+  {
+    "nombre": "Cerro de San Antonio, Magdalena",
+    "lat": 10.3269546,
+    "lng": -74.8690124
+  },
+  {
+    "nombre": "Chibolo, Magdalena",
+    "lat": 10.0269357,
+    "lng": -74.6208028
+  },
+  {
+    "nombre": "Chibolo, Magdalena",
+    "lat": 10.0269357,
+    "lng": -74.6208028
+  },
+  {
+    "nombre": "Ciénaga, Magdalena",
+    "lat": 11.0062433,
+    "lng": -74.241022
+  },
+  {
+    "nombre": "Concordia, Magdalena",
+    "lat": 10.2588096,
+    "lng": -74.8341063
+  },
+  {
+    "nombre": "El Banco, Magdalena",
+    "lat": 9.0049173,
+    "lng": -73.9738472
+  },
+  {
+    "nombre": "El Piñón, Magdalena",
+    "lat": 10.4042864,
+    "lng": -74.8243075
+  },
+  {
+    "nombre": "El Retén, Magdalena",
+    "lat": 10.612076,
+    "lng": -74.2695268
+  },
+  {
+    "nombre": "Fundación, Magdalena",
+    "lat": 10.5155669,
+    "lng": -74.1901088
+  },
+  {
+    "nombre": "Guamal, Magdalena",
+    "lat": 9.144026,
+    "lng": -74.2236605
+  },
+  {
+    "nombre": "Nueva Granada, Magdalena",
+    "lat": 9.8018198,
+    "lng": -74.3923786
+  },
+  {
+    "nombre": "Pedraza, Magdalena",
+    "lat": 10.1901696,
+    "lng": -74.9141714
+  },
+  {
+    "nombre": "Pijiño del Carmen, Magdalena",
+    "lat": 9.3304217,
+    "lng": -74.4535166
+  },
+  {
+    "nombre": "Pivijay, Magdalena",
+    "lat": 10.4654031,
+    "lng": -74.6169599
+  },
+  {
+    "nombre": "Plato, Magdalena",
+    "lat": 9.7904163,
+    "lng": -74.7820016
+  },
+  {
+    "nombre": "Pueblo Viejo, Magdalena",
+    "lat": 10.7876917,
+    "lng": -73.9183907
+  },
+  {
+    "nombre": "Remolino, Magdalena",
+    "lat": 10.7020154,
+    "lng": -74.7170111
+  },
+  {
+    "nombre": "Sabanas de San Ángel, Magdalena",
+    "lat": 10.0311352,
+    "lng": -74.2143346
+  },
+  {
+    "nombre": "Salamina, Magdalena",
+    "lat": 10.4902585,
+    "lng": -74.7937782
+  },
+  {
+    "nombre": "San Sebastián de Buenavista, Magdalena",
+    "lat": 9.2397583,
+    "lng": -74.3515536
+  },
+  {
+    "nombre": "San Zenón, Magdalena",
+    "lat": 9.2468063,
+    "lng": -74.497394
+  },
+  {
+    "nombre": "Santa Ana, Magdalena",
+    "lat": 9.3229035,
+    "lng": -74.5696573
+  },
+  {
+    "nombre": "Santa Bárbara de Pinto, Magdalena",
+    "lat": 9.4316572,
+    "lng": -74.70475
+  },
+  {
+    "nombre": "Santa Marta, Magdalena",
+    "lat": 11.2320944,
+    "lng": -74.1950916
+  },
+  {
+    "nombre": "Sitionuevo, Magdalena",
+    "lat": 10.7770014,
+    "lng": -74.7206038
+  },
+  {
+    "nombre": "Tenerife, Magdalena",
+    "lat": 9.9003487,
+    "lng": -74.8589973
+  },
+  {
+    "nombre": "Zapayán, Magdalena",
+    "lat": 10.1682143,
+    "lng": -74.7159253
+  },
+  {
+    "nombre": "Acacías, Meta",
+    "lat": 3.9887317,
+    "lng": -73.767432
+  },
+  {
+    "nombre": "Barranca de Upía, Meta",
+    "lat": 4.5707393,
+    "lng": -72.963415
+  },
+  {
+    "nombre": "Cabuyaro, Meta",
+    "lat": 4.2887655,
+    "lng": -72.7898901
+  },
+  {
+    "nombre": "Castilla la Nueva, Meta",
+    "lat": 3.8275343,
+    "lng": -73.6892805
+  },
+  {
+    "nombre": "Cubarral, Meta",
+    "lat": 3.7943159,
+    "lng": -73.8390382
+  },
+  {
+    "nombre": "Cumaral, Meta",
+    "lat": 4.2711674,
+    "lng": -73.4877694
+  },
+  {
+    "nombre": "El Calvario, Meta",
+    "lat": 4.3518203,
+    "lng": -73.7146617
+  },
+  {
+    "nombre": "El Castillo, Meta",
+    "lat": 3.5647959,
+    "lng": -73.7942913
+  },
+  {
+    "nombre": "El Dorado, Meta",
+    "lat": 3.7393505,
+    "lng": -73.8350537
+  },
+  {
+    "nombre": "Fuente de Oro, Meta",
+    "lat": 3.4639497,
+    "lng": -73.6213964
+  },
+  {
+    "nombre": "Granada, Meta",
+    "lat": 3.548259,
+    "lng": -73.7051174
+  },
+  {
+    "nombre": "Guamal, Meta",
+    "lat": 3.8772676,
+    "lng": -73.770142
+  },
+  {
+    "nombre": "La Macarena, Meta",
+    "lat": 2.1833828,
+    "lng": -73.7857879
+  },
+  {
+    "nombre": "La Uribe, Meta",
+    "lat": 3.2413296,
+    "lng": -74.3510657
+  },
+  {
+    "nombre": "Lejanías, Meta",
+    "lat": 3.5265098,
+    "lng": -74.0226232
+  },
+  {
+    "nombre": "Mapiripán, Meta",
+    "lat": 2.8933959,
+    "lng": -72.132043
+  },
+  {
+    "nombre": "Mesetas, Meta",
+    "lat": 3.3840276,
+    "lng": -74.0438661
+  },
+  {
+    "nombre": "Puerto Concordia, Meta",
+    "lat": 2.625062,
+    "lng": -72.7603145
+  },
+  {
+    "nombre": "Puerto Gaitán, Meta",
+    "lat": 4.3120724,
+    "lng": -72.0829509
+  },
+  {
+    "nombre": "Puerto Lleras, Meta",
+    "lat": 3.2697276,
+    "lng": -73.3756016
+  },
+  {
+    "nombre": "Puerto López, Meta",
+    "lat": 4.085013,
+    "lng": -72.9584671
+  },
+  {
+    "nombre": "Puerto Rico, Meta",
+    "lat": 2.9402122,
+    "lng": -73.2051337
+  },
+  {
+    "nombre": "Restrepo, Meta",
+    "lat": 4.2597265,
+    "lng": -73.5654839
+  },
+  {
+    "nombre": "San Carlos de Guaroa, Meta",
+    "lat": 3.7109225,
+    "lng": -73.2445098
+  },
+  {
+    "nombre": "San Juan de Arama, Meta",
+    "lat": 3.3712076,
+    "lng": -73.8721934
+  },
+  {
+    "nombre": "San Juanito, Meta",
+    "lat": 4.4585632,
+    "lng": -73.6771583
+  },
+  {
+    "nombre": "San Martín, Meta",
+    "lat": 3.6943897,
+    "lng": -73.6952914
+  },
+  {
+    "nombre": "Villavicencio, Meta",
+    "lat": 4.1347644,
+    "lng": -73.6201517
+  },
+  {
+    "nombre": "Vista Hermosa, Meta",
+    "lat": 3.1259824,
+    "lng": -73.7497203
+  },
+  {
+    "nombre": "Aldana, Nariño",
+    "lat": 0.8822547,
+    "lng": -77.7003164
+  },
+  {
+    "nombre": "Ancuyá, Nariño",
+    "lat": 1.2615284,
+    "lng": -77.5147482
+  },
+  {
+    "nombre": "Arboleda, Nariño",
+    "lat": 1.3436034,
+    "lng": -77.5330828
+  },
+  {
+    "nombre": "Barbacoas, Nariño",
+    "lat": 1.6741037,
+    "lng": -78.1364951
+  },
+  {
+    "nombre": "Belén, Nariño",
+    "lat": 1.5961164,
+    "lng": -77.0159361
+  },
+  {
+    "nombre": "Buesaco, Nariño",
+    "lat": 1.384101,
+    "lng": -77.156619
+  },
+  {
+    "nombre": "Chachagüí, Nariño",
+    "lat": 1.3591286,
+    "lng": -77.2826965
+  },
+  {
+    "nombre": "Colón, Nariño",
+    "lat": 1.2137723,
+    "lng": -77.2961018
+  },
+  {
+    "nombre": "Consacá, Nariño",
+    "lat": 1.2082795,
+    "lng": -77.4656149
+  },
+  {
+    "nombre": "Contadero, Nariño",
+    "lat": 0.9109235,
+    "lng": -77.5498508
+  },
+  {
+    "nombre": "Córdoba, Nariño",
+    "lat": 0.8535232,
+    "lng": -77.5179186
+  },
+  {
+    "nombre": "Cuaspud, Nariño",
+    "lat": 0.7728392,
+    "lng": -77.5934039
+  },
+  {
+    "nombre": "Cumbal, Nariño",
+    "lat": 0.9092082,
+    "lng": -77.788906
+  },
+  {
+    "nombre": "Cumbitara, Nariño",
+    "lat": 1.6476758,
+    "lng": -77.5783622
+  },
+  {
+    "nombre": "El Charco, Nariño",
+    "lat": 2.4798209,
+    "lng": -78.110793
+  },
+  {
+    "nombre": "El Peñol, Nariño",
+    "lat": 1.4539198,
+    "lng": -77.4403098
+  },
+  {
+    "nombre": "El Rosario, Nariño",
+    "lat": 1.7432036,
+    "lng": -77.3350718
+  },
+  {
+    "nombre": "El Tablón, Nariño",
+    "lat": 1.6377965,
+    "lng": -76.9596243
+  },
+  {
+    "nombre": "El Tambo, Nariño",
+    "lat": 1.4081573,
+    "lng": -77.3918509
+  },
+  {
+    "nombre": "Francisco Pizarro, Nariño",
+    "lat": 2.039908,
+    "lng": -78.6581414
+  },
+  {
+    "nombre": "Funes, Nariño",
+    "lat": 0.9999978,
+    "lng": -77.4489436
+  },
+  {
+    "nombre": "Guachucal, Nariño",
+    "lat": 0.9573434,
+    "lng": -77.7333581
+  },
+  {
+    "nombre": "Guaitarilla, Nariño",
+    "lat": 1.1305245,
+    "lng": -77.5483421
+  },
+  {
+    "nombre": "Gualmatán, Nariño",
+    "lat": 0.9200211,
+    "lng": -77.5661383
+  },
+  {
+    "nombre": "Iles, Nariño",
+    "lat": 0.9698295,
+    "lng": -77.5201636
+  },
+  {
+    "nombre": "Imués, Nariño",
+    "lat": 1.0554687,
+    "lng": -77.4958319
+  },
+  {
+    "nombre": "Ipiales, Nariño",
+    "lat": 0.8236934,
+    "lng": -77.6349296
+  },
+  {
+    "nombre": "La Cruz, Nariño",
+    "lat": 1.6003354,
+    "lng": -76.9711667
+  },
+  {
+    "nombre": "La Florida, Nariño",
+    "lat": 1.2986074,
+    "lng": -77.4044845
+  },
+  {
+    "nombre": "La Llanada, Nariño",
+    "lat": 1.4731983,
+    "lng": -77.580349
+  },
+  {
+    "nombre": "La Tola, Nariño",
+    "lat": 2.3995791,
+    "lng": -78.1882925
+  },
+  {
+    "nombre": "La Unión, Nariño",
+    "lat": 1.5989976,
+    "lng": -77.1305999
+  },
+  {
+    "nombre": "Leiva, Nariño",
+    "lat": 1.9356061,
+    "lng": -77.3068188
+  },
+  {
+    "nombre": "Linares, Nariño",
+    "lat": 1.3516458,
+    "lng": -77.5235169
+  },
+  {
+    "nombre": "Los Andes, Nariño",
+    "lat": 1.4932789,
+    "lng": -77.5210552
+  },
+  {
+    "nombre": "Magüí Payán, Nariño",
+    "lat": 1.7648723,
+    "lng": -78.1834855
+  },
+  {
+    "nombre": "Mallama, Nariño",
+    "lat": 1.1420026,
+    "lng": -77.8644233
+  },
+  {
+    "nombre": "Mosquera, Nariño",
+    "lat": 2.507865,
+    "lng": -78.4516461
+  },
+  {
+    "nombre": "Nariño, Nariño",
+    "lat": 1.2906755,
+    "lng": -77.3578572
+  },
+  {
+    "nombre": "Ospina, Nariño",
+    "lat": 1.0586533,
+    "lng": -77.5656698
+  },
+  {
+    "nombre": "Pasto, Nariño",
+    "lat": 1.2140275,
+    "lng": -77.2785096
+  },
+  {
+    "nombre": "Policarpa, Nariño",
+    "lat": 1.6284964,
+    "lng": -77.4598774
+  },
+  {
+    "nombre": "Potosí, Nariño",
+    "lat": 0.8072344,
+    "lng": -77.573045
+  },
+  {
+    "nombre": "Providencia, Nariño",
+    "lat": 1.2391932,
+    "lng": -77.5973656
+  },
+  {
+    "nombre": "Puerres, Nariño",
+    "lat": 0.8855995,
+    "lng": -77.5019248
+  },
+  {
+    "nombre": "Pupiales, Nariño",
+    "lat": 0.8707969,
+    "lng": -77.6419358
+  },
+  {
+    "nombre": "Ricaurte, Nariño",
+    "lat": 1.213249,
+    "lng": -77.9945007
+  },
+  {
+    "nombre": "Roberto Payán, Nariño",
+    "lat": 1.6976542,
+    "lng": -78.2457379
+  },
+  {
+    "nombre": "Samaniego, Nariño",
+    "lat": 1.3385009,
+    "lng": -77.5929381
+  },
+  {
+    "nombre": "San Bernardo, Nariño",
+    "lat": 1.5158752,
+    "lng": -77.0457718
+  },
+  {
+    "nombre": "San Lorenzo, Nariño",
+    "lat": 1.5031548,
+    "lng": -77.2153366
+  },
+  {
+    "nombre": "San Pablo, Nariño",
+    "lat": 1.6684528,
+    "lng": -77.0109928
+  },
+  {
+    "nombre": "San Pedro de Cartago, Nariño",
+    "lat": 1.5524899,
+    "lng": -77.1200173
+  },
+  {
+    "nombre": "Sandoná, Nariño",
+    "lat": 1.2863843,
+    "lng": -77.4710722
+  },
+  {
+    "nombre": "Santa Bárbara, Nariño",
+    "lat": 2.4486619,
+    "lng": -77.9797375
+  },
+  {
+    "nombre": "Santacruz, Nariño",
+    "lat": 1.2222483,
+    "lng": -77.6766735
+  },
+  {
+    "nombre": "Sapuyes, Nariño",
+    "lat": 1.0377201,
+    "lng": -77.6209192
+  },
+  {
+    "nombre": "Taminango, Nariño",
+    "lat": 1.5696216,
+    "lng": -77.2772963
+  },
+  {
+    "nombre": "Tangua, Nariño",
+    "lat": 1.0941269,
+    "lng": -77.3955941
+  },
+  {
+    "nombre": "Tumaco, Nariño",
+    "lat": 1.8061434,
+    "lng": -78.7635572
+  },
+  {
+    "nombre": "Túquerres, Nariño",
+    "lat": 1.0877024,
+    "lng": -77.6188242
+  },
+  {
+    "nombre": "Yacuanquer, Nariño",
+    "lat": 1.1158819,
+    "lng": -77.4017561
+  },
+  {
+    "nombre": "Ábrego, Norte de Santander",
+    "lat": 8.0818887,
+    "lng": -73.2208717
+  },
+  {
+    "nombre": "Arboledas, Norte de Santander",
+    "lat": 7.6707185,
+    "lng": -72.7237135
+  },
+  {
+    "nombre": "Bochalema, Norte de Santander",
+    "lat": 7.61236,
+    "lng": -72.6471433
+  },
+  {
+    "nombre": "Bucarasica, Norte de Santander",
+    "lat": 8.0394871,
+    "lng": -72.8669475
+  },
+  {
+    "nombre": "Cáchira, Norte de Santander",
+    "lat": 7.7419001,
+    "lng": -73.0485225
+  },
+  {
+    "nombre": "Cácota, Norte de Santander",
+    "lat": 7.2684542,
+    "lng": -72.6419655
+  },
+  {
+    "nombre": "Chinácota, Norte de Santander",
+    "lat": 7.6084113,
+    "lng": -72.6002682
+  },
+  {
+    "nombre": "Chitagá, Norte de Santander",
+    "lat": 7.1381899,
+    "lng": -72.6647954
+  },
+  {
+    "nombre": "Convención, Norte de Santander",
+    "lat": 8.4662543,
+    "lng": -73.3362193
+  },
+  {
+    "nombre": "Cúcuta, Norte de Santander",
+    "lat": 7.8971458,
+    "lng": -72.5080387
+  },
+  {
+    "nombre": "Cucutilla, Norte de Santander",
+    "lat": 7.539501,
+    "lng": -72.77276
+  },
+  {
+    "nombre": "Duranía, Norte de Santander",
+    "lat": 7.7141729,
+    "lng": -72.6566936
+  },
+  {
+    "nombre": "El Carmen, Norte de Santander",
+    "lat": 8.5108096,
+    "lng": -73.4468071
+  },
+  {
+    "nombre": "El Tarra, Norte de Santander",
+    "lat": 8.0446682,
+    "lng": -73.0871122
+  },
+  {
+    "nombre": "Gramalote, Norte de Santander",
+    "lat": 7.9154518,
+    "lng": -72.7865294
+  },
+  {
+    "nombre": "Hacarí, Norte de Santander",
+    "lat": 8.3208498,
+    "lng": -73.1453266
+  },
+  {
+    "nombre": "Herrán, Norte de Santander",
+    "lat": 7.5068955,
+    "lng": -72.4831948
+  },
+  {
+    "nombre": "La Esperanza, Norte de Santander",
+    "lat": 8.1954115,
+    "lng": -72.8270613
+  },
+  {
+    "nombre": "La Playa de Belén, Norte de Santander",
+    "lat": 8.2137268,
+    "lng": -73.2381726
+  },
+  {
+    "nombre": "Labateca, Norte de Santander",
+    "lat": 7.2990588,
+    "lng": -72.4957735
+  },
+  {
+    "nombre": "Los Patios, Norte de Santander",
+    "lat": 7.8342202,
+    "lng": -72.5059128
+  },
+  {
+    "nombre": "Lourdes, Norte de Santander",
+    "lat": 7.9443819,
+    "lng": -72.8334804
+  },
+  {
+    "nombre": "Mutiscua, Norte de Santander",
+    "lat": 7.3009393,
+    "lng": -72.7467237
+  },
+  {
+    "nombre": "Ocaña, Norte de Santander",
+    "lat": 8.2351887,
+    "lng": -73.3538441
+  },
+  {
+    "nombre": "Pamplona, Norte de Santander",
+    "lat": 7.3763807,
+    "lng": -72.6482628
+  },
+  {
+    "nombre": "Pamplonita, Norte de Santander",
+    "lat": 7.437016,
+    "lng": -72.6380198
+  },
+  {
+    "nombre": "Puerto Santander, Norte de Santander",
+    "lat": 8.3546568,
+    "lng": -72.4145867
+  },
+  {
+    "nombre": "Ragonvalia, Norte de Santander",
+    "lat": 7.5778992,
+    "lng": -72.4765555
+  },
+  {
+    "nombre": "San Calixto, Norte de Santander",
+    "lat": 8.4028985,
+    "lng": -73.2075592
+  },
+  {
+    "nombre": "San Cayetano, Norte de Santander",
+    "lat": 8.4780523,
+    "lng": -73.341838
+  },
+  {
+    "nombre": "Santiago, Norte de Santander",
+    "lat": 7.8644479,
+    "lng": -72.7165562
+  },
+  {
+    "nombre": "Sardinata, Norte de Santander",
+    "lat": 8.084097,
+    "lng": -72.8000665
+  },
+  {
+    "nombre": "Tibú, Norte de Santander",
+    "lat": 8.6371362,
+    "lng": -72.7344612
+  },
+  {
+    "nombre": "Toledo, Norte de Santander",
+    "lat": 7.310534,
+    "lng": -72.4837963
+  },
+  {
+    "nombre": "Villa Caro, Norte de Santander",
+    "lat": 7.9138728,
+    "lng": -72.9724555
+  },
+  {
+    "nombre": "Villa del Rosario, Norte de Santander",
+    "lat": 7.8318933,
+    "lng": -72.4717181
+  },
+  {
+    "nombre": "Colón, Putumayo",
+    "lat": 1.1894909,
+    "lng": -76.9725122
+  },
+  {
+    "nombre": "Mocoa, Putumayo",
+    "lat": 1.1466295,
+    "lng": -76.6482327
+  },
+  {
+    "nombre": "Orito, Putumayo",
+    "lat": 0.6686314,
+    "lng": -76.8749187
+  },
+  {
+    "nombre": "Puerto Asís, Putumayo",
+    "lat": 0.4979751,
+    "lng": -76.4951418
+  },
+  {
+    "nombre": "Puerto Caicedo, Putumayo",
+    "lat": 0.6841941,
+    "lng": -76.6044095
+  },
+  {
+    "nombre": "Puerto Guzmán, Putumayo",
+    "lat": 0.9648984,
+    "lng": -76.407834
+  },
+  {
+    "nombre": "Puerto Leguízamo, Putumayo",
+    "lat": -0.1949861,
+    "lng": -74.7806975
+  },
+  {
+    "nombre": "San Francisco, Putumayo",
+    "lat": 1.1748696,
+    "lng": -76.8788636
+  },
+  {
+    "nombre": "San Miguel, Putumayo",
+    "lat": 0.34308,
+    "lng": -76.9122291
+  },
+  {
+    "nombre": "Santiago, Putumayo",
+    "lat": 1.146773,
+    "lng": -77.0024767
+  },
+  {
+    "nombre": "Sibundoy, Putumayo",
+    "lat": 1.2054134,
+    "lng": -76.9160037
+  },
+  {
+    "nombre": "Valle del Guamuez, Putumayo",
+    "lat": 0.4251351,
+    "lng": -76.9037138
+  },
+  {
+    "nombre": "Villagarzón, Putumayo",
+    "lat": 1.0306708,
+    "lng": -76.61691
+  },
+  {
+    "nombre": "Armenia, Quindío",
+    "lat": 4.536307,
+    "lng": -75.6723751
+  },
+  {
+    "nombre": "Buenavista, Quindío",
+    "lat": 4.3599158,
+    "lng": -75.7386779
+  },
+  {
+    "nombre": "Calarcá, Quindío",
+    "lat": 4.5305516,
+    "lng": -75.6406048
+  },
+  {
+    "nombre": "Circasia, Quindío",
+    "lat": 4.6200746,
+    "lng": -75.6347576
+  },
+  {
+    "nombre": "Córdoba, Quindío",
+    "lat": 4.3900715,
+    "lng": -75.6858247
+  },
+  {
+    "nombre": "Filandia, Quindío",
+    "lat": 4.6750767,
+    "lng": -75.6579957
+  },
+  {
+    "nombre": "Génova, Quindío",
+    "lat": 4.2063589,
+    "lng": -75.7904545
+  },
+  {
+    "nombre": "La Tebaida, Quindío",
+    "lat": 4.4512175,
+    "lng": -75.7887314
+  },
+  {
+    "nombre": "Montenegro, Quindío",
+    "lat": 4.5664176,
+    "lng": -75.7507081
+  },
+  {
+    "nombre": "Pijao, Quindío",
+    "lat": 4.3341444,
+    "lng": -75.7038062
+  },
+  {
+    "nombre": "Quimbaya, Quindío",
+    "lat": 4.6231176,
+    "lng": -75.7637346
+  },
+  {
+    "nombre": "Salento, Quindío",
+    "lat": 4.6373012,
+    "lng": -75.569799
+  },
+  {
+    "nombre": "Apía, Risaralda",
+    "lat": 5.1065543,
+    "lng": -75.9425022
+  },
+  {
+    "nombre": "Balboa, Risaralda",
+    "lat": 4.9510551,
+    "lng": -75.9591466
+  },
+  {
+    "nombre": "Belén de Umbría, Risaralda",
+    "lat": 5.2009093,
+    "lng": -75.8689928
+  },
+  {
+    "nombre": "Dosquebradas, Risaralda",
+    "lat": 4.8339551,
+    "lng": -75.6713013
+  },
+  {
+    "nombre": "Guática, Risaralda",
+    "lat": 5.3157895,
+    "lng": -75.7994422
+  },
+  {
+    "nombre": "La Celia, Risaralda",
+    "lat": 5.00335,
+    "lng": -76.0031995
+  },
+  {
+    "nombre": "La Virginia, Risaralda",
+    "lat": 4.8995993,
+    "lng": -75.8825661
+  },
+  {
+    "nombre": "Marsella, Risaralda",
+    "lat": 4.9367579,
+    "lng": -75.7390439
+  },
+  {
+    "nombre": "Mistrató, Risaralda",
+    "lat": 5.29595,
+    "lng": -75.8826506
+  },
+  {
+    "nombre": "Pereira, Risaralda",
+    "lat": 4.7854606,
+    "lng": -75.788322
+  },
+  {
+    "nombre": "Pueblo Rico, Risaralda",
+    "lat": 5.2215828,
+    "lng": -76.0302092
+  },
+  {
+    "nombre": "Quinchía, Risaralda",
+    "lat": 5.340678,
+    "lng": -75.7306033
+  },
+  {
+    "nombre": "Santa Rosa de Cabal, Risaralda",
+    "lat": 4.8650708,
+    "lng": -75.6211554
+  },
+  {
+    "nombre": "Santuario, Risaralda",
+    "lat": 5.0732065,
+    "lng": -75.9624682
+  },
+  {
+    "nombre": "San Andrés, San Andrés y Providencia",
+    "lat": 12.5830104,
+    "lng": -81.6975682
+  },
+  {
+    "nombre": "Aguada, Santander",
+    "lat": 6.162366,
+    "lng": -73.5215686
+  },
+  {
+    "nombre": "Albania, Santander",
+    "lat": 5.7587654,
+    "lng": -73.9151617
+  },
+  {
+    "nombre": "Aratoca, Santander",
+    "lat": 6.6945729,
+    "lng": -73.0187027
+  },
+  {
+    "nombre": "Barbosa, Santander",
+    "lat": 5.9326035,
+    "lng": -73.6124368
+  },
+  {
+    "nombre": "Barichara, Santander",
+    "lat": 6.6357156,
+    "lng": -73.2234417
+  },
+  {
+    "nombre": "Barrancabermeja, Santander",
+    "lat": 7.0673313,
+    "lng": -73.8525627
+  },
+  {
+    "nombre": "Betulia, Santander",
+    "lat": 6.9006397,
+    "lng": -73.2835591
+  },
+  {
+    "nombre": "Bolívar, Santander",
+    "lat": 5.9899805,
+    "lng": -73.770548
+  },
+  {
+    "nombre": "Bucaramanga, Santander",
+    "lat": 7.1274697,
+    "lng": -73.1191168
+  },
+  {
+    "nombre": "Cabrera, Santander",
+    "lat": 6.5933521,
+    "lng": -73.2463975
+  },
+  {
+    "nombre": "California, Santander",
+    "lat": 7.3480915,
+    "lng": -72.9459294
+  },
+  {
+    "nombre": "Capitanejo, Santander",
+    "lat": 6.5291798,
+    "lng": -72.6982619
+  },
+  {
+    "nombre": "Carcasí, Santander",
+    "lat": 6.6273516,
+    "lng": -72.6260967
+  },
+  {
+    "nombre": "Cepitá, Santander",
+    "lat": 6.7534688,
+    "lng": -72.9746494
+  },
+  {
+    "nombre": "Cerrito, Santander",
+    "lat": 6.8435992,
+    "lng": -72.6939627
+  },
+  {
+    "nombre": "Charalá, Santander",
+    "lat": 6.2881742,
+    "lng": -73.148289
+  },
+  {
+    "nombre": "Charta, Santander",
+    "lat": 7.2807986,
+    "lng": -72.9682259
+  },
+  {
+    "nombre": "Chima, Santander",
+    "lat": 6.3443969,
+    "lng": -73.3727428
+  },
+  {
+    "nombre": "Chipatá, Santander",
+    "lat": 6.0624774,
+    "lng": -73.6372532
+  },
+  {
+    "nombre": "Cimitarra, Santander",
+    "lat": 6.3145415,
+    "lng": -73.9496809
+  },
+  {
+    "nombre": "Concepción, Santander",
+    "lat": 6.7682934,
+    "lng": -72.694484
+  },
+  {
+    "nombre": "Confines, Santander",
+    "lat": 6.3559746,
+    "lng": -73.2409632
+  },
+  {
+    "nombre": "Contratación, Santander",
+    "lat": 6.290737,
+    "lng": -73.4745564
+  },
+  {
+    "nombre": "Coromoro, Santander",
+    "lat": 6.2956298,
+    "lng": -73.0407055
+  },
+  {
+    "nombre": "Curití, Santander",
+    "lat": 6.6067027,
+    "lng": -73.069209
+  },
+  {
+    "nombre": "El Carmen de Chucurí, Santander",
+    "lat": 6.6986924,
+    "lng": -73.5115695
+  },
+  {
+    "nombre": "El Guacamayo, Santander",
+    "lat": 6.2452658,
+    "lng": -73.4975606
+  },
+  {
+    "nombre": "El Peñón, Santander",
+    "lat": 6.0557588,
+    "lng": -73.8149932
+  },
+  {
+    "nombre": "El Playón, Santander",
+    "lat": 7.470891,
+    "lng": -73.2033093
+  },
+  {
+    "nombre": "El Socorro, Santander",
+    "lat": 6.470518,
+    "lng": -73.2623187
+  },
+  {
+    "nombre": "Encino, Santander",
+    "lat": 6.1380098,
+    "lng": -73.0986366
+  },
+  {
+    "nombre": "Enciso, Santander",
+    "lat": 6.6682065,
+    "lng": -72.699343
+  },
+  {
+    "nombre": "Florián, Santander",
+    "lat": 5.8024191,
+    "lng": -73.9709342
+  },
+  {
+    "nombre": "Floridablanca, Santander",
+    "lat": 7.0625677,
+    "lng": -73.0859086
+  },
+  {
+    "nombre": "Galán, Santander",
+    "lat": 6.6379098,
+    "lng": -73.2874531
+  },
+  {
+    "nombre": "Gámbita, Santander",
+    "lat": 5.9458568,
+    "lng": -73.3453501
+  },
+  {
+    "nombre": "Girón, Santander",
+    "lat": 7.0732333,
+    "lng": -73.1689196
+  },
+  {
+    "nombre": "Guaca, Santander",
+    "lat": 6.8760761,
+    "lng": -72.8557642
+  },
+  {
+    "nombre": "Guadalupe, Santander",
+    "lat": 6.2468169,
+    "lng": -73.4181815
+  },
+  {
+    "nombre": "Guapotá, Santander",
+    "lat": 6.3083058,
+    "lng": -73.3212326
+  },
+  {
+    "nombre": "Guavatá, Santander",
+    "lat": 5.9542651,
+    "lng": -73.6997882
+  },
+  {
+    "nombre": "Güepsa, Santander",
+    "lat": 6.0254017,
+    "lng": -73.5725056
+  },
+  {
+    "nombre": "Hato, Santander",
+    "lat": 6.5426272,
+    "lng": -73.3077874
+  },
+  {
+    "nombre": "Jesús María, Santander",
+    "lat": 5.8765585,
+    "lng": -73.7827775
+  },
+  {
+    "nombre": "Jordán, Santander",
+    "lat": 6.7327046,
+    "lng": -73.096113
+  },
+  {
+    "nombre": "La Belleza, Santander",
+    "lat": 5.8588396,
+    "lng": -73.9658291
+  },
+  {
+    "nombre": "La Paz, Santander",
+    "lat": 6.1785935,
+    "lng": -73.5895841
+  },
+  {
+    "nombre": "Landázuri, Santander",
+    "lat": 6.2205334,
+    "lng": -73.8113754
+  },
+  {
+    "nombre": "Lebrija, Santander",
+    "lat": 7.1138415,
+    "lng": -73.2174056
+  },
+  {
+    "nombre": "Los Santos, Santander",
+    "lat": 6.7559026,
+    "lng": -73.1018206
+  },
+  {
+    "nombre": "Macaravita, Santander",
+    "lat": 6.5060841,
+    "lng": -72.5925353
+  },
+  {
+    "nombre": "Málaga, Santander",
+    "lat": 6.699661,
+    "lng": -72.7324563
+  },
+  {
+    "nombre": "Matanza, Santander",
+    "lat": 7.3230808,
+    "lng": -73.0155679
+  },
+  {
+    "nombre": "Mogotes, Santander",
+    "lat": 6.4761206,
+    "lng": -72.9706199
+  },
+  {
+    "nombre": "Molagavita, Santander",
+    "lat": 6.6737293,
+    "lng": -72.8091136
+  },
+  {
+    "nombre": "Ocamonte, Santander",
+    "lat": 6.3407198,
+    "lng": -73.1220259
+  },
+  {
+    "nombre": "Oiba, Santander",
+    "lat": 6.2641995,
+    "lng": -73.2987804
+  },
+  {
+    "nombre": "Onzaga, Santander",
+    "lat": 6.3438974,
+    "lng": -72.816606
+  },
+  {
+    "nombre": "Palmar, Santander",
+    "lat": 6.538635,
+    "lng": -73.2916928
+  },
+  {
+    "nombre": "Palmas del Socorro, Santander",
+    "lat": 6.4066247,
+    "lng": -73.287918
+  },
+  {
+    "nombre": "Páramo, Santander",
+    "lat": 6.416541,
+    "lng": -73.1693988
+  },
+  {
+    "nombre": "Piedecuesta, Santander",
+    "lat": 6.9874808,
+    "lng": -73.0504129
+  },
+  {
+    "nombre": "Pinchote, Santander",
+    "lat": 6.5322505,
+    "lng": -73.1732298
+  },
+  {
+    "nombre": "Puente Nacional, Santander",
+    "lat": 5.8770962,
+    "lng": -73.6791063
+  },
+  {
+    "nombre": "Puerto Parra, Santander",
+    "lat": 6.651506,
+    "lng": -74.0564489
+  },
+  {
+    "nombre": "Puerto Wilches, Santander",
+    "lat": 7.3480175,
+    "lng": -73.8979783
+  },
+  {
+    "nombre": "Rionegro, Santander",
+    "lat": 7.2646312,
+    "lng": -73.1502802
+  },
+  {
+    "nombre": "Sabana de Torres, Santander",
+    "lat": 7.3939416,
+    "lng": -73.4998859
+  },
+  {
+    "nombre": "San Andrés, Santander",
+    "lat": 6.8100668,
+    "lng": -72.8506351
+  },
+  {
+    "nombre": "San Benito, Santander",
+    "lat": 6.1265486,
+    "lng": -73.5095985
+  },
+  {
+    "nombre": "San Gil, Santander",
+    "lat": 6.5552856,
+    "lng": -73.1312353
+  },
+  {
+    "nombre": "San Joaquín, Santander",
+    "lat": 6.427589,
+    "lng": -72.8676531
+  },
+  {
+    "nombre": "San José de Miranda, Santander",
+    "lat": 6.6583869,
+    "lng": -72.7334887
+  },
+  {
+    "nombre": "San Miguel, Santander",
+    "lat": 6.5759286,
+    "lng": -72.6455489
+  },
+  {
+    "nombre": "San Vicente de Chucurí, Santander",
+    "lat": 6.8811388,
+    "lng": -73.410626
+  },
+  {
+    "nombre": "Santa Bárbara, Santander",
+    "lat": 6.9897665,
+    "lng": -72.9075119
+  },
+  {
+    "nombre": "Santa Helena del Opón, Santander",
+    "lat": 6.3387975,
+    "lng": -73.616366
+  },
+  {
+    "nombre": "Simacota, Santander",
+    "lat": 6.4435088,
+    "lng": -73.3374205
+  },
+  {
+    "nombre": "Suaita, Santander",
+    "lat": 6.1032652,
+    "lng": -73.4401725
+  },
+  {
+    "nombre": "Sucre, Santander",
+    "lat": 5.9188103,
+    "lng": -73.7912556
+  },
+  {
+    "nombre": "Suratá, Santander",
+    "lat": 7.3664929,
+    "lng": -72.9847362
+  },
+  {
+    "nombre": "Tona, Santander",
+    "lat": 7.2020629,
+    "lng": -72.9663733
+  },
+  {
+    "nombre": "Valle de San José, Santander",
+    "lat": 6.4480153,
+    "lng": -73.1443007
+  },
+  {
+    "nombre": "Vélez, Santander",
+    "lat": 6.0123632,
+    "lng": -73.6729598
+  },
+  {
+    "nombre": "Vetas, Santander",
+    "lat": 7.3092643,
+    "lng": -72.8718075
+  },
+  {
+    "nombre": "Villanueva, Santander",
+    "lat": 6.6712394,
+    "lng": -73.1753984
+  },
+  {
+    "nombre": "Zapatoca, Santander",
+    "lat": 6.8166596,
+    "lng": -73.2686529
+  },
+  {
+    "nombre": "Buenavista, Sucre",
+    "lat": 9.3196186,
+    "lng": -74.9745867
+  },
+  {
+    "nombre": "Caimito, Sucre",
+    "lat": 8.790591,
+    "lng": -75.1163176
+  },
+  {
+    "nombre": "Chalán, Sucre",
+    "lat": 9.5423971,
+    "lng": -75.3129471
+  },
+  {
+    "nombre": "Colosó, Sucre",
+    "lat": 9.4941082,
+    "lng": -75.3530874
+  },
+  {
+    "nombre": "Corozal, Sucre",
+    "lat": 9.3192389,
+    "lng": -75.2947262
+  },
+  {
+    "nombre": "Coveñas, Sucre",
+    "lat": 9.4017581,
+    "lng": -75.6787017
+  },
+  {
+    "nombre": "El Roble, Sucre",
+    "lat": 9.1037704,
+    "lng": -75.1952621
+  },
+  {
+    "nombre": "Galeras, Sucre",
+    "lat": 9.160911,
+    "lng": -75.0479142
+  },
+  {
+    "nombre": "Guaranda, Sucre",
+    "lat": 8.4674975,
+    "lng": -74.535799
+  },
+  {
+    "nombre": "La Unión, Sucre",
+    "lat": 8.851812,
+    "lng": -75.2804647
+  },
+  {
+    "nombre": "Los Palmitos, Sucre",
+    "lat": 9.3805529,
+    "lng": -75.2681334
+  },
+  {
+    "nombre": "Majagual, Sucre",
+    "lat": 8.5416242,
+    "lng": -74.6284175
+  },
+  {
+    "nombre": "Morroa, Sucre",
+    "lat": 9.3344096,
+    "lng": -75.305435
+  },
+  {
+    "nombre": "Ovejas, Sucre",
+    "lat": 9.5267021,
+    "lng": -75.2293968
+  },
+  {
+    "nombre": "Sampués, Sucre",
+    "lat": 9.1845583,
+    "lng": -75.3802368
+  },
+  {
+    "nombre": "San Antonio de Palmito, Sucre",
+    "lat": 9.3318248,
+    "lng": -75.5422877
+  },
+  {
+    "nombre": "San Benito Abad, Sucre",
+    "lat": 8.9293556,
+    "lng": -75.0269099
+  },
+  {
+    "nombre": "San Juan de Betulia, Sucre",
+    "lat": 9.273499,
+    "lng": -75.2431182
+  },
+  {
+    "nombre": "San Marcos, Sucre",
+    "lat": 8.6618609,
+    "lng": -75.1307644
+  },
+  {
+    "nombre": "San Onofre, Sucre",
+    "lat": 9.7386264,
+    "lng": -75.5234228
+  },
+  {
+    "nombre": "San Pedro, Sucre",
+    "lat": 9.3961982,
+    "lng": -75.0638639
+  },
+  {
+    "nombre": "Sincé, Sucre",
+    "lat": 9.2440111,
+    "lng": -75.1474036
+  },
+  {
+    "nombre": "Sincelejo, Sucre",
+    "lat": 9.2973386,
+    "lng": -75.3926601
+  },
+  {
+    "nombre": "Sucre, Sucre",
+    "lat": 8.8119729,
+    "lng": -74.7209745
+  },
+  {
+    "nombre": "Tolú, Sucre",
+    "lat": 9.5241138,
+    "lng": -75.5841794
+  },
+  {
+    "nombre": "Alpujarra, Tolima",
+    "lat": 3.3910327,
+    "lng": -74.9326005
+  },
+  {
+    "nombre": "Alvarado, Tolima",
+    "lat": 4.567169,
+    "lng": -74.9538251
+  },
+  {
+    "nombre": "Ambalema, Tolima",
+    "lat": 4.7835866,
+    "lng": -74.7643927
+  },
+  {
+    "nombre": "Anzoátegui, Tolima",
+    "lat": 4.6311631,
+    "lng": -75.094827
+  },
+  {
+    "nombre": "Armero, Tolima",
+    "lat": 5.0301119,
+    "lng": -74.8835029
+  },
+  {
+    "nombre": "Ataco, Tolima",
+    "lat": 3.5912171,
+    "lng": -75.3819459
+  },
+  {
+    "nombre": "Cajamarca, Tolima",
+    "lat": 4.4419656,
+    "lng": -75.4268205
+  },
+  {
+    "nombre": "Carmen de Apicalá, Tolima",
+    "lat": 4.1474415,
+    "lng": -74.7205105
+  },
+  {
+    "nombre": "Casabianca, Tolima",
+    "lat": 5.0046769,
+    "lng": -75.1948929
+  },
+  {
+    "nombre": "Chaparral, Tolima",
+    "lat": 3.7245851,
+    "lng": -75.485156
+  },
+  {
+    "nombre": "Coello, Tolima",
+    "lat": 4.2880723,
+    "lng": -74.8981694
+  },
+  {
+    "nombre": "Coyaima, Tolima",
+    "lat": 3.7993906,
+    "lng": -75.1945858
+  },
+  {
+    "nombre": "Cunday, Tolima",
+    "lat": 4.0606992,
+    "lng": -74.6919135
+  },
+  {
+    "nombre": "Dolores, Tolima",
+    "lat": 3.540909,
+    "lng": -74.895345
+  },
+  {
+    "nombre": "El Espinal, Tolima",
+    "lat": 3.6461987,
+    "lng": -75.3992722
+  },
+  {
+    "nombre": "Falán, Tolima",
+    "lat": 5.1240227,
+    "lng": -74.9516185
+  },
+  {
+    "nombre": "Flandes, Tolima",
+    "lat": 4.2864999,
+    "lng": -74.813697
+  },
+  {
+    "nombre": "Fresno, Tolima",
+    "lat": 5.1516594,
+    "lng": -75.0366354
+  },
+  {
+    "nombre": "Guamo, Tolima",
+    "lat": 4.0303906,
+    "lng": -74.9679007
+  },
+  {
+    "nombre": "Herveo, Tolima",
+    "lat": 5.049223,
+    "lng": -75.2398685
+  },
+  {
+    "nombre": "Honda, Tolima",
+    "lat": 5.210419,
+    "lng": -74.7361921
+  },
+  {
+    "nombre": "Ibagué, Tolima",
+    "lat": 4.4386033,
+    "lng": -75.2108857
+  },
+  {
+    "nombre": "Icononzo, Tolima",
+    "lat": 4.1776149,
+    "lng": -74.5330517
+  },
+  {
+    "nombre": "Lérida, Tolima",
+    "lat": 4.8609666,
+    "lng": -74.9109405
+  },
+  {
+    "nombre": "Líbano, Tolima",
+    "lat": 4.9229399,
+    "lng": -75.0647738
+  },
+  {
+    "nombre": "Mariquita, Tolima",
+    "lat": 5.1974195,
+    "lng": -74.8939527
+  },
+  {
+    "nombre": "Melgar, Tolima",
+    "lat": 4.2039758,
+    "lng": -74.6429479
+  },
+  {
+    "nombre": "Murillo, Tolima",
+    "lat": 4.8248173,
+    "lng": -75.2349544
+  },
+  {
+    "nombre": "Natagaima, Tolima",
+    "lat": 3.6241727,
+    "lng": -75.0930613
+  },
+  {
+    "nombre": "Ortega, Tolima",
+    "lat": 3.9340209,
+    "lng": -75.2212672
+  },
+  {
+    "nombre": "Palocabildo, Tolima",
+    "lat": 5.1219918,
+    "lng": -75.0222273
+  },
+  {
+    "nombre": "Piedras, Tolima",
+    "lat": 4.5429776,
+    "lng": -74.8788788
+  },
+  {
+    "nombre": "Planadas, Tolima",
+    "lat": 3.1973487,
+    "lng": -75.6446464
+  },
+  {
+    "nombre": "Prado, Tolima",
+    "lat": 3.7507154,
+    "lng": -74.9298286
+  },
+  {
+    "nombre": "Purificación, Tolima",
+    "lat": 3.8582108,
+    "lng": -74.9308216
+  },
+  {
+    "nombre": "Rioblanco, Tolima",
+    "lat": 3.5310723,
+    "lng": -75.6452086
+  },
+  {
+    "nombre": "Roncesvalles, Tolima",
+    "lat": 4.011212,
+    "lng": -75.6053126
+  },
+  {
+    "nombre": "Rovira, Tolima",
+    "lat": 4.2393393,
+    "lng": -75.2400005
+  },
+  {
+    "nombre": "Saldaña, Tolima",
+    "lat": 3.9292831,
+    "lng": -75.0148462
+  },
+  {
+    "nombre": "San Antonio, Tolima",
+    "lat": 3.9142132,
+    "lng": -75.4794493
+  },
+  {
+    "nombre": "San Luis, Tolima",
+    "lat": 4.1341381,
+    "lng": -75.0946957
+  },
+  {
+    "nombre": "Santa Isabel, Tolima",
+    "lat": 4.714425,
+    "lng": -75.098832
+  },
+  {
+    "nombre": "Suárez, Tolima",
+    "lat": 4.0484889,
+    "lng": -74.833034
+  },
+  {
+    "nombre": "Valle de San Juan, Tolima",
+    "lat": 4.2003577,
+    "lng": -75.1180693
+  },
+  {
+    "nombre": "Venadillo, Tolima",
+    "lat": 4.7190884,
+    "lng": -74.929669
+  },
+  {
+    "nombre": "Villahermosa, Tolima",
+    "lat": 4.9765885,
+    "lng": -75.1666117
+  },
+  {
+    "nombre": "Villarrica, Tolima",
+    "lat": 3.9354843,
+    "lng": -74.6002686
+  },
+  {
+    "nombre": "Alcalá, Valle del Cauca",
+    "lat": 4.6748944,
+    "lng": -75.781669
+  },
+  {
+    "nombre": "Andalucía, Valle del Cauca",
+    "lat": 4.1694199,
+    "lng": -76.1670623
+  },
+  {
+    "nombre": "Ansermanuevo, Valle del Cauca",
+    "lat": 4.7957054,
+    "lng": -75.9937832
+  },
+  {
+    "nombre": "Argelia, Valle del Cauca",
+    "lat": 4.7270067,
+    "lng": -76.1213087
+  },
+  {
+    "nombre": "Bolívar, Valle del Cauca",
+    "lat": 4.3372359,
+    "lng": -76.1847682
+  },
+  {
+    "nombre": "Buenaventura, Valle del Cauca",
+    "lat": 3.8881929,
+    "lng": -77.0738324
+  },
+  {
+    "nombre": "Buga, Valle del Cauca",
+    "lat": 3.9000578,
+    "lng": -76.302013
+  },
+  {
+    "nombre": "Bugalagrande, Valle del Cauca",
+    "lat": 4.2138883,
+    "lng": -76.1571129
+  },
+  {
+    "nombre": "Caicedonia, Valle del Cauca",
+    "lat": 4.3354479,
+    "lng": -75.826652
+  },
+  {
+    "nombre": "Cali, Valle del Cauca",
+    "lat": 3.4519988,
+    "lng": -76.5325259
+  },
+  {
+    "nombre": "Calima, Valle del Cauca",
+    "lat": 3.9318186,
+    "lng": -76.4842408
+  },
+  {
+    "nombre": "Candelaria, Valle del Cauca",
+    "lat": 3.4090481,
+    "lng": -76.347379
+  },
+  {
+    "nombre": "Cartago, Valle del Cauca",
+    "lat": 4.7465494,
+    "lng": -75.9121234
+  },
+  {
+    "nombre": "Dagua, Valle del Cauca",
+    "lat": 3.658161,
+    "lng": -76.6893973
+  },
+  {
+    "nombre": "El Águila, Valle del Cauca",
+    "lat": 4.9078333,
+    "lng": -76.0421601
+  },
+  {
+    "nombre": "El Cairo, Valle del Cauca",
+    "lat": 4.7621884,
+    "lng": -76.2207611
+  },
+  {
+    "nombre": "El Cerrito, Valle del Cauca",
+    "lat": 3.6829185,
+    "lng": -76.3071487
+  },
+  {
+    "nombre": "El Dovio, Valle del Cauca",
+    "lat": 4.511899,
+    "lng": -76.238102
+  },
+  {
+    "nombre": "Florida, Valle del Cauca",
+    "lat": 3.3256006,
+    "lng": -76.2370118
+  },
+  {
+    "nombre": "Ginebra, Valle del Cauca",
+    "lat": 3.7237049,
+    "lng": -76.2687988
+  },
+  {
+    "nombre": "Guacarí, Valle del Cauca",
+    "lat": 3.7630235,
+    "lng": -76.3344854
+  },
+  {
+    "nombre": "Jamundí, Valle del Cauca",
+    "lat": 3.2618357,
+    "lng": -76.5407975
+  },
+  {
+    "nombre": "La Cumbre, Valle del Cauca",
+    "lat": 3.6505888,
+    "lng": -76.569897
+  },
+  {
+    "nombre": "La Unión, Valle del Cauca",
+    "lat": 3.2646884,
+    "lng": -76.2023313
+  },
+  {
+    "nombre": "La Victoria, Valle del Cauca",
+    "lat": 4.5232502,
+    "lng": -76.0357835
+  },
+  {
+    "nombre": "Obando, Valle del Cauca",
+    "lat": 4.5746578,
+    "lng": -75.9721783
+  },
+  {
+    "nombre": "Palmira, Valle del Cauca",
+    "lat": 3.5308373,
+    "lng": -76.2988048
+  },
+  {
+    "nombre": "Pradera, Valle del Cauca",
+    "lat": 3.4196687,
+    "lng": -76.2424378
+  },
+  {
+    "nombre": "Restrepo, Valle del Cauca",
+    "lat": 3.822009,
+    "lng": -76.5222535
+  },
+  {
+    "nombre": "Riofrío, Valle del Cauca",
+    "lat": 4.1558458,
+    "lng": -76.2875606
+  },
+  {
+    "nombre": "Roldanillo, Valle del Cauca",
+    "lat": 4.4091166,
+    "lng": -76.1543744
+  },
+  {
+    "nombre": "San Pedro, Valle del Cauca",
+    "lat": 3.9955682,
+    "lng": -76.2280495
+  },
+  {
+    "nombre": "Sevilla, Valle del Cauca",
+    "lat": 4.2645071,
+    "lng": -75.934396
+  },
+  {
+    "nombre": "Toro, Valle del Cauca",
+    "lat": 4.608925,
+    "lng": -76.0824045
+  },
+  {
+    "nombre": "Trujillo, Valle del Cauca",
+    "lat": 4.2123039,
+    "lng": -76.3188928
+  },
+  {
+    "nombre": "Tuluá, Valle del Cauca",
+    "lat": 4.0856667,
+    "lng": -76.1972779
+  },
+  {
+    "nombre": "Ulloa, Valle del Cauca",
+    "lat": 4.7036572,
+    "lng": -75.7379416
+  },
+  {
+    "nombre": "Versalles, Valle del Cauca",
+    "lat": 3.4612255,
+    "lng": -76.5287823
+  },
+  {
+    "nombre": "Vijes, Valle del Cauca",
+    "lat": 3.7003997,
+    "lng": -76.4428876
+  },
+  {
+    "nombre": "Yotoco, Valle del Cauca",
+    "lat": 3.8610921,
+    "lng": -76.3851766
+  },
+  {
+    "nombre": "Yumbo, Valle del Cauca",
+    "lat": 3.5834664,
+    "lng": -76.4952223
+  },
+  {
+    "nombre": "Zarzal, Valle del Cauca",
+    "lat": 4.393943,
+    "lng": -76.0706472
+  },
+  {
+    "nombre": "Carurú, Vaupés",
+    "lat": 1.0155254,
+    "lng": -71.2961479
+  },
+  {
+    "nombre": "Mitú, Vaupés",
+    "lat": 1.2538499,
+    "lng": -70.2345576
+  },
+  {
+    "nombre": "Taraira, Vaupés",
+    "lat": -0.5630161,
+    "lng": -69.6340579
+  },
+  {
+    "nombre": "Cumaribo, Vichada",
+    "lat": 4.4471495,
+    "lng": -69.7975845
+  },
+  {
+    "nombre": "La Primavera, Vichada",
+    "lat": 5.4904575,
+    "lng": -70.4097672
+  },
+  {
+    "nombre": "Puerto Carreño, Vichada",
+    "lat": 6.1909225,
+    "lng": -67.4841891
+  },
+  {
+    "nombre": "Santa Rosalía, Vichada",
+    "lat": 5.1412908,
+    "lng": -70.8574027
+  }
+]

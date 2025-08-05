@@ -177,63 +177,79 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
     // =================================================================
     //  GUARDADO DEL REGISTRO COMPLETO AL HACER CLIC EN EL BOTÓN PRINCIPAL
     // =================================================================
     document.getElementById('btnGuardarRegistro').addEventListener('click', async () => {
-        const btn = document.getElementById('btnGuardarRegistro');
-        const originalBtnText = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
+    const btn = document.getElementById('btnGuardarRegistro');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
 
-        const datosAGuardar = [];
-        document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
-            if (!fila.dataset.tk) return; 
+    const datosAGuardar = [];
+    let camposVacios = false;
 
-            const grupo = fila.dataset.grupo;
-            const tkCompleto = fila.dataset.tk;
-            
-            const celdas = fila.getElementsByTagName('td');
-            datosAGuardar.push({
-                "TK": tkCompleto,
-                "PRODUCTO": celdas[1].textContent.trim(),
-                "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.') || 0),
-                "BLS_60": celdas[3].textContent.trim().replace(',', '.'),
-                "API": celdas[4].textContent.trim().replace(',', '.'),
-                "BSW": celdas[5].textContent.trim().replace(',', '.'),
-                "S": celdas[6].textContent.trim().replace(',', '.'),
-                "grupo": grupo
-            });
+    document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
+        if (!fila.dataset.tk) return; 
+
+        const grupo = fila.dataset.grupo;
+        const tkCompleto = fila.dataset.tk;
+        const celdas = fila.getElementsByTagName('td');
+
+        // Validar que los campos editables no estén vacíos
+        const bls_60 = celdas[3].textContent.trim().replace(',', '.');
+        const api = celdas[4].textContent.trim().replace(',', '.');
+        const bsw = celdas[5].textContent.trim().replace(',', '.');
+        const s = celdas[6].textContent.trim().replace(',', '.');
+
+        if (!bls_60 || !api || !bsw || !s) camposVacios = true;
+
+        datosAGuardar.push({
+            "TK": tkCompleto,
+            "PRODUCTO": celdas[1].textContent.trim(),
+            "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.') || 0),
+            "BLS_60": bls_60,
+            "API": api,
+            "BSW": bsw,
+            "S": s,
+            "grupo": grupo
+        });
+    });
+
+    if (camposVacios) {
+        mostrarAlerta('❌ Todos los campos deben estar llenos.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
+        return;
+    }
+
+    try {
+        const response = await fetch("{{ url_for('guardar_registro_barcaza') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(datosAGuardar)
         });
 
-        try {
-            const response = await fetch("{{ url_for('guardar_registro_barcaza') }}", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify(datosAGuardar)
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({ message: `Error del servidor: ${response.status}` }));
-                throw new Error(errData.message);
-            }
-            
-            const result = await response.json();
-            if (result.success) {
-                mostrarAlerta('✅ ¡Registro de Barcaza Orion guardado exitosamente!', 'success');
-            } else {
-                throw new Error(result.message || "El servidor indicó un fallo.");
-            }
-        } catch (error) {
-            console.error('Error al guardar:', error);
-            mostrarAlerta(`❌ ${error.message}`, 'danger');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({ message: `Error del servidor: ${response.status}` }));
+            throw new Error(errData.message);
         }
-    });
+        
+        const result = await response.json();
+        if (result.success) {
+            mostrarAlerta('✅ ¡Registro de Barcaza Orion guardado exitosamente!', 'success');
+        } else {
+            throw new Error(result.message || "El servidor indicó un fallo.");
+        }
+    } catch (error) {
+        console.error('Error al guardar:', error);
+        mostrarAlerta(`❌ ${error.message}`, 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
+    }
+});
     // =================================================================
     //  FUNCIÓN PARA MOSTRAR ALERTAS (notificaciones)
     // =================================================================

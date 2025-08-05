@@ -176,10 +176,10 @@
         }
 
         .tanque-liquido.empty { background: transparent; }
-        .tanque-liquido.low { background: linear-gradient(to top, #ffc107, #ffd700); }
-        .tanque-liquido.medium { background: linear-gradient(to top, #fd7e14, #ff922b); }
-        .tanque-liquido.high { background: linear-gradient(to top, #28a745, #40c057); }
-        .tanque-liquido.full { background: linear-gradient(to top, #dc3545, #f03e3e); }
+        .tanque-liquido.green { background: linear-gradient(to top, #28a745, #40c057); }
+        .tanque-liquido.orange { background: linear-gradient(to top, #fd7e14, #ff922b); }
+        .tanque-liquido.red { background: linear-gradient(to top, #dc3545, #f03e3e); }
+        .tanque-liquido.full { background: linear-gradient(to top, #343a40, #343a40); }
 
         /* Información del tanque */
         .tanque-info {
@@ -214,10 +214,10 @@
             transition: width 0.5s ease;
         }
 
-        .tanque-progress-bar.low { background-color: #ffc107; }
-        .tanque-progress-bar.medium { background-color: #fd7e14; }
-        .tanque-progress-bar.high { background-color: #28a745; }
-        .tanque-progress-bar.full { background-color: #dc3545; }
+        .tanque-progress-bar.green { background-color: #28a745; }
+        .tanque-progress-bar.orange { background-color: #fd7e14; }
+        .tanque-progress-bar.red { background-color: #dc3545; }
+        .tanque-progress-bar.full { background-color: #343a40; }
 
         .tanque-percentage {
             font-size: 1rem;
@@ -226,10 +226,24 @@
             justify-content: space-between;
         }
 
-        .tanque-percentage.low { color: #ffc107; }
-        .tanque-percentage.medium { color: #fd7e14; }
-        .tanque-percentage.high { color: #28a745; }
-        .tanque-percentage.full { color: #dc3545; }
+        .tanque-percentage.green { color: #28a745; }
+        .tanque-percentage.orange { color: #fd7e14; }
+        .tanque-percentage.red { color: #dc3545; }
+        .tanque-percentage.full { color: #343a40; }
+        .tanque-lleno-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,255,255,0.95);
+            color: #dc3545;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 1.1rem;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
 
         .tanque-max {
             font-size: 0.85rem;
@@ -321,37 +335,42 @@
     <div class="report-container">
         <div class="container">
             <!-- Encabezado del reporte -->
-            <div class="report-header d-flex flex-column flex-md-row justify-content-between align-items-md-center">
-                <div class="report-title d-flex align-items-center mb-3 mb-md-0">
-                    <i class="bi bi-buildings-fill title-icon"></i>
-                    <div>
-                        <h1>Reporte Visual de Planta</h1>
-                        {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error" not in fecha_actualizacion_info|lower %}
-                        <div class="report-subtitle">
-                            <i class="bi bi-info-circle"></i>{{ fecha_actualizacion_info }}
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-                {# Solo muestra el botón si el usuario es admin o tiene permiso para 'planta' #}
-                {% if session.rol == 'admin' or 'planta' in session.area %} 
-                <div class="action-button-group d-flex align-items-center">
-    <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-        <i class="bi bi-pencil-fill me-2"></i>
-        <span>Volver a la Planilla</span>
-    </a>
 
-    <div class="btn-group ms-2">  <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-download me-1"></i> Descargar Reporte
-        </button>
-        <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
-            <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
-            <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
-            <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
-        </ul>
-    </div>
-</div>
+            <div class="report-header mb-4">
+                <div class="row g-3 align-items-center justify-content-between">
+                    <div class="col-12 col-lg-7 d-flex align-items-center gap-3 mb-2 mb-lg-0">
+                        <i class="bi bi-buildings-fill title-icon"></i>
+                        <div>
+                            <h1 class="mb-1">Reporte Visual de Planta</h1>
+                            {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error" not in fecha_actualizacion_info|lower %}
+                            <div class="report-subtitle">
+                                <i class="bi bi-info-circle"></i>{{ fecha_actualizacion_info }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if session.rol == 'admin' or 'planta' in session.area %}
+                    <div class="col-12 col-lg-5">
+                        <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                            <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
+                                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
+                            </a>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-primary dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-download me-1"></i>Descargar Reporte
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
+                                    <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
 
 <div class="modal fade" id="opcionesDescargaModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -394,9 +413,9 @@
         </div>
     </div>
 </div>
-                    {% endif %}
                 </div>
             </div>
+                </div>
             
             <!-- Filtros mejorados -->
             <div class="report-filters-container">
@@ -498,10 +517,10 @@
 
         // Determinar el nivel de llenado
         function determinarNivel(porcentaje) {
-            if (porcentaje >= 95) return 'full';
-            if (porcentaje >= 80) return 'high';
-            if (porcentaje >= 40) return 'medium';
-            if (porcentaje > 0) return 'low';
+            if (porcentaje === 100) return 'full';
+            if (porcentaje >= 80) return 'red';
+            if (porcentaje >= 50) return 'orange';
+            if (porcentaje > 0) return 'green';
             return 'empty';
         }
 
@@ -611,6 +630,7 @@
                 <div class="tanque-card-body">
                     <div class="tanque-visual">
                         <div class="tanque-liquido ${nivel}" style="height:${porcentaje}%"></div>
+                        ${porcentaje === 100 ? '<div class="tanque-lleno-label">TANQUE LLENO</div>' : ''}
                     </div>
                     
                     <div class="tanque-info">

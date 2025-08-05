@@ -97,7 +97,7 @@
     </div>
 </div>
 {% endblock %}
-{% block extra_js %}
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // --- VARIABLES Y CONFIGURACIÓN ---
@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const permissions = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'destino', 'cliente', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -247,12 +247,15 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                                     style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
                 }
             });
-            
+            // Agrega botón de eliminar fila
             rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}">
                             <div class="d-flex justify-content-center align-items-center">
                                 <span class="save-indicator me-2" style="width: 16px;"></span>
                                 <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
                                     <i class="fas fa-print"></i>
+                                </button>
+                                <button class="btn btn-danger btn-xs btn-delete-row ms-2" title="Eliminar fila">
+                                    <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
                         </td></tr>`;
@@ -354,6 +357,26 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 }
             });
             window.location.href = url.href;
+        }
+
+        // Botón eliminar fila
+        const deleteButton = e.target.closest('.btn-delete-row');
+        if (deleteButton) {
+            const row = deleteButton.closest('tr');
+            const id = row.dataset.id;
+            if (confirm('¿Seguro que deseas eliminar esta programación?')) {
+                fetch(`/api/programacion/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Fila eliminada correctamente');
+                            fetchAndRender();
+                        } else {
+                            showToast('danger', 'Error al eliminar: ' + data.message);
+                        }
+                    })
+                    .catch(() => showToast('danger', 'Error de conexión'));
+            }
         }
 
         const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');

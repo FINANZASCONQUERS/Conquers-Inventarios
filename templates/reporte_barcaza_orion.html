@@ -301,7 +301,7 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
 // Obtenemos los datos completos enviados desde Python
 const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | safe }}');

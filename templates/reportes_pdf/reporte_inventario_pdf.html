@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Inventario EPP</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 11px;
+            background: #f8f9fa;
+            color: #222;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+            padding: 32px 36px 24px 36px;
+        }
+        h1 {
+            text-align: center;
+            color: #1a237e;
+            font-size: 2.1em;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+        p {
+            text-align: center;
+            color: #555;
+            margin-bottom: 24px;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 10px;
+            background: #fafbfc;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(26,35,126,0.04);
+        }
+        th, td {
+            padding: 10px 8px;
+            text-align: left;
+        }
+        th {
+            background: linear-gradient(90deg, #283593 0%, #1976d2 100%);
+            color: #fff;
+            font-weight: 600;
+            border-bottom: 2px solid #1565c0;
+            font-size: 1em;
+        }
+        td {
+            border-bottom: 1px solid #e3e6f0;
+            font-size: 0.98em;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:nth-child(even) td {
+            background: #f1f6fb;
+        }
+        tr:hover td {
+            background: #e3f2fd;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 0.92em;
+            color: #fff;
+            background: #43a047;
+            font-weight: 500;
+        }
+        .badge.low {
+            background: #e53935;
+        }
+        .badge.medium {
+            background: #fbc02d;
+            color: #222;
+        }
+        .badge.expired {
+            background: #757575;
+        }
+        @media print {
+            body, .container {
+                box-shadow: none !important;
+                background: #fff !important;
+                padding: 0 !important;
+            }
+            .container {
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Reporte de Inventario de EPP y Dotación</h1>
+        <p>Generado el: <strong>{{ fecha_reporte }}</strong></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Categoría</th>
+                    <th>Elemento</th>
+                    <th>Referencia/Tipo</th>
+                    <th>Talla/Medida</th>
+                    <th>Stock</th>
+                    <th>Vencimiento</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.categoria }}</td>
+                    <td>{{ item.nombre }}</td>
+                    <td>{{ item.referencia or '-' }}</td>
+                    <td>{{ item.talla or '-' }}</td>
+                    <td>
+                        {% if item.stock_actual <= 3 %}
+                            <span class="badge low">{{ item.stock_actual }}</span>
+                        {% elif item.stock_actual <= 10 %}
+                            <span class="badge medium">{{ item.stock_actual }}</span>
+                        {% else %}
+                            <span class="badge">{{ item.stock_actual }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.fecha_vencimiento %}
+                            {% if item.fecha_vencimiento < fecha_actual %}
+                                <span class="badge expired">Vencido</span>
+                            {% else %}
+                                {{ item.fecha_vencimiento.strftime('%Y-%m-%d') }}
+                            {% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

@@ -398,7 +398,18 @@
   }  
 
   // --- EL RESTO DE TUS FUNCIONES (SIN CAMBIOS) ---  
-  // (Pega aquí el resto de tus funciones como aplicarFiltros, guardarNuevoOrigen, redibujarTabla, etc.)  
+  // (Pega aquí el resto de tus funciones como aplicarFiltros, guardarNuevoOrigen, redibujarTabla, etc.)
+
+  // --- Autocompletado de ciudades para Observaciones ---
+  let ciudadesColombia = [];
+  // Cargar ciudades una sola vez
+  fetch('/static/ciudades_colombia.json')
+    .then(res => res.json())
+    .then(data => {
+      ciudadesColombia = data.filter(c => c.nombre).map(c => c.nombre);
+      // Si la tabla ya está dibujada, redibujar para aplicar datalist
+      if (typeof redibujarTabla === 'function') redibujarTabla();
+    });
   function aplicarFiltros() {  
     const tableBody = document.getElementById('tablaTransitoBody');  
     const filterInputs = document.querySelectorAll('.excel-filter');  
@@ -623,15 +634,69 @@
   }  
 
   function crearTdTextArea(tr, fila, campoKey) {  
-    const td = crearTdGenerico(tr);  
-    const textarea = document.createElement("textarea");  
-    textarea.className = "form-control form-control-sm";  
-    textarea.rows = "1";  
-    textarea.value = fila[campoKey] || "";  
-    textarea.dataset.field = campoKey;  
-    textarea.disabled = !edicionTransitoPermitida;  
-    textarea.addEventListener("change", actualizarDatoFila);  
-    td.appendChild(textarea);  
+    const td = crearTdGenerico(tr);
+    if (campoKey === "OBSERVACIONES") {
+      // Split value if already saved (format: "Ciudad | Sugerencia")
+      let ciudadActual = "";
+      let sugerenciaActual = "";
+      if (fila[campoKey]) {
+        const partes = fila[campoKey].split(" | ");
+        ciudadActual = partes[0] || "";
+        sugerenciaActual = partes[1] || "";
+      }
+      // Contenedor flex
+      const div = document.createElement("div");
+      div.style.display = "flex";
+      div.style.gap = "4px";
+
+      // Select de ciudades
+      const select = document.createElement("select");
+      select.className = "form-select form-select-sm";
+      select.style.maxWidth = "180px";
+      select.disabled = !edicionTransitoPermitida;
+      select.innerHTML = '<option value="">Ciudad...</option>';
+      ciudadesColombia.forEach(ciudad => {
+        const option = document.createElement("option");
+        option.value = ciudad;
+        option.textContent = ciudad;
+        select.appendChild(option);
+      });
+      select.value = ciudadActual;
+
+      // Input para sugerencia
+      const inputSugerencia = document.createElement("input");
+      inputSugerencia.type = "text";
+      inputSugerencia.className = "form-control form-control-sm";
+      inputSugerencia.placeholder = "Sugerencia...";
+      inputSugerencia.style.maxWidth = "180px";
+      inputSugerencia.value = sugerenciaActual;
+      inputSugerencia.disabled = !edicionTransitoPermitida;
+
+      // Guardar ambos valores juntos en OBSERVACIONES
+      function guardarObservaciones() {
+        const index = parseInt(tr.dataset.index, 10);
+        const ciudad = select.value;
+        const sugerencia = inputSugerencia.value.trim();
+        currentData[index][campoKey] = ciudad + (sugerencia ? " | " + sugerencia : "");
+        guardarEstadoEnSesion();
+      }
+      select.addEventListener("change", guardarObservaciones);
+      inputSugerencia.addEventListener("change", guardarObservaciones);
+
+      div.appendChild(select);
+      div.appendChild(inputSugerencia);
+      td.appendChild(div);
+    } else {
+      // Mantén el textarea normal para otros campos
+      const textarea = document.createElement("textarea");
+      textarea.className = "form-control form-control-sm";
+      textarea.rows = "1";
+      textarea.value = fila[campoKey] || "";
+      textarea.dataset.field = campoKey;
+      textarea.disabled = !edicionTransitoPermitida;
+      textarea.addEventListener("change", actualizarDatoFila);
+      td.appendChild(textarea);
+    }
   }  
 
   function crearTdFecha(tr, fila, campoKey) {  

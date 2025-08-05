@@ -473,6 +473,41 @@ class ProgramacionCargue(db.Model):
     # Auditoría
     ultimo_editor = db.Column(db.String(100))
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class EPPItem(db.Model):
+    __tablename__ = 'epp_items'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Datos principales del item
+    nombre = db.Column(db.String(150), nullable=False, index=True) # Ej: "Botas de Seguridad"
+    categoria = db.Column(db.String(50), nullable=False, index=True) # "EPP", "Dotación", "Equipos de Emergencia"
+    stock_actual = db.Column(db.Integer, default=0, nullable=False)
+
+    # Campos para detalles específicos
+    referencia = db.Column(db.String(150), nullable=True) # Ej: "Brahama", "MSA Safari"
+    talla = db.Column(db.String(50), nullable=True)      # Ej: "42", "L", "N/A"
+    fecha_vencimiento = db.Column(db.Date, nullable=True) # Para items que expiran
+    observaciones = db.Column(db.Text, nullable=True)     # Ej: "20 LBS", "Color Verde"
+
+    # Relación con las asignaciones
+    asignaciones = db.relationship('EPPAssignment', backref='item', lazy=True, cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f'<EPPItem {self.nombre} - {self.referencia} ({self.talla})>'
+
+class EPPAssignment(db.Model):
+    __tablename__ = 'epp_assignments'
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey('epp_items.id'), nullable=False)
+    
+    # Datos de la asignación
+    empleado_nombre = db.Column(db.String(200), nullable=False, index=True)
+    cantidad_entregada = db.Column(db.Integer, nullable=False)
+    fecha_entrega = db.Column(db.Date, nullable=False, default=date.today)
+    observaciones = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f'<EPPAssignment for {self.empleado_nombre}>'    
     
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -1490,8 +1525,8 @@ def reporte_transito():
     app.logger.info("Accediendo a /reporte_transito desde la base de datos")
     datos_consolidados = {}
     datos_conteo_camiones = {}
-    # --- CORRECCIÓN 1: INICIALIZAR EL DICCIONARIO AQUÍ ---
     observaciones_camiones = {} 
+    camiones_para_mapa = []
     
     fecha_actualizacion_info = "No se encontraron registros de tránsito."
     
@@ -1502,8 +1537,8 @@ def reporte_transito():
             return render_template("reporte_transito.html", 
                                    datos_consolidados=datos_consolidados, 
                                    datos_conteo_camiones=datos_conteo_camiones,
-                                   # --- CORRECCIÓN 2: PASAR LA VARIABLE AQUÍ TAMBIÉN ---
                                    observaciones_camiones=observaciones_camiones,
+                                   camiones_mapa=camiones_para_mapa,
                                    nombre=session.get("nombre"), 
                                    fecha_actualizacion_info=fecha_actualizacion_info)
 
@@ -1534,6 +1569,23 @@ def reporte_transito():
                 
                 lista_de_observaciones = observaciones_camiones.setdefault(tipo_destino_reporte, {}).setdefault(origen, {}).setdefault(producto, [])
                 lista_de_observaciones.append(texto_completo)
+
+            # --- AGREGADO: Poblar camiones_para_mapa para el mapa ---
+            ciudad = ""
+            if reg.observaciones and "|" in reg.observaciones:
+                ciudad = reg.observaciones.split("|")[0].strip()
+            elif reg.observaciones:
+                ciudad = reg.observaciones.strip()
+            camiones_para_mapa.append({
+                "ciudad": ciudad,
+                "tipo_transito": tipo_destino_reporte,
+                "placa": reg.placa,
+                "origen": reg.origen,
+                "producto": reg.producto,
+                "NSV": reg.nsv,
+                "OBSERVACIONES": reg.observaciones
+                
+            })
             
     except Exception as e:
         app.logger.error(f"Error crítico al generar reporte de tránsito desde BD: {e}")
@@ -1543,11 +1595,10 @@ def reporte_transito():
     return render_template("reporte_transito.html",
                            datos_consolidados=datos_consolidados,
                            datos_conteo_camiones=datos_conteo_camiones,
-                           # --- CORRECCIÓN 3: PASAR LA VARIABLE EN EL RETURN FINAL ---
                            observaciones_camiones=observaciones_camiones,
+                           camiones_mapa=camiones_para_mapa,
                            nombre=session.get("nombre"),
                            fecha_actualizacion_info=fecha_actualizacion_info)
-
 @login_required
 @permiso_requerido('barcaza_orion')
 @app.route('/barcaza_orion')
@@ -3773,7 +3824,7 @@ def update_programacion(id):
     # La lógica de permisos no necesita cambios, está bien.
     permisos = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'destino', 'cliente', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -3935,7 +3986,326 @@ def exportar_programacion_cargue(formato):
         )
 
     # Si el formato no es ni 'excel' ni 'pdf', redirigimos
-    return redirect(url_for('programacion_cargue'))    
+    return redirect(url_for('programacion_cargue'))
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>', methods=['DELETE'])
+def delete_programacion(id):
+    """Elimina un registro de programación de cargue."""
+    registro = ProgramacionCargue.query.get_or_404(id)
+    try:
+        db.session.delete(registro)
+        db.session.commit()
+        return jsonify(success=True, message="Registro eliminado correctamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+  
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/inventario_epp_home')
+def inventario_epp_home():
+    """Página de inicio para el módulo de inventario EPP."""
+    return render_template('inventario_epp_home.html', nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/inventario_epp')
+def inventario_epp():
+    """Página principal para gestionar el inventario de EPP."""
+    return render_template('inventario_epp.html', nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/epp_asignaciones')
+def epp_asignaciones():
+    """Página para ver el historial de asignaciones de EPP."""
+    return render_template('epp_asignaciones.html', nombre=session.get("nombre"))
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/items', methods=['GET'])
+def get_epp_items():
+    """API para obtener todos los items del inventario con alertas inteligentes."""
+    items_query = EPPItem.query.order_by(EPPItem.categoria, EPPItem.nombre).all()
+    
+    today = date.today()
+    items_list = []
+    for item in items_query:
+        item_dict = {
+            "id": item.id,
+            "nombre": item.nombre,
+            "categoria": item.categoria,
+            "referencia": item.referencia,
+            "talla": item.talla,
+            "stock_actual": item.stock_actual,
+            "observaciones": item.observaciones,
+            "fecha_vencimiento": item.fecha_vencimiento.isoformat() if item.fecha_vencimiento else None,
+            "dias_para_vencer": (item.fecha_vencimiento - today).days if item.fecha_vencimiento else None,
+            "stock_bajo": item.stock_actual <= 5 # Inteligencia: alerta de stock bajo
+        }
+        items_list.append(item_dict)
+    return jsonify(items_list)
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/items', methods=['POST'])
+def create_epp_item():
+    """API para crear un nuevo item en el inventario."""
+    data = request.get_json()
+    try:
+        nuevo_item = EPPItem(
+            nombre=data['nombre'],
+            categoria=data['categoria'],
+            referencia=data.get('referencia'),
+            talla=data.get('talla'),
+            stock_actual=int(data.get('stock_actual', 0)),
+            fecha_vencimiento=date.fromisoformat(data['fecha_vencimiento']) if data.get('fecha_vencimiento') else None,
+            observaciones=data.get('observaciones')
+        )
+        db.session.add(nuevo_item)
+        db.session.commit()
+        return jsonify(success=True, message="Item creado exitosamente.", id=nuevo_item.id)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al crear: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/items/<int:id>', methods=['PUT'])
+def update_epp_item(id):
+    """API para actualizar un item existente."""
+    item = EPPItem.query.get_or_404(id)
+    data = request.get_json()
+    try:
+        for key, value in data.items():
+            if key == 'fecha_vencimiento':
+                value = date.fromisoformat(value) if value else None
+            if hasattr(item, key):
+                setattr(item, key, value)
+        db.session.commit()
+        return jsonify(success=True, message="Item actualizado.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/asignar', methods=['POST'])
+def assign_epp_item():
+    """API para asignar un item a un empleado y descontar del stock."""
+    data = request.get_json()
+    item_id = data.get('item_id')
+    cantidad_a_entregar = int(data.get('cantidad_entregada', 0))
+    item = EPPItem.query.get_or_404(item_id)
+
+    if cantidad_a_entregar <= 0:
+        return jsonify(success=False, message="La cantidad debe ser mayor a cero."), 400
+    if item.stock_actual < cantidad_a_entregar:
+        return jsonify(success=False, message=f"Stock insuficiente. Disponible: {item.stock_actual}."), 400
+
+    try:
+        # 1. Descontar del stock
+        item.stock_actual -= cantidad_a_entregar
+
+        # 2. Crear el registro de la asignación
+        nueva_asignacion = EPPAssignment(
+            item_id=item_id,
+            empleado_nombre=data['empleado_nombre'],
+            cantidad_entregada=cantidad_a_entregar,
+            fecha_entrega=date.fromisoformat(data['fecha_entrega']),
+            observaciones=data.get('observaciones')
+        )
+        db.session.add(nueva_asignacion)
+        db.session.commit()
+        return jsonify(success=True, message="Asignación registrada y stock actualizado.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error en la asignación: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/asignaciones', methods=['GET'])
+def get_epp_assignments():
+    """API para obtener el historial de asignaciones."""
+    query = db.session.query(EPPAssignment).join(EPPItem).order_by(EPPAssignment.fecha_entrega.desc())
+    
+    # Ejemplo de filtro por empleado
+    empleado = request.args.get('empleado')
+    if empleado:
+        query = query.filter(EPPAssignment.empleado_nombre.ilike(f'%{empleado}%'))
+
+    asignaciones = query.all()
+    data = [{
+        "id": a.id, "fecha_entrega": a.fecha_entrega.isoformat(), "empleado_nombre": a.empleado_nombre,
+        "cantidad_entregada": a.cantidad_entregada, "observaciones": a.observaciones,
+        "item_nombre": a.item.nombre, "item_referencia": a.item.referencia, "item_talla": a.item.talla
+    } for a in asignaciones]
+    
+    return jsonify(data)
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/items/<int:id>', methods=['DELETE'])
+def delete_epp_item(id):
+    """API para eliminar un item."""
+    item = EPPItem.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify(success=True, message="Item eliminado exitosamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al eliminar: {str(e)}."), 500
+
+@login_required
+@permiso_requerido('inventario_epp')    
+@app.route('/api/epp/items/batch_add', methods=['POST'])
+def batch_add_epp_items():
+    """API para crear múltiples items (variantes) de una sola vez."""
+    items_data = request.get_json()
+    if not isinstance(items_data, list) or not items_data:
+        return jsonify(success=False, message="Formato de datos incorrecto."), 400
+
+    try:
+        creados_count = 0
+        for item_data in items_data:
+            # Evita duplicados revisando la combinación de nombre, referencia y talla
+            existe = EPPItem.query.filter_by(
+                nombre=item_data.get('nombre'),
+                referencia=item_data.get('referencia'),
+                talla=item_data.get('talla')
+            ).first()
+
+            if not existe:
+                nuevo_item = EPPItem(
+                    nombre=item_data.get('nombre'),
+                    categoria=item_data.get('categoria'),
+                    referencia=item_data.get('referencia'),
+                    talla=item_data.get('talla'),
+                    stock_actual=item_data.get('stock_actual', 0)
+                )
+                db.session.add(nuevo_item)
+                creados_count += 1
+
+        db.session.commit()
+        return jsonify(success=True, message=f"Se han agregado {creados_count} nuevos items/variantes exitosamente.")
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error en carga rápida de EPP: {e}")
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/exportar_inventario_epp/<string:formato>')
+def exportar_inventario_epp(formato):
+    # Obtener filtros desde la URL
+    nombre = request.args.get('nombre', '')
+    categoria = request.args.get('categoria', '')
+    alertas = request.args.get('alertas', 'false') == 'true'
+
+    # Construir la consulta a la base de datos
+    query = EPPItem.query.order_by(EPPItem.categoria, EPPItem.nombre)
+
+    if nombre:
+        query = query.filter(or_(EPPItem.nombre.ilike(f'%{nombre}%'), EPPItem.referencia.ilike(f'%{nombre}%')))
+    if categoria:
+        query = query.filter(EPPItem.categoria == categoria)
+    if alertas:
+        today = date.today()
+        thirty_days = today + timedelta(days=30)
+        query = query.filter(or_(EPPItem.stock_actual <= 5, EPPItem.fecha_vencimiento.between(today, thirty_days)))
+
+    items = query.all()
+
+    if not items:
+        flash('No hay datos para exportar con los filtros seleccionados.', 'warning')
+        return redirect(url_for('inventario_epp'))
+
+    # Generar el archivo según el formato
+    if formato == 'excel':
+        datos_df = [{
+            'Categoría': item.categoria,
+            'Elemento': item.nombre,
+            'Referencia/Tipo': item.referencia,
+            'Talla/Medida': item.talla,
+            'Stock Actual': item.stock_actual,
+            'Fecha Vencimiento': item.fecha_vencimiento.strftime('%Y-%m-%d') if item.fecha_vencimiento else 'N/A',
+            'Observaciones': item.observaciones
+        } for item in items]
+        df = pd.DataFrame(datos_df)
+        
+        output = BytesIO()
+        df.to_excel(output, index=False, sheet_name='Inventario EPP')
+        output.seek(0)
+        
+        return send_file(output, as_attachment=True, download_name='reporte_inventario_epp.xlsx',
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    elif formato == 'pdf':
+        html_para_pdf = render_template('reportes_pdf/reporte_inventario_pdf.html',
+                                        items=items,
+                                        fecha_reporte=datetime.now().strftime('%d de %B de %Y'))
+        pdf = HTML(string=html_para_pdf).write_pdf()
+        return Response(pdf, mimetype='application/pdf',
+                        headers={'Content-Disposition': 'attachment;filename=reporte_inventario_epp.pdf'})
+    
+    return redirect(url_for('inventario_epp'))
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/exportar_asignaciones_epp/<string:formato>')
+def exportar_asignaciones_epp(formato):
+    empleado = request.args.get('empleado', '')
+    fecha_inicio_str = request.args.get('fecha_inicio', '')
+    fecha_fin_str = request.args.get('fecha_fin', '')
+
+    query = db.session.query(EPPAssignment).join(EPPItem).order_by(EPPAssignment.fecha_entrega.desc())
+
+    if empleado:
+        query = query.filter(EPPAssignment.empleado_nombre.ilike(f'%{empleado}%'))
+    if fecha_inicio_str:
+        query = query.filter(EPPAssignment.fecha_entrega >= date.fromisoformat(fecha_inicio_str))
+    if fecha_fin_str:
+        query = query.filter(EPPAssignment.fecha_entrega <= date.fromisoformat(fecha_fin_str))
+
+    asignaciones = query.all()
+
+    if not asignaciones:
+        flash('No hay asignaciones para exportar con los filtros seleccionados.', 'warning')
+        return redirect(url_for('epp_asignaciones'))
+
+    if formato == 'excel':
+        datos_df = [{
+            'Fecha Entrega': a.fecha_entrega.strftime('%Y-%m-%d'),
+            'Empleado': a.empleado_nombre,
+            'Elemento': a.item.nombre,
+            'Referencia': a.item.referencia,
+            'Talla/Medida': a.item.talla,
+            'Cantidad': a.cantidad_entregada,
+            'Observaciones': a.observaciones
+        } for a in asignaciones]
+        df = pd.DataFrame(datos_df)
+        
+        output = BytesIO()
+        df.to_excel(output, index=False, sheet_name='Historial Asignaciones')
+        output.seek(0)
+        
+        return send_file(output, as_attachment=True, download_name='reporte_asignaciones_epp.xlsx',
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    elif formato == 'pdf':
+        html_para_pdf = render_template('reportes_pdf/reporte_asignaciones_pdf.html',
+                                        asignaciones=asignaciones,
+                                        fecha_reporte=datetime.now().strftime('%d de %B de %Y'))
+        pdf = HTML(string=html_para_pdf).write_pdf()
+        return Response(pdf, mimetype='application/pdf',
+                        headers={'Content-Disposition': 'attachment;filename=reporte_asignaciones_epp.pdf'})
+
+    return redirect(url_for('epp_asignaciones'))  
  
 @app.route('/')
 def home():

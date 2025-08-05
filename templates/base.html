@@ -308,13 +308,15 @@
                         {% if 'planta' in session.get('area', []) %}{% set _ = user_planillas.append(('planta', 'Planilla Planta', 'buildings-fill')) %}{% endif %}
                         {% if 'transito' in session.get('area', []) %}{% set _ = user_planillas.append(('transito', 'Planilla Tránsito', 'cone-striped')) %}{% endif %}
                         {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
-                        {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'chart-pie')) %}{% endif %}
+                        {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'droplet-fill')) %}{% endif %}
                         {% if 'planilla_precios' in session.get('area', []) %}{% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
                         {% if 'programacion_cargue' in session.get('area', []) %}
                         {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Cargue', 'calendar-check')) %}
                         {% endif %}
                         {% if 'control_remolcadores' in session.get('area', []) %}
                             {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores', 'life-preserver')) %}
+                        {% endif %}
+                        {% if 'inventario_epp' in session.get('area', []) %}{% set _ = user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
                         {% endif %}
                         {% if user_planillas|length > 0 %}
                             <li class="nav-item dropdown">
@@ -346,13 +348,21 @@
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header">Todas las Planillas</h6></li>
                                     <li><a class="dropdown-item" href="{{ url_for('inventario_zisa') }}"><i class="bi bi-box-seam me-2"></i>Inventario SIZA</a></li>
+<li><a class="dropdown-item" href="{{ url_for('inventario_epp') }}">
+  <span class="me-2" style="display:inline-block;vertical-align:middle;width:1.25em;height:1.25em;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="1em" height="1em">
+      <path d="M4 18a8 8 0 1 1 16 0H4zm8-14a7 7 0 0 1 7 7v2.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 13.5V11a7 7 0 0 1 7-7zm-6.5 15h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1 0-1z"/>
+    </svg>
+  </span>
+  Inventario EPP
+</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('barcaza_orion') }}"><i class="bi bi-water me-2"></i>Planilla Orion</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('barcaza_bita') }}"><i class="bi bi-tsunami me-2"></i>Planilla BITA</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('planta') }}"><i class="bi bi-buildings-fill me-2"></i>Planilla Planta</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('transito') }}"><i class="bi bi-cone-striped me-2"></i>Planilla Tránsito</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}"><i class="bi bi-currency-exchange me-2"></i>Planilla de Precios</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i class="bi bi-chart-pie me-2"></i>Simulador Rendimiento</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i class="bi bi-droplet-fill me-2"></i>Simulador Rendimiento</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i class="bi bi-calendar-check me-2"></i>Programación de Cargue</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('control_remolcadores_page') }}"><i class="bi bi-life-preserver me-2"></i>Control Remolcadores</a></li>
                                 </ul>
@@ -440,13 +450,13 @@
         </div>
     </footer>
 
-    <!-- JavaScript Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     
     <script>
-        // Navbar scroll effect
+        // Efecto de scroll para la barra de navegación
         window.addEventListener('scroll', function() {
             const navbar = document.querySelector('.navbar-custom');
             if (window.scrollY > 50) {
@@ -456,7 +466,7 @@
             }
         });
         
-        // Initialize tooltips
+        // Inicializar tooltips de Bootstrap
         document.addEventListener('DOMContentLoaded', function() {
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -465,6 +475,8 @@
         });
     </script>
     
-    {% block extra_js %}{% endblock %}
+    {% block scripts %}
+    {% endblock %}
+
 </body>
 </html>

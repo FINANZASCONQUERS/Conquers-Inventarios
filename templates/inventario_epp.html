@@ -1,0 +1,505 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario de EPP y Dotación{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-3 align-items-center g-2">
+        <div class="col-12 col-lg-5 mb-2 mb-lg-0">
+            <h3 class="mb-0"><i class="fas fa-hard-hat me-2"></i>Inventario de EPP y Dotación</h3>
+        </div>
+        <div class="col-12 col-lg-7">
+            <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                <a href="{{ url_for('epp_asignaciones') }}" class="btn btn-outline-secondary d-flex align-items-center">
+                    <i class="fas fa-history me-2"></i>Ver Historial de Entregas
+                </a>
+                <button class="btn btn-primary d-flex align-items-center" onclick="openAddModal()">
+                    <i class="fas fa-plus-circle me-2"></i>Agregar Nuevo Item
+                </button>
+                <button class="btn btn-info d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#batchAddModal">
+                    <i class="fas fa-bolt me-2"></i>Carga Rápida por Variantes
+                </button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download me-2"></i>Descargar Reporte
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#" onclick="downloadReport('excel')"><i class="fas fa-file-excel me-2"></i>Excel (.xlsx)</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="downloadReport('pdf')"><i class="fas fa-file-pdf me-2"></i>PDF (.pdf)</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+        </div>
+    </div>
+
+    <div class="row mb-3 g-2">
+        <div class="col-md-5">
+            <input type="text" id="filtroNombre" class="form-control" placeholder="Buscar por nombre o referencia...">
+        </div>
+        <div class="col-md-4">
+            <select id="filtroCategoria" class="form-select">
+                <option value="">Todas las categorías</option>
+                <option value="EPP">EPP</option>
+                <option value="Dotación">Dotación</option>
+                <option value="Equipos de Emergencia">Equipos de Emergencia</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-center">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="filtroAlertas">
+                <label class="form-check-label" for="filtroAlertas">Mostrar solo alertas</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Categoría</th>
+                    <th>Elemento</th>
+                    <th>Referencia/Tipo</th>
+                    <th>Talla/Medida</th>
+                    <th class="text-center">Stock</th>
+                    <th>Vencimiento</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1" aria-labelledby="itemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="itemModalLabel">Agregar Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="itemForm">
+                    <input type="hidden" id="itemId">
+                    <div class="mb-3">
+                        <label for="itemNombre" class="form-label">Nombre del Elemento</label>
+                        <input type="text" class="form-control" id="itemNombre" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="itemCategoria" class="form-label">Categoría</label>
+                        <select class="form-select" id="itemCategoria" required>
+                            <option value="EPP">EPP</option>
+                            <option value="Dotación">Dotación</option>
+                            <option value="Equipos de Emergencia">Equipos de Emergencia</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="itemReferencia" class="form-label">Referencia/Tipo</label>
+                            <input type="text" class="form-control" id="itemReferencia">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="itemTalla" class="form-label">Talla/Medida</label>
+                            <input type="text" class="form-control" id="itemTalla">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="itemStock" class="form-label">Stock Actual</label>
+                            <input type="number" class="form-control" id="itemStock" min="0" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="itemVencimiento" class="form-label">Fecha de Vencimiento</label>
+                            <input type="date" class="form-control" id="itemVencimiento">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="itemObservaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="itemObservaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveItem()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="batchAddModal" tabindex="-1" aria-labelledby="batchAddModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="batchAddModalLabel">Carga Rápida por Variantes (Talla, Tipo, etc.)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ingresa los datos comunes una vez y luego agrega todas las variantes y sus cantidades.</p>
+                <div class="row bg-light p-3 rounded mb-3">
+                    <div class="col-md-6 mb-2">
+                        <label for="batchNombre" class="form-label fw-bold">Nombre del Elemento</label>
+                        <input type="text" class="form-control" id="batchNombre" placeholder="Ej: Botas de Seguridad">
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <label for="batchReferencia" class="form-label fw-bold">Referencia/Tipo</label>
+                        <input type="text" class="form-control" id="batchReferencia" placeholder="Ej: Brahama">
+                    </div>
+                    <div class="col-md-12">
+                         <label for="batchCategoria" class="form-label fw-bold">Categoría</label>
+                        <select class="form-select" id="batchCategoria">
+                            <option value="EPP">EPP</option>
+                            <option value="Dotación">Dotación</option>
+                            <option value="Equipos de Emergencia">Equipos de Emergencia</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="variantsContainer">
+                    </div>
+
+                <button type="button" class="btn btn-outline-primary mt-2" onclick="addVariantRow()">
+                    <i class="fas fa-plus me-2"></i>Agregar Variante
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveAllVariants()">Guardar Todos los Items</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="assignModal" tabindex="-1" aria-labelledby="assignModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="assignModalLabel">Asignar Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignForm">
+                    <input type="hidden" id="assignItemId">
+                    <div class="alert alert-info">
+                        Asignando: <strong id="assignItemName"></strong><br>
+                        Stock Disponible: <strong id="assignItemStock"></strong>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignEmpleado" class="form-label">Nombre del Empleado</label>
+                        <input type="text" class="form-control" id="assignEmpleado" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="assignCantidad" class="form-label">Cantidad a Entregar</label>
+                            <input type="number" class="form-control" id="assignCantidad" min="1" required>
+                        </div>
+                         <div class="col-md-6 mb-3">
+                            <label for="assignFecha" class="form-label">Fecha de Entrega</label>
+                            <input type="date" class="form-control" id="assignFecha" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="assignObservaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="assignObservaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="assignItem()">Registrar Entrega</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allItems = []; // Caché para guardar todos los items y filtrar en el cliente
+    const itemModal = new bootstrap.Modal(document.getElementById('itemModal'));
+    const assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadInventory();
+        document.getElementById('filtroNombre').addEventListener('input', renderTable);
+        document.getElementById('filtroCategoria').addEventListener('change', renderTable);
+        document.getElementById('filtroAlertas').addEventListener('change', renderTable);
+    });
+
+    async function loadInventory() {
+        try {
+            const response = await fetch('/api/epp/items');
+            if (!response.ok) throw new Error('Error al cargar el inventario.');
+            allItems = await response.json();
+            renderTable();
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', error.message, 'error');
+        }
+    }
+
+    function renderTable() {
+        const tableBody = document.getElementById('inventoryTableBody');
+        const filtroNombre = document.getElementById('filtroNombre').value.toLowerCase();
+        const filtroCategoria = document.getElementById('filtroCategoria').value;
+        const filtroAlertas = document.getElementById('filtroAlertas').checked;
+
+        const filteredItems = allItems.filter(item => {
+            const matchesNombre = item.nombre.toLowerCase().includes(filtroNombre) || (item.referencia && item.referencia.toLowerCase().includes(filtroNombre));
+            const matchesCategoria = !filtroCategoria || item.categoria === filtroCategoria;
+            const matchesAlertas = !filtroAlertas || item.stock_bajo || (item.dias_para_vencer !== null && item.dias_para_vencer <= 30);
+            return matchesNombre && matchesCategoria && matchesAlertas;
+        });
+
+        tableBody.innerHTML = '';
+        if (filteredItems.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center">No se encontraron items.</td></tr>`;
+            return;
+        }
+
+        filteredItems.forEach(item => {
+            let stockClass = item.stock_bajo ? 'table-danger' : '';
+            let vencimientoHtml = '-';
+            if (item.fecha_vencimiento) {
+                let vencimientoClass = '';
+                if (item.dias_para_vencer <= 0) {
+                    vencimientoClass = 'text-danger fw-bold'; // Vencido
+                } else if (item.dias_para_vencer <= 30) {
+                    vencimientoClass = 'text-warning fw-bold'; // Próximo a vencer
+                }
+                vencimientoHtml = `<span class="${vencimientoClass}">${item.fecha_vencimiento} (${item.dias_para_vencer} días)</span>`;
+            }
+            
+            const row = `
+                <tr class="${stockClass}">
+                    <td>${item.categoria}</td>
+                    <td>${item.nombre}</td>
+                    <td>${item.referencia || '-'}</td>
+                    <td>${item.talla || '-'}</td>
+                    <td class="text-center">${item.stock_actual}</td>
+                    <td>${vencimientoHtml}</td>
+                    <td class="text-center">
+                        <button class="btn btn-success btn-sm" title="Asignar" onclick='openAssignModal(${JSON.stringify(item)})'><i class="fas fa-user-plus"></i></button>
+                        <button class="btn btn-warning btn-sm" title="Editar" onclick='openEditModal(${JSON.stringify(item)})'><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-sm" title="Eliminar" onclick='deleteItem(${item.id})'><i class="fas fa-trash-alt"></i></button></td>
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    }
+    
+    // --- Lógica de Modales ---
+
+    function openAddModal() {
+        document.getElementById('itemForm').reset();
+        document.getElementById('itemId').value = '';
+        document.getElementById('itemModalLabel').textContent = 'Agregar Nuevo Item';
+        itemModal.show();
+    }
+
+    function openEditModal(item) {
+        document.getElementById('itemForm').reset();
+        document.getElementById('itemId').value = item.id;
+        document.getElementById('itemModalLabel').textContent = 'Editar Item';
+
+        document.getElementById('itemNombre').value = item.nombre;
+        document.getElementById('itemCategoria').value = item.categoria;
+        document.getElementById('itemReferencia').value = item.referencia || '';
+        document.getElementById('itemTalla').value = item.talla || '';
+        document.getElementById('itemStock').value = item.stock_actual;
+        document.getElementById('itemVencimiento').value = item.fecha_vencimiento || '';
+        document.getElementById('itemObservaciones').value = item.observaciones || '';
+        itemModal.show();
+    }
+    
+    function openAssignModal(item) {
+        document.getElementById('assignForm').reset();
+        document.getElementById('assignItemId').value = item.id;
+        document.getElementById('assignItemName').textContent = `${item.nombre} (${item.referencia || 'N/A'})`;
+        document.getElementById('assignItemStock').textContent = item.stock_actual;
+        document.getElementById('assignCantidad').max = item.stock_actual;
+        document.getElementById('assignFecha').valueAsDate = new Date();
+        assignModal.show();
+    }
+
+    function addVariantRow() {
+    const container = document.getElementById('variantsContainer');
+    const row = document.createElement('div');
+    row.className = 'row g-2 mb-2 align-items-center variant-row';
+    row.innerHTML = `
+        <div class="col-5">
+            <input type="text" class="form-control variant-input" placeholder="Variante (Talla, Color, Tipo)">
+        </div>
+        <div class="col-5">
+            <input type="number" class="form-control stock-input" placeholder="Stock" min="0">
+        </div>
+        <div class="col-2">
+            <button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function downloadReport(format) {
+    const filtroNombre = document.getElementById('filtroNombre').value;
+    const filtroCategoria = document.getElementById('filtroCategoria').value;
+    const filtroAlertas = document.getElementById('filtroAlertas').checked;
+
+    // Construimos la URL con los parámetros de los filtros
+    const url = new URL(`${window.location.origin}/exportar_inventario_epp/${format}`);
+    url.searchParams.append('nombre', filtroNombre);
+    url.searchParams.append('categoria', filtroCategoria);
+    url.searchParams.append('alertas', filtroAlertas);
+
+    // Abrimos la URL para que se inicie la descarga
+    window.location.href = url.toString();
+}
+    
+    // --- Lógica de API ---
+    
+    async function saveItem() {
+    const id = document.getElementById('itemId').value;
+    const url = id ? `/api/epp/items/${id}` : '/api/epp/items';
+    const method = id ? 'PUT' : 'POST';
+
+    const data = {
+        nombre: document.getElementById('itemNombre').value,
+        categoria: document.getElementById('itemCategoria').value,
+        referencia: document.getElementById('itemReferencia').value,
+        talla: document.getElementById('itemTalla').value,
+        stock_actual: document.getElementById('itemStock').value,
+        fecha_vencimiento: document.getElementById('itemVencimiento').value || null,
+        observaciones: document.getElementById('itemObservaciones').value
+    };
+
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            Swal.fire('Éxito', result.message, 'success');
+            itemModal.hide(); // Cierra el formulario
+            loadInventory(); // Recarga la tabla con los datos nuevos
+        } else {
+            Swal.fire('Error', result.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error al guardar:', error);
+        Swal.fire('Error de Conexión', 'No se pudo conectar con el servidor.', 'error');
+    }
+}
+
+    async function deleteItem(id) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "¡No podrás revertir esta acción!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, ¡eliminarlo!',
+        cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            const response = await fetch(`/api/epp/items/${id}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            if (response.ok) {
+                Swal.fire('¡Eliminado!', result.message, 'success');
+                loadInventory(); // Recarga la tabla
+            } else {
+                Swal.fire('Error', result.message, 'error');
+            }
+        }
+    });
+}
+
+    async function assignItem() {
+        const data = {
+            item_id: document.getElementById('assignItemId').value,
+            empleado_nombre: document.getElementById('assignEmpleado').value,
+            cantidad_entregada: document.getElementById('assignCantidad').value,
+            fecha_entrega: document.getElementById('assignFecha').value,
+            observaciones: document.getElementById('assignObservaciones').value
+        };
+
+        const response = await fetch('/api/epp/asignar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (response.ok) {
+            Swal.fire('Éxito', result.message, 'success');
+            assignModal.hide();
+            loadInventory();
+        } else {
+            Swal.fire('Error', result.message, 'error');
+        }
+    }
+
+    async function saveAllVariants() {
+    const nombre = document.getElementById('batchNombre').value;
+    const referencia = document.getElementById('batchReferencia').value;
+    const categoria = document.getElementById('batchCategoria').value;
+
+    if (!nombre || !categoria) {
+        Swal.fire('Error', 'El Nombre y la Categoría son obligatorios.', 'warning');
+        return;
+    }
+
+    const items = [];
+    const variantRows = document.querySelectorAll('.variant-row');
+
+    variantRows.forEach(row => {
+        const talla = row.querySelector('.variant-input').value;
+        const stock = row.querySelector('.stock-input').value;
+
+        if (talla && stock) {
+            items.push({
+                nombre: nombre,
+                referencia: referencia,
+                categoria: categoria,
+                talla: talla,
+                stock_actual: parseInt(stock, 10)
+            });
+        }
+    });
+
+    if (items.length === 0) {
+        Swal.fire('Error', 'Debes agregar al menos una fila con Variante y Stock.', 'warning');
+        return;
+    }
+
+    const response = await fetch('/api/epp/items/batch_add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(items)
+    });
+
+    const result = await response.json();
+    if (response.ok) {
+        Swal.fire('Éxito', result.message, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('batchAddModal')).hide();
+        loadInventory();
+    } else {
+        Swal.fire('Error', result.message, 'error');
+    }
+}
+</script>
+{% endblock %}

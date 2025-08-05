@@ -9,118 +9,107 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-xxl my-4">
-    <!-- Header Section -->
-    <div class="dashboard-header mb-5 text-center">
-        <h1 class="display-5 fw-semibold mb-3 text-gray-800">
-            <i class="bi bi-speedometer2 me-2 text-primary"></i> PANEL DE CONTROL
+
+<div class="container-xxl my-5">
+    <!-- Header Section Mejorado -->
+    <div class="dashboard-header mb-5 text-center py-4 rounded-4 shadow-sm bg-white position-relative">
+        <h1 class="display-4 fw-bold mb-2 text-primary-emphasis" style="letter-spacing: 1px;">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i> Panel de Control
         </h1>
-        <div class="text-muted">
+        <div class="text-secondary fs-5">
             <i class="bi bi-calendar-check me-1"></i>
             <span id="current-date">{{ current_date }}</span>
         </div>
+        <div class="position-absolute top-0 end-0 p-3 d-none d-md-block">
+            <img src="/static/Conquers_4_Logo.png" alt="Logo" style="height: 48px; opacity: 0.12;">
+        </div>
     </div>
 
-    <!-- Access Cards -->
+    <!-- Access Cards Mejoradas -->
     <div class="row g-4 justify-content-center">
         <!-- Planta Card -->
         <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0">
+            <div class="card access-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-planta-soft mx-auto mb-4">
+                    <div class="access-icon bg-planta-soft mx-auto mb-4 shadow-sm">
                         <i class="bi bi-buildings-fill text-planta"></i>
                     </div>
-                    <h3 class="h4 mb-3">Reporte Planta</h3>
-                    
-                    <!-- Fecha de actualización específica -->
+                    <h3 class="h5 mb-2 fw-semibold text-planta">Reporte Planta</h3>
                     <div class="update-info mb-3">
                         <div class="update-badge bg-white text-dark border border-1 border-planta">
                             <i class="bi bi-clock-history text-planta me-1"></i>
-                           <small>{{ planta_summary.info_completa }}</small>
+                            <small>{{ planta_summary.info_completa }}</small>
                         </div>
                     </div>
-                    
                     <div class="mt-auto">
-                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-planta btn-sm px-4">
-                            Acceder <i class="bi bi-arrow-right ms-2"></i>
+                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-planta btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Tránsito Card -->
         <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0">
+            <div class="card access-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-transito-soft mx-auto mb-4">
+                    <div class="access-icon bg-transito-soft mx-auto mb-4 shadow-sm">
                         <i class="bi bi-truck text-transito"></i>
                     </div>
-                    <h3 class="h4 mb-3">Reporte Tránsito</h3>
-                    
-                    <!-- Fecha de actualización específica -->
+                    <h3 class="h5 mb-2 fw-semibold text-transito">Reporte Tránsito</h3>
                     <div class="update-info mb-3">
                         <div class="update-badge bg-white text-dark border border-1 border-transito">
                             <i class="bi bi-clock-history text-transito me-1"></i>
                             <small>{{ transito_summary.info_completa }}</small>
                         </div>
                     </div>
-                    
                     <div class="mt-auto">
-                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-transito btn-sm px-4">
-                            Acceder <i class="bi bi-arrow-right ms-2"></i>
+                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-transito btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Orion Card -->
         <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0">
+            <div class="card access-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-orion-soft mx-auto mb-4">
+                    <div class="access-icon bg-orion-soft mx-auto mb-4 shadow-sm">
                         <i class="bi bi-water text-orion"></i>
                     </div>
-                    <h3 class="h4 mb-3">Barcaza Orion</h3>
-                    
-                    <!-- Fecha de actualización específica -->
+                    <h3 class="h5 mb-2 fw-semibold text-orion">Barcaza Orion</h3>
                     <div class="update-info mb-3">
                         <div class="update-badge bg-white text-dark border border-1 border-orion">
                             <i class="bi bi-clock-history text-orion me-1"></i>
                             <small>{{ orion_summary.info_completa }}</small>
                         </div>
                     </div>
-                    
                     <div class="mt-auto">
-                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-orion btn-sm px-4">
-                            Acceder <i class="bi bi-arrow-right ms-2"></i>
+                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-orion btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
             </div>
         </div>
-
         <!-- Bita Card -->
         <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0">
+            <div class="card access-card h-100 border-0 shadow-lg">
                 <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-bita-soft mx-auto mb-4">
+                    <div class="access-icon bg-bita-soft mx-auto mb-4 shadow-sm">
                         <i class="bi bi-tsunami text-bita"></i>
                     </div>
-                    <h3 class="h4 mb-3">Barcaza BITA</h3>
-                    
-                    <!-- Fecha de actualización específica -->
+                    <h3 class="h5 mb-2 fw-semibold text-bita">Barcaza BITA</h3>
                     <div class="update-info mb-3">
                         <div class="update-badge bg-white text-dark border border-1 border-bita">
                             <i class="bi bi-clock-history text-bita me-1"></i>
                             <small>{{ bita_summary.info_completa }}</small>
                         </div>
                     </div>
-                    
                     <div class="mt-auto">
-                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-bita btn-sm px-4">
-                            Acceder <i class="bi bi-arrow-right ms-2"></i>
+                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-bita btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
+                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
                         </a>
                     </div>
                 </div>
@@ -132,84 +121,145 @@
 <style>
     :root {
         --planta: #fd7e14;
-        --planta-soft: rgba(253, 126, 20, 0.1);
+        --planta-soft: rgba(253, 126, 20, 0.08);
         --transito: #0d6efd;
-        --transito-soft: rgba(13, 110, 253, 0.1);
+        --transito-soft: rgba(13, 110, 253, 0.08);
         --orion: #6f42c1;
-        --orion-soft: rgba(111, 66, 193, 0.1);
+        --orion-soft: rgba(111, 66, 193, 0.08);
         --bita: #198754;
-        --bita-soft: rgba(25, 135, 84, 0.1);
+        --bita-soft: rgba(25, 135, 84, 0.08);
     }
-    
+
+    .dashboard-header {
+        background: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
+        border-radius: 1.5rem;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.04);
+        border: 1px solid #e3e3e3;
+    }
+
     .access-card {
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        background-color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(0, 0, 0, 0.03);
+        border-radius: 1.25rem;
+        transition: box-shadow 0.3s, transform 0.2s;
+        background-color: #fff;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border: 1px solid #f0f0f0;
+        min-height: 370px;
     }
-    
     .access-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        border-color: rgba(0, 0, 0, 0.1);
+        transform: translateY(-7px) scale(1.03);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.13);
+        border-color: #e0e0e0;
     }
-    
     .access-icon {
-        width: 72px;
-        height: 72px;
-        border-radius: 18px;
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 2rem;
+        font-size: 2.5rem;
+        background: #fff;
+        border: 2px solid #f0f0f0;
+        margin-bottom: 1.2rem;
     }
-    
     .btn-planta {
-        background-color: var(--planta);
-        color: white;
+        background: linear-gradient(90deg, #fd7e14 80%, #ffb877 100%);
+        color: #fff;
         border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(253,126,20,0.08);
+        transition: background 0.2s, box-shadow 0.2s;
     }
-    
+    .btn-planta:hover {
+        background: linear-gradient(90deg, #ffb877 0%, #fd7e14 100%);
+        box-shadow: 0 4px 16px rgba(253,126,20,0.18);
+    }
     .btn-transito {
-        background-color: var(--transito);
-        color: white;
+        background: linear-gradient(90deg, #0d6efd 80%, #6ea8fe 100%);
+        color: #fff;
         border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(13,110,253,0.08);
+        transition: background 0.2s, box-shadow 0.2s;
     }
-    
+    .btn-transito:hover {
+        background: linear-gradient(90deg, #6ea8fe 0%, #0d6efd 100%);
+        box-shadow: 0 4px 16px rgba(13,110,253,0.18);
+    }
     .btn-orion {
-        background-color: var(--orion);
-        color: white;
+        background: linear-gradient(90deg, #6f42c1 80%, #b197fc 100%);
+        color: #fff;
         border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(111,66,193,0.08);
+        transition: background 0.2s, box-shadow 0.2s;
     }
-    
+    .btn-orion:hover {
+        background: linear-gradient(90deg, #b197fc 0%, #6f42c1 100%);
+        box-shadow: 0 4px 16px rgba(111,66,193,0.18);
+    }
     .btn-bita {
-        background-color: var(--bita);
-        color: white;
+        background: linear-gradient(90deg, #198754 80%, #71e3a3 100%);
+        color: #fff;
         border: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 0.75rem;
+        box-shadow: 0 2px 8px rgba(25,135,84,0.08);
+        transition: background 0.2s, box-shadow 0.2s;
     }
-    
+    .btn-bita:hover {
+        background: linear-gradient(90deg, #71e3a3 0%, #198754 100%);
+        box-shadow: 0 4px 16px rgba(25,135,84,0.18);
+    }
     .update-badge {
         display: inline-flex;
         align-items: center;
-        padding: 0.35rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
+        padding: 0.4rem 1rem;
+        border-radius: 1.5rem;
+        font-size: 0.95rem;
+        background: #f8f9fa;
+        font-weight: 500;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
-    
     .update-info {
         min-height: 2.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-    
+    .text-planta { color: var(--planta) !important; }
+    .text-transito { color: var(--transito) !important; }
+    .text-orion { color: var(--orion) !important; }
+    .text-bita { color: var(--bita) !important; }
+
+    @media (max-width: 1200px) {
+        .access-card { min-height: 340px; }
+    }
+    @media (max-width: 992px) {
+        .access-card { min-height: 300px; }
+    }
     @media (max-width: 768px) {
         .access-icon {
             width: 60px;
             height: 60px;
             font-size: 1.75rem;
         }
+        .dashboard-header {
+            padding: 1.5rem 0.5rem;
+        }
+    }
+    @media (max-width: 576px) {
+        .dashboard-header {
+            font-size: 1.1rem;
+        }
+        .access-card { min-height: 220px; }
     }
 </style>
 

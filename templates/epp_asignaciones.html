@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Asignaciones{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fas fa-history me-2"></i>Historial de Entregas</h3>
+        <a href="{{ url_for('inventario_epp') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left me-2"></i>Volver al Inventario
+        </a>
+    </div>
+
+    <div class="row g-3 align-items-center mb-3 p-3 bg-light border rounded">
+        <div class="col-md-4">
+            <input type="text" id="filtroEmpleado" class="form-control" placeholder="Buscar por nombre de empleado...">
+        </div>
+        <div class="col-md-3">
+            <label for="filtroFechaInicio" class="form-label small">Desde:</label>
+            <input type="date" id="filtroFechaInicio" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label for="filtroFechaFin" class="form-label small">Hasta:</label>
+            <input type="date" id="filtroFechaFin" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <div class="btn-group w-100">
+                <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-download me-2"></i>Descargar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="downloadHistory('excel')">Excel (.xlsx)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="downloadHistory('pdf')">PDF (.pdf)</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha Entrega</th>
+                    <th>Empleado</th>
+                    <th>Elemento Entregado</th>
+                    <th>Referencia</th>
+                    <th>Talla/Medida</th>
+                    <th class="text-center">Cantidad</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody id="historyTableBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allAssignments = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Asignar eventos a todos los filtros
+        document.getElementById('filtroEmpleado').addEventListener('input', renderHistoryTable);
+        document.getElementById('filtroFechaInicio').addEventListener('change', renderHistoryTable);
+        document.getElementById('filtroFechaFin').addEventListener('change', renderHistoryTable);
+        loadHistory();
+    });
+
+    async function loadHistory() {
+        try {
+            const response = await fetch('/api/epp/asignaciones');
+            if (!response.ok) throw new Error('Error al cargar el historial.');
+            allAssignments = await response.json();
+            renderHistoryTable();
+        } catch (error) {
+            console.error(error);
+            Swal.fire('Error', error.message, 'error');
+        }
+    }
+
+    function renderHistoryTable() {
+        const tableBody = document.getElementById('historyTableBody');
+        const filtroEmpleado = document.getElementById('filtroEmpleado').value.toLowerCase();
+        const filtroFechaInicio = document.getElementById('filtroFechaInicio').value;
+        const filtroFechaFin = document.getElementById('filtroFechaFin').value;
+
+        const filtered = allAssignments.filter(a => {
+            const matchEmpleado = a.empleado_nombre.toLowerCase().includes(filtroEmpleado);
+            // Compara las fechas solo si se ha seleccionado una
+            const matchFechaInicio = !filtroFechaInicio || a.fecha_entrega >= filtroFechaInicio;
+            const matchFechaFin = !filtroFechaFin || a.fecha_entrega <= filtroFechaFin;
+            return matchEmpleado && matchFechaInicio && matchFechaFin;
+        });
+
+        tableBody.innerHTML = '';
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="text-center">No se encontraron registros.</td></tr>`;
+            return;
+        }
+
+        filtered.forEach(a => {
+            const row = `
+                <tr>
+                    <td>${a.fecha_entrega}</td>
+                    <td>${a.empleado_nombre}</td>
+                    <td>${a.item_nombre}</td>
+                    <td>${a.item_referencia || '-'}</td>
+                    <td>${a.item_talla || '-'}</td>
+                    <td class="text-center">${a.cantidad_entregada}</td>
+                    <td>${a.observaciones || '-'}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    }
+
+    function downloadHistory(format) {
+        const empleado = document.getElementById('filtroEmpleado').value;
+        const fechaInicio = document.getElementById('filtroFechaInicio').value;
+        const fechaFin = document.getElementById('filtroFechaFin').value;
+
+        // Construimos la URL con los parámetros de los filtros
+        const url = new URL(`${window.location.origin}/exportar_asignaciones_epp/${format}`);
+        url.searchParams.append('empleado', empleado);
+        url.searchParams.append('fecha_inicio', fechaInicio);
+        url.searchParams.append('fecha_fin', fechaFin);
+        
+        // Abrimos la URL para que se inicie la descarga
+        window.location.href = url.toString();
+    }
+</script>
+{% endblock %}

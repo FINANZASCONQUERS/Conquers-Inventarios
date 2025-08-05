@@ -4,86 +4,192 @@
     <meta charset="UTF-8">
     <title>Reporte Barcaza BITA</title>
     <style>
-        body { font-family: sans-serif; font-size: 10px; }
-        h1 { color: #333; text-align: center; }
-        h2 { color: #0b8552; border-bottom: 2px solid #0b8552; padding-bottom: 5px; margin-top: 25px;}
-        p { color: #555; text-align: center; margin-bottom: 25px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .header-main th { background-color: #0b8552; color: white; }
-        .summary-table { margin-top: 10px; width: 60%; }
-        .summary-table td { font-weight: bold; }
-        .total-consolidado { margin-top: 30px; background-color: #e8f5e9; padding: 15px; border: 1px solid #0b8552;}
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+        body {
+            font-family: 'Montserrat', Arial, sans-serif;
+            background: #f8fafb;
+            margin: 0;
+            padding: 0;
+            color: #222;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            background: linear-gradient(90deg, #0b8552 0%, #1e3c72 100%);
+            padding: 24px 40px 16px 40px;
+            border-bottom: 4px solid #0b8552;
+        }
+        .header img {
+            height: 60px;
+            margin-right: 32px;
+        }
+        .header-title {
+            color: #fff;
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+        .subtitle {
+            margin: 32px 0 8px 0;
+            font-size: 1.08rem;
+            color: #0b8552;
+            text-align: right;
+            padding-right: 40px;
+        }
+        .table-container {
+            background: #fff;
+            margin: 0 auto 32px auto;
+            border-radius: 14px;
+            box-shadow: 0 4px 24px rgba(30,60,114,0.08);
+            max-width: 1100px;
+            padding: 32px 40px 24px 40px;
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 0;
+            font-size: 1.01rem;
+        }
+        th, td {
+            border: none;
+            padding: 10px 8px;
+            text-align: left;
+        }
+        th {
+            background: #0b8552;
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.05rem;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        tr {
+            background: #f8fafb;
+            transition: background 0.2s;
+        }
+        tr:nth-child(even) {
+            background: #eaf5f0;
+        }
+        tr:hover {
+            background: #d2f3e3;
+        }
+        td {
+            color: #222;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .summary-table {
+            margin-top: 10px;
+            width: 60%;
+            font-size: 1.01rem;
+        }
+        .summary-table td {
+            font-weight: bold;
+            padding: 8px 6px;
+        }
+        .total-consolidado {
+            margin: 0 auto 32px auto;
+            background-color: #eaf5f0;
+            padding: 24px 40px 18px 40px;
+            border: 1.5px solid #0b8552;
+            border-radius: 12px;
+            max-width: 900px;
+            box-shadow: 0 2px 12px rgba(30,60,114,0.07);
+        }
+        .total-consolidado h2 {
+            color: #1e3c72;
+            border: none;
+            margin-top: 0;
+            margin-bottom: 18px;
+            font-size: 1.25rem;
+        }
+        .footer {
+            text-align: right;
+            color: #888;
+            font-size: 0.95rem;
+            margin: 0 40px 18px 0;
+        }
+        @media (max-width: 800px) {
+            .header, .table-container, .total-consolidado { padding: 16px; }
+            .subtitle, .footer { padding-right: 16px; }
+        }
     </style>
 </head>
 <body>
-    <h1>Reporte de Inventario - Barcaza BITA</h1>
-    <p>Datos correspondientes a: <strong>{{ fecha_reporte }}</strong></p>
-
-    <h2>Barcaza Marinse</h2>
-    <table>
-        <thead class="header-main">
-            <tr>
-                <th>Tanque (TK)</th>
-                <th>Producto</th>
-                <th>Capacidad Máx.</th>
-                <th>BLS @60°F</th>
-                <th>API</th>
-                <th>%BSW</th>
-                <th>%S</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for tanque in tanques_marinse %}
-            <tr>
-                <td>{{ tanque.TK }}</td>
-                <td>{{ tanque.PRODUCTO }}</td>
-                <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
-                <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
-                <td>{{ "%.2f"|format(tanque.API) }}</td>
-                <td>{{ "%.2f"|format(tanque.BSW) }}</td>
-                <td>{{ "%.2f"|format(tanque.S) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <table class="summary-table">
-        <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_marinse.total_bls) }}</td></tr>
-        <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_marinse.prom_api) }}</td></tr>
-    </table>
-
-    <h2>Barcaza Oidech</h2>
-    <table>
-        <thead class="header-main">
-            <tr>
-                <th>Tanque (TK)</th>
-                <th>Producto</th>
-                <th>Capacidad Máx.</th>
-                <th>BLS @60°F</th>
-                <th>API</th>
-                <th>%BSW</th>
-                <th>%S</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for tanque in tanques_oidech %}
-            <tr>
-                <td>{{ tanque.TK }}</td>
-                <td>{{ tanque.PRODUCTO }}</td>
-                <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
-                <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
-                <td>{{ "%.2f"|format(tanque.API) }}</td>
-                <td>{{ "%.2f"|format(tanque.BSW) }}</td>
-                <td>{{ "%.2f"|format(tanque.S) }}</td>
-            </tr>
-            {% endfor %} </tbody>
-    </table>
-    <table class="summary-table">
-        <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_oidech.total_bls) }}</td></tr>
-        <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_oidech.prom_api) }}</td></tr>
-    </table>
-
+    <div class="header">
+        <img src="/static/Conquers_4_Logo.png" alt="Logo Empresa">
+        <div class="header-title">Reporte de Inventario - Barcaza BITA</div>
+    </div>
+    <div class="subtitle">
+        Datos correspondientes a: <strong>{{ fecha_reporte }}</strong>
+    </div>
+    <div class="table-container">
+        <h2>Barcaza Marinse</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tanque (TK)</th>
+                    <th>Producto</th>
+                    <th>Capacidad Máx.</th>
+                    <th>BLS @60°F</th>
+                    <th>API</th>
+                    <th>%BSW</th>
+                    <th>%S</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tanque in tanques_marinse %}
+                <tr>
+                    <td>{{ tanque.TK }}</td>
+                    <td>{{ tanque.PRODUCTO }}</td>
+                    <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
+                    <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
+                    <td>{{ "%.2f"|format(tanque.API) }}</td>
+                    <td>{{ "%.2f"|format(tanque.BSW) }}</td>
+                    <td>{{ "%.2f"|format(tanque.S) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <table class="summary-table">
+            <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_marinse.total_bls) }}</td></tr>
+            <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_marinse.prom_api) }}</td></tr>
+        </table>
+    </div>
+    <div class="table-container">
+        <h2>Barcaza Oidech</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tanque (TK)</th>
+                    <th>Producto</th>
+                    <th>Capacidad Máx.</th>
+                    <th>BLS @60°F</th>
+                    <th>API</th>
+                    <th>%BSW</th>
+                    <th>%S</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tanque in tanques_oidech %}
+                <tr>
+                    <td>{{ tanque.TK }}</td>
+                    <td>{{ tanque.PRODUCTO }}</td>
+                    <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
+                    <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
+                    <td>{{ "%.2f"|format(tanque.API) }}</td>
+                    <td>{{ "%.2f"|format(tanque.BSW) }}</td>
+                    <td>{{ "%.2f"|format(tanque.S) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <table class="summary-table">
+            <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_oidech.total_bls) }}</td></tr>
+            <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_oidech.prom_api) }}</td></tr>
+        </table>
+    </div>
     <div class="total-consolidado">
         <h2>Total Consolidado de la Operación</h2>
         <table class="summary-table">
@@ -92,6 +198,9 @@
             <tr><td>Promedio Ponderado %BSW:</td><td>{{ "%.4f"|format(total_consolidado.prom_bsw) }}</td></tr>
             <tr><td>Promedio Ponderado %S:</td><td>{{ "%.4f"|format(total_consolidado.prom_s) }}</td></tr>
         </table>
+    </div>
+    <div class="footer">
+        Reporte generado automáticamente | Conquers Trading &copy; {{ fecha_reporte.split('-')[0] }}
     </div>
 </body>
 </html>
