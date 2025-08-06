@@ -654,7 +654,14 @@ USUARIOS = {
         "nombre": "Opensean", 
         "rol": "operador_remolcador", 
         "area": ["control_remolcadores"]
-    }
+    },
+
+    "safety@conquerstrading.com": {
+    "password": generate_password_hash("Conquers2025"),
+    "nombre": "Sebastian Blanco",
+    "rol": "editor",
+    "area": ["inventario_epp"]
+}
 
 }
    
@@ -4327,11 +4334,13 @@ def home():
     if user_email == 'accountingzf@conquerstrading.com':
         return redirect(url_for('home_contabilidad'))
 
-    # ▼▼▼ INICIO DE LA CORRECCIÓN ▼▼▼
-    # AÑADIMOS UNA REGLA EXCLUSIVA PARA EL EMAIL DE DANIELA
+    # --- EXCEPCIÓN PARA DANIELA: Siempre dashboard general ---
     if user_email == 'comex@conquerstrading.com':
-        return redirect(url_for('home_siza'))
-    # ▲▲▲ FIN DE LA CORRECCIÓN ▲▲▲
+        return redirect(url_for('dashboard_reportes'))
+
+    # --- EXCEPCIÓN PARA SEBASTIAN: Siempre home de Inventario EPP ---
+    if user_email == 'safety@conquerstrading.com':
+        return redirect(url_for('inventario_epp_home'))
 
     # --- REGLA 2: Usuarios con un único permiso específico ---
     if len(user_areas) == 1:
@@ -4343,12 +4352,12 @@ def home():
         if area_unica == 'simulador_rendimiento':
             return redirect(url_for('home_simulador'))
         if area_unica == 'guia_transporte':
-            return redirect(url_for('home_logistica')) # Mantenemos por si hay otros usuarios con solo este permiso
+            return redirect(url_for('home_logistica'))
         if area_unica == 'zisa_inventory':
             return redirect(url_for('home_siza'))
+        if area_unica == 'inventario_epp':
+            return redirect(url_for('inventario_epp_home'))
 
-    # --- REGLA 3 (POR DEFECTO): Usuarios con múltiples permisos ---
-    # Si ninguna de las reglas anteriores se cumple, se les dirige al dashboard general.
     return redirect(url_for('dashboard_reportes'))
 
 @login_required
@@ -4389,6 +4398,30 @@ def guardar_clientes(clientes):
     with open(ruta_clientes, 'w', encoding='utf-8') as f:
         json.dump(clientes, f, ensure_ascii=False, indent=4)
 
+
+# Modelos SQLAlchemy para Cliente, Conductor y Empresa
+from flask_sqlalchemy import SQLAlchemy
+db: SQLAlchemy  # Asegúrate de que tu app ya tiene db = SQLAlchemy(app)
+
+class Cliente(db.Model):
+    __tablename__ = 'clientes'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255), nullable=False, unique=True)
+    direccion = db.Column(db.String(255), nullable=False)
+    ciudad_departamento = db.Column(db.String(255), nullable=False)
+
+class Conductor(db.Model):
+    __tablename__ = 'conductores'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255), nullable=False)
+    cedula = db.Column(db.String(64), nullable=False, unique=True)
+    placa = db.Column(db.String(64), nullable=False)
+
+class Empresa(db.Model):
+    __tablename__ = 'empresas_transportadoras'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(255), nullable=False, unique=True)
+
 @login_required
 @app.route('/gestionar_clientes')
 def gestionar_clientes():    
@@ -4398,7 +4431,6 @@ def gestionar_clientes():
 @login_required
 @app.route('/guardar_cliente', methods=['POST'])
 def guardar_cliente():
-
     nombre = request.form.get('nombre_cliente')
     direccion = request.form.get('direccion_cliente')
     ciudad = request.form.get('ciudad_cliente')
@@ -4408,8 +4440,7 @@ def guardar_cliente():
         return redirect(url_for('gestionar_clientes'))
 
     clientes = cargar_clientes()
-    
-    # Opcional: Verificar si el cliente ya existe para no duplicarlo
+    # Verificar si el cliente ya existe en JSON
     if any(c['NOMBRE_CLIENTE'].lower() == nombre.lower() for c in clientes):
         flash(f"El cliente '{nombre}' ya existe en la base de datos.", "warning")
         return redirect(url_for('gestionar_clientes'))
@@ -4420,11 +4451,23 @@ def guardar_cliente():
         "CIUDAD_DEPARTAMENTO": ciudad.upper()
     }
     clientes.append(nuevo_cliente)
-    
-    # Ordenar la lista alfabéticamente por nombre de cliente
     clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
-
     guardar_clientes(clientes)
+
+    # Guardar también en PostgreSQL
+    try:
+        if not Cliente.query.filter_by(nombre=nombre.upper()).first():
+            cliente_db = Cliente(
+                nombre=nombre.upper(),
+                direccion=direccion.upper(),
+                ciudad_departamento=ciudad.upper()
+            )
+            db.session.add(cliente_db)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al guardar en la base de datos: {e}", "danger")
+        return redirect(url_for('gestionar_clientes'))
 
     flash(f"Cliente '{nombre}' agregado exitosamente.", "success")
     return redirect(url_for('gestionar_clientes'))
@@ -4432,7 +4475,6 @@ def guardar_cliente():
 @login_required
 @app.route('/agregar_cliente_ajax', methods=['POST'])
 def agregar_cliente_ajax():
-
     data = request.get_json()
     nombre = data.get('nombre')
     direccion = data.get('direccion')
@@ -4442,7 +4484,6 @@ def agregar_cliente_ajax():
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
     clientes = cargar_clientes()
-
     if any(c.get('NOMBRE_CLIENTE', '').lower() == nombre.lower() for c in clientes):
         return jsonify(success=False, message=f"El cliente '{nombre}' ya existe."), 409 # 409 Conflict
 
@@ -4454,6 +4495,21 @@ def agregar_cliente_ajax():
     clientes.append(nuevo_cliente)
     clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
     guardar_clientes(clientes)
+
+    # Guardar también en PostgreSQL
+    try:
+        if not Cliente.query.filter_by(nombre=nombre.upper()).first():
+            cliente_db = Cliente(
+                nombre=nombre.upper(),
+                direccion=direccion.upper(),
+                ciudad_departamento=ciudad.upper()
+            )
+            db.session.add(cliente_db)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al guardar en la base de datos: {e}"), 500
+
     return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
 
 @login_required
@@ -4523,7 +4579,6 @@ def guardar_empresas(empresas):
 @login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])
 def agregar_conductor_ajax():
-        
     data = request.get_json()
     nombre = str(data.get('nombre', ''))
     cedula = str(data.get('cedula', ''))
@@ -4533,7 +4588,6 @@ def agregar_conductor_ajax():
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
     conductores = cargar_conductores()
-
     # Verificación de duplicados (versión segura)
     if any(c.get('CEDULA', '').lower() == cedula.lower() for c in conductores):
         return jsonify(success=False, message=f"Un conductor con la cédula '{cedula}' ya existe."), 409
@@ -4544,12 +4598,22 @@ def agregar_conductor_ajax():
         "PLACA": placa.upper()
     }
     conductores.append(nuevo_conductor)
-    
-    # Ordenar la lista (versión segura)
     conductores.sort(key=lambda x: x.get('CONDUCTOR', ''))
-    
-    # Guardar los datos y comprobar el resultado
     guardado_exitoso = guardar_conductores(conductores)
+
+    # Guardar también en PostgreSQL
+    try:
+        if not Conductor.query.filter_by(cedula=cedula.upper()).first():
+            conductor_db = Conductor(
+                nombre=nombre.upper(),
+                cedula=cedula.upper(),
+                placa=placa.upper()
+            )
+            db.session.add(conductor_db)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al guardar en la base de datos: {e}"), 500
 
     if guardado_exitoso:
         return jsonify(success=True, message="Conductor agregado exitosamente.", nuevo_conductor=nuevo_conductor)
@@ -4566,7 +4630,6 @@ def agregar_empresa_ajax():
         return jsonify(success=False, message="El nombre es obligatorio."), 400
 
     empresas = cargar_empresas()
-
     if any(e['NOMBRE_EMPRESA'].lower() == nombre.lower() for e in empresas):
         return jsonify(success=False, message=f"La empresa '{nombre}' ya existe."), 409
 
@@ -4574,6 +4637,16 @@ def agregar_empresa_ajax():
     empresas.append(nueva_empresa)
     empresas.sort(key=lambda x: x['NOMBRE_EMPRESA'])
     guardar_empresas(empresas)
+
+    # Guardar también en PostgreSQL
+    try:
+        if not Empresa.query.filter_by(nombre=nombre.upper()).first():
+            empresa_db = Empresa(nombre=nombre.upper())
+            db.session.add(empresa_db)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al guardar en la base de datos: {e}"), 500
 
     return jsonify(success=True, message="Empresa agregada exitosamente.", nueva_empresa=nueva_empresa)
 
