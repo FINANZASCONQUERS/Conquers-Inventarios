@@ -4338,6 +4338,10 @@ def home():
     if user_email == 'comex@conquerstrading.com':
         return redirect(url_for('dashboard_reportes'))
 
+    # --- EXCEPCIÓN PARA FELIPE: Siempre dashboard general ---
+    if user_email == 'felipe.delavega@conquerstrading.com':
+        return redirect(url_for('dashboard_reportes'))
+
     # --- EXCEPCIÓN PARA SEBASTIAN: Siempre home de Inventario EPP ---
     if user_email == 'safety@conquerstrading.com':
         return redirect(url_for('inventario_epp_home'))
