@@ -1101,13 +1101,10 @@ def planta():
     fecha_str = request.args.get('fecha')
 
     try:
-        # Intenta convertir el texto de la fecha a un objeto de fecha real
         fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
     except (ValueError, TypeError):
-        # Si el formato es incorrecto, usa la fecha de hoy como valor por defecto seguro
         fecha_seleccionada = date.today()
     
-    # Creamos un timestamp del final del día seleccionado para incluir todos los registros de ese día
     timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
     # 2. Consulta para obtener el estado MÁS RECIENTE de CADA tanque EN O ANTES de la fecha seleccionada
@@ -1115,15 +1112,17 @@ def planta():
         RegistroPlanta.tk,
         func.max(RegistroPlanta.timestamp).label('max_timestamp')
     ).filter(RegistroPlanta.timestamp <= timestamp_limite
-             ) .group_by(RegistroPlanta.tk
-                         ).subquery()
+             ).group_by(RegistroPlanta.tk).subquery()
 
     registros_recientes = db.session.query(RegistroPlanta).join(
         subquery,
         (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)
     ).all()
     
-    # 3. La lógica para preparar y mostrar los datos es la misma de antes
+    # 3. Preparar y ORDENAR los datos según el orden deseado
+    orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02"]
+    orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+
     datos_para_plantilla = []
     if registros_recientes:
         for registro in registros_recientes:
@@ -1133,16 +1132,19 @@ def planta():
                 "BSW": registro.bsw or "", "S": registro.s or ""
             })
     else:
-        # Si no hay registros para esa fecha, mostramos la planilla por defecto
         datos_para_plantilla = PLANILLA_PLANTA
+
+    # Ordenar la lista según el orden deseado
+    datos_para_plantilla = sorted(
+        datos_para_plantilla,
+        key=lambda fila: orden_map.get(fila["TK"], 99)
+    )
 
     # 4. Enviamos los datos y la fecha seleccionada de vuelta al HTML
     return render_template("planta.html", 
                            planilla=datos_para_plantilla, 
                            nombre=session.get("nombre", "Usuario"),
-                           # Esto es para que el campo de fecha muestre el día que estás viendo
                            fecha_seleccionada=fecha_seleccionada.isoformat())
-
 @login_required
 @app.route('/reporte_planta')
 def reporte_planta():
@@ -4008,6 +4010,76 @@ def delete_programacion(id):
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/reporte_grafico_despachos')
+def reporte_grafico_despachos():
+    # 1. Obtener filtros de fecha. Por defecto, muestra el mes actual.
+    today = date.today()
+    fecha_inicio_str = request.args.get('fecha_inicio', today.replace(day=1).isoformat())
+    fecha_fin_str = request.args.get('fecha_fin', today.isoformat())
+
+    try:
+        fecha_inicio = date.fromisoformat(fecha_inicio_str)
+        fecha_fin = date.fromisoformat(fecha_fin_str)
+    except (ValueError, TypeError):
+        # Si las fechas son inválidas, vuelve al default del mes actual
+        fecha_inicio = today.replace(day=1)
+        fecha_fin = today
+
+    # 2. Consultar la base de datos para obtener los datos agregados
+    datos_despacho = db.session.query(
+        ProgramacionCargue.cliente,
+        func.sum(ProgramacionCargue.barriles).label('total_barriles')
+    ).filter(
+        ProgramacionCargue.estado == 'DESPACHADO',
+        ProgramacionCargue.cliente.isnot(None),
+        ProgramacionCargue.barriles.isnot(None),
+        ProgramacionCargue.fecha_despacho.between(fecha_inicio, fecha_fin)
+    ).group_by(
+        ProgramacionCargue.cliente
+    ).order_by(
+        func.sum(ProgramacionCargue.barriles).desc()
+    ).all()
+
+    grafico_base64 = None
+    total_barriles_general = 0
+    
+    if datos_despacho:
+        # 3. Preparar datos para el gráfico
+        clientes = [resultado[0] for resultado in datos_despacho]
+        barriles = [float(resultado[1]) for resultado in datos_despacho]
+        total_barriles_general = sum(barriles)
+
+        # 4. Generar el gráfico con Matplotlib
+        fig, ax = plt.subplots(figsize=(12, max(6, len(clientes) * 0.5)))
+        bars = ax.barh(clientes, barriles, color='#0b8552')
+        
+        ax.set_xlabel('Total de Barriles Despachados')
+        ax.set_ylabel('Cliente')
+        ax.set_title(f'Total de Barriles Despachados por Cliente\n({fecha_inicio.strftime("%d/%m/%Y")} - {fecha_fin.strftime("%d/%m/%Y")})')
+        ax.invert_yaxis() # El cliente con más barriles queda arriba
+
+        # Añadir etiquetas de valor en cada barra
+        for bar in bars:
+            width = bar.get_width()
+            ax.text(width + (max(barriles) * 0.01), bar.get_y() + bar.get_height()/2,
+                    f'{width:,.2f}', ha='left', va='center', fontsize=9)
+        
+        ax.grid(axis='x', linestyle='--', alpha=0.6)
+        plt.tight_layout()
+        
+        # 5. Convertir el gráfico a una imagen para mostrarla en la web
+        grafico_base64 = convertir_plot_a_base64(fig)
+
+    return render_template(
+        'reporte_grafico_despachos.html',
+        grafico_base64=grafico_base64,
+        datos_tabla=datos_despacho,
+        total_barriles=total_barriles_general,
+        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()}
+    )
   
 
 @login_required

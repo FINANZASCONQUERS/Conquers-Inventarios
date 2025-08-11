@@ -12,20 +12,26 @@
         :root {
             --primary-color: #0b8552;
             --primary-hover: #0a7347;
-            --text-dark: #2c3e50;
+            --primary-gradient: linear-gradient(135deg, #0b8552 0%, #0a7347 100%);
+            --text-dark: #1a1a1a;
             --text-medium: #495057;
             --text-light: #6c757d;
             --bg-light: #f8f9fa;
             --white: #ffffff;
-            --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+            --shadow-hover: 0 25px 80px rgba(0, 0, 0, 0.35);
+            --border-radius: 16px;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.2);
         }
         
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
             overflow: hidden;
             color: var(--text-dark);
+            background: var(--primary-gradient);
         }
 
         .video-background-container {
@@ -50,7 +56,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.6); 
+            background: linear-gradient(135deg, rgba(11, 133, 82, 0.15) 0%, rgba(10, 115, 71, 0.25) 100%);
+            backdrop-filter: blur(2px);
             z-index: -1; 
         }
 
@@ -59,10 +66,12 @@
             top: 0;
             left: 0;
             width: 100%;
-            background-color: var(--white); 
-            padding: 15px 30px;     
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 20px 40px;     
             z-index: 10;            
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
             box-sizing: border-box;
             display: flex;
             align-items: center;
@@ -70,13 +79,15 @@
         }
 
         .header-logo {
-            height: 45px; 
+            height: 50px; 
             width: auto;
-            transition: transform 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
         }
 
         .header-logo:hover {
-            transform: scale(1.03);
+            transform: scale(1.05);
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
         }
 
         .login-page-container {
@@ -90,15 +101,23 @@
         .login-box {
             position: relative; 
             z-index: 1;         
-            background-color: var(--white);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
             color: var(--text-dark); 
-            max-width: 450px; 
+            max-width: 480px; 
             width: 100%;
-            padding: 40px 35px; 
-            border-radius: 12px;
+            padding: 50px 40px; 
+            border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             text-align: center;
-            animation: fadeInUp 0.5s ease-out;
+            animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .login-box:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-5px);
         }
 
         @keyframes fadeInUp {
@@ -113,11 +132,16 @@
         }
 
         .login-box h4 {
-            font-weight: 500; 
+            font-weight: 700; 
             margin-top: 0;
-            margin-bottom: 30px; 
-            font-size: 1.4rem;
+            margin-bottom: 40px; 
+            font-size: 1.75rem;
             color: var(--text-dark);
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
         }
 
         .login-box .form-label {
@@ -130,19 +154,22 @@
         }
 
         .login-box .form-control {
-            background-color: var(--bg-light);
-            border: 1px solid #ced4da;
+            background: rgba(248, 249, 250, 0.9);
+            border: 2px solid rgba(206, 212, 218, 0.5);
             color: var(--text-dark);
-            border-radius: 8px;
-            padding: 12px 15px;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
+            border-radius: 12px;
+            padding: 15px 20px;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
         }
 
         .login-box .form-control:focus {
-            background-color: var(--white);
+            background: var(--white);
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(11, 133, 82, 0.15);
+            box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1), 0 4px 20px rgba(11, 133, 82, 0.15);
+            transform: translateY(-2px);
         }
 
         .login-box .form-control::placeholder {
@@ -151,24 +178,40 @@
         }
 
         .login-box .btn-login {
-            background-color: var(--white);
-            color: var(--primary-color);
-            font-weight: 600;
-            padding: 12px; 
-            border-radius: 8px;
-            border: 2px solid var(--primary-color);
-            transition: all 0.3s ease;
-            font-size: 1rem;
+            background: var(--primary-gradient);
+            color: var(--white);
+            font-weight: 700;
+            padding: 16px; 
+            border-radius: 12px;
+            border: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1.1rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 10px;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            box-shadow: 0 8px 25px rgba(11, 133, 82, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-box .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
         }
 
         .login-box .btn-login:hover {
-            background-color: var(--primary-color);
-            color: var(--white);
-            border-color: var(--primary-hover);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(11, 133, 82, 0.4);
+        }
+
+        .login-box .btn-login:hover::before {
+            left: 100%;
         }
         
         .login-box .btn-login:active {
@@ -187,10 +230,12 @@
             bottom: 0;
             left: 0;
             width: 100%;
-            background-color: var(--white);
-            padding: 12px 30px;     
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            padding: 20px 40px;     
             z-index: 10;            
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
             text-align: center;
             box-sizing: border-box;
         }
@@ -260,7 +305,7 @@
 
     <header class="login-page-header">
         <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Logo Conquers Trading" class="header-logo">
-        <span style="color: var(--primary-color); font-weight: 600;">Sistema de Gestión</span>
+        <span style="color: var(--primary-color); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;">Sistema de Gestión</span>
     </header>
 
     <div class="login-page-container">

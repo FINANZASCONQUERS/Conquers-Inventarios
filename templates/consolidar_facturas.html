@@ -35,12 +35,20 @@
         <div id="resultadosContainer" class="mt-4" style="display: none;">
             <div class="card shadow-sm">
                 <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="bi bi-search me-2"></i>Facturas en DIAN que Faltan en Odoo</h5>
-                    <div class="ms-auto w-50">
-            <input type="text" id="filtroResultados" class="form-control form-control-sm" placeholder="Buscar en resultados...">
-        </div>
-        <span id="conteoFaltantes" class="badge bg-light text-danger rounded-pill ms-2"></span>
-    </div>
+                    <div>
+                        <h5 class="mb-0"><i class="bi bi-search me-2"></i>Facturas en DIAN que Faltan en Odoo</h5>
+                        <div class="small mt-1">Facturas de <b>Caja Menor</b></div>
+                    </div>
+                    <div class="d-flex align-items-center ms-auto gap-2">
+                        <input type="text" id="filtroResultados" class="form-control form-control-sm" placeholder="Buscar en resultados...">
+                        <span id="conteoFaltantes" class="badge bg-light text-danger rounded-pill ms-2"></span>
+                        <button id="btnSeleccionarCajaMenor" class="btn btn-warning btn-sm ms-2">
+                            <i class="bi bi-check2-square me-1"></i>Seleccionar Caja Menor
+                        </button>
+                        <button id="btnEliminarCajaMenor" class="btn btn-danger btn-sm ms-2" style="display:none;">
+                            <i class="bi bi-trash me-1"></i>Eliminar Caja Menor
+                        </button>
+                    </div>
                 </div>
                 <div id="listaFaltantes" class="list-group list-group-flush"></div>
             </div>
@@ -57,25 +65,46 @@
         const listaFaltantes = document.getElementById('listaFaltantes');
         const conteoFaltantes = document.getElementById('conteoFaltantes');
         const loadingSpinner = document.getElementById('loadingSpinner');
-        const filtroInput = document.getElementById('filtroResultados'); // Se obtiene el input del filtro
+        const filtroInput = document.getElementById('filtroResultados');
+        const btnSeleccionarCajaMenor = document.getElementById('btnSeleccionarCajaMenor');
+        const btnEliminarCajaMenor = document.getElementById('btnEliminarCajaMenor');
 
         // --- INICIO: LÓGICA PARA EL FILTRO DE BÚSQUEDA ---
         if (filtroInput) {
             filtroInput.addEventListener('keyup', function() {
                 const filtroTexto = this.value.toUpperCase();
                 const items = document.querySelectorAll('#listaFaltantes .list-group-item');
-
                 items.forEach(item => {
                     const textoItem = item.textContent.toUpperCase();
                     if (textoItem.includes(filtroTexto)) {
-                        item.style.display = ''; // Muestra el elemento si coincide
+                        item.style.display = '';
                     } else {
-                        item.style.display = 'none'; // Oculta el elemento si no coincide
+                        item.style.display = 'none';
                     }
                 });
             });
         }
         // --- FIN: LÓGICA PARA EL FILTRO DE BÚSQUEDA ---
+
+        // Función para renderizar facturas con checkbox
+        function renderFaltantes(faltantes) {
+            listaFaltantes.innerHTML = '';
+            if (faltantes.length > 0) {
+                faltantes.forEach((factura, idx) => {
+                    const item = document.createElement('div');
+                    item.className = "list-group-item d-flex align-items-center";
+                    item.innerHTML = `
+                        <input type="checkbox" class="form-check-input me-2 caja-menor-checkbox" data-idx="${idx}">
+                        <div>
+                            <strong class="d-block">Factura: ${factura.factura}</strong>
+                            <small class="text-muted">Emisor (DIAN): ${factura.emisor}</small>
+                        </div>`;
+                    listaFaltantes.appendChild(item);
+                });
+            } else {
+                listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! Todas las facturas de la DIAN están en Odoo.</div>';
+            }
+        }
 
         btnComparar.addEventListener('click', function() {
             if (!odooFileInput.files.length || !dianFileInput.files.length) {
@@ -85,7 +114,7 @@
             loadingSpinner.style.display = 'block';
             resultadosContainer.style.display = 'none';
             listaFaltantes.innerHTML = '';
-            filtroInput.value = ''; // Limpia el filtro en cada nueva búsqueda
+            filtroInput.value = '';
 
             const formData = new FormData();
             formData.append('odoo_file', odooFileInput.files[0]);
@@ -101,21 +130,7 @@
                 if (data.success) {
                     const faltantes = data.faltantes || [];
                     conteoFaltantes.textContent = `${faltantes.length} Faltante(s)`;
-                    
-                    if (faltantes.length > 0) {
-                        faltantes.forEach(factura => {
-                            const item = document.createElement('div');
-                            item.className = "list-group-item";
-                            item.innerHTML = `
-                                <div>
-                                    <strong class="d-block">Factura: ${factura.factura}</strong>
-                                    <small class="text-muted">Emisor (DIAN): ${factura.emisor}</small>
-                                </div>`;
-                            listaFaltantes.appendChild(item);
-                        });
-                    } else {
-                        listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! Todas las facturas de la DIAN están en Odoo.</div>';
-                    }
+                    renderFaltantes(faltantes);
                     resultadosContainer.style.display = 'block';
                 } else {
                     alert(`Error: ${data.message}`);
@@ -125,6 +140,34 @@
                 loadingSpinner.style.display = 'none';
                 alert(`Error de conexión: ${error.message}`);
             });
+        });
+
+        // Seleccionar todos los checkbox
+        btnSeleccionarCajaMenor.addEventListener('click', function() {
+            document.querySelectorAll('.caja-menor-checkbox').forEach(cb => cb.checked = true);
+            btnEliminarCajaMenor.style.display = 'inline-block';
+        });
+
+        // Mostrar/ocultar botón eliminar según selección
+        listaFaltantes.addEventListener('change', function() {
+            const algunoSeleccionado = document.querySelectorAll('.caja-menor-checkbox:checked').length > 0;
+            btnEliminarCajaMenor.style.display = algunoSeleccionado ? 'inline-block' : 'none';
+        });
+
+        // Eliminar seleccionados con confirmación
+        btnEliminarCajaMenor.addEventListener('click', function() {
+            const seleccionados = document.querySelectorAll('.caja-menor-checkbox:checked');
+            if (seleccionados.length === 0) return;
+            if (confirm('¿Seguro que TODAS las seleccionadas son de Caja Menor? Esta acción no se puede deshacer.')) {
+                seleccionados.forEach(cb => cb.closest('.list-group-item').remove());
+                btnEliminarCajaMenor.style.display = 'none';
+                // Actualiza el conteo
+                const restantes = document.querySelectorAll('#listaFaltantes .list-group-item .caja-menor-checkbox').length;
+                conteoFaltantes.textContent = `${restantes} Faltante(s)`;
+                if (restantes === 0) {
+                    listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! Todas las facturas de la DIAN están en Odoo.</div>';
+                }
+            }
         });
     });
     </script>
