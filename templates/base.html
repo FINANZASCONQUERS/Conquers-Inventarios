@@ -334,6 +334,13 @@
                                             </a>
                                         </li>
                                     {% endfor %}
+                                    {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
+                                    <li>
+                                        <a class="dropdown-item {% if request.endpoint == 'gestion_compras' %}active{% endif %}" href="{{ url_for('gestion_compras') }}">
+                                            <i class="bi bi-cart-check me-2"></i> Gestión de Compras
+                                        </a>
+                                    </li>
+                                    {% endif %}
                                 </ul>
                             </li>
                         {% endif %}

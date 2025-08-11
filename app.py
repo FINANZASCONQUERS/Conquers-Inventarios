@@ -507,7 +507,25 @@ class EPPAssignment(db.Model):
     observaciones = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
-        return f'<EPPAssignment for {self.empleado_nombre}>'    
+        return f'<EPPAssignment for {self.empleado_nombre}>'
+    
+class RegistroCompra(db.Model):
+    __tablename__ = 'registros_compra'
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, index=True)
+    proveedor = db.Column(db.String(200), index=True)
+    tarifa = db.Column(db.Float)
+    producto = db.Column(db.String(200))
+    cantidad_bls = db.Column(db.Float)
+    cantidad_gln = db.Column(db.Float)
+    brent = db.Column(db.Float)
+    descuento = db.Column(db.Float)
+    precio_uni_bpozo = db.Column(db.Float)
+    total_neto = db.Column(db.Float)
+    price_compra_pond = db.Column(db.Float)
+
+    def __repr__(self):
+        return f'<RegistroCompra {self.id} - {self.numero_factura}>'
     
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -640,7 +658,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Ana Maria Gallo",
         "rol": "logistica_destino",
-        "area": ["programacion_cargue"] 
+        "area": ["programacion_cargue","gestion_compras"]
     },
 
         "refinery.control@conquerstrading.com": {
@@ -4080,8 +4098,53 @@ def reporte_grafico_despachos():
         total_barriles=total_barriles_general,
         filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()}
     )
-  
 
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/descargar_reporte_grafico_despachos_pdf')
+def descargar_reporte_grafico_despachos_pdf():
+    today = date.today()
+    fecha_inicio_str = request.args.get('fecha_inicio', today.replace(day=1).isoformat())
+    fecha_fin_str = request.args.get('fecha_fin', today.isoformat())
+
+    try:
+        fecha_inicio = date.fromisoformat(fecha_inicio_str)
+        fecha_fin = date.fromisoformat(fecha_fin_str)
+    except (ValueError, TypeError):
+        fecha_inicio = today.replace(day=1)
+        fecha_fin = today
+
+    datos_despacho = db.session.query(
+        ProgramacionCargue.cliente,
+        func.sum(ProgramacionCargue.barriles).label('total_barriles')
+    ).filter(
+        ProgramacionCargue.estado == 'DESPACHADO',
+        ProgramacionCargue.cliente.isnot(None),
+        ProgramacionCargue.barriles.isnot(None),
+        ProgramacionCargue.fecha_despacho.between(fecha_inicio, fecha_fin)
+    ).group_by(
+        ProgramacionCargue.cliente
+    ).order_by(
+        func.sum(ProgramacionCargue.barriles).desc()
+    ).all()
+
+    total_barriles_general = sum([float(r[1]) for r in datos_despacho]) if datos_despacho else 0
+
+    # Renderiza la plantilla especial para PDF (debes crearla)
+    html_para_pdf = render_template(
+        'reportes_pdf/reporte_grafico_despachos_pdf.html',
+        datos_tabla=datos_despacho,
+        total_barriles=total_barriles_general,
+        fecha_inicio=fecha_inicio.strftime('%d/%m/%Y'),
+        fecha_fin=fecha_fin.strftime('%d/%m/%Y')
+    )
+    pdf = HTML(string=html_para_pdf).write_pdf()
+    return Response(
+        pdf,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment;filename=reporte_grafico_despachos.pdf'}
+    )
+  
 @login_required
 @permiso_requerido('inventario_epp')
 @app.route('/inventario_epp_home')
@@ -4385,6 +4448,86 @@ def exportar_asignaciones_epp(formato):
                         headers={'Content-Disposition': 'attachment;filename=reporte_asignaciones_epp.pdf'})
 
     return redirect(url_for('epp_asignaciones'))  
+
+@login_required
+@permiso_requerido('gestion_compras')
+@app.route('/gestion_compras')
+def gestion_compras():
+    # Obtener filtro de proveedor si existe
+    proveedor_filtro = request.args.get('proveedor', '')
+
+    query = RegistroCompra.query
+
+    if proveedor_filtro:
+        query = query.filter(RegistroCompra.proveedor == proveedor_filtro)
+
+    compras = query.order_by(RegistroCompra.fecha.desc()).all()
+    
+    # Obtener lista de proveedores únicos para el filtro
+    proveedores = sorted([p[0] for p in db.session.query(RegistroCompra.proveedor).distinct().all() if p[0]])
+
+    return render_template('gestion_compras.html', 
+                         compras=compras, 
+                         proveedores=proveedores,
+                         filtros={'proveedor': proveedor_filtro})
+
+@login_required
+@permiso_requerido('gestion_compras')
+@app.route('/cargar_compras_excel', methods=['POST'])
+def cargar_compras_excel():
+    if 'excel_file' not in request.files:
+        flash('No se encontró el archivo.', 'danger')
+        return redirect(url_for('gestion_compras'))
+
+    file = request.files['excel_file']
+    if not file or not file.filename.endswith('.xlsx'):
+        flash('Archivo no válido. Debe ser .xlsx', 'danger')
+        return redirect(url_for('gestion_compras'))
+
+    try:
+        # Leer el archivo Excel manteniendo los nombres originales de columnas
+        df = pd.read_excel(file, sheet_name='2025')
+        
+        nuevas = 0
+        actualizadas = 0
+
+        for _, row in df.iterrows():
+            # Buscar registro existente por campos clave
+            compra = RegistroCompra.query.filter_by(
+                fecha=pd.to_datetime(row['MES']).date(),
+                proveedor=row['PROVEEDOR'],
+                producto=row['PRODUCTO'],
+                cantidad_bls=row['CANTIDAD BLS']
+            ).first()
+
+            if not compra:
+                compra = RegistroCompra()
+                db.session.add(compra)
+                nuevas += 1
+
+            # Asignar valores directamente del Excel
+            compra.fecha = pd.to_datetime(row['MES']).date()
+            compra.proveedor = row['PROVEEDOR']
+            compra.tarifa = row['TARIFA'] if pd.notna(row['TARIFA']) else None
+            compra.producto = row['PRODUCTO']
+            compra.cantidad_bls = row['CANTIDAD BLS']
+            compra.cantidad_gln = row['CANITDAD GLN']
+            compra.brent = row['BRENT US$B']
+            compra.descuento = row['DESCUENTO US$B']
+            compra.precio_uni_bpozo = row['PRECIO UNI. B.POZO US$B']
+            compra.total_neto = row['TOTAL NETO US$B']
+            compra.price_compra_pond = row['PRICE COMPRA POND. US$/BL']
+            compra.fecha_carga = datetime.utcnow()
+        
+        db.session.commit()
+        flash(f'Datos cargados: {nuevas} nuevos, {actualizadas} actualizados', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al cargar: {str(e)}', 'danger')
+        app.logger.error(f"Error carga Excel: {str(e)}")
+
+    return redirect(url_for('gestion_compras'))
  
 @app.route('/')
 def home():
@@ -4406,12 +4549,9 @@ def home():
     if user_email == 'accountingzf@conquerstrading.com':
         return redirect(url_for('home_contabilidad'))
 
-    # --- EXCEPCIÓN PARA DANIELA: Siempre dashboard general ---
-    if user_email == 'comex@conquerstrading.com':
-        return redirect(url_for('dashboard_reportes'))
 
-    # --- EXCEPCIÓN PARA FELIPE: Siempre dashboard general ---
-    if user_email == 'felipe.delavega@conquerstrading.com':
+    # --- EXCEPCIÓN PARA DANIELA, FELIPE Y ANA: Siempre dashboard general ---
+    if user_email in ['comex@conquerstrading.com', 'felipe.delavega@conquerstrading.com', 'amariagallo@conquerstrading.com']:
         return redirect(url_for('dashboard_reportes'))
 
     # --- EXCEPCIÓN PARA SEBASTIAN: Siempre home de Inventario EPP ---

@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Compras{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3><i class="fas fa-shopping-cart me-2"></i>Gestión de Compras</h3>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+            <i class="fas fa-file-excel me-2"></i>Cargar Excel
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('gestion_compras') }}" class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label for="proveedor" class="form-label">Filtrar por Proveedor</label>
+                <select class="form-select" id="proveedor" name="proveedor">
+                    <option value="">Todos los proveedores</option>
+                    {% for p in proveedores %}
+                    <option value="{{ p }}" {% if filtros.proveedor == p %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>MES</th>
+            <th>PROVEEDOR</th>
+            <th>TARIFA</th>
+            <th>PRODUCTO</th>
+            <th>CANTIDAD BLS</th>
+            <th>CANTIDAD GLN</th>
+            <th>BRENT US$B</th>
+            <th>DESCUENTO US$B</th>
+            <th>PRECIO UNI. B.POZO US$B</th>
+            <th>TOTAL NETO US$B</th>
+            <th>PRICE COMPRA POND. US$/BL</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for compra in compras %}
+        <tr>
+            <td>{{ compra.fecha.strftime('%Y-%m-%d') if compra.fecha }}</td>
+            <td>{{ compra.proveedor }}</td>
+            <td>{{ compra.tarifa|round(2) if compra.tarifa is not none }}</td>
+            <td>{{ compra.producto }}</td>
+            <td>{{ compra.cantidad_bls|round(2) if compra.cantidad_bls is not none }}</td>
+            <td>{{ compra.cantidad_gln|round(2) if compra.cantidad_gln is not none }}</td>
+            <td>{{ compra.brent|round(2) if compra.brent is not none }}</td>
+            <td>{{ compra.descuento|round(2) if compra.descuento is not none }}</td>
+            <td>{{ compra.precio_uni_bpozo|round(2) if compra.precio_uni_bpozo is not none }}</td>
+            <td>{{ compra.total_neto|round(2) if compra.total_neto is not none }}</td>
+            <td>{{ compra.price_compra_pond|round(2) if compra.price_compra_pond is not none }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% for compra in compras %}
+    <tr>
+        <td style="text-align:center;vertical-align:middle;">{{ compra.fecha.strftime('%b-%y') if compra.fecha else '' }}</td>
+        <td style="vertical-align:middle;">{{ compra.proveedor }}</td>
+    <td style="text-align:center;vertical-align:middle;">{{ '{:,.2f}'.format(compra.tarifa|float) if compra.tarifa is not none else '-' }}</td>
+    <td style="vertical-align:middle;">{{ compra.producto }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.cantidad_bls|float) if compra.cantidad_bls is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.cantidad_gln|float) if compra.cantidad_gln is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.brent|float) if compra.brent is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.descuento|float) if compra.descuento is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.precio_uni_bpozo|float) if compra.precio_uni_bpozo is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.total_neto|float) if compra.total_neto is not none else '-' }}</td>
+    <td style="text-align:right;vertical-align:middle;">{{ '{:,.2f}'.format(compra.price_compra_pond|float) if compra.price_compra_pond is not none else '-' }}</td>
+    </tr>
+{% else %}
+    <tr>
+        <td colspan="11" class="text-center">No se encontraron registros de compras. Sube un archivo de Excel para comenzar.</td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+<!-- Modal para Cargar Excel -->
+<div class="modal fade" id="uploadExcelModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cargar Reporte de Compras desde Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('cargar_compras_excel') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <p>Selecciona tu archivo de reporte. El sistema leerá automáticamente la hoja llamada <strong>"2025"</strong>.</p>
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label">Archivo Excel (.xlsx)</label>
+                        <input class="form-control" type="file" name="excel_file" id="excelFile" accept=".xlsx" required>
+                    </div>
+                    <div class="alert alert-info small">
+                        <strong>Nota:</strong> Si subes un archivo con números de factura que ya existen, los registros se actualizarán. Los nuevos se crearán automáticamente.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Cargar Archivo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

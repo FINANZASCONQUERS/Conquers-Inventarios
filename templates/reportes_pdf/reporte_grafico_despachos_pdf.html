@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Despachos por Cliente</title>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7fafd; color: #222; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header h1 { color: #0b8552; font-size: 22px; margin-bottom: 0; }
+        .header p { color: #666; font-size: 13px; margin-top: 2px; }
+        .main-grid {
+            display: flex;
+            flex-direction: row;
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .left-panel { flex: 2; }
+        .right-panel { flex: 1; }
+        .total-box {
+            background: #1976d2;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 18px 10px 10px 10px;
+            margin-bottom: 18px;
+        }
+        .total-box .big { font-size: 32px; font-weight: bold; }
+        .total-box small { font-size: 13px; letter-spacing: 1px; }
+        .resumen-box {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px #0001;
+            padding: 0;
+            overflow: hidden;
+        }
+        .resumen-box table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .resumen-box th, .resumen-box td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .resumen-box th {
+            background: #f5f5f5;
+            color: #1976d2;
+            font-size: 14px;
+            text-align: left;
+        }
+        .resumen-box tr:last-child td { border-bottom: none; }
+        .resumen-box td:last-child, .resumen-box th:last-child { text-align: right; }
+        .grafico-container {
+            text-align: center;
+            margin-bottom: 18px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 4px #0001;
+            padding: 18px 10px;
+        }
+        .grafico-container img {
+            max-width: 100%;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Reporte de Despachos por Cliente</h1>
+        <p>Período: {{ fecha_inicio }} a {{ fecha_fin }}</p>
+    </div>
+    <div class="main-grid">
+        <div class="left-panel">
+            <div class="grafico-container">
+                {% if grafico_base64 %}
+                    <img src="data:image/png;base64,{{ grafico_base64 }}" />
+                {% else %}
+                    <p>No hay gráfico disponible.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="right-panel">
+            <div class="total-box">
+                <div>Total Despachado</div>
+                <div class="big">{{ '%.2f'|format(total_barriles) }}</div>
+                <small>BARRILES</small>
+            </div>
+            <div class="resumen-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Total Barriles</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in datos_tabla %}
+                        <tr>
+                            <td>{{ row[0] }}</td>
+                            <td>{{ '%.2f'|format(row[1]) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -19,8 +19,13 @@
                     <label for="fecha_fin" class="form-label">Fecha de Fin</label>
                     <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin }}">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-2"></i>Filtrar</button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin) }}" class="btn btn-danger w-100" target="_blank">
+                        <i class="fas fa-file-pdf me-2"></i>PDF
+                    </a>
                 </div>
             </form>
         </div>
