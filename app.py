@@ -101,29 +101,6 @@ def convertir_plot_a_base64(fig):
     plt.close(fig)  # Cierra la figura para liberar memoria
     return base64.b64encode(buf.getvalue()).decode('utf-8')
 
-def procesar_analisis_remolcadores(registros):
-    """
-    Toma una lista de registros, ejecuta el análisis de Pandas y devuelve
-    los resultados como HTML y gráficos en Base64.
-    """
-    if not registros:
-        return None
-
-    datos_df = [{
-        "ID": r.maniobra_id, "BARCAZA": r.barcaza, "EVENTO ANTERIO": r.evento_anterior,
-        "EVENTO ACTUAL": r.evento_actual, "HORA INICIO": r.hora_inicio, "HORA FIN": r.hora_fin,
-        "MT ENTREGADAS": float(r.mt_entregadas) if r.mt_entregadas else 0.0,
-        "CARGAS": r.carga_estado
-    } for r in registros]
-    
-    if not datos_df:
-        return None
-        
-    df = pd.DataFrame(datos_df)
-
-    if df.empty or df['HORA FIN'].isnull().all():
-        return None
-    
 def grafico_linea_base64(labels, data, ylabel):
     fig, ax = plt.subplots(figsize=(8, 3))
     ax.plot(labels, data, marker='o', color='#007bff')
@@ -155,6 +132,29 @@ def grafico_barra_base64(labels, data, ylabel):
     plt.close(fig)
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
+
+def procesar_analisis_remolcadores(registros):
+    """
+    Toma una lista de registros, ejecuta el análisis de Pandas y devuelve
+    los resultados como HTML y gráficos en Base64.
+    """
+    if not registros:
+        return None
+
+    datos_df = [{
+        "ID": r.maniobra_id, "BARCAZA": r.barcaza, "EVENTO ANTERIO": r.evento_anterior,
+        "EVENTO ACTUAL": r.evento_actual, "HORA INICIO": r.hora_inicio, "HORA FIN": r.hora_fin,
+        "MT ENTREGADAS": float(r.mt_entregadas) if r.mt_entregadas else 0.0,
+        "CARGAS": r.carga_estado
+    } for r in registros]
+    
+    if not datos_df:
+        return None
+        
+    df = pd.DataFrame(datos_df)
+
+    if df.empty or df['HORA FIN'].isnull().all():
+        return None
 
     # --- Lógica de preparación de datos (sin cambios) ---
     df["HORA INICIO"] = pd.to_datetime(df["HORA INICIO"])
