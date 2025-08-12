@@ -4,106 +4,250 @@
     <meta charset="UTF-8">
     <title>Reporte de Despachos por Cliente</title>
     <style>
-        @page { size: A4; margin: 1.5cm; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f7fafd; color: #222; }
-        .header { text-align: center; margin-bottom: 10px; }
-        .header h1 { color: #0b8552; font-size: 22px; margin-bottom: 0; }
-        .header p { color: #666; font-size: 13px; margin-top: 2px; }
+        @page { 
+            size: A4; 
+            margin: 1.5cm;
+            @top-center {
+                content: "Reporte de Despachos por Cliente";
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 14px;
+                color: #2c3e50;
+            }
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 12px;
+                color: #7f8c8d;
+            }
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: #f8f9fa; 
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+        
+        .header { 
+            text-align: center; 
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .header h1 { 
+            color: #2980b9; 
+            font-size: 24px; 
+            margin-bottom: 5px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .header .periodo { 
+            color: #7f8c8d; 
+            font-size: 14px; 
+            margin-top: 0;
+            background: #f1f8fe;
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        
+        .header .fecha-generacion {
+            color: #95a5a6;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        
         .main-grid {
             display: flex;
             flex-direction: row;
-            gap: 24px;
-            margin-top: 20px;
+            gap: 25px;
+            margin-top: 15px;
         }
-        .left-panel { flex: 2; }
-        .right-panel { flex: 1; }
+        
+        .left-panel { 
+            flex: 2; 
+        }
+        
+        .right-panel { 
+            flex: 1; 
+        }
+        
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 12px 15px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 600;
+            color: #2980b9;
+            font-size: 15px;
+        }
+        
+        .card-body {
+            padding: 15px;
+        }
+        
         .total-box {
-            background: #1976d2;
+            background: linear-gradient(135deg, #3498db, #2980b9);
             color: #fff;
             text-align: center;
             border-radius: 8px;
-            padding: 18px 10px 10px 10px;
-            margin-bottom: 18px;
+            padding: 20px 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        .total-box .big { font-size: 32px; font-weight: bold; }
-        .total-box small { font-size: 13px; letter-spacing: 1px; }
-        .resumen-box {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 4px #0001;
-            padding: 0;
-            overflow: hidden;
+        
+        .total-box .label {
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+            opacity: 0.9;
         }
-        .resumen-box table {
+        
+        .total-box .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+        
+        .total-box .unit {
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        
+        .grafico-container {
+            text-align: center;
+        }
+        
+        .grafico-container img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 6px;
+        }
+        
+        .table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
         }
-        .resumen-box th, .resumen-box td {
-            padding: 7px 10px;
+        
+        .table th {
+            background: #f8f9fa;
+            color: #2980b9;
+            text-align: left;
+            padding: 10px 12px;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .table td {
+            padding: 8px 12px;
             border-bottom: 1px solid #e0e0e0;
         }
-        .resumen-box th {
-            background: #f5f5f5;
-            color: #1976d2;
-            font-size: 14px;
-            text-align: left;
+        
+        .table tr:last-child td {
+            border-bottom: none;
         }
-        .resumen-box tr:last-child td { border-bottom: none; }
-        .resumen-box td:last-child, .resumen-box th:last-child { text-align: right; }
-        .grafico-container {
+        
+        .table td:last-child {
+            text-align: right;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .no-data {
             text-align: center;
-            margin-bottom: 18px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 1px 4px #0001;
-            padding: 18px 10px;
+            padding: 30px;
+            color: #95a5a6;
+            font-style: italic;
         }
-        .grafico-container img {
-            max-width: 100%;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
+        
+        .watermark {
+            position: fixed;
+            bottom: 10%;
+            right: 10%;
+            opacity: 0.1;
+            font-size: 72px;
+            color: #2980b9;
+            transform: rotate(-30deg);
+            pointer-events: none;
+            z-index: -1;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Reporte de Despachos por Cliente</h1>
-        <p>Período: {{ fecha_inicio }} a {{ fecha_fin }}</p>
+    <div class="watermark">CONFIDENCIAL</div>
+
+    <!-- Encabezado corporativo -->
+    <div class="reporte-header" style="display: flex; align-items: center; border-bottom: 3px solid #003366; margin-bottom: 20px; padding-bottom: 10px;">
+        <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" style="height: 70px; margin-right: 25px;" alt="Logo Empresa">
+        <div>
+            <div style="color: #003366; font-size: 24pt; font-weight: bold; margin: 0;">Reporte Analítico de Despachos</div>
+            <div style="color: #555; font-size: 12pt; margin-top: 5px;">Consolidado mensual de despachos</div>
+            <div style="color: #7f8c8d; font-size: 14px; margin-top: 8px;">Período: {{ fecha_inicio }} a {{ fecha_fin }}</div>
+            <div style="color: #95a5a6; font-size: 12px; margin-top: 2px;">Generado el: {{ fecha_generacion|default('hoy', true) }}</div>
+        </div>
     </div>
+    
     <div class="main-grid">
         <div class="left-panel">
-            <div class="grafico-container">
-                {% if grafico_base64 %}
-                    <img src="data:image/png;base64,{{ grafico_base64 }}" />
-                {% else %}
-                    <p>No hay gráfico disponible.</p>
-                {% endif %}
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-chart-pie"></i> Distribución de Despachos
+                </div>
+                <div class="card-body grafico-container">
+                    {% if grafico_base64 %}
+                        <img src="data:image/png;base64,{{ grafico_base64 }}" />
+                    {% else %}
+                        <div class="no-data">
+                            <i class="fas fa-chart-pie fa-3x"></i>
+                            <p>No hay datos disponibles para generar el gráfico</p>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
+        
         <div class="right-panel">
             <div class="total-box">
-                <div>Total Despachado</div>
-                <div class="big">{{ '%.2f'|format(total_barriles) }}</div>
-                <small>BARRILES</small>
+                <div class="label">Total Despachado</div>
+                <div class="value">{{ '%.2f'|format(total_barriles) }}</div>
+                <div class="unit">Barriles</div>
             </div>
-            <div class="resumen-box">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Total Barriles</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in datos_tabla %}
-                        <tr>
-                            <td>{{ row[0] }}</td>
-                            <td>{{ '%.2f'|format(row[1]) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-table"></i> Detalle por Cliente
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in datos_tabla %}
+                            <tr>
+                                <td>{{ row[0]|truncate(20) }}</td>
+                                <td>{{ '%.2f'|format(row[1]) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

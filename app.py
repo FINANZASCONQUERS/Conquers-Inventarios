@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, time, date, timedelta 
+from datetime import datetime, time, date, timedelta
 import os
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file # Añadido send_file
@@ -82,6 +82,18 @@ def componer_fecha_hora(hora_str, fecha_base=None):
     except (ValueError, TypeError):
         # Si el formato de hora es inválido (ej. "abc"), devuelve None.
         return None
+    
+def mes_espaniol(fecha_str):
+    # fecha_str: '2025-01' o '2025-01-01'
+    partes = fecha_str.split('-')
+    anio = partes[0]
+    mes = int(partes[1])
+    meses_es = [
+        '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    return f"{meses_es[mes]}-{anio}"
+    
 def convertir_plot_a_base64(fig):
     """Toma una figura de Matplotlib, la guarda en memoria y la devuelve como una cadena Base64."""
     buf = BytesIO()
@@ -111,6 +123,38 @@ def procesar_analisis_remolcadores(registros):
 
     if df.empty or df['HORA FIN'].isnull().all():
         return None
+    
+def grafico_linea_base64(labels, data, ylabel):
+    fig, ax = plt.subplots(figsize=(8, 3))
+    ax.plot(labels, data, marker='o', color='#007bff')
+    ax.set_ylabel(ylabel)
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    for i, v in enumerate(data):
+        ax.text(i, v, f'{v:.2f}', ha='center', va='bottom', fontsize=8)
+    plt.tight_layout()
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
+
+def grafico_barra_base64(labels, data, ylabel):
+    fig, ax = plt.subplots(figsize=(8, 3))
+    bars = ax.bar(labels, data, color='#28a745')
+    ax.set_ylabel(ylabel)
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=45, ha='right')
+    for bar in bars:
+        height = bar.get_height()
+        ax.annotate(f'{height:,.0f}', xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 3), textcoords="offset points", ha='center', va='bottom', fontsize=8)
+    plt.tight_layout()
+    buf = BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
 
     # --- Lógica de preparación de datos (sin cambios) ---
     df["HORA INICIO"] = pd.to_datetime(df["HORA INICIO"])
@@ -598,11 +642,12 @@ USUARIOS = {
         "area": ["reportes", "planilla_precios", "simulador_rendimiento"] 
     },
 
+
     "finance@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Germna Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta y Rendimientos
@@ -4096,7 +4141,8 @@ def reporte_grafico_despachos():
         grafico_base64=grafico_base64,
         datos_tabla=datos_despacho,
         total_barriles=total_barriles_general,
-        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()}
+        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()},
+        now=datetime.now()
     )
 
 @login_required
@@ -4528,7 +4574,170 @@ def cargar_compras_excel():
         app.logger.error(f"Error carga Excel: {str(e)}")
 
     return redirect(url_for('gestion_compras'))
- 
+
+@login_required
+@permiso_requerido('gestion_compras')
+@app.route('/reporte_compras')
+def reporte_compras():
+    # Histórico de precios
+    historico_precios_raw = db.session.query(
+        func.date(RegistroCompra.fecha).label('fecha'),
+        func.avg(RegistroCompra.price_compra_pond).label('precio_promedio')
+    ).group_by(func.date(RegistroCompra.fecha)).all()
+    historico_precios = [
+        {"mes": str(row[0]), "precio": float(row[1]) if row[1] is not None else 0}
+        for row in historico_precios_raw
+    ]
+
+    # Histórico de volúmenes
+    historico_volumenes_raw = db.session.query(
+        func.date(RegistroCompra.fecha).label('fecha'),
+        func.sum(RegistroCompra.cantidad_bls).label('volumen_total')
+    ).group_by(func.date(RegistroCompra.fecha)).all()
+    historico_volumenes = [
+        {"mes": str(row[0]), "volumen": float(row[1]) if row[1] is not None else 0}
+        for row in historico_volumenes_raw
+    ]
+
+    # Resumen mensual
+    resumen_mensual_raw = db.session.query(
+        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        RegistroCompra.proveedor,
+        RegistroCompra.producto,
+        func.sum(RegistroCompra.cantidad_bls).label('cantidad_bls')
+    ).group_by('mes', RegistroCompra.proveedor, RegistroCompra.producto).all()
+    resumen_mensual = [
+        {
+            "mes": row[0],
+            "proveedor": row[1],
+            "producto": row[2],
+            "cantidad_bls": float(row[3]) if row[3] is not None else 0
+        }
+        for row in resumen_mensual_raw
+    ]
+
+    proveedores = sorted([p[0] for p in db.session.query(RegistroCompra.proveedor).distinct().all() if p[0]])
+    productos = sorted([p[0] for p in db.session.query(RegistroCompra.producto).distinct().all() if p[0]])
+
+    return render_template(
+        'reporte_compras.html',
+        historico_precios=historico_precios,
+        historico_volumenes=historico_volumenes,
+        resumen_mensual=resumen_mensual,
+        proveedores=proveedores,
+        productos=productos
+    )
+
+@login_required
+@permiso_requerido('gestion_compras')
+@app.route('/reporte_compras_pdf')
+def reporte_compras_pdf():
+    # Función auxiliar corregida para formatear meses
+    def formatear_mes(fecha_str):
+        try:
+            # Maneja diferentes formatos de fecha
+            if len(fecha_str) == 10:  # Formato YYYY-MM-DD
+                fecha = datetime.strptime(fecha_str, '%Y-%m-%d')
+            elif len(fecha_str) == 7:  # Formato YYYY-MM
+                fecha = datetime.strptime(fecha_str, '%Y-%m')
+            else:
+                return fecha_str  # Si no reconoce el formato, devuelve original
+            
+            meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+            return f"{meses[fecha.month]} {fecha.year}"
+        except:
+            return fecha_str  # En caso de error, devuelve el valor original
+
+    # Consulta de precios históricos
+    historico_precios_raw = db.session.query(
+        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        func.avg(RegistroCompra.price_compra_pond).label('precio_promedio')
+    ).group_by('mes').order_by('mes').all()
+    
+    historico_precios = [
+        {"mes": formatear_mes(row[0]), "precio": float(row[1]) if row[1] is not None else 0}
+        for row in historico_precios_raw
+    ]
+
+    # Consulta de volúmenes históricos
+    historico_volumenes_raw = db.session.query(
+        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        func.sum(RegistroCompra.cantidad_bls).label('volumen_total')
+    ).group_by('mes').order_by('mes').all()
+    
+    historico_volumenes = [
+        {"mes": formatear_mes(row[0]), "volumen": float(row[1]) if row[1] is not None else 0}
+        for row in historico_volumenes_raw
+    ]
+
+    # Leer filtros de la URL
+    filtro_mes = request.args.get('mes')
+    filtro_proveedor = request.args.get('proveedor')
+    filtro_producto = request.args.get('producto')
+
+    # Consulta base
+    resumen_query = db.session.query(
+        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        RegistroCompra.proveedor,
+        RegistroCompra.producto,
+        func.sum(RegistroCompra.cantidad_bls).label('cantidad_bls')
+    )
+    # Aplicar filtros si existen
+    if filtro_mes:
+        resumen_query = resumen_query.filter(func.strftime('%Y-%m', RegistroCompra.fecha) == filtro_mes)
+    if filtro_proveedor:
+        resumen_query = resumen_query.filter(RegistroCompra.proveedor == filtro_proveedor)
+    if filtro_producto:
+        resumen_query = resumen_query.filter(RegistroCompra.producto == filtro_producto)
+
+    resumen_mensual_raw = resumen_query.group_by('mes', RegistroCompra.proveedor, RegistroCompra.producto).order_by('mes').all()
+
+    resumen_mensual = [
+        {
+            "mes": formatear_mes(row[0]),
+            "proveedor": row[1],
+            "producto": row[2],
+            "cantidad_bls": float(row[3]) if row[3] is not None else 0
+        }
+        for row in resumen_mensual_raw
+    ]
+
+    # Obtener listas de proveedores y productos
+    proveedores = sorted([p[0] for p in db.session.query(RegistroCompra.proveedor).distinct().all() if p[0]])
+    productos = sorted([p[0] for p in db.session.query(RegistroCompra.producto).distinct().all() if p[0]])
+
+    # Generar gráficos
+    labels_precios = [x['mes'] for x in historico_precios]
+    data_precios = [x['precio'] for x in historico_precios]
+    labels_volumenes = [x['mes'] for x in historico_volumenes]
+    data_volumenes = [x['volumen'] for x in historico_volumenes]
+
+    img_precios = grafico_linea_base64(labels_precios, data_precios, 'Precio Compra Ponderado (US$/BL)')
+    img_volumenes = grafico_barra_base64(labels_volumenes, data_volumenes, 'Volumen Comprado (BLS)')
+
+    # Renderizar template para PDF
+    html_para_pdf = render_template(
+        'reportes_pdf/reporte_compras_pdf.html',
+        historico_precios=historico_precios,
+        historico_volumenes=historico_volumenes,
+        resumen_mensual=resumen_mensual,
+        proveedores=proveedores,
+        productos=productos,
+        pdf=True,
+        img_precios=img_precios,
+        img_volumenes=img_volumenes,
+        now=datetime.now
+    )
+    
+    # Generar PDF
+    pdf = HTML(string=html_para_pdf, base_url=request.base_url).write_pdf()
+    return Response(
+        pdf, 
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment;filename=reporte_compras.pdf'}
+    )
+
 @app.route('/')
 def home():
     """Redirige al usuario a su página de inicio correcta después de iniciar sesión."""

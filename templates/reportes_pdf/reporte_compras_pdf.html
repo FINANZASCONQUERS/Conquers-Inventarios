@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+
+
+{% block title %}Reporte de Compras PDF{% endblock %}
+
+{% block content %}
+<style>
+    @page {
+        size: A4 landscape;
+        margin: 1.5cm;
+        @top-center {
+            content: "Reporte de Compras - {{ now().strftime('%d/%m/%Y') }}";
+            font-size: 10pt;
+            color: #555;
+        }
+        @bottom-center {
+            content: "Página " counter(page) " de " counter(pages);
+            font-size: 10pt;
+            color: #555;
+        }
+    }
+    body {
+        font-family: Arial, sans-serif;
+        color: #333;
+    }
+    .reporte-header {
+        display: flex;
+        align-items: center;
+        border-bottom: 3px solid #003366;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+    }
+    .reporte-logo {
+        height: 70px;
+        margin-right: 25px;
+    }
+    .reporte-titulo {
+        color: #003366;
+        font-size: 24pt;
+        font-weight: bold;
+        margin: 0;
+    }
+    .reporte-subtitulo {
+        color: #555;
+        font-size: 12pt;
+        margin-top: 5px;
+    }
+    .reporte-section-title {
+        color: #003366;
+        font-size: 14pt;
+        font-weight: bold;
+        margin-top: 25px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 5px;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        font-size: 10pt;
+    }
+    .table th {
+        background: #003366;
+        color: #fff;
+        font-weight: bold;
+        text-align: center;
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+    .table td {
+        text-align: center;
+        padding: 6px;
+        border: 1px solid #ddd;
+    }
+    .table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .table tr:hover {
+        background-color: #f1f1f1;
+    }
+    .reporte-footer {
+        margin-top: 30px;
+        font-size: 9pt;
+        color: #888;
+        text-align: right;
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+    }
+    .grafico-container {
+        text-align: center;
+        margin: 15px 0 25px 0;
+    }
+    .grafico-img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+
+<div class="container">
+    <!-- Encabezado del reporte -->
+    <div class="reporte-header">
+        <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" class="reporte-logo" alt="Logo Empresa">
+        <div>
+            <div class="reporte-titulo">Reporte Analítico de Compras</div>
+            <div class="reporte-subtitulo">Consolidado mensual de precios y volúmenes</div>
+        </div>
+    </div>
+
+    <!-- Sección de Precios -->
+    <div class="reporte-section-title">
+        <i class="fas fa-dollar-sign"></i> Histórico Precio Compra Ponderado (US$/BL)
+    </div>
+    <div class="grafico-container">
+        <img src="data:image/png;base64,{{ img_precios }}" class="grafico-img" style="width: 90%; height: 350px;">
+    </div>
+
+    <!-- Sección de Volúmenes -->
+    <div class="reporte-section-title">
+        <i class="fas fa-chart-bar"></i> Histórico Volúmenes Comprados (BLS)
+    </div>
+    <div class="grafico-container">
+        <img src="data:image/png;base64,{{ img_volumenes }}" class="grafico-img" style="width: 90%; height: 350px;">
+    </div>
+
+    <!-- Tabla de Resumen -->
+    <div class="reporte-section-title">
+        <i class="fas fa-table"></i> Detalle de Compras por Proveedor
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Mes</th>
+                <th style="width: 35%;">Proveedor</th>
+                <th style="width: 30%;">Producto</th>
+                <th style="width: 20%;">Cantidad (BLS)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in resumen_mensual %}
+            <tr>
+                <td>{{ row.mes }}</td>
+                <td>{{ row.proveedor }}</td>
+                <td>{{ row.producto }}</td>
+                <td>{{ "{:,.2f}".format(row.cantidad_bls) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pie de página -->
+    <div class="reporte-footer">
+        Generado automáticamente el {{ now().strftime('%d/%m/%Y a las %H:%M') }} | 
+        Sistema de Gestión de Compras v1.0
+    </div>
+</div>
+{% endblock %}

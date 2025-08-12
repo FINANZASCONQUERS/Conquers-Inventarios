@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de Compras{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header mejorado -->
+    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+        <h2 class="mb-0"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Reporte Analítico de Compras</h2>
+        {% if not pdf %}
+        <div>
+            <button type="button" class="btn btn-danger btn-sm" id="btnExportarPDF">
+                <i class="fas fa-file-pdf me-1"></i> Exportar a PDF
+            </button>
+        </div>
+<script>
+// ...existing code...
+
+// Exportar a PDF solo con los filtros aplicados
+document.getElementById('btnExportarPDF').addEventListener('click', function() {
+    const mes = document.getElementById('filtroMes').value;
+    const proveedor = document.getElementById('filtroProveedor').value;
+    const producto = document.getElementById('filtroProducto').value;
+    let url = new URL("{{ url_for('reporte_compras_pdf') }}", window.location.origin);
+    if (mes) url.searchParams.append('mes', mes);
+    if (proveedor) url.searchParams.append('proveedor', proveedor);
+    if (producto) url.searchParams.append('producto', producto);
+    window.open(url.toString(), '_blank');
+});
+
+// ...existing code...
+</script>
+        {% endif %}
+    </div>
+
+    <!-- Sección de gráficos con mejor organización -->
+    <div class="row mb-4">
+        <!-- Histórico Precio Compra Ponderado -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-dollar-sign me-2"></i>Precio Compra Ponderado (US$/BL)</h5>
+                </div>
+                <div class="card-body">
+                    {% if pdf %}
+                        <img src="data:image/png;base64,{{ img_precios }}" class="img-fluid" alt="Gráfico de precios">
+                    {% else %}
+                        <canvas id="chartPrecios" height="300"></canvas>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted">Promedio ponderado por volumen comprado</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Histórico Volúmenes Comprados -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0"><i class="fas fa-chart-line me-2"></i>Volúmenes Comprados (BLS)</h5>
+                </div>
+                <div class="card-body">
+                    {% if pdf %}
+                        <img src="data:image/png;base64,{{ img_volumenes }}" class="img-fluid" alt="Gráfico de volúmenes">
+                    {% else %}
+                        <canvas id="chartVolumenes" height="300"></canvas>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted">Total de barriles comprados por mes</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen Mensual mejorado -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="card-title mb-0"><i class="fas fa-table me-2"></i>Resumen Mensual por Proveedor y Producto</h5>
+        </div>
+        <div class="card-body">
+            {% if not pdf %}
+            <div class="row g-3 mb-3" id="filtrosResumen">
+                <div class="col-md-3">
+                    <label for="filtroMes" class="form-label small text-muted">Mes</label>
+                    <input type="month" class="form-control form-control-sm" id="filtroMes">
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroProveedor" class="form-label small text-muted">Proveedor</label>
+                    <select class="form-select form-select-sm" id="filtroProveedor">
+                        <option value="">Todos los proveedores</option>
+                        {% for p in proveedores %}
+                        <option value="{{ p }}">{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="filtroProducto" class="form-label small text-muted">Producto</label>
+                    <select class="form-select form-select-sm" id="filtroProducto">
+                        <option value="">Todos los productos</option>
+                        {% for prod in productos %}
+                        <option value="{{ prod }}">{{ prod }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="resetFiltros">
+                        <i class="fas fa-undo me-1"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-striped" id="tablaResumen">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-nowrap">Mes</th>
+                            <th class="text-nowrap">Proveedor</th>
+                            <th class="text-nowrap">Producto</th>
+                            <th class="text-nowrap text-end">Cantidad (BLS)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% macro mes_espanol(iso) -%}
+                            {%- set meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] -%}
+                            {%- set anio = iso[:4] -%}
+                            {%- set mes = iso[5:7] -%}
+                            {{ meses[mes|int] ~ '-' ~ anio }}
+                        {%- endmacro %}
+
+                        {% for row in resumen_mensual %}
+                        <tr>
+                            <td>{{ mes_espanol(row.mes) }}</td>
+                            <td>{{ row.proveedor }}</td>
+                            <td>{{ row.producto }}</td>
+                            <td class="text-end">{{ row.cantidad_bls|round(2) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not pdf %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Chart.js DataLabels plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script>
+    // Datos para gráficos (inyectados desde Flask)
+    let historicoPrecios = {{ historico_precios|tojson }};
+    let historicoVolumenes = {{ historico_volumenes|tojson }};
+
+    // Gráfico de Precios con mejor configuración
+    new Chart(document.getElementById('chartPrecios'), {
+        type: 'line',
+        data: {
+            labels: historicoPrecios.map(x => x.mes),
+            datasets: [{
+                label: 'Precio Compra Ponderado (US$/BL)',
+                data: historicoPrecios.map(x => x.precio),
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.05)',
+                borderWidth: 2,
+                tension: 0.1,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Precio: US$ ' + context.raw.toFixed(2) + '/BL';
+                        }
+                    }
+                },
+                datalabels: {
+                    display: false // Ocultamos datalabels para mejor legibilidad
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'US$ por Barril'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Periodo'
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+
+    // Gráfico de Volúmenes con mejor configuración
+    new Chart(document.getElementById('chartVolumenes'), {
+        type: 'bar',
+        data: {
+            labels: historicoVolumenes.map(x => x.mes),
+            datasets: [{
+                label: 'Volumen Comprado (BLS)',
+                data: historicoVolumenes.map(x => x.volumen),
+                backgroundColor: '#198754',
+                borderColor: '#198754',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Volumen: ' + context.raw.toLocaleString() + ' BLS';
+                        }
+                    }
+                },
+                datalabels: {
+                    display: false // Ocultamos datalabels para mejor legibilidad
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Barriles (BLS)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Periodo'
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+
+    // Filtros para la tabla resumen
+    function mesAmigable(yyyy_mm) {
+        if (!yyyy_mm) return '';
+        const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const [anio, mes] = yyyy_mm.split('-');
+        return meses[parseInt(mes, 10)] + '-' + anio;
+    }
+    document.querySelectorAll('#filtrosResumen select, #filtrosResumen input').forEach(el => {
+        el.addEventListener('change', function() {
+            const mes = document.getElementById('filtroMes').value;
+            const proveedor = document.getElementById('filtroProveedor').value;
+            const producto = document.getElementById('filtroProducto').value;
+            const mesTexto = mesAmigable(mes);
+            document.querySelectorAll('#tablaResumen tbody tr').forEach(row => {
+                let show = true;
+                if (mes && row.cells[0].textContent.trim() !== mesTexto) show = false;
+                if (proveedor && row.cells[1].textContent !== proveedor) show = false;
+                if (producto && row.cells[2].textContent !== producto) show = false;
+                row.style.display = show ? '' : 'none';
+            });
+        });
+    });
+
+    // Botón para resetear filtros
+    document.getElementById('resetFiltros').addEventListener('click', function() {
+        document.getElementById('filtroMes').value = '';
+        document.getElementById('filtroProveedor').value = '';
+        document.getElementById('filtroProducto').value = '';
+        
+        document.querySelectorAll('#tablaResumen tbody tr').forEach(row => {
+            row.style.display = '';
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}
