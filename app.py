@@ -4601,7 +4601,7 @@ def reporte_compras():
 
     # Resumen mensual
     resumen_mensual_raw = db.session.query(
-        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        func.to_char(RegistroCompra.fecha, 'YYYY-MM').label('mes'),
         RegistroCompra.proveedor,
         RegistroCompra.producto,
         func.sum(RegistroCompra.cantidad_bls).label('cantidad_bls')
@@ -4651,7 +4651,7 @@ def reporte_compras_pdf():
 
     # Consulta de precios históricos
     historico_precios_raw = db.session.query(
-        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        func.to_char(RegistroCompra.fecha, 'YYYY-MM').label('mes'),
         func.avg(RegistroCompra.price_compra_pond).label('precio_promedio')
     ).group_by('mes').order_by('mes').all()
     
@@ -4662,7 +4662,7 @@ def reporte_compras_pdf():
 
     # Consulta de volúmenes históricos
     historico_volumenes_raw = db.session.query(
-        func.strftime('%Y-%m', RegistroCompra.fecha).label('mes'),
+        func.to_char(RegistroCompra.fecha, 'YYYY-MM').label('mes'),
         func.sum(RegistroCompra.cantidad_bls).label('volumen_total')
     ).group_by('mes').order_by('mes').all()
     
@@ -4685,7 +4685,7 @@ def reporte_compras_pdf():
     )
     # Aplicar filtros si existen
     if filtro_mes:
-        resumen_query = resumen_query.filter(func.strftime('%Y-%m', RegistroCompra.fecha) == filtro_mes)
+        resumen_query = resumen_query.filter(func.to_char(RegistroCompra.fecha, 'YYYY-MM') == filtro_mes)
     if filtro_proveedor:
         resumen_query = resumen_query.filter(RegistroCompra.proveedor == filtro_proveedor)
     if filtro_producto:
