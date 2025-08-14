@@ -4120,7 +4120,7 @@ def reporte_grafico_despachos():
         bars = ax.barh(productos_graf, barriles, color='#0b8552')
         ax.set_xlabel('Total de Barriles Despachados')
         ax.set_ylabel('Producto')
-        ax.set_title(f'Total de Barriles Despachados por Producto\n({fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')})')
+        ax.set_title(f"Total de Barriles Despachados por Producto\n({fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')})")
         ax.invert_yaxis()
         for bar in bars:
             width = bar.get_width()
