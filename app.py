@@ -4082,58 +4082,52 @@ def reporte_grafico_despachos():
     today = date.today()
     fecha_inicio_str = request.args.get('fecha_inicio', today.replace(day=1).isoformat())
     fecha_fin_str = request.args.get('fecha_fin', today.isoformat())
+    producto_filtro = request.args.get('producto', '')
 
     try:
         fecha_inicio = date.fromisoformat(fecha_inicio_str)
         fecha_fin = date.fromisoformat(fecha_fin_str)
     except (ValueError, TypeError):
-        # Si las fechas son inválidas, vuelve al default del mes actual
         fecha_inicio = today.replace(day=1)
         fecha_fin = today
 
-    # 2. Consultar la base de datos para obtener los datos agregados
-    datos_despacho = db.session.query(
-        ProgramacionCargue.cliente,
+    # Obtener lista de productos únicos
+    productos = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(ProgramacionCargue.producto_a_cargar.isnot(None)).all() if p[0]]
+    productos = sorted(productos)
+
+    # Consulta agrupada por producto
+    query = db.session.query(
+        ProgramacionCargue.producto_a_cargar,
         func.sum(ProgramacionCargue.barriles).label('total_barriles')
     ).filter(
         ProgramacionCargue.estado == 'DESPACHADO',
-        ProgramacionCargue.cliente.isnot(None),
+        ProgramacionCargue.producto_a_cargar.isnot(None),
         ProgramacionCargue.barriles.isnot(None),
         ProgramacionCargue.fecha_despacho.between(fecha_inicio, fecha_fin)
-    ).group_by(
-        ProgramacionCargue.cliente
-    ).order_by(
-        func.sum(ProgramacionCargue.barriles).desc()
-    ).all()
+    )
+    if producto_filtro:
+        query = query.filter(ProgramacionCargue.producto_a_cargar == producto_filtro)
+    datos_despacho = query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
     grafico_base64 = None
     total_barriles_general = 0
-    
     if datos_despacho:
-        # 3. Preparar datos para el gráfico
-        clientes = [resultado[0] for resultado in datos_despacho]
+        productos_graf = [resultado[0] for resultado in datos_despacho]
         barriles = [float(resultado[1]) for resultado in datos_despacho]
         total_barriles_general = sum(barriles)
 
-        # 4. Generar el gráfico con Matplotlib
-        fig, ax = plt.subplots(figsize=(12, max(6, len(clientes) * 0.5)))
-        bars = ax.barh(clientes, barriles, color='#0b8552')
-        
+        fig, ax = plt.subplots(figsize=(12, max(6, len(productos_graf) * 0.5)))
+        bars = ax.barh(productos_graf, barriles, color='#0b8552')
         ax.set_xlabel('Total de Barriles Despachados')
-        ax.set_ylabel('Cliente')
-        ax.set_title(f'Total de Barriles Despachados por Cliente\n({fecha_inicio.strftime("%d/%m/%Y")} - {fecha_fin.strftime("%d/%m/%Y")})')
-        ax.invert_yaxis() # El cliente con más barriles queda arriba
-
-        # Añadir etiquetas de valor en cada barra
+        ax.set_ylabel('Producto')
+        ax.set_title(f'Total de Barriles Despachados por Producto\n({fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')})')
+        ax.invert_yaxis()
         for bar in bars:
             width = bar.get_width()
             ax.text(width + (max(barriles) * 0.01), bar.get_y() + bar.get_height()/2,
                     f'{width:,.2f}', ha='left', va='center', fontsize=9)
-        
         ax.grid(axis='x', linestyle='--', alpha=0.6)
         plt.tight_layout()
-        
-        # 5. Convertir el gráfico a una imagen para mostrarla en la web
         grafico_base64 = convertir_plot_a_base64(fig)
 
     return render_template(
@@ -4141,7 +4135,8 @@ def reporte_grafico_despachos():
         grafico_base64=grafico_base64,
         datos_tabla=datos_despacho,
         total_barriles=total_barriles_general,
-        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat()},
+        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat(), 'producto': producto_filtro},
+        productos=productos,
         now=datetime.now()
     )
 
