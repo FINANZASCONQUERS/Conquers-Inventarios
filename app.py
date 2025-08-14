@@ -4078,49 +4078,86 @@ def delete_programacion(id):
 @permiso_requerido('programacion_cargue')
 @app.route('/reporte_grafico_despachos')
 def reporte_grafico_despachos():
-    # 1. Obtener filtros de fecha. Por defecto, muestra el mes actual.
     today = date.today()
-    fecha_inicio_str = request.args.get('fecha_inicio', today.replace(day=1).isoformat())
-    fecha_fin_str = request.args.get('fecha_fin', today.isoformat())
-    producto_filtro = request.args.get('producto', '')
+    fecha_inicio_str = request.args.get('fecha_inicio', '')
+    fecha_fin_str = request.args.get('fecha_fin', '')
+    cliente_filtro = request.args.get('cliente', '')
 
-    try:
-        fecha_inicio = date.fromisoformat(fecha_inicio_str)
-        fecha_fin = date.fromisoformat(fecha_fin_str)
-    except (ValueError, TypeError):
-        fecha_inicio = today.replace(day=1)
-        fecha_fin = today
+    # Si no hay fechas, no filtrar por fecha (mostrar todo)
+    if fecha_inicio_str:
+        try:
+            fecha_inicio = date.fromisoformat(fecha_inicio_str)
+        except (ValueError, TypeError):
+            fecha_inicio = None
+    else:
+        fecha_inicio = None
+    if fecha_fin_str:
+        try:
+            fecha_fin = date.fromisoformat(fecha_fin_str)
+        except (ValueError, TypeError):
+            fecha_fin = None
+    else:
+        fecha_fin = None
 
-    # Obtener lista de productos únicos
-    productos = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(ProgramacionCargue.producto_a_cargar.isnot(None)).all() if p[0]]
-    productos = sorted(productos)
+    # Obtener lista de clientes únicos
+    clientes = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
+    clientes = sorted(clientes)
 
-    # Consulta agrupada por producto
+    # Consulta agrupada por cliente (para el gráfico principal)
     query = db.session.query(
-        ProgramacionCargue.producto_a_cargar,
+        ProgramacionCargue.cliente,
         func.sum(ProgramacionCargue.barriles).label('total_barriles')
     ).filter(
         ProgramacionCargue.estado == 'DESPACHADO',
-        ProgramacionCargue.producto_a_cargar.isnot(None),
-        ProgramacionCargue.barriles.isnot(None),
-        ProgramacionCargue.fecha_despacho.between(fecha_inicio, fecha_fin)
+        ProgramacionCargue.cliente.isnot(None),
+        ProgramacionCargue.barriles.isnot(None)
     )
-    if producto_filtro:
-        query = query.filter(ProgramacionCargue.producto_a_cargar == producto_filtro)
-    datos_despacho = query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
+    if fecha_inicio:
+        query = query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+    if fecha_fin:
+        query = query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+    if cliente_filtro:
+        query = query.filter(ProgramacionCargue.cliente == cliente_filtro)
+    datos_despacho = query.group_by(ProgramacionCargue.cliente).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
+
+    # Resumen por producto para el cliente seleccionado
+    resumen_productos = []
+    if cliente_filtro:
+        resumen_query = db.session.query(
+            ProgramacionCargue.producto_a_cargar,
+            func.sum(ProgramacionCargue.barriles).label('total_barriles')
+        ).filter(
+            ProgramacionCargue.estado == 'DESPACHADO',
+            ProgramacionCargue.cliente == cliente_filtro,
+            ProgramacionCargue.producto_a_cargar.isnot(None),
+            ProgramacionCargue.barriles.isnot(None)
+        )
+        if fecha_inicio:
+            resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+        if fecha_fin:
+            resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+        resumen_productos = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
     grafico_base64 = None
     total_barriles_general = 0
     if datos_despacho:
-        productos_graf = [resultado[0] for resultado in datos_despacho]
+        clientes_graf = [resultado[0] for resultado in datos_despacho]
         barriles = [float(resultado[1]) for resultado in datos_despacho]
         total_barriles_general = sum(barriles)
 
-        fig, ax = plt.subplots(figsize=(12, max(6, len(productos_graf) * 0.5)))
-        bars = ax.barh(productos_graf, barriles, color='#0b8552')
+        fig, ax = plt.subplots(figsize=(12, max(6, len(clientes_graf) * 0.5)))
+        bars = ax.barh(clientes_graf, barriles, color='#0b8552')
         ax.set_xlabel('Total de Barriles Despachados')
-        ax.set_ylabel('Producto')
-        ax.set_title(f"Total de Barriles Despachados por Producto\n({fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')})")
+        ax.set_ylabel('Cliente')
+        if fecha_inicio and fecha_fin:
+            periodo = f"{fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}"
+        elif fecha_inicio:
+            periodo = f"Desde {fecha_inicio.strftime('%d/%m/%Y')}"
+        elif fecha_fin:
+            periodo = f"Hasta {fecha_fin.strftime('%d/%m/%Y')}"
+        else:
+            periodo = "Todo el periodo"
+        ax.set_title(f"Total de Barriles Despachados por Cliente\n({periodo})")
         ax.invert_yaxis()
         for bar in bars:
             width = bar.get_width()
@@ -4135,8 +4172,13 @@ def reporte_grafico_despachos():
         grafico_base64=grafico_base64,
         datos_tabla=datos_despacho,
         total_barriles=total_barriles_general,
-        filtros={'fecha_inicio': fecha_inicio.isoformat(), 'fecha_fin': fecha_fin.isoformat(), 'producto': producto_filtro},
-        productos=productos,
+        filtros={
+            'fecha_inicio': fecha_inicio.isoformat() if fecha_inicio else '',
+            'fecha_fin': fecha_fin.isoformat() if fecha_fin else '',
+            'cliente': cliente_filtro
+        },
+        clientes=clientes,
+        resumen_productos=resumen_productos,
         now=datetime.now()
     )
 
