@@ -550,9 +550,18 @@ def _ensure_refineria_completion_column():
         cols = [c['name'] for c in insp.get_columns('programacion_cargue')]
         if 'refineria_completado_en' not in cols:
             try:
+                # Elegir tipo correcto según motor (PostgreSQL no acepta DATETIME)
+                dialect = db.engine.dialect.name
+                if dialect == 'postgresql':
+                    col_type = 'TIMESTAMP'
+                elif dialect == 'mysql':
+                    col_type = 'DATETIME'
+                else:
+                    col_type = 'DATETIME'
+                ddl = f'ALTER TABLE programacion_cargue ADD COLUMN refineria_completado_en {col_type}'
                 with db.engine.begin() as conn:
-                    conn.execute(text('ALTER TABLE programacion_cargue ADD COLUMN refineria_completado_en DATETIME'))
-                print('Columna refineria_completado_en añadida a programacion_cargue')
+                    conn.execute(text(ddl))
+                print(f'Columna refineria_completado_en añadida (tipo {col_type})')
             except Exception as e:
                 print('No se pudo añadir columna refineria_completado_en:', e)
 
