@@ -334,6 +334,13 @@
                                             </a>
                                         </li>
                                     {% endfor %}
+                                    {% if 'flujo_efectivo' in session.get('area', []) %}
+                                        <li>
+                                            <a class="dropdown-item {% if request.endpoint == 'flujo_efectivo' %}active{% endif %}" href="{{ url_for('flujo_efectivo') }}">
+                                                <i class="bi bi-cash-coin me-2"></i> Flujo de Efectivo
+                                            </a>
+                                        </li>
+                                    {% endif %}
                                     {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
                                     <li>
                                         <a class="dropdown-item {% if request.endpoint == 'gestion_compras' %}active{% endif %}" href="{{ url_for('gestion_compras') }}">

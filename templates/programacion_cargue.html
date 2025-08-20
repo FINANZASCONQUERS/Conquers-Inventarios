@@ -106,6 +106,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- VARIABLES Y CONFIGURACIÓN ---
     const userEmail = "{{ email_usuario }}";
     const userRol = "{{ rol_usuario }}";
+    // Solo estos usuarios pueden eliminar (Juliana, Ignacio y Samantha)
+    const canDelete = ['ops@conquerstrading.com','production@conquerstrading.com','logistic@conquerstrading.com'].includes(userEmail);
     const tbody = document.getElementById('schedule-table-body');
     const thead = document.querySelector('table thead');
     const btnAddRow = document.getElementById('btn-add-row');
@@ -116,7 +118,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'production@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'destino', 'cliente', 'fecha_despacho'],
+    // Ignacio ahora con todos los campos como Samantha/logistic
+    'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     };
 
@@ -237,29 +240,28 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
-
+                const lockBadge = '<div class="lock-indicator position-absolute top-0 start-0 px-1 bg-warning text-dark small" style="font-size:0.6rem; display:none; z-index:5; border-bottom-right-radius:4px;">Editando...</div>';
                 if (config.type === 'datalist' && isEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="datalist">
+                    rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
+                                    ${lockBadge}
                                     <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" 
                                            value="${value}">
                                 </td>`;
                 } else {
                     rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
                                     contenteditable="${isEditable}"
-                                    class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''}"
-                                    style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
+                                    class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''} position-relative"
+                                    style="min-width: ${config.width}">${lockBadge}${formatCellValue(value, config)}</td>`;
                 }
             });
-            // Agrega botón de eliminar fila
+            // Botones de acciones (imprimir siempre, eliminar solo si permitido)
             rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}">
                             <div class="d-flex justify-content-center align-items-center">
                                 <span class="save-indicator me-2" style="width: 16px;"></span>
                                 <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
                                     <i class="fas fa-print"></i>
                                 </button>
-                                <button class="btn btn-danger btn-xs btn-delete-row ms-2" title="Eliminar fila">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
+                                ${canDelete ? `<button class=\"btn btn-danger btn-xs btn-delete-row ms-2\" title=\"Eliminar fila\"><i class=\"fas fa-trash-alt\"></i></button>` : ''}
                             </div>
                         </td></tr>`;
             tbody.innerHTML += rowHtml;
@@ -333,9 +335,70 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     
     tbody.addEventListener('blur', function(e) {
         if (e.target.classList.contains('editable-cell') || e.target.classList.contains('editable-input')) {
-            autosaveCell(e.target.closest('td'));
+            const td = e.target.closest('td');
+            autosaveCell(td);
+            liberarLock(td);
         }
     }, true);
+
+    // Locks: al enfocar pedir lock
+    tbody.addEventListener('focusin', function(e){
+        const td = e.target.closest('td[contenteditable="true"], td[data-type="datalist"]');
+        if(!td) return;
+        const row = td.closest('tr');
+        fetch('/api/programacion/lock', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ registro_id: row.dataset.id, campo: td.dataset.field })
+        }).then(r=>r.json()).then(resp=>{
+            if(!resp.success){
+                const badge = td.querySelector('.lock-indicator');
+                if (badge){
+                    badge.style.display='block';
+                    badge.textContent = resp.message;
+                    badge.classList.add('bg-danger','text-white');
+                }
+                if (td.querySelector('.editable-input')) td.querySelector('.editable-input').blur(); else td.blur();
+            } else {
+                const badge = td.querySelector('.lock-indicator');
+                if (badge){
+                    badge.style.display='block';
+                    badge.textContent = 'Editando: Tú';
+                    badge.classList.remove('bg-danger','text-white');
+                }
+            }
+        }).catch(()=>{});
+    });
+
+    function liberarLock(td){
+        if(!td) return;
+        const row = td.closest('tr');
+        if(!row) return;
+        fetch(`/api/programacion/lock?registro_id=${row.dataset.id}&campo=${td.dataset.field}`, { method:'DELETE' });
+        const badge = td.querySelector('.lock-indicator');
+        if (badge){ setTimeout(()=>{ badge.style.display='none'; },1500); }
+    }
+
+    // Polling para actualizar quién edita
+    function refreshLocks(){
+        fetch('/api/programacion/locks').then(r=>r.json()).then(lista=>{
+            // limpiar
+            tbody.querySelectorAll('.lock-indicator').forEach(b=>{ if(!b.textContent.includes('Tú')) b.style.display='none'; });
+            lista.forEach(l=>{
+                const td = tbody.querySelector(`tr[data-id="${l.registro_id}"] td[data-field="${l.campo}"]`);
+                if(td){
+                    const badge = td.querySelector('.lock-indicator');
+                    if(badge){
+                        if(!badge.textContent.includes('Tú')){
+                            badge.style.display='block';
+                            badge.textContent = `Editando: ${l.usuario}`;
+                        }
+                    }
+                }
+            });
+        }).catch(()=>{});
+    }
+    setInterval(refreshLocks, 4000);
 
     tbody.addEventListener('click', function(e) {
         const printButton = e.target.closest('.btn-print-guide');
@@ -362,9 +425,10 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             window.location.href = url.href;
         }
 
-        // Botón eliminar fila
+        // Botón eliminar fila (solo si canDelete true en render)
         const deleteButton = e.target.closest('.btn-delete-row');
         if (deleteButton) {
+            if (!canDelete) { return; }
             const row = deleteButton.closest('tr');
             const id = row.dataset.id;
             if (confirm('¿Seguro que deseas eliminar esta programación?')) {
@@ -375,7 +439,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                             showToast('success', 'Fila eliminada correctamente');
                             fetchAndRender();
                         } else {
-                            showToast('danger', 'Error al eliminar: ' + data.message);
+                            showToast('danger', 'Error al eliminar: ' + (data.message || ''));
                         }
                     })
                     .catch(() => showToast('danger', 'Error de conexión'));

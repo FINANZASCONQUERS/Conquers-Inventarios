@@ -1,0 +1,590 @@
+{% extends 'base.html' %}
+{% block head %}
+    <title>Reporte de Flujo de Efectivo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/professional-theme.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #f4f7f9 0%, #e3eafc 100%); }
+        .main-card { border-radius: 18px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); border: none; background: #fff; }
+        .uploader { border: 2px dashed #0d6efd; background: #f8fafd; border-radius: 14px; transition: border-color 0.2s; }
+        .uploader:hover { border-color: #0a58ca; background: #f0f6ff; }
+        .table-responsive { max-height: 600px; }
+        .spinner-border { width: 3rem; height: 3rem; }
+    .diff-pos { color: #198754 !important; }
+    .diff-neg { color: #dc3545 !important; }
+        .fw-bold { font-weight: bold; }
+        .group-header { background: #e3eafc; font-weight: bold; color: #0d6efd; border-radius: 6px; }
+        .filter-label { color: #0d6efd; font-weight: 600; }
+        .filter-select { border-radius: 8px; border: 1px solid #b6c6e3; }
+        .card-header { background: #f4f7f9; border-bottom: 1px solid #e3eafc; border-radius: 18px 18px 0 0; }
+        .table thead th { background: #e3eafc; color: #0d6efd; }
+        .table tfoot td { background: #f4f7f9; }
+        .section-title { color: #0d6efd; font-weight: 700; letter-spacing: 0.5px; }
+        .custom-shadow { box-shadow: 0 2px 12px rgba(13,110,253,0.08); }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Tarjetas Resumen Método Directo -->
+    <div id="resumen-directo" class="row g-3 mb-4 d-none"></div>
+    <!-- Breakdowns -->
+    <div id="breakdown-ingresos" class="row mb-3 d-none">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Detalle Ingresos por Tipo de Flujo (Odoo)</strong>
+                    <button class="btn btn-sm btn-outline-secondary" data-close-breakdown="ingresos">Cerrar</button>
+                </div>
+                <div class="card-body p-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Débito</th></tr></thead>
+                            <tbody id="tbody-breakdown-ingresos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="breakdown-egresos" class="row mb-3 d-none">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <strong>Detalle Egresos por Tipo de Flujo (Odoo)</strong>
+                    <button class="btn btn-sm btn-outline-secondary" data-close-breakdown="egresos">Cerrar</button>
+                </div>
+                <div class="card-body p-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Crédito</th></tr></thead>
+                            <tbody id="tbody-breakdown-egresos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="main-card p-4 mb-4 custom-shadow">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 section-title mb-0">📊 Reporte de Flujo de Efectivo</h1>
+                <div class="text-muted small">Hola, {{ nombre }}</div>
+            </div>
+            <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+                <label for="file-upload" class="form-label mb-0 filter-label">Cargar Excel:</label>
+                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="max-width:220px;">
+            </div>
+        </div>
+        <!-- Filtros de Tiempo y Empresa -->
+        <div class="row mb-3 g-3">
+            <div class="col-md-3" id="empresa-filter-container" style="display:none;">
+                <label for="empresa-filter" class="form-label filter-label">Empresa:</label>
+                <select id="empresa-filter" class="form-select filter-select" style="max-width:350px;"></select>
+            </div>
+            <div class="col-md-9 d-flex align-items-end gap-2 flex-wrap" id="time-filters-container" style="display:none;">
+                <div>
+                    <label for="year-filter" class="form-label filter-label">Año:</label>
+                    <select id="year-filter" class="form-select filter-select"></select>
+                </div>
+                <div>
+                    <label for="month-filter" class="form-label filter-label">Mes:</label>
+                    <select id="month-filter" class="form-select filter-select">
+                        <option value="">(Todos)</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="day-filter" class="form-label filter-label">Día:</label>
+                    <select id="day-filter" class="form-select filter-select">
+                        <option value="">(Todos)</option>
+                        <!-- Días se llenan dinámicamente -->
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-spinner" class="text-center my-5 d-none">
+        <div class="spinner-border text-primary" role="status"></div>
+        <div class="mt-2 text-primary fw-bold">Procesando archivo, por favor espera...</div>
+    </div>
+
+    <div id="report-output" class="d-none"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('file-upload').addEventListener('change', handleFile, false);
+
+    const currencyFormatter = new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', minimumFractionDigits: 2
+    });
+
+    async function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const reportOutput = document.getElementById('report-output');
+        loadingSpinner.classList.remove('d-none');
+        reportOutput.classList.add('d-none');
+        reportOutput.innerHTML = '';
+
+        const formData = new FormData();
+        formData.append('archivo_excel', file);
+
+        try {
+            const response = await fetch('/api/procesar_flujo_efectivo', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+
+            displayReport(result);
+            reportOutput.classList.remove('d-none');
+        } catch (error) {
+            reportOutput.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
+            reportOutput.classList.remove('d-none');
+        } finally {
+            loadingSpinner.classList.add('d-none');
+        }
+    }
+    
+        // --- FUNCIÓN EXPANDIBLE DETALLE POR TIPO / TERCERO / FECHA ---
+        function createFlowDetailExpandable(title, resumen, detalle, tipoMonto) {
+                if (!resumen || Object.keys(resumen).length === 0) return '';
+                const flowTypes = Object.keys(resumen).sort();
+                let body = '';
+                let idx = 0;
+                for (const flowType of flowTypes) {
+                        const totalTipo = Object.values(resumen[flowType]).reduce((a,b)=>a+b,0);
+                        const sectionId = `flow-${title.replace(/\s+/g,'-')}-${idx}`;
+                        body += `<tr class="table-primary">
+                                                <td colspan="5">
+                                                        <button class="btn btn-sm btn-outline-primary me-2 toggle-btn" data-target="${sectionId}">+</button>
+                                                        <strong>${flowType}</strong>
+                                                </td>
+                                                <td class="text-end fw-bold">${currencyFormatter.format(totalTipo)}</td>
+                                        </tr>`;
+                        const tercerosOrdenados = Object.entries(resumen[flowType]).sort((a,b)=>b[1]-a[1]);
+                                    let inner = '';
+                        for (const [tercero, total] of tercerosOrdenados) {
+                                const rows = detalle.filter(r => (r.tipo_flujo||'SIN TIPO')===flowType && (r.tercero||'SIN TERCERO')===tercero);
+                                if (rows.length===0) continue;
+                                inner += `<tr class="table-secondary"><td colspan="6"><strong>${tercero}</strong> - Total: ${currencyFormatter.format(total)}</td></tr>`;
+                                for (const r of rows) {
+                                                    // Mostrar solo la columna relevante según tipoMonto
+                                                    const montoCol = tipoMonto === 'Crédito'
+                                                            ? `<td class=\"text-end\">${currencyFormatter.format(r.credito||0)}</td>`
+                                                            : `<td class=\"text-end\">${currencyFormatter.format(r.debito||0)}</td>`;
+                                                    inner += `<tr>
+                                                                            <td>${tercero}</td>
+                                                                            <td>${r.fecha}</td>
+                                                                            <td>${r.rubro||''}</td>
+                                                                            ${montoCol}
+                                                                            <td>${r.movimiento||''}</td>
+                                                                        </tr>`;
+                                }
+                        }
+                        body += `<tr class="d-none" id="${sectionId}"><td colspan="6" class="p-0">
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm mb-0">
+                                                                    <thead class="table-light"><tr><th>Tercero</th><th>Fecha</th><th>Rubro</th><th>${tipoMonto}</th><th>Movimiento</th></tr></thead>
+                                                        <tbody>${inner}</tbody>
+                                                    </table>
+                                                </div>
+                                            </td></tr>`;
+                        idx++;
+                }
+                return `<div class="card">
+                                    <div class="card-header"><h5 class="mb-0">${title}</h5></div>
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead class="table-light">
+                                                <tr><th colspan="5">Tipo / Detalle</th><th class="text-end">Total (${tipoMonto})</th></tr>
+                                            </thead>
+                                            <tbody>${body}</tbody>
+                                        </table>
+                                    </div>
+                                </div>`;
+        }
+        // --- FIN FUNCIÓN EXPANDIBLE ---
+
+    function createComparisonTable(data) {
+        if (!data || data.length === 0) return '';
+        
+        // Totales acumulados
+        let totalIngresosBancos = 0;
+        let totalIngresosOdoo = 0;
+        let totalEgresosBancos = 0;
+        let totalEgresosOdoo = 0;
+        let totalDiffIngresos = 0;
+        let totalDiffEgresos = 0;
+
+        const tableRows = data.map(row => {
+            // Compatibilidad: permitir backend con 'Empresa'
+            const empresa = row.empresa || row.Empresa || '';
+            // Acumular totales
+            totalIngresosBancos += row.ingresos_bancos;
+            totalIngresosOdoo += row.ingresos_odoo;
+            totalEgresosBancos += row.egresos_bancos;
+            totalEgresosOdoo += row.egresos_odoo;
+            totalDiffIngresos += row.diferencia_ingresos;
+            totalDiffEgresos += row.diferencia_egresos;
+
+            let diffIngresosClass = '';
+            let diffEgresosClass = '';
+            if (row.diferencia_ingresos !== 0) {
+                diffIngresosClass = row.diferencia_ingresos > 0 ? 'diff-pos text-success fw-bold' : 'diff-neg text-danger fw-bold';
+            }
+            if (row.diferencia_egresos !== 0) {
+                diffEgresosClass = row.diferencia_egresos > 0 ? 'diff-pos text-success fw-bold' : 'diff-neg text-danger fw-bold';
+            }
+
+            return `
+                <tr>
+                    <td>${row.fecha}</td>
+                    <td>${empresa}</td>
+                    <td class="text-end">${currencyFormatter.format(row.ingresos_bancos)}</td>
+                    <td class="text-end">${currencyFormatter.format(row.ingresos_odoo)}</td>
+                    <td class="text-end ${diffIngresosClass}">${currencyFormatter.format(row.diferencia_ingresos)}</td>
+                    <td class="text-end">${currencyFormatter.format(row.egresos_bancos)}</td>
+                    <td class="text-end">${currencyFormatter.format(row.egresos_odoo)}</td>
+                    <td class="text-end ${diffEgresosClass}">${currencyFormatter.format(row.diferencia_egresos)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        let totalDiffIngresosClass = '';
+        let totalDiffEgresosClass = '';
+        if (totalDiffIngresos !== 0) {
+            totalDiffIngresosClass = totalDiffIngresos > 0 ? 'diff-pos text-success fw-bold' : 'diff-neg text-danger fw-bold';
+        }
+        if (totalDiffEgresos !== 0) {
+            totalDiffEgresosClass = totalDiffEgresos > 0 ? 'diff-pos text-success fw-bold' : 'diff-neg text-danger fw-bold';
+        }
+
+        return `
+            <div class="card mt-4">
+                <div class="card-header"><h5 class="mb-0">Conciliación Diaria (Bancos vs. Odoo)</h5></div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover table-bordered mb-0">
+                        <thead class="table-light text-center" style="position: sticky; top: 0;">
+                            <tr>
+                                <th rowspan="2" class="align-middle">Fecha</th>
+                                <th rowspan="2" class="align-middle">Empresa</th>
+                                <th colspan="3">Ingresos</th>
+                                <th colspan="3">Egresos</th>
+                            </tr>
+                            <tr>
+                                <th>Bancos</th><th>Odoo</th><th>Diferencia</th>
+                                <th>Bancos</th><th>Odoo</th><th>Diferencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                        <tfoot class="table-group-divider">
+                            <tr class="fw-bold">
+                                <td>TOTALES</td>
+                                <td></td>
+                                <td class="text-end">${currencyFormatter.format(totalIngresosBancos)}</td>
+                                <td class="text-end">${currencyFormatter.format(totalIngresosOdoo)}</td>
+                                <td class="text-end ${totalDiffIngresosClass}">${currencyFormatter.format(totalDiffIngresos)}</td>
+                                <td class="text-end">${currencyFormatter.format(totalEgresosBancos)}</td>
+                                <td class="text-end">${currencyFormatter.format(totalEgresosOdoo)}</td>
+                                <td class="text-end ${totalDiffEgresosClass}">${currencyFormatter.format(totalDiffEgresos)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    // --- Filtro de Empresa ---
+
+    let globalReportData = null;
+    let globalEmpresaSeleccionada = '';
+    let globalYear = '';
+    let globalMonth = '';
+    let globalDay = '';
+
+
+    function updateEmpresaFilter(empresas) {
+        const container = document.getElementById('empresa-filter-container');
+        const select = document.getElementById('empresa-filter');
+        if (!empresas || empresas.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        select.innerHTML = '<option value="">(Todas las empresas)</option>' + empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+        container.style.display = '';
+        if (globalEmpresaSeleccionada) {
+            select.value = globalEmpresaSeleccionada;
+        }
+        select.onchange = function() {
+            globalEmpresaSeleccionada = select.value;
+            renderReport(globalReportData);
+        };
+    }
+
+    // --- Filtros de Tiempo ---
+    function updateTimeFilters(data) {
+        const container = document.getElementById('time-filters-container');
+        const yearSelect = document.getElementById('year-filter');
+        const monthSelect = document.getElementById('month-filter');
+        const daySelect = document.getElementById('day-filter');
+        if (!data || !data.daily_comparison || data.daily_comparison.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        // Extraer años únicos
+        const years = [...new Set(data.daily_comparison.map(row => row.fecha.slice(0,4)))].sort();
+        yearSelect.innerHTML = '<option value="">(Todos)</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+        // Mantener selección
+        if (globalYear) yearSelect.value = globalYear;
+        // Evento de cambio
+        yearSelect.onchange = function() {
+            globalYear = yearSelect.value;
+            globalMonth = '';
+            globalDay = '';
+            monthSelect.value = '';
+            daySelect.value = '';
+            renderReport(globalReportData);
+            updateDayOptions();
+        };
+        monthSelect.onchange = function() {
+            globalMonth = monthSelect.value;
+            globalDay = '';
+            daySelect.value = '';
+            renderReport(globalReportData);
+            updateDayOptions();
+        };
+        daySelect.onchange = function() {
+            globalDay = daySelect.value;
+            renderReport(globalReportData);
+        };
+        // Llenar días según año y mes
+        function updateDayOptions() {
+            let days = [];
+            if (globalYear && globalMonth) {
+                days = [...new Set(data.daily_comparison.filter(row => row.fecha.startsWith(`${globalYear}-${globalMonth}`)).map(row => row.fecha.slice(8,10)))].sort();
+            }
+            daySelect.innerHTML = '<option value="">(Todos)</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
+            if (globalDay) daySelect.value = globalDay;
+        }
+        updateDayOptions();
+        container.style.display = '';
+    }
+
+
+    function filterDataByEmpresaYTiempo(data, empresa, year, month, day) {
+        // Filtrar daily_comparison
+    let filteredDaily = data.daily_comparison || [];
+    if (empresa) filteredDaily = filteredDaily.filter(row => (row.empresa || row.Empresa) === empresa);
+        if (year) filteredDaily = filteredDaily.filter(row => row.fecha.startsWith(year));
+        if (month) filteredDaily = filteredDaily.filter(row => row.fecha.slice(5,7) === month);
+        if (day) filteredDaily = filteredDaily.filter(row => row.fecha.slice(8,10) === day);
+
+        // Nuevo filtrado para detalle completo
+        function filterDetalle(det) {
+            if (!Array.isArray(det)) return [];
+            return det.filter(r => {
+                if (empresa && r.empresa !== empresa) return false;
+                if (year && !r.fecha.startsWith(year)) return false;
+                if (month && r.fecha.slice(5,7) !== month) return false;
+                if (day && r.fecha.slice(8,10) !== day) return false;
+                return true;
+            });
+        }
+        const detalleFiltrado = filterDetalle(data.odoo_detalle || []);
+        function buildResumenFiltrado(resumen) {
+            if (!resumen) return {};
+            const validKeys = new Set(detalleFiltrado.map(r => (r.tipo_flujo||'SIN TIPO')+'||'+(r.tercero||'SIN TERCERO')));
+            const res = {};
+            for (const tf in resumen) {
+                for (const ter in resumen[tf]) {
+                    const key = (tf||'SIN TIPO')+'||'+(ter||'SIN TERCERO');
+                    if (validKeys.has(key)) {
+                        (res[tf] ||= {})[ter] = resumen[tf][ter];
+                    }
+                }
+            }
+            return res;
+        }
+        return { 
+            daily_comparison: filteredDaily,
+            inflows_by_type: buildResumenFiltrado(data.inflows_by_type),
+            outflows_by_type: buildResumenFiltrado(data.outflows_by_type),
+            detalle_filtrado: detalleFiltrado
+        };
+    }
+
+    function recomputeResumenFiltered(filteredDaily, bancosMovs, inflowsResumen, outflowsResumen) {
+        // Determinar fechas visibles (para limitar saldo inicial a la primera fecha visible)
+        const fechas = [...new Set(filteredDaily.map(r=>r.fecha))].sort();
+        const fechaMin = fechas[0];
+        const empresasSet = new Set(filteredDaily.map(r=>r.empresa||r.Empresa));
+        // Filtrar movimientos bancos por empresa y rango fechas visibles (si hay filtros)
+        const movs = (bancosMovs||[]).filter(m => {
+            if (empresasSet.size>0 && !empresasSet.has(m.empresa)) return false;
+            if (fechaMin && m.fecha < fechaMin) return false; // saldo inicial solo desde primera fecha mostrada
+            if (globalYear && !m.fecha.startsWith(globalYear)) return false;
+            if (globalMonth && m.fecha.slice(5,7)!==globalMonth) return false;
+            if (globalDay && m.fecha.slice(8,10)!==globalDay) return false;
+            return true;
+        });
+        let saldoInicial = 0, ingresos=0, egresos=0;
+        movs.forEach(m=>{
+            if (m.clasificacion==='saldo_inicial') saldoInicial += m.monto;
+            else if (m.clasificacion==='ingreso') ingresos += m.monto;
+            else if (m.clasificacion==='egreso') egresos += Math.abs(m.monto);
+        });
+        return {
+            saldo_inicial: saldoInicial,
+            ingresos: ingresos,
+            saldo_antes_egresos: saldoInicial + ingresos,
+            egresos: egresos,
+            saldo_final: saldoInicial + ingresos - egresos,
+            inflows_by_type: inflowsResumen,
+            outflows_by_type: outflowsResumen
+        };
+    }
+
+    function renderReport(data) {
+        const outputDiv = document.getElementById('report-output');
+        if (!data) return;
+        let filtered = filterDataByEmpresaYTiempo(data, globalEmpresaSeleccionada, globalYear, globalMonth, globalDay);
+        outputDiv.innerHTML = `
+            ${createComparisonTable(filtered.daily_comparison)}
+            <div class="row mt-4 g-4">
+                <div class="col-lg-6">${createFlowDetailExpandable('Detalle de Egresos por Tipo de Flujo', filtered.outflows_by_type, filtered.detalle_filtrado, 'Crédito')}</div>
+                <div class="col-lg-6">${createFlowDetailExpandable('Detalle de Ingresos por Tipo de Flujo', filtered.inflows_by_type, filtered.detalle_filtrado, 'Débito')}</div>
+            </div>`;
+        // Activar toggles
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const row = document.getElementById(targetId);
+                if (row) {
+                    const hidden = row.classList.contains('d-none');
+                    row.classList.toggle('d-none');
+                    btn.textContent = hidden ? '-' : '+';
+                }
+            });
+        });
+        // Recalcular resumen con filtros
+        const resumenFiltered = recomputeResumenFiltered(
+            filtered.daily_comparison,
+            globalReportData.bancos_movimientos,
+            filtered.inflows_by_type,
+            filtered.outflows_by_type
+        );
+        renderResumenDirecto(resumenFiltered, true);
+    }
+
+    function displayReport(data) {
+        // Normalizar daily_comparison para asegurar 'empresa'
+        if (Array.isArray(data.daily_comparison)) {
+            data.daily_comparison = data.daily_comparison.map(r => ({...r, empresa: r.empresa || r.Empresa || ''}));
+        }
+        globalReportData = data;
+        updateEmpresaFilter(data.todas_las_empresas);
+        updateTimeFilters(data);
+        renderReport(data);
+        document.getElementById('report-output').classList.remove('d-none');
+        // Primera render sin filtros usa resumen_directo original
+        renderResumenDirecto(data.resumen_directo, false);
+    }
+    function renderResumenDirecto(resumen, filtered) {
+        const cont = document.getElementById('resumen-directo');
+        if (!resumen) { cont.classList.add('d-none'); return; }
+        cont.innerHTML = `
+            <div class="col-12 col-sm-6 col-xl-2">
+                <div class="card text-white bg-primary h-100 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="small fw-semibold">Saldo Inicial${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_inicial||0)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-2">
+                <div class="card text-white bg-success h-100 shadow-sm position-relative">
+                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-1" data-breakdown="ingresos" title="Ver detalle">+</button>
+                    <div class="card-body p-3">
+                        <div class="small fw-semibold">Ingresos${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.ingresos||0)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card text-white bg-info h-100 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="small fw-semibold">Saldo Antes de Egresos${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_antes_egresos||0)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-2">
+                <div class="card text-white bg-danger h-100 shadow-sm position-relative">
+                    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-1" data-breakdown="egresos" title="Ver detalle">+</button>
+                    <div class="card-body p-3">
+                        <div class="small fw-semibold">Egresos${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.egresos||0)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card text-white bg-dark h-100 shadow-sm">
+                    <div class="card-body p-3">
+                        <div class="small fw-semibold">Saldo Final${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_final||0)}</div>
+                    </div>
+                </div>
+            </div>`;
+        cont.classList.remove('d-none');
+        attachBreakdownHandlers();
+    }
+
+    function attachBreakdownHandlers() {
+        document.querySelectorAll('[data-breakdown]')
+            .forEach(btn => btn.addEventListener('click', () => {
+                const tipo = btn.getAttribute('data-breakdown');
+                if (tipo === 'ingresos') showBreakdown('ingresos', globalReportData.inflows_by_type, 'Débito');
+                else if (tipo === 'egresos') showBreakdown('egresos', globalReportData.outflows_by_type, 'Crédito');
+            }));
+        document.querySelectorAll('[data-close-breakdown]')
+            .forEach(btn => btn.addEventListener('click', () => {
+                const tipo = btn.getAttribute('data-close-breakdown');
+                const row = document.getElementById(`breakdown-${tipo}`);
+                if (row) row.classList.add('d-none');
+            }));
+    }
+
+    function showBreakdown(tipo, nested) {
+        const row = document.getElementById(`breakdown-${tipo}`);
+        const tbody = document.getElementById(`tbody-breakdown-${tipo}`);
+        if (!nested || !tbody) return;
+        const rows = Object.keys(nested)
+            .filter(flow => !/gmf/i.test(flow))
+            .sort()
+            .map(flow => {
+                const total = Object.values(nested[flow]).reduce((a,b)=>a+b,0);
+                return `<tr><td>${flow}</td><td class=\"text-end\">${currencyFormatter.format(total)}</td></tr>`;
+            }).join('');
+        tbody.innerHTML = rows || '<tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>';
+        row.classList.remove('d-none');
+        row.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+</script>
+ 
+{% endblock %}

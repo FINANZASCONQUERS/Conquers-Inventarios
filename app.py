@@ -518,6 +518,28 @@ class ProgramacionCargue(db.Model):
     ultimo_editor = db.Column(db.String(100))
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+# ---------------- BLOQUEO DE CELDAS (EDICIÓN EN TIEMPO REAL) -----------------
+class ProgramacionCargueLock(db.Model):
+    __tablename__ = 'programacion_cargue_locks'
+    id = db.Column(db.Integer, primary_key=True)
+    registro_id = db.Column(db.Integer, nullable=False, index=True)
+    campo = db.Column(db.String(100), nullable=False)
+    usuario = db.Column(db.String(120), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    __table_args__ = (db.UniqueConstraint('registro_id', 'campo', name='uq_prog_lock_registro_campo'),)
+
+    def expirado(self, minutos=2):
+        return datetime.utcnow() - self.timestamp > timedelta(minutes=minutos)
+
+def _init_lock_table():
+    from sqlalchemy import inspect
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'programacion_cargue_locks' not in insp.get_table_names():
+            ProgramacionCargueLock.__table__.create(db.engine)
+
+_init_lock_table()
+
 class EPPItem(db.Model):
     __tablename__ = 'epp_items'
     id = db.Column(db.Integer, primary_key=True)
@@ -632,22 +654,22 @@ USUARIOS = {
     "password": generate_password_hash("Conquers2025"),
     "nombre": "Omar Morales",
     "rol": "viewer",
-    "area": ["reportes", "planilla_precios", "simulador_rendimiento"]
+    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo"]
 },
 
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "David Restrepo",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo"] 
     },
 
 
     "finance@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
-        "nombre": "Germna Galvis",
+        "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta y Rendimientos
@@ -690,7 +712,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Felipe De La Vega",
         "rol": "editor",
-        "area": ["simulador_rendimiento"] 
+        "area": ["simulador_rendimiento", "flujo_efectivo"] 
     },
 
         "accountingzf@conquerstrading.com": { 
@@ -3885,6 +3907,7 @@ def handle_programacion():
         for r in registros
     ]
     return jsonify(data)
+
 @login_required
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>', methods=['PUT'])
@@ -3897,10 +3920,10 @@ def update_programacion(id):
     permisos = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'production@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'destino', 'cliente', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     }
     
@@ -3913,6 +3936,11 @@ def update_programacion(id):
         return jsonify(success=False, message="No tienes permisos para editar."), 403
 
     try:
+        # Bloqueo: si el último editor fue Refinería y pasaron >30 min, no se puede modificar más
+        if registro.ultimo_editor and registro.ultimo_editor.strip().lower() == 'control refineria':
+            if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
+                return jsonify(success=False, message="Registro bloqueado: después de 30 minutos de la edición de Refinería no se puede modificar."), 403
+
         # --- INICIO DE LA CORRECCIÓN ---
         campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
 
@@ -3956,6 +3984,67 @@ def update_programacion(id):
         # Imprime el error en la consola del servidor para que puedas depurarlo
         print(f"ERROR AL ACTUALIZAR PROGRAMACIÓN: {e}") 
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/locks', methods=['GET'])
+def listar_locks_programacion():
+    # Limpieza de expirados
+    locks = ProgramacionCargueLock.query.all()
+    activos = []
+    for l in locks:
+        if l.expirado():
+            db.session.delete(l)
+        else:
+            activos.append({
+                'registro_id': l.registro_id,
+                'campo': l.campo,
+                'usuario': l.usuario,
+                'timestamp': l.timestamp.isoformat()
+            })
+    db.session.commit()
+    return jsonify(activos)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/lock', methods=['POST'])
+def crear_lock_programacion():
+    data = request.get_json() or {}
+    registro_id = data.get('registro_id')
+    campo = data.get('campo')
+    if not registro_id or not campo:
+        return jsonify(success=False, message='Datos incompletos'), 400
+    nombre = session.get('nombre')
+    lock = ProgramacionCargueLock.query.filter_by(registro_id=registro_id, campo=campo).first()
+    if lock:
+        if lock.expirado() or lock.usuario == nombre:
+            lock.usuario = nombre
+            lock.timestamp = datetime.utcnow()
+            db.session.commit()
+            return jsonify(success=True, message='Lock actualizado', usuario=nombre)
+        return jsonify(success=False, message=f"Editando: {lock.usuario}"), 409
+    nuevo = ProgramacionCargueLock(registro_id=registro_id, campo=campo, usuario=nombre)
+    db.session.add(nuevo)
+    db.session.commit()
+    return jsonify(success=True, message='Lock creado', usuario=nombre)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/lock', methods=['DELETE'])
+def borrar_lock_programacion():
+    registro_id = request.args.get('registro_id', type=int)
+    campo = request.args.get('campo')
+    if not registro_id or not campo:
+        return jsonify(success=False, message='Datos incompletos'), 400
+    nombre = session.get('nombre')
+    lock = ProgramacionCargueLock.query.filter_by(registro_id=registro_id, campo=campo).first()
+    if lock:
+        if lock.usuario == nombre or lock.expirado():
+            db.session.delete(lock)
+            db.session.commit()
+            return jsonify(success=True, message='Lock liberado')
+        return jsonify(success=False, message='No puedes liberar lock de otro usuario'), 403
+    return jsonify(success=True, message='No existe lock')
     
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -4065,7 +4154,21 @@ def exportar_programacion_cargue(formato):
 @app.route('/api/programacion/<int:id>', methods=['DELETE'])
 def delete_programacion(id):
     """Elimina un registro de programación de cargue."""
+    # Solo pueden eliminar Juliana (ops), Ignacio (production) y Samantha (logistic)
+    usuarios_autorizados = {
+        'ops@conquerstrading.com',
+        'production@conquerstrading.com',
+        'logistic@conquerstrading.com'
+    }
+    if session.get('email') not in usuarios_autorizados and session.get('rol') != 'admin':
+        return jsonify(success=False, message='No tienes permiso para eliminar registros.'), 403
+
     registro = ProgramacionCargue.query.get_or_404(id)
+
+    # Bloqueo: si último editor fue Refinería y han pasado >30 min, prohibir eliminación (para todos)
+    if registro.ultimo_editor and registro.ultimo_editor.strip().lower() == 'control refineria':
+        if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
+            return jsonify(success=False, message='Registro bloqueado: no puede eliminarse después de 30 minutos de la edición de Refinería.'), 403
     try:
         db.session.delete(registro)
         db.session.commit()
@@ -4774,6 +4877,223 @@ def reporte_compras_pdf():
         mimetype='application/pdf',
         headers={'Content-Disposition': 'attachment;filename=reporte_compras.pdf'}
     )
+
+@login_required
+@permiso_requerido('flujo_efectivo')
+@app.route('/flujo_efectivo')
+def flujo_efectivo():
+    """
+    Renderiza la página principal del Flujo de Efectivo.
+    """
+    return render_template('flujo_efectivo.html', nombre=session.get("nombre"))
+
+
+@login_required
+@permiso_requerido('flujo_efectivo')
+@app.route('/api/procesar_flujo_efectivo', methods=['POST'])
+def procesar_flujo_efectivo_api():
+    """
+    API que procesa el Excel y devuelve una comparación diaria y un detalle
+    de movimientos agrupados por Tipo de Flujo y Tercero.
+    """
+    if 'archivo_excel' not in request.files:
+        return jsonify(success=False, message="No se encontró el archivo en la solicitud."), 400
+
+    archivo = request.files['archivo_excel']
+    if archivo.filename == '':
+        return jsonify(success=False, message="No se seleccionó ningún archivo."), 400
+
+    try:
+        xls = pd.ExcelFile(archivo)
+        sheet_map = {name.strip().lower(): name for name in xls.sheet_names}
+
+        if 'bancos' not in sheet_map or 'odoo' not in sheet_map:
+            return jsonify(success=False, message='El archivo debe contener las hojas "Bancos" y "Odoo".'), 400
+
+        df_bancos = pd.read_excel(xls, sheet_name=sheet_map['bancos'])
+        df_odoo = pd.read_excel(xls, sheet_name=sheet_map['odoo'])
+
+        # Normalizar nombres de columnas (trim)
+        df_bancos.columns = df_bancos.columns.str.strip()
+        df_odoo.columns = df_odoo.columns.str.strip()
+
+        # Validar columnas mínimas
+        required_bancos = {'FECHA DE OPERACIÓN', 'Movimiento', 'COP$', 'Empresa'}
+        required_odoo = {'Fecha', 'Movimiento', 'Débito', 'Crédito', 'Empresa'}
+        missing_b = required_bancos - set(df_bancos.columns)
+        missing_o = required_odoo - set(df_odoo.columns)
+        if missing_b:
+            return jsonify(success=False, message=f"Faltan columnas en Bancos: {missing_b}"), 400
+        if missing_o:
+            return jsonify(success=False, message=f"Faltan columnas en Odoo: {missing_o}"), 400
+
+        # Limpiar y convertir montos
+        def clean_numeric(series):
+            return (series.astype(str)
+                    .str.replace(r"[^0-9\-.,]", '', regex=True)
+                    .str.replace(',', '', regex=False)
+                    .replace('', '0')
+                    .pipe(pd.to_numeric, errors='coerce').fillna(0))
+
+        df_bancos['COP$'] = clean_numeric(df_bancos['COP$'])
+        df_odoo['Débito'] = clean_numeric(df_odoo['Débito'])
+        df_odoo['Crédito'] = clean_numeric(df_odoo['Crédito'])
+
+        # Fechas seguras
+        df_bancos['FECHA DE OPERACIÓN'] = pd.to_datetime(df_bancos['FECHA DE OPERACIÓN'], errors='coerce')
+        df_bancos = df_bancos.dropna(subset=['FECHA DE OPERACIÓN'])
+        df_odoo['Fecha'] = pd.to_datetime(df_odoo['Fecha'], errors='coerce')
+        df_odoo = df_odoo.dropna(subset=['Fecha'])
+
+        # Ingresos y egresos por fecha y Empresa (filtrando por Movimiento)
+        # Bancos - ingresos
+        mask_b_ing = df_bancos['Movimiento'].str.contains('INGRESO', case=False, na=False)
+        ing_b = df_bancos.loc[mask_b_ing].copy()
+        ing_b['fecha'] = ing_b['FECHA DE OPERACIÓN'].dt.date
+        bancos_ingresos = ing_b.groupby(['fecha', 'Empresa'])['COP$'].sum().reset_index().rename(columns={'COP$': 'ingresos_bancos'})
+
+        # Bancos - egresos
+        mask_b_eg = df_bancos['Movimiento'].str.contains('EGRESO', case=False, na=False)
+        eg_b = df_bancos.loc[mask_b_eg].copy()
+        eg_b['fecha'] = eg_b['FECHA DE OPERACIÓN'].dt.date
+        eg_b['egresos_bancos'] = eg_b['COP$'].abs()
+        bancos_egresos = eg_b.groupby(['fecha', 'Empresa'])['egresos_bancos'].sum().reset_index()
+
+        # Odoo - ingresos y egresos (filtrando por Movimiento)
+        mask_o_ing = df_odoo['Movimiento'].str.contains('INGRESO', case=False, na=False)
+        ing_o = df_odoo.loc[mask_o_ing].copy()
+        ing_o['fecha'] = ing_o['Fecha'].dt.date
+        odoo_ingresos = ing_o.groupby(['fecha', 'Empresa'])['Débito'].sum().reset_index().rename(columns={'Débito': 'ingresos_odoo'})
+
+        mask_o_eg = df_odoo['Movimiento'].str.contains('EGRESO', case=False, na=False)
+        eg_o = df_odoo.loc[mask_o_eg].copy()
+        eg_o['fecha'] = eg_o['Fecha'].dt.date
+        odoo_egresos = eg_o.groupby(['fecha', 'Empresa'])['Crédito'].sum().reset_index().rename(columns={'Crédito': 'egresos_odoo'})
+
+        # Unir todo por fecha y Empresa
+        comparativo_df = pd.merge(bancos_ingresos, bancos_egresos, on=['fecha', 'Empresa'], how='outer')
+        comparativo_df = pd.merge(comparativo_df, odoo_ingresos, on=['fecha', 'Empresa'], how='outer')
+        comparativo_df = pd.merge(comparativo_df, odoo_egresos, on=['fecha', 'Empresa'], how='outer')
+        comparativo_df.fillna(0, inplace=True)
+        comparativo_df['diferencia_ingresos'] = comparativo_df['ingresos_bancos'] - comparativo_df['ingresos_odoo']
+        comparativo_df['diferencia_egresos'] = comparativo_df['egresos_bancos'] - comparativo_df['egresos_odoo']
+        comparativo_df = comparativo_df.sort_values(by=['fecha', 'Empresa'], ascending=True)
+        comparativo_df['fecha'] = comparativo_df['fecha'].astype(str)
+        daily_comparison_data = comparativo_df.to_dict(orient='records')
+
+        # Lista de empresas para el frontend
+        todas_las_empresas = sorted(set(df_bancos['Empresa'].dropna().unique().tolist() + df_odoo['Empresa'].dropna().unique().tolist()))
+
+        # Agrupación por Tipo de Flujo y Tercero (si las columnas existen)
+        def group_by_flow_type_safe(df, value_col):
+            cols = set(df.columns)
+            if not {'Tipo Flujo Efectivo', 'Tercero', value_col}.issubset(cols):
+                return {}
+            g = df.groupby(['Tipo Flujo Efectivo', 'Tercero'])[value_col].sum()
+            nested = {}
+            for (flow_type, tercero), total in g.items():
+                nested.setdefault(flow_type, {})[tercero] = total
+            return nested
+
+        outflows_by_type = group_by_flow_type_safe(df_odoo, 'Crédito')
+        inflows_by_type = group_by_flow_type_safe(df_odoo, 'Débito')
+
+        # --- Detalle completo de movimientos Odoo para expansiones frontend ---
+        rubro_col = None
+        for candidate in ['Rubro', 'RUBRO', 'rubro']:
+            if candidate in df_odoo.columns:
+                rubro_col = candidate
+                break
+        tipo_flujo_col = 'Tipo Flujo Efectivo' if 'Tipo Flujo Efectivo' in df_odoo.columns else None
+        tercero_col = 'Tercero' if 'Tercero' in df_odoo.columns else None
+        df_detalle = df_odoo.copy()
+        df_detalle['__fecha_date'] = pd.to_datetime(df_detalle['Fecha'], errors='coerce')
+        df_detalle = df_detalle.dropna(subset=['__fecha_date'])
+        df_detalle['fecha'] = df_detalle['__fecha_date'].dt.strftime('%Y-%m-%d')
+        detalle_records = []
+        for _, r in df_detalle.iterrows():
+            detalle_records.append({
+                'fecha': r.get('fecha'),
+                'empresa': r.get('Empresa'),
+                'tipo_flujo': r.get(tipo_flujo_col) if tipo_flujo_col else 'SIN TIPO',
+                'tercero': r.get(tercero_col) if tercero_col else 'SIN TERCERO',
+                'rubro': r.get(rubro_col) if rubro_col else '',
+                'debito': float(r.get('Débito', 0) or 0),
+                'credito': float(r.get('Crédito', 0) or 0),
+                'movimiento': r.get('Movimiento', '')
+            })
+
+        # Movimientos Bancos crudos para recomputar resumen con filtros en frontend
+        bancos_movimientos = []
+        df_bancos_mov = df_bancos.copy()
+        df_bancos_mov['__fecha_date'] = pd.to_datetime(df_bancos_mov['FECHA DE OPERACIÓN'], errors='coerce')
+        df_bancos_mov = df_bancos_mov.dropna(subset=['__fecha_date'])
+        df_bancos_mov['fecha'] = df_bancos_mov['__fecha_date'].dt.strftime('%Y-%m-%d')
+        for _, r in df_bancos_mov.iterrows():
+            movimiento_txt = str(r.get('Movimiento') or '')
+            # Excluir GMF de los movimientos enviados al frontend para totales
+            if 'GMF' in movimiento_txt.upper():
+                continue
+            tipo = 'otro'
+            if 'SALDO INICIAL' in movimiento_txt.upper():
+                tipo = 'saldo_inicial'
+            elif 'INGRESO' in movimiento_txt.upper():
+                tipo = 'ingreso'
+            elif 'EGRESO' in movimiento_txt.upper():
+                tipo = 'egreso'
+            bancos_movimientos.append({
+                'fecha': r.get('fecha'),
+                'empresa': r.get('Empresa'),
+                'movimiento': movimiento_txt,
+                'monto': float(r.get('COP$', 0) or 0),
+                'clasificacion': tipo
+            })
+
+        response_data = {
+            'success': True,
+            'daily_comparison': daily_comparison_data,
+            'outflows_by_type': outflows_by_type,
+            'inflows_by_type': inflows_by_type,
+            'todas_las_empresas': todas_las_empresas,
+            'odoo_detalle': detalle_records,
+            'bancos_movimientos': bancos_movimientos,
+            # Resumen Método Directo básico desde hoja Bancos
+            'resumen_directo': (lambda: (
+                (lambda saldo_inicial, ingresos, egresos: {
+                    'saldo_inicial': float(saldo_inicial),
+                    'ingresos': float(ingresos),
+                    'saldo_antes_egresos': float(saldo_inicial + ingresos),
+                    'egresos': float(egresos),
+                    'saldo_final': float(saldo_inicial + ingresos - egresos)
+                })(
+                    # saldo_inicial: suma de filas cuyo Movimiento contenga 'SALDO INICIAL'
+                    df_bancos.loc[
+                        df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)
+                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
+                        'COP$'
+                    ].sum(),
+                    # ingresos: filas con 'INGRESO' (excluyendo SALDO INICIAL para evitar doble conteo)
+                    df_bancos.loc[
+                        df_bancos['Movimiento'].str.contains('INGRESO', case=False, na=False)
+                        & ~df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)
+                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
+                        'COP$'
+                    ].sum(),
+                    # egresos: suma absoluta de COP$ donde Movimiento contenga 'EGRESO'
+                    df_bancos.loc[
+                        df_bancos['Movimiento'].str.contains('EGRESO', case=False, na=False)
+                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
+                        'COP$'
+                    ].abs().sum()
+                )
+            ))()
+        }
+
+        return jsonify(response_data)
+
+    except Exception:
+        app.logger.exception('Error procesando flujo de efectivo')
+        return jsonify(success=False, message='Error interno procesando el archivo. Revisa los logs.'), 500
 
 @app.route('/')
 def home():
