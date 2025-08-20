@@ -106,6 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- VARIABLES Y CONFIGURACIÓN ---
     const userEmail = "{{ email_usuario }}";
     const userRol = "{{ rol_usuario }}";
+    const userName = "{{ nombre }}";
     // Solo estos usuarios pueden eliminar (Juliana, Ignacio y Samantha)
     const canDelete = ['ops@conquerstrading.com','production@conquerstrading.com','logistic@conquerstrading.com'].includes(userEmail);
     const tbody = document.getElementById('schedule-table-body');
@@ -234,24 +235,29 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             return;
         }
 
-        data.forEach(row => {
+    data.forEach(row => {
             let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" class="align-middle">`;
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
-                const lockBadge = '<div class="lock-indicator position-absolute top-0 start-0 px-1 bg-warning text-dark small" style="font-size:0.6rem; display:none; z-index:5; border-bottom-right-radius:4px;">Editando...</div>';
-                if (config.type === 'datalist' && isEditable) {
+        // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
+        const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho'].includes(col);
+        const finalEditable = isEditable && !refineriaBlocked;
+                const lockBadge = '<div class="lock-indicator position-absolute top-0 start-0 px-1 bg-warning text-dark small" contenteditable="false" style="font-size:0.6rem; display:none; z-index:5; border-bottom-right-radius:4px; pointer-events:none; user-select:none; line-height:1; white-space:nowrap;"></div>';
+        if (config.type === 'datalist' && finalEditable) {
                     rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
                                     ${lockBadge}
                                     <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" 
                                            value="${value}">
                                 </td>`;
                 } else {
-                    rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" 
-                                    contenteditable="${isEditable}"
-                                    class="${isEditable ? 'editable-cell' : ''} ${config.type === 'number' ? 'text-end' : ''} position-relative"
-                                    style="min-width: ${config.width}">${lockBadge}${formatCellValue(value, config)}</td>`;
+                    // Usar un contenedor interno editable para que el badge quede fuera del rango editable
+                    if(finalEditable){
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${lockBadge}<span class="cell-editor" contenteditable="true">${formatCellValue(value, config)}</span></td>`;
+                    } else {
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${lockBadge}${formatCellValue(value, config)}</td>`;
+                    }
                 }
             });
             // Botones de acciones (imprimir siempre, eliminar solo si permitido)
@@ -321,21 +327,36 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     });
 
     tbody.addEventListener('input', function(e) {
-        const cell = e.target.closest('td');
+        const cell = e.target.closest('td[data-field]');
         if (!cell) return;
 
-        if (cell.dataset.field === 'galones' && cell.isContentEditable) {
+        if (cell.dataset.field === 'galones' && e.target.classList.contains('cell-editor')) {
             const row = cell.closest('tr');
             const barrilesCell = row.querySelector('[data-field="barriles"]');
-            const galonesValue = parseFloat(cell.textContent.replace(/\./g, '').replace(',', '.')) || 0;
+            const galonesValue = parseFloat(e.target.textContent.replace(/\./g, '').replace(',', '.')) || 0;
             const barrilesValue = galonesValue / 42;
             barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        // Toggle propio badge según contenido (no modifica el texto de la celda)
+        const badge = cell.querySelector('.lock-indicator');
+        if(badge){
+            const input = cell.querySelector('input.editable-input');
+            const span = cell.querySelector('.cell-editor');
+            const val = input ? input.value : (span ? span.textContent : cell.textContent);
+            if(val.trim().length===0){
+                if(badge.textContent===userName){
+                    badge.style.display='none';
+                    badge.textContent='';
+                }
+            } else if(badge.textContent===userName){
+                badge.style.display='block';
+            }
         }
     });
     
     tbody.addEventListener('blur', function(e) {
-        if (e.target.classList.contains('editable-cell') || e.target.classList.contains('editable-input')) {
-            const td = e.target.closest('td');
+        if (e.target.classList.contains('cell-editor') || e.target.classList.contains('editable-input')) {
+            const td = e.target.closest('td[data-field]');
             autosaveCell(td);
             liberarLock(td);
         }
@@ -343,7 +364,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
 
     // Locks: al enfocar pedir lock
     tbody.addEventListener('focusin', function(e){
-        const td = e.target.closest('td[contenteditable="true"], td[data-type="datalist"]');
+        const td = e.target.closest('td[data-field]');
         if(!td) return;
         const row = td.closest('tr');
         fetch('/api/programacion/lock', {
@@ -351,20 +372,44 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ registro_id: row.dataset.id, campo: td.dataset.field })
         }).then(r=>r.json()).then(resp=>{
-            if(!resp.success){
+        if(!resp.success){
                 const badge = td.querySelector('.lock-indicator');
                 if (badge){
                     badge.style.display='block';
-                    badge.textContent = resp.message;
+                    // Mensaje de error del lock (mantenemos tal cual si viene con 'Editando:' del backend)
+                    badge.textContent = resp.message.replace(/^Editando:\s*/,'');
                     badge.classList.add('bg-danger','text-white');
                 }
                 if (td.querySelector('.editable-input')) td.querySelector('.editable-input').blur(); else td.blur();
             } else {
                 const badge = td.querySelector('.lock-indicator');
                 if (badge){
-                    badge.style.display='block';
-                    badge.textContent = 'Editando: Tú';
-                    badge.classList.remove('bg-danger','text-white');
+                    // Mostrar nuestro propio indicador solo si hay contenido (para no "manchar" celdas vacías)
+                    const hasContent = (()=>{
+                        const input = td.querySelector('input.editable-input');
+                        const val = input ? input.value : td.textContent;
+                        return val.trim().length>0;
+                    })();
+                    if(hasContent){
+                        badge.style.display='block';
+                        if(badge.textContent !== userName) badge.textContent = userName; // solo badge
+                        badge.classList.remove('bg-danger','text-white');
+                    } else {
+                        badge.style.display='none';
+                        badge.textContent='';
+                    }
+                    // Mover el cursor al final del contenido real de la celda (evitar caret en el badge)
+            const editor = td.querySelector('.cell-editor');
+            if(editor){
+                        requestAnimationFrame(()=>{
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                            range.collapse(false);
+                            const sel = window.getSelection();
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        });
+                    }
                 }
             }
         }).catch(()=>{});
@@ -375,30 +420,60 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         const row = td.closest('tr');
         if(!row) return;
         fetch(`/api/programacion/lock?registro_id=${row.dataset.id}&campo=${td.dataset.field}`, { method:'DELETE' });
-        const badge = td.querySelector('.lock-indicator');
-        if (badge){ setTimeout(()=>{ badge.style.display='none'; },1500); }
+    const badge = td.querySelector('.lock-indicator');
+    if (badge){ setTimeout(()=>{ if(!td.contains(document.activeElement)) badge.style.display='none'; },600); }
     }
 
-    // Polling para actualizar quién edita
-    function refreshLocks(){
+    // Colaboración en tiempo real: locks + live edits
+    function refreshCollab(){
+        // Locks
         fetch('/api/programacion/locks').then(r=>r.json()).then(lista=>{
-            // limpiar
-            tbody.querySelectorAll('.lock-indicator').forEach(b=>{ if(!b.textContent.includes('Tú')) b.style.display='none'; });
+            tbody.querySelectorAll('.lock-indicator').forEach(b=>{ b.style.display='none'; });
             lista.forEach(l=>{
                 const td = tbody.querySelector(`tr[data-id="${l.registro_id}"] td[data-field="${l.campo}"]`);
-                if(td){
-                    const badge = td.querySelector('.lock-indicator');
-                    if(badge){
-                        if(!badge.textContent.includes('Tú')){
-                            badge.style.display='block';
-                            badge.textContent = `Editando: ${l.usuario}`;
-                        }
-                    }
+                if(!td) return;
+                const badge = td.querySelector('.lock-indicator');
+                if(!badge) return;
+                // Si es mi propio lock y la celda está vacía, no mostrar
+                if(l.usuario === userName){
+                    const input = td.querySelector('input.editable-input');
+                    const val = input ? input.value : td.textContent;
+                    if(!val.trim()) return;
                 }
+                badge.style.display='block';
+                badge.textContent = l.usuario;
+            });
+        }).catch(()=>{});
+        // Live edits
+        fetch('/api/programacion/live_edits').then(r=>r.json()).then(resp=>{
+            if(!resp.edits) return;
+            resp.edits.forEach(e=>{
+                const td = tbody.querySelector(`tr[data-id="${e.registro_id}"] td[data-field="${e.campo}"]`);
+                if(!td) return;
+                const active = document.activeElement;
+                if(td.contains(active)) return; // evitar sobrescribir mientras edita local
+                const input = td.querySelector('input.editable-input');
+                if(input){ input.value = e.valor; }
+                else if(td.isContentEditable){ td.textContent = e.valor; }
             });
         }).catch(()=>{});
     }
-    setInterval(refreshLocks, 4000);
+    setInterval(refreshCollab, 2500);
+
+    function sendLiveEdit(td){
+        if(!td) return;
+        const row = td.closest('tr');
+        const registroId = row.dataset.id;
+        const field = td.dataset.field;
+        if(!field) return;
+        const input = td.querySelector('input.editable-input');
+        const valor = input ? input.value : td.textContent;
+        fetch('/api/programacion/live_edit', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ registro_id: registroId, campo: field, valor })
+        }).catch(()=>{});
+    }
 
     tbody.addEventListener('click', function(e) {
         const printButton = e.target.closest('.btn-print-guide');
@@ -482,8 +557,11 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         let value;
 
         const input = cell.querySelector('input.editable-input');
+        const span = cell.querySelector('.cell-editor');
         if (input) {
             value = input.value.trim();
+        } else if (span) {
+            value = span.textContent.trim();
         } else {
             value = cell.textContent.trim();
         }
@@ -501,6 +579,15 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         
         if (field === 'galones') {
             updatedData.barriles = (value || 0) / 42;
+            // Actualizar visual inmediatamente si existe celda barriles editable o no
+            const barrilesCell = row.querySelector('[data-field="barriles"] .cell-editor, [data-field="barriles"]');
+            if(barrilesCell){
+                const formatted = ((value||0)/42).toLocaleString('es-CO', { minimumFractionDigits:2, maximumFractionDigits:2 });
+                if(barrilesCell.classList && barrilesCell.classList.contains('cell-editor'))
+                    barrilesCell.textContent = formatted;
+                else
+                    barrilesCell.textContent = formatted;
+            }
         }
 
         const statusIndicator = row.querySelector('.save-indicator');
@@ -654,6 +741,22 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         transition: all 0.2s ease;
         border-radius: 4px;
         cursor: pointer;
+    }
+    .editable-cell .cell-editor {
+        display: inline-block;
+        min-width: 100%;
+        padding: 12px 15px; /* igual que antes */
+        outline: none;
+        white-space: pre-wrap;
+    }
+    .editable-cell .cell-editor:focus {
+        background: transparent;
+    }
+    .editable-cell:focus-within {
+        background-color: rgba(13, 110, 253, 0.1);
+        outline: 2px solid rgba(13, 110, 253, 0.3);
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+        cursor: text;
     }
     .editable-cell:focus {
         background-color: rgba(13, 110, 253, 0.1);

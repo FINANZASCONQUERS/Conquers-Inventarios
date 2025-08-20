@@ -517,6 +517,8 @@ class ProgramacionCargue(db.Model):
     # Auditoría
     ultimo_editor = db.Column(db.String(100))
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Nuevo: momento en que TODOS los campos de refinería quedaron completos (para iniciar conteo de 30 min)
+    refineria_completado_en = db.Column(db.DateTime, nullable=True)
 
 # ---------------- BLOQUEO DE CELDAS (EDICIÓN EN TIEMPO REAL) -----------------
 class ProgramacionCargueLock(db.Model):
@@ -539,6 +541,36 @@ def _init_lock_table():
             ProgramacionCargueLock.__table__.create(db.engine)
 
 _init_lock_table()
+
+# Asegurar columna nueva en runtime si no existe (SQLite permite ADD COLUMN simple)
+def _ensure_refineria_completion_column():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        cols = [c['name'] for c in insp.get_columns('programacion_cargue')]
+        if 'refineria_completado_en' not in cols:
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE programacion_cargue ADD COLUMN refineria_completado_en DATETIME'))
+                print('Columna refineria_completado_en añadida a programacion_cargue')
+            except Exception as e:
+                print('No se pudo añadir columna refineria_completado_en:', e)
+
+_ensure_refineria_completion_column()
+
+# ---------------- EDICIONES EN VIVO (NO PERSISTIDAS) -----------------
+# Estructura en memoria para broadcast simple (clave: (registro_id,campo))
+LIVE_EDITS = {}
+LIVE_EDIT_TTL_SECONDS = 25  # tiempo de vida de una edición mostrada
+
+def _purge_live_edits():
+    now = datetime.utcnow()
+    expiradas = []
+    for key, info in LIVE_EDITS.items():
+        if (now - info['timestamp']).total_seconds() > LIVE_EDIT_TTL_SECONDS:
+            expiradas.append(key)
+    for k in expiradas:
+        LIVE_EDITS.pop(k, None)
 
 class EPPItem(db.Model):
     __tablename__ = 'epp_items'
@@ -3885,7 +3917,8 @@ def programacion_cargue():
     """Muestra la página de programación de vehículos."""
     return render_template('programacion_cargue.html', 
                            rol_usuario=session.get('rol'), 
-                           email_usuario=session.get('email'))
+                           email_usuario=session.get('email'),
+                           nombre=session.get('nombre'))
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -3902,10 +3935,22 @@ def handle_programacion():
     # Lógica GET
     registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc()).all()
     # Convierte los datos a un formato JSON friendly
-    data = [
-        {c.name: getattr(r, c.name).isoformat() if isinstance(getattr(r, c.name), (datetime, date, time)) else getattr(r, c.name) for c in r.__table__.columns}
-        for r in registros
-    ]
+    data = []
+    ahora = datetime.utcnow()
+    for r in registros:
+        fila = {}
+        for c in r.__table__.columns:
+            val = getattr(r, c.name)
+            if isinstance(val, (datetime, date, time)):
+                fila[c.name] = val.isoformat()
+            else:
+                fila[c.name] = val
+        # Añadimos flag calculado: si ya pasaron 30 min desde completado
+        if r.refineria_completado_en:
+            fila['refineria_bloqueado'] = (ahora - r.refineria_completado_en) > timedelta(minutes=30)
+        else:
+            fila['refineria_bloqueado'] = False
+        data.append(fila)
     return jsonify(data)
 
 @login_required
@@ -3936,10 +3981,15 @@ def update_programacion(id):
         return jsonify(success=False, message="No tienes permisos para editar."), 403
 
     try:
-        # Bloqueo: si el último editor fue Refinería y pasaron >30 min, no se puede modificar más
-        if registro.ultimo_editor and registro.ultimo_editor.strip().lower() == 'control refineria':
-            if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
-                return jsonify(success=False, message="Registro bloqueado: después de 30 minutos de la edición de Refinería no se puede modificar."), 403
+        # Bloqueo nuevo: si TODOS los campos de refinería estuvieron completos y pasaron >30 min, refinería ya no puede editar
+        campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
+        ahora = datetime.utcnow()
+        if registro.refineria_completado_en and (ahora - registro.refineria_completado_en) > timedelta(minutes=30):
+            # Si quien intenta editar es refinería y el campo pertenece a su lista, bloquear
+            if session.get('email') == 'refinery.control@conquerstrading.com':
+                # Si intenta cambiar cualquier campo que sea suyo
+                if any(campo in campos_refineria for campo in data.keys()):
+                    return jsonify(success=False, message="Bloqueado: Han pasado más de 30 minutos desde que refinería completó todos sus campos."), 403
 
         # --- INICIO DE LA CORRECCIÓN ---
         campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
@@ -3973,8 +4023,24 @@ def update_programacion(id):
 
         # --- FIN DE LA CORRECCIÓN ---
 
-        registro.ultimo_editor = session.get('nombre') # El nombre del usuario
-        # 'fecha_actualizacion' se actualiza automáticamente por la configuración del modelo
+        # Actualizar editor
+        registro.ultimo_editor = session.get('nombre')
+
+        # Evaluar completitud de refinería después de aplicar cambios
+        def valor_lleno(v):
+            return v not in (None, '')
+        try:
+            completo = all(valor_lleno(getattr(registro, f)) for f in campos_refineria)
+        except Exception:
+            completo = False
+
+        if completo and not registro.refineria_completado_en:
+            registro.refineria_completado_en = ahora
+        elif not completo and registro.refineria_completado_en:
+            # Si aún no ha pasado el bloqueo definitivo, permitir reiniciar el reloj
+            if (ahora - registro.refineria_completado_en) <= timedelta(minutes=30):
+                registro.refineria_completado_en = None
+
         db.session.commit()
         
         return jsonify(success=True, message="Registro actualizado correctamente.")
@@ -4045,6 +4111,39 @@ def borrar_lock_programacion():
             return jsonify(success=True, message='Lock liberado')
         return jsonify(success=False, message='No puedes liberar lock de otro usuario'), 403
     return jsonify(success=True, message='No existe lock')
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/live_edit', methods=['POST'])
+def registrar_live_edit_programacion():
+    """Recibe el texto que el usuario está escribiendo en tiempo real (sin guardar todavía)."""
+    data = request.get_json() or {}
+    registro_id = data.get('registro_id')
+    campo = data.get('campo')
+    valor = data.get('valor')
+    if not registro_id or not campo:
+        return jsonify(success=False, message='Datos incompletos'), 400
+    _purge_live_edits()
+    LIVE_EDITS[(int(registro_id), campo)] = {
+        'registro_id': int(registro_id),
+        'campo': campo,
+        'valor': valor if valor is not None else '',
+        'usuario': session.get('nombre'),
+        'timestamp': datetime.utcnow()
+    }
+    return jsonify(success=True)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/live_edits', methods=['GET'])
+def obtener_live_edits_programacion():
+    """Devuelve todas las ediciones activas (texto parcial) y locks vigentes."""
+    _purge_live_edits()
+    edits = list(LIVE_EDITS.values())
+    # Serializar timestamp
+    for e in edits:
+        e['timestamp'] = e['timestamp'].isoformat()
+    return jsonify({'edits': edits})
     
 @login_required
 @permiso_requerido('programacion_cargue')
