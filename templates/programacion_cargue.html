@@ -352,6 +352,8 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 badge.style.display='block';
             }
         }
+    // Enviar edición en vivo con debounce
+    debouncedLiveEdit(cell);
     });
     
     tbody.addEventListener('blur', function(e) {
@@ -453,8 +455,15 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 const active = document.activeElement;
                 if(td.contains(active)) return; // evitar sobrescribir mientras edita local
                 const input = td.querySelector('input.editable-input');
+                const span = td.querySelector('.cell-editor');
                 if(input){ input.value = e.valor; }
-                else if(td.isContentEditable){ td.textContent = e.valor; }
+                else if(span){ span.textContent = e.valor; }
+                // Mostrar badge con usuario si llega live edit y no hay lock visible
+                const badge = td.querySelector('.lock-indicator');
+                if(badge && e.valor && !td.contains(document.activeElement)){
+                    badge.style.display='block';
+                    if(!badge.textContent) badge.textContent = e.usuario || 'Editando';
+                }
             });
         }).catch(()=>{});
     }
@@ -473,6 +482,16 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             headers:{'Content-Type':'application/json'},
             body: JSON.stringify({ registro_id: registroId, campo: field, valor })
         }).catch(()=>{});
+    }
+
+    // Debounce para reducir llamadas por tecleo rápido
+    const liveEditTimers = new Map();
+    function debouncedLiveEdit(td){
+        const row = td.closest('tr');
+        if(!row) return;
+        const key = row.dataset.id + ':' + td.dataset.field;
+        if(liveEditTimers.has(key)) clearTimeout(liveEditTimers.get(key));
+        liveEditTimers.set(key, setTimeout(()=>{ sendLiveEdit(td); liveEditTimers.delete(key); }, 350));
     }
 
     tbody.addEventListener('click', function(e) {

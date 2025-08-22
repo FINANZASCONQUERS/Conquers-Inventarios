@@ -1,4 +1,5 @@
 import json
+import hashlib
 from datetime import datetime, time, date, timedelta
 import os
 from functools import wraps
@@ -633,6 +634,48 @@ class RegistroCompra(db.Model):
 
     def __repr__(self):
         return f'<RegistroCompra {self.id} - {self.numero_factura}>'
+
+# ================== NUEVOS MODELOS PARA FLUJO DE EFECTIVO (PERSISTENCIA) ==================
+class FlujoUploadBatch(db.Model):
+    __tablename__ = 'flujo_upload_batches'
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(255))
+    usuario = db.Column(db.String(120))
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    total_bancos = db.Column(db.Integer, default=0)
+    total_odoo = db.Column(db.Integer, default=0)
+
+class FlujoBancoMovimiento(db.Model):
+    __tablename__ = 'flujo_bancos_movimientos'
+    id = db.Column(db.Integer, primary_key=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('flujo_upload_batches.id'), index=True)
+    fecha = db.Column(db.Date, index=True)
+    empresa = db.Column(db.String(120), index=True)
+    movimiento = db.Column(db.Text)
+    monto = db.Column(db.Float)  # valor COP$
+    unique_hash = db.Column(db.String(64), unique=True, index=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+class FlujoOdooMovimiento(db.Model):
+    __tablename__ = 'flujo_odoo_movimientos'
+    id = db.Column(db.Integer, primary_key=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('flujo_upload_batches.id'), index=True)
+    fecha = db.Column(db.Date, index=True)
+    empresa = db.Column(db.String(120), index=True)
+    movimiento = db.Column(db.Text)
+    debito = db.Column(db.Float, default=0)
+    credito = db.Column(db.Float, default=0)
+    tipo_flujo = db.Column(db.String(200))
+    tercero = db.Column(db.String(200))
+    rubro = db.Column(db.String(200))
+    clase = db.Column(db.String(200))
+    subclase = db.Column(db.String(200))
+    unique_hash = db.Column(db.String(64), unique=True, index=True)
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+def _hash_row(values: list) -> str:
+    base = '|'.join('' if v is None else str(v).strip() for v in values)
+    return hashlib.sha256(base.encode('utf-8')).hexdigest()
     
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
@@ -5000,24 +5043,18 @@ def flujo_efectivo():
 @permiso_requerido('flujo_efectivo')
 @app.route('/api/procesar_flujo_efectivo', methods=['POST'])
 def procesar_flujo_efectivo_api():
-    """
-    API que procesa el Excel y devuelve una comparación diaria y un detalle
-    de movimientos agrupados por Tipo de Flujo y Tercero.
-    """
+    """Procesa Excel, guarda filas nuevas (bancos/odoo) evitando duplicados por hash y responde dataset completo persistido."""
     if 'archivo_excel' not in request.files:
         return jsonify(success=False, message="No se encontró el archivo en la solicitud."), 400
-
     archivo = request.files['archivo_excel']
-    if archivo.filename == '':
-        return jsonify(success=False, message="No se seleccionó ningún archivo."), 400
-
+    if archivo.filename == '' or not archivo.filename.lower().endswith(('.xlsx','.xls')):
+        return jsonify(success=False, message="Archivo inválido."), 400
     try:
         xls = pd.ExcelFile(archivo)
         sheet_map = {name.strip().lower(): name for name in xls.sheet_names}
 
         if 'bancos' not in sheet_map or 'odoo' not in sheet_map:
             return jsonify(success=False, message='El archivo debe contener las hojas "Bancos" y "Odoo".'), 400
-
         df_bancos = pd.read_excel(xls, sheet_name=sheet_map['bancos'])
         df_odoo = pd.read_excel(xls, sheet_name=sheet_map['odoo'])
 
@@ -5114,22 +5151,106 @@ def procesar_flujo_efectivo_api():
                 break
         tipo_flujo_col = 'Tipo Flujo Efectivo' if 'Tipo Flujo Efectivo' in df_odoo.columns else None
         tercero_col = 'Tercero' if 'Tercero' in df_odoo.columns else None
+        # Detectar columnas de Clase / Subclase para poder reconstruir el TOP filtrado en frontend
+        clase_col = None
+        for c in ['Clase', 'CLASE', 'clase']:
+            if c in df_odoo.columns:
+                clase_col = c
+                break
+        subclase_col = None
+        for c in ['Sub Clase', 'Sub_Clase', 'SubClase', 'Subclase', 'SUBCLASE', 'SUB CLASE']:
+            if c in df_odoo.columns:
+                subclase_col = c
+                break
         df_detalle = df_odoo.copy()
         df_detalle['__fecha_date'] = pd.to_datetime(df_detalle['Fecha'], errors='coerce')
         df_detalle = df_detalle.dropna(subset=['__fecha_date'])
         df_detalle['fecha'] = df_detalle['__fecha_date'].dt.strftime('%Y-%m-%d')
+        # Construcción segura del detalle, reemplazando NaN por valores neutros
+        import math
         detalle_records = []
         for _, r in df_detalle.iterrows():
+            # Utilizamos pd.isna para cubrir np.nan, pandas.NA, None
+            def safe_text(val, default=''):
+                try:
+                    if pd.isna(val):
+                        return default
+                except Exception:
+                    pass
+                return str(val) if val is not None else default
+            def safe_number(val):
+                try:
+                    if pd.isna(val):
+                        return 0.0
+                except Exception:
+                    pass
+                try:
+                    f = float(val)
+                    if math.isnan(f) or math.isinf(f):
+                        return 0.0
+                    return f
+                except Exception:
+                    return 0.0
             detalle_records.append({
-                'fecha': r.get('fecha'),
-                'empresa': r.get('Empresa'),
-                'tipo_flujo': r.get(tipo_flujo_col) if tipo_flujo_col else 'SIN TIPO',
-                'tercero': r.get(tercero_col) if tercero_col else 'SIN TERCERO',
-                'rubro': r.get(rubro_col) if rubro_col else '',
-                'debito': float(r.get('Débito', 0) or 0),
-                'credito': float(r.get('Crédito', 0) or 0),
-                'movimiento': r.get('Movimiento', '')
+                'fecha': safe_text(r.get('fecha')),  # ya es string formateada
+                'empresa': safe_text(r.get('Empresa')),
+                'tipo_flujo': safe_text(r.get(tipo_flujo_col) if tipo_flujo_col else 'SIN TIPO', 'SIN TIPO'),
+                'tercero': safe_text(r.get(tercero_col) if tercero_col else 'SIN TERCERO', 'SIN TERCERO'),
+                'rubro': safe_text(r.get(rubro_col) if rubro_col else ''),
+                'debito': safe_number(r.get('Débito', 0)),
+                'credito': safe_number(r.get('Crédito', 0)),
+                'movimiento': safe_text(r.get('Movimiento', '')),
+                # Nuevos campos necesarios para filtrar y recalcular TOP en frontend
+                'clase': safe_text(r.get(clase_col) if clase_col else ''),
+                'subclase': safe_text(r.get(subclase_col) if subclase_col else '')
             })
+
+        # --- TOP CLIENTES VENTAS EXW CTG (ingresos) ---
+        top_clientes_exw = None
+        # (Columnas clase_col y subclase_col ya detectadas arriba; se reutilizan)
+        tercero_col_original = 'Tercero' if 'Tercero' in df_odoo.columns else None
+        # Filtrar sólo si existen columnas necesarias
+        if clase_col and tercero_col_original and 'Débito' in df_odoo.columns:
+            df_exw = df_odoo[df_odoo[clase_col].astype(str).str.upper() == 'VENTAS EXW CTG'].copy()
+            if not df_exw.empty:
+                # Normalizar valores
+                df_exw['__tercero_safe'] = df_exw[tercero_col_original].fillna('SIN TERCERO').astype(str)
+                if subclase_col:
+                    df_exw['__subclase_safe'] = df_exw[subclase_col].fillna('SIN SUBCLASE').astype(str)
+                else:
+                    df_exw['__subclase_safe'] = 'SIN SUBCLASE'
+                # Asegurar numérico
+                df_exw['__debito_val'] = pd.to_numeric(df_exw['Débito'], errors='coerce').fillna(0)
+                # Agrupar por cliente y subclase
+                grp = df_exw.groupby(['__tercero_safe', '__subclase_safe'])['__debito_val'].sum().reset_index()
+                # Totales por cliente para ranking
+                tot_clientes = grp.groupby('__tercero_safe')['__debito_val'].sum().reset_index().rename(columns={'__debito_val': 'total'})
+                # Ordenar y tomar top 10
+                tot_clientes = tot_clientes.sort_values('total', ascending=False).head(10)
+                top_set = set(tot_clientes['__tercero_safe'])
+                grp_top = grp[grp['__tercero_safe'].isin(top_set)]
+                # Construir estructura
+                clientes_struct = []
+                for _, row_cli in tot_clientes.iterrows():
+                    cliente = row_cli['__tercero_safe']
+                    total_cli = float(row_cli['total'])
+                    subs_rows = grp_top[grp_top['__tercero_safe'] == cliente]
+                    sub_list = [
+                        {
+                            'subclase': str(sr['__subclase_safe']),
+                            'total': float(sr['__debito_val'])
+                        }
+                        for _, sr in subs_rows.iterrows()
+                    ]
+                    clientes_struct.append({
+                        'cliente': str(cliente),
+                        'total': total_cli,
+                        'subclases': sub_list
+                    })
+                top_clientes_exw = {
+                    'clientes': clientes_struct,
+                    'total_general': float(tot_clientes['total'].sum())
+                }
 
         # Movimientos Bancos crudos para recomputar resumen con filtros en frontend
         bancos_movimientos = []
@@ -5157,8 +5278,175 @@ def procesar_flujo_efectivo_api():
                 'clasificacion': tipo
             })
 
+        # ======================= PERSISTENCIA / DEDUP =======================
+        batch = FlujoUploadBatch(filename=archivo.filename, usuario=session.get('nombre','Desconocido'))
+        db.session.add(batch)
+        db.session.flush()  # obtener batch.id
+
+        bancos_new = 0
+        odoo_new = 0
+
+        # Guardar Bancos movimientos crudos (excluyendo GMF) - dedupe
+        for _, r in df_bancos_mov.iterrows():
+            mov_txt = str(r.get('Movimiento') or '')
+            if 'GMF' in mov_txt.upper():
+                continue
+            h = _hash_row(['BANCOS', r.get('fecha'), r.get('Empresa'), mov_txt, r.get('COP$')])
+            if not FlujoBancoMovimiento.query.filter_by(unique_hash=h).first():
+                db.session.add(FlujoBancoMovimiento(
+                    batch_id=batch.id,
+                    fecha=pd.to_datetime(r.get('__fecha_date')).date(),
+                    empresa=r.get('Empresa'),
+                    movimiento=mov_txt,
+                    monto=float(r.get('COP$',0) or 0),
+                    unique_hash=h
+                ))
+                bancos_new += 1
+
+        # Guardar Odoo detalle (dedupe)
+        for rec in detalle_records:
+            h = _hash_row(['ODOO', rec['fecha'], rec['empresa'], rec['movimiento'], rec['debito'], rec['credito']])
+            if not FlujoOdooMovimiento.query.filter_by(unique_hash=h).first():
+                db.session.add(FlujoOdooMovimiento(
+                    batch_id=batch.id,
+                    fecha=pd.to_datetime(rec['fecha']).date(),
+                    empresa=rec['empresa'],
+                    movimiento=rec['movimiento'],
+                    debito=rec['debito'],
+                    credito=rec['credito'],
+                    tipo_flujo=rec.get('tipo_flujo'),
+                    tercero=rec.get('tercero'),
+                    rubro=rec.get('rubro'),
+                    clase=rec.get('clase'),
+                    subclase=rec.get('subclase'),
+                    unique_hash=h
+                ))
+                odoo_new += 1
+
+        batch.total_bancos = bancos_new
+        batch.total_odoo = odoo_new
+
+        db.session.commit()
+
+        # ======================= RECONSTRUCCIÓN DESDE BD =======================
+        bancos_rows = FlujoBancoMovimiento.query.all()
+        odoo_rows = FlujoOdooMovimiento.query.all()
+
+        # Reconstruir daily comparison desde persistencia
+        # Agrupar ingresos/egresos bancos por fecha/empresa según reglas (Movimiento contiene palabras clave)
+        bancos_ing_map = {}
+        bancos_eg_map = {}
+        for r in bancos_rows:
+            mtxt = (r.movimiento or '').upper()
+            key = (r.fecha.isoformat(), r.empresa)
+            if 'INGRESO' in mtxt and 'SALDO INICIAL' not in mtxt:
+                bancos_ing_map[key] = bancos_ing_map.get(key,0) + r.monto
+            elif 'EGRESO' in mtxt:
+                bancos_eg_map[key] = bancos_eg_map.get(key,0) + abs(r.monto)
+            elif 'SALDO INICIAL' in mtxt:
+                bancos_ing_map[key] = bancos_ing_map.get(key,0) + r.monto  # tratado como ingreso inicial
+
+        odoo_ing_map = {}
+        odoo_eg_map = {}
+        for r in odoo_rows:
+            mtxt = (r.movimiento or '').upper()
+            key = (r.fecha.isoformat(), r.empresa)
+            if 'INGRESO' in mtxt:
+                odoo_ing_map[key] = odoo_ing_map.get(key,0) + (r.debito or 0)
+            if 'EGRESO' in mtxt:
+                odoo_eg_map[key] = odoo_eg_map.get(key,0) + (r.credito or 0)
+
+        keys_all = sorted(set(list(bancos_ing_map.keys()) + list(bancos_eg_map.keys()) + list(odoo_ing_map.keys()) + list(odoo_eg_map.keys())))
+        daily_comparison_data = []
+        for (f,e) in keys_all:
+            ib = bancos_ing_map.get((f,e),0)
+            eb = bancos_eg_map.get((f,e),0)
+            io = odoo_ing_map.get((f,e),0)
+            eo = odoo_eg_map.get((f,e),0)
+            daily_comparison_data.append({
+                'fecha': f,
+                'Empresa': e,
+                'ingresos_bancos': ib,
+                'egresos_bancos': eb,
+                'ingresos_odoo': io,
+                'egresos_odoo': eo,
+                'diferencia_ingresos': ib-io,
+                'diferencia_egresos': eb-eo
+            })
+
+        # Reconstruir detalle Odoo para frontend
+        detalle_records = []
+        for r in odoo_rows:
+            detalle_records.append({
+                'fecha': r.fecha.isoformat(),
+                'empresa': r.empresa,
+                'movimiento': r.movimiento,
+                'debito': r.debito,
+                'credito': r.credito,
+                'tipo_flujo': r.tipo_flujo or 'SIN TIPO',
+                'tercero': r.tercero or 'SIN TERCERO',
+                'rubro': r.rubro or '',
+                'clase': r.clase or '',
+                'subclase': r.subclase or ''
+            })
+        todas_las_empresas = sorted({r.empresa for r in bancos_rows+odoo_rows if r.empresa})
+
+        # Recalcular agrupaciones flujo / tercero
+        inflows_by_type = {}
+        outflows_by_type = {}
+        for r in odoo_rows:
+            tf = (r.tipo_flujo or 'SIN TIPO')
+            terc = (r.tercero or 'SIN TERCERO')
+            if (r.debito or 0) > 0:
+                inflows_by_type.setdefault(tf, {})[terc] = inflows_by_type.setdefault(tf, {}).get(terc,0) + (r.debito or 0)
+            if (r.credito or 0) > 0:
+                outflows_by_type.setdefault(tf, {})[terc] = outflows_by_type.setdefault(tf, {}).get(terc,0) + (r.credito or 0)
+
+        # TOP EXW (si clase contiene 'VENTAS EXW CTG')
+        top_clientes_exw = None
+        exw_rows = [r for r in odoo_rows if (r.clase or '').upper() == 'VENTAS EXW CTG' and (r.debito or 0) > 0]
+        if exw_rows:
+            agg = {}
+            for r in exw_rows:
+                cli = (r.tercero or 'SIN TERCERO')
+                sub = (r.subclase or 'SIN SUBCLASE')
+                agg.setdefault(cli, {}).setdefault(sub,0)
+                agg[cli][sub] += r.debito or 0
+            ranking = sorted([(cli, sum(subs.values()), subs) for cli, subs in agg.items()], key=lambda x: x[1], reverse=True)[:10]
+            clientes_struct = []
+            for cli, total, subs in ranking:
+                clientes_struct.append({
+                    'cliente': cli,
+                    'total': total,
+                    'subclases': [{'subclase': s, 'total': v} for s,v in subs.items()]
+                })
+            top_clientes_exw = {'clientes': clientes_struct, 'total_general': sum(x[1] for x in ranking)}
+
+        # Reconstruir movimientos bancos simplificados para frontend (clasificacion)
+        bancos_movimientos = []
+        for r in bancos_rows:
+            mov_upper = (r.movimiento or '').upper()
+            tipo = 'otro'
+            if 'SALDO INICIAL' in mov_upper:
+                tipo = 'saldo_inicial'
+            elif 'INGRESO' in mov_upper:
+                tipo = 'ingreso'
+            elif 'EGRESO' in mov_upper:
+                tipo = 'egreso'
+            if 'GMF' in mov_upper:  # mantener exclusión
+                continue
+            bancos_movimientos.append({
+                'fecha': r.fecha.isoformat(),
+                'empresa': r.empresa,
+                'movimiento': r.movimiento,
+                'monto': r.monto,
+                'clasificacion': tipo
+            })
+
         response_data = {
             'success': True,
+            'nuevos_bancos': batch.total_bancos,
+            'nuevos_odoo': batch.total_odoo,
             'daily_comparison': daily_comparison_data,
             'outflows_by_type': outflows_by_type,
             'inflows_by_type': inflows_by_type,
@@ -5196,12 +5484,188 @@ def procesar_flujo_efectivo_api():
                 )
             ))()
         }
+        if top_clientes_exw:
+            response_data['top_clientes_ventas_exw'] = top_clientes_exw
 
-        return jsonify(response_data)
+        # Sanitizar recursivamente cualquier NaN/Infinity residual antes de serializar
+        def sanitize(obj):
+            import math
+            if isinstance(obj, dict):
+                return {k: sanitize(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [sanitize(v) for v in obj]
+            if isinstance(obj, float):
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+                return obj
+            # Intentar detectar pandas NA en tipos no-float
+            try:
+                if pd.isna(obj):
+                    return None
+            except Exception:
+                pass
+            return obj
+
+        return jsonify(sanitize(response_data))
 
     except Exception:
         app.logger.exception('Error procesando flujo de efectivo')
         return jsonify(success=False, message='Error interno procesando el archivo. Revisa los logs.'), 500
+
+@login_required
+@permiso_requerido('flujo_efectivo')
+@app.route('/api/flujo_efectivo_cached', methods=['GET'])
+def flujo_efectivo_cached():
+    """Devuelve los datos consolidados desde la base sin necesidad de re-subir archivo."""
+    try:
+        bancos_rows = FlujoBancoMovimiento.query.all()
+        odoo_rows = FlujoOdooMovimiento.query.all()
+        if not bancos_rows and not odoo_rows:
+            return jsonify(success=False, message='No hay datos cargados aún.')
+        # Reutilizar lógica mínima (podríamos DRY, pero breve por claridad)
+        # Daily comparison
+        bancos_ing_map = {}; bancos_eg_map = {}; odoo_ing_map={}; odoo_eg_map={}
+        for r in bancos_rows:
+            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa)
+            if 'INGRESO' in mtxt and 'SALDO INICIAL' not in mtxt: bancos_ing_map[key]=bancos_ing_map.get(key,0)+r.monto
+            elif 'EGRESO' in mtxt: bancos_eg_map[key]=bancos_eg_map.get(key,0)+abs(r.monto)
+            elif 'SALDO INICIAL' in mtxt: bancos_ing_map[key]=bancos_ing_map.get(key,0)+r.monto
+        for r in odoo_rows:
+            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa)
+            if 'INGRESO' in mtxt: odoo_ing_map[key]=odoo_ing_map.get(key,0)+(r.debito or 0)
+            if 'EGRESO' in mtxt: odoo_eg_map[key]=odoo_eg_map.get(key,0)+(r.credito or 0)
+        keys_all = sorted(set(list(bancos_ing_map.keys())+list(bancos_eg_map.keys())+list(odoo_ing_map.keys())+list(odoo_eg_map.keys())))
+        daily=[]
+        for (f,e) in keys_all:
+            ib=bancos_ing_map.get((f,e),0); eb=bancos_eg_map.get((f,e),0); io=odoo_ing_map.get((f,e),0); eo=odoo_eg_map.get((f,e),0)
+            daily.append({'fecha':f,'Empresa':e,'ingresos_bancos':ib,'egresos_bancos':eb,'ingresos_odoo':io,'egresos_odoo':eo,'diferencia_ingresos':ib-io,'diferencia_egresos':eb-eo})
+        detalle=[{'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'debito':r.debito,'credito':r.credito,'tipo_flujo':r.tipo_flujo or 'SIN TIPO','tercero':r.tercero or 'SIN TERCERO','rubro':r.rubro or '','clase':r.clase or '','subclase':r.subclase or ''} for r in odoo_rows]
+        inflows_by_type={}; outflows_by_type={}
+        for r in odoo_rows:
+            tf=(r.tipo_flujo or 'SIN TIPO'); terc=(r.tercero or 'SIN TERCERO')
+            if (r.debito or 0)>0: inflows_by_type.setdefault(tf,{}).setdefault(terc,0); inflows_by_type[tf][terc]+=r.debito or 0
+            if (r.credito or 0)>0: outflows_by_type.setdefault(tf,{}).setdefault(terc,0); outflows_by_type[tf][terc]+=r.credito or 0
+        exw_rows=[r for r in odoo_rows if (r.clase or '').upper()=='VENTAS EXW CTG' and (r.debito or 0)>0]
+        top_exw=None
+        if exw_rows:
+            agg={}
+            for r in exw_rows:
+                cli=(r.tercero or 'SIN TERCERO'); sub=(r.subclase or 'SIN SUBCLASE'); agg.setdefault(cli,{}).setdefault(sub,0); agg[cli][sub]+=r.debito or 0
+            ranking=sorted([(cli,sum(subs.values()),subs) for cli,subs in agg.items()], key=lambda x:x[1], reverse=True)[:10]
+            clientes_struct=[]
+            for cli,total,subs in ranking:
+                clientes_struct.append({'cliente':cli,'total':total,'subclases':[{'subclase':s,'total':v} for s,v in subs.items()]})
+            top_exw={'clientes':clientes_struct,'total_general':sum(x[1] for x in ranking)}
+        bancos_mov=[]
+        for r in bancos_rows:
+            mu=(r.movimiento or '').upper();
+            if 'GMF' in mu: continue
+            tipo='otro'
+            if 'SALDO INICIAL' in mu: tipo='saldo_inicial'
+            elif 'INGRESO' in mu: tipo='ingreso'
+            elif 'EGRESO' in mu: tipo='egreso'
+            bancos_mov.append({'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'monto':r.monto,'clasificacion':tipo})
+        empresas=sorted({r.empresa for r in bancos_rows+odoo_rows if r.empresa})
+        resumen_directo = (lambda saldo_inicial, ingresos, egresos: {
+            'saldo_inicial': float(saldo_inicial),
+            'ingresos': float(ingresos),
+            'saldo_antes_egresos': float(saldo_inicial + ingresos),
+            'egresos': float(egresos),
+            'saldo_final': float(saldo_inicial + ingresos - egresos)
+        })(
+            sum(r.monto for r in bancos_rows if 'SALDO INICIAL' in (r.movimiento or '').upper()),
+            sum(r.monto for r in bancos_rows if 'INGRESO' in (r.movimiento or '').upper() and 'SALDO INICIAL' not in (r.movimiento or '').upper()),
+            sum(abs(r.monto) for r in bancos_rows if 'EGRESO' in (r.movimiento or '').upper())
+        )
+        payload={'success':True,'daily_comparison':daily,'outflows_by_type':outflows_by_type,'inflows_by_type':inflows_by_type,'todas_las_empresas':empresas,'odoo_detalle':detalle,'bancos_movimientos':bancos_mov,'resumen_directo':resumen_directo}
+        if top_exw: payload['top_clientes_ventas_exw']=top_exw
+        return jsonify(payload)
+    except Exception:
+        app.logger.exception('Error recuperando cache flujo efectivo')
+        return jsonify(success=False, message='Error interno.'), 500
+
+@login_required
+@permiso_requerido('flujo_efectivo')
+@app.route('/api/procesar_facturacion', methods=['POST'])
+def procesar_facturacion_api():
+    """Procesa un Excel de facturación para extender la gráfica de ingresos.
+    Columnas mínimas: (Numero Factura / Factura), (Cliente / Tercero), (COP$ / Valor / Monto).
+    Opcional: Bbl / Barriles.
+    Devuelve lista de facturas normalizada.
+    """
+    if 'archivo_excel' not in request.files:
+        return jsonify(success=False, message='No se encontró archivo.'), 400
+    archivo = request.files['archivo_excel']
+    if archivo.filename == '':
+        return jsonify(success=False, message='Nombre de archivo vacío.'), 400
+    try:
+        df = pd.read_excel(archivo)
+        df.columns = df.columns.str.strip()
+
+        def find_col(cands):
+            for c in cands:
+                if c in df.columns:
+                    return c
+            return None
+
+        col_num = find_col(['Numero Factura','Número Factura','Nro Factura','Factura','FACTURA','NUMERO FACTURA','Número','NUMERO','Numero'])
+        col_cli = find_col(['Cliente','CLIENTE','Tercero','TERCERO','Asociado','ASOCIADO'])
+        col_cop = find_col(['COP$','Valor','VALOR','Monto','MONTO'])
+        col_bbl = find_col(['Bbl','BBL','Barriles','BARRILES'])
+        col_gln = find_col(['Gln','GLN','Galones','GALONES','Galón','GALÓN','gln','galones'])
+        col_ton = find_col(['Ton','TON','Toneladas','TONELADAS','Tonelada','TONELADA','ton','toneladas'])
+        col_etiqueta = find_col(['Etiqueta','ETIQUETA'])
+        col_fecha = find_col(['Fecha','FECHA','Date','DATE'])
+
+        if not (col_num and col_cli and col_cop):
+            return jsonify(success=False, message=f"Faltan columnas obligatorias (Factura, Cliente/Tercero, Valor). Columnas disponibles: {list(df.columns)}"), 400
+
+        def clean(series):
+            return (series.astype(str)
+                          .str.replace(r"[^0-9\-.,]",'', regex=True)
+                          .str.replace(',', '', regex=False)
+                          .replace('', '0')
+                          .pipe(pd.to_numeric, errors='coerce').fillna(0))
+
+        df[col_cop] = clean(df[col_cop])
+        if col_bbl:
+            df[col_bbl] = clean(df[col_bbl])
+        if col_gln:
+            df[col_gln] = clean(df[col_gln])
+        if col_ton:
+            df[col_ton] = clean(df[col_ton])
+
+        # Normalizar fecha si existe
+        if col_fecha:
+            try:
+                df[col_fecha] = pd.to_datetime(df[col_fecha], errors='coerce')
+            except Exception:
+                df[col_fecha] = pd.NaT
+
+        facturas = []
+        for _, r in df.iterrows():
+            fila = {
+                'factura': str(r.get(col_num)),
+                'tercero': str(r.get(col_cli) or 'SIN TERCERO'),
+                'valor': float(r.get(col_cop) or 0),
+                'bbl': float(r.get(col_bbl) or 0) if col_bbl else None,
+                'gln': float(r.get(col_gln) or 0) if col_gln else None,
+                'ton': float(r.get(col_ton) or 0) if col_ton else None
+            }
+            if col_etiqueta:
+                fila['etiqueta'] = str(r.get(col_etiqueta) or '').strip()
+            if col_fecha:
+                fv = r.get(col_fecha)
+                if pd.notna(fv):
+                    try:
+                        fila['fecha'] = pd.to_datetime(fv).date().isoformat()
+                    except Exception:
+                        pass
+            facturas.append(fila)
+        return jsonify(success=True, facturas=facturas)
+    except Exception as e:
+        app.logger.exception('Error procesando facturación')
+        return jsonify(success=False, message=str(e)), 500
 
 @app.route('/')
 def home():

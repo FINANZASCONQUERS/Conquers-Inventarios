@@ -310,6 +310,7 @@
                         {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
                         {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'droplet-fill')) %}{% endif %}
                         {% if 'planilla_precios' in session.get('area', []) %}{% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
+                        {% if 'flujo_efectivo' in session.get('area', []) %}{% set _ = user_planillas.append(('flujo_efectivo', 'Flujo de Efectivo', 'cash-coin')) %}{% endif %}
                         {% if 'programacion_cargue' in session.get('area', []) %}
                         {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Cargue', 'calendar-check')) %}
                         {% endif %}
@@ -334,13 +335,6 @@
                                             </a>
                                         </li>
                                     {% endfor %}
-                                    {% if 'flujo_efectivo' in session.get('area', []) %}
-                                        <li>
-                                            <a class="dropdown-item {% if request.endpoint == 'flujo_efectivo' %}active{% endif %}" href="{{ url_for('flujo_efectivo') }}">
-                                                <i class="bi bi-cash-coin me-2"></i> Flujo de Efectivo
-                                            </a>
-                                        </li>
-                                    {% endif %}
                                     {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
                                     <li>
                                         <a class="dropdown-item {% if request.endpoint == 'gestion_compras' %}active{% endif %}" href="{{ url_for('gestion_compras') }}">

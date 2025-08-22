@@ -2,30 +2,129 @@
 {% block head %}
     <title>Reporte de Flujo de Efectivo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/static/css/professional-theme.css" rel="stylesheet">
     <style>
-        body { background: linear-gradient(135deg, #f4f7f9 0%, #e3eafc 100%); }
-        .main-card { border-radius: 18px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); border: none; background: #fff; }
-        .uploader { border: 2px dashed #0d6efd; background: #f8fafd; border-radius: 14px; transition: border-color 0.2s; }
-        .uploader:hover { border-color: #0a58ca; background: #f0f6ff; }
+        :root { --brand-primary:#0d6efd; --brand-primary-rgb:13,110,253; --brand-bg:linear-gradient(135deg,#f4f7f9 0%,#e3eafc 100%); --card-radius:18px; --transition:.25s cubic-bezier(.4,0,.2,1); }
+        body { background: var(--brand-bg); font-size:.92rem; }
+        .dashboard-wrapper { max-width:1700px; }
+        .main-card { border-radius: var(--card-radius); box-shadow:0 6px 24px rgba(0,0,0,.06); border:1px solid #e2e8f0; background:#fff; }
+        .uploader { border:2px dashed rgba(var(--brand-primary-rgb),.5); background:#f8fafd; border-radius:14px; transition:var(--transition); }
+        .uploader:hover { border-color:var(--brand-primary); background:#f0f6ff; }
         .table-responsive { max-height: 600px; }
-        .spinner-border { width: 3rem; height: 3rem; }
-    .diff-pos { color: #198754 !important; }
-    .diff-neg { color: #dc3545 !important; }
-        .fw-bold { font-weight: bold; }
-        .group-header { background: #e3eafc; font-weight: bold; color: #0d6efd; border-radius: 6px; }
-        .filter-label { color: #0d6efd; font-weight: 600; }
-        .filter-select { border-radius: 8px; border: 1px solid #b6c6e3; }
-        .card-header { background: #f4f7f9; border-bottom: 1px solid #e3eafc; border-radius: 18px 18px 0 0; }
-        .table thead th { background: #e3eafc; color: #0d6efd; }
-        .table tfoot td { background: #f4f7f9; }
-        .section-title { color: #0d6efd; font-weight: 700; letter-spacing: 0.5px; }
-        .custom-shadow { box-shadow: 0 2px 12px rgba(13,110,253,0.08); }
+        .spinner-border { width:3rem; height:3rem; }
+        .diff-pos { color:#198754 !important; }
+        .diff-neg { color:#dc3545 !important; }
+        .filter-label { color:var(--brand-primary); font-weight:600; font-size:.7rem; letter-spacing:.5px; text-transform:uppercase; }
+        .filter-select { border-radius:10px; border:1px solid #cfd9e6; font-size:.8rem; }
+        .filter-select:focus { border-color:var(--brand-primary); box-shadow:0 0 0 3px rgba(var(--brand-primary-rgb),.15); }
+        .card { border:1px solid #e2e8f0; border-radius:16px; }
+        .card-header { background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:16px 16px 0 0; }
+        .card-header h5,.card-header h6 { font-weight:600; }
+        .card:hover { box-shadow:0 6px 20px -4px rgba(0,0,0,.08); transition:box-shadow var(--transition); }
+        .table thead th { background:#eef3fb; color:#0d47a1; font-weight:600; font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; }
+        .table tfoot td { background:#f4f7f9; font-weight:600; }
+        .section-title { color:#0d47a1; font-weight:700; letter-spacing:1px; display:flex; align-items:center; gap:.5rem; }
+        .section-title:before { content:""; width:6px; height:24px; background:linear-gradient(180deg,var(--brand-primary),#4dabf7); border-radius:4px; }
+        .dashboard-toolbar { background:rgba(255,255,255,.85); backdrop-filter:blur(6px); border:1px solid #e2e8f0; border-radius:18px; padding:1rem 1.25rem; margin-bottom:1.25rem; box-shadow:0 4px 16px -4px rgba(0,0,0,.06); }
+        .dashboard-toolbar .toolbar-actions { gap:.75rem; }
+        #toggle-view-btn { font-weight:600; display:inline-flex; align-items:center; gap:.35rem; }
+        #resumen-directo .card { position:relative; overflow:hidden; }
+        #resumen-directo .card:after { content:""; position:absolute; width:120px; height:120px; top:-40px; right:-40px; background:radial-gradient(circle at center, rgba(255,255,255,.4), transparent 70%); }
+        #resumen-directo .card .small { font-size:.6rem; letter-spacing:.5px; }
+        .badge-soft { background:rgba(var(--brand-primary-rgb),.15); color:var(--brand-primary); font-weight:500; font-size:.6rem; }
+        @media (max-width:992px){ .dashboard-toolbar{padding:.85rem .9rem;} }
     </style>
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid dashboard-wrapper py-4">
+    <div class="dashboard-toolbar d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center">
+        <div class="mb-3 mb-lg-0">
+            <h1 class="h3 section-title mb-1">Reporte de Flujo de Efectivo</h1>
+            <div class="text-muted small d-flex align-items-center gap-2">
+                <i class="bi bi-person-circle text-primary"></i>
+                <span>Hola, {{ nombre }}</span>
+                <span class="badge badge-soft">DASHBOARD</span>
+            </div>
+        </div>
+        <div class="toolbar-actions d-flex flex-wrap align-items-end">
+            <div class="d-flex flex-column">
+                <label for="file-upload" class="filter-label mb-1">Excel Bancos</label>
+                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="min-width:180px;">
+            </div>
+            <div class="d-flex flex-column">
+                <label for="file-facturacion" class="filter-label mb-1">Facturación</label>
+                <input type="file" id="file-facturacion" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="min-width:180px;">
+            </div>
+            <div class="d-flex flex-column">
+                <label class="filter-label mb-1">Vista</label>
+                <button id="toggle-view-btn" class="btn btn-outline-primary btn-sm"><i class="bi bi-graph-up"></i><span>Ver Gráficos</span></button>
+            </div>
+            <div class="d-flex flex-column">
+                <label class="filter-label mb-1">Filtros</label>
+                <button id="btn-toggle-filtros" class="btn btn-light btn-sm border"><i class="bi bi-funnel"></i></button>
+            </div>
+        <div class="d-flex flex-column">
+                <label class="filter-label mb-1">Datos</label>
+                <div class="btn-group">
+                    <button id="btn-cargar-guardado" class="btn btn-outline-success btn-sm" title="Cargar último guardado"><i class="bi bi-cloud-download"></i></button>
+                    <button id="btn-guardar-dataset" class="btn btn-success btn-sm" title="Guardar (persistir)" disabled><i class="bi bi-save"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="alert-zone" class="position-fixed" style="top:70px; right:20px; z-index:1080; max-width:320px;"></div>
+    <div id="panel-filtros-avanzados" class="main-card p-3 mb-4" style="display:none;">
+        <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-3" id="empresa-filter-container" style="display:none;">
+                <label for="empresa-filter" class="form-label filter-label">Empresa</label>
+                <select id="empresa-filter" class="form-select filter-select"></select>
+            </div>
+            <div class="col-4 col-md-2" id="year-filter-wrapper" style="display:none;">
+                <label for="year-filter" class="form-label filter-label">Año</label>
+                <select id="year-filter" class="form-select filter-select"></select>
+            </div>
+            <div class="col-4 col-md-2" id="quarter-filter-wrapper" style="display:none;">
+                <label for="quarter-filter" class="form-label filter-label">Trimestre</label>
+                <select id="quarter-filter" class="form-select filter-select">
+                    <option value="">(Todos)</option>
+                    <option value="Q1">Q1</option>
+                    <option value="Q2">Q2</option>
+                    <option value="Q3">Q3</option>
+                    <option value="Q4">Q4</option>
+                </select>
+            </div>
+            <div class="col-4 col-md-2" id="month-filter-wrapper" style="display:none;">
+                <label for="month-filter" class="form-label filter-label">Mes</label>
+                <select id="month-filter" class="form-select filter-select">
+                    <option value="">(Todos)</option>
+                    <option value="01">Enero</option>
+                    <option value="02">Febrero</option>
+                    <option value="03">Marzo</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Mayo</option>
+                    <option value="06">Junio</option>
+                    <option value="07">Julio</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Septiembre</option>
+                    <option value="10">Octubre</option>
+                    <option value="11">Noviembre</option>
+                    <option value="12">Diciembre</option>
+                </select>
+            </div>
+            <div class="col-4 col-md-2" id="day-filter-wrapper" style="display:none;">
+                <label for="day-filter" class="form-label filter-label">Día</label>
+                <select id="day-filter" class="form-select filter-select">
+                    <option value="">(Todos)</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end">
+                <button id="btn-reset-filtros" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                <button id="btn-hide-filtros" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle"></i> Aplicar</button>
+            </div>
+        </div>
+    </div>
     <!-- Tarjetas Resumen Método Directo -->
     <div id="resumen-directo" class="row g-3 mb-4 d-none"></div>
     <!-- Breakdowns -->
@@ -65,56 +164,7 @@
             </div>
         </div>
     </div>
-    <div class="main-card p-4 mb-4 custom-shadow">
-        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-            <div>
-                <h1 class="h3 section-title mb-0">📊 Reporte de Flujo de Efectivo</h1>
-                <div class="text-muted small">Hola, {{ nombre }}</div>
-            </div>
-            <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
-                <label for="file-upload" class="form-label mb-0 filter-label">Cargar Excel:</label>
-                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="max-width:220px;">
-            </div>
-        </div>
-        <!-- Filtros de Tiempo y Empresa -->
-        <div class="row mb-3 g-3">
-            <div class="col-md-3" id="empresa-filter-container" style="display:none;">
-                <label for="empresa-filter" class="form-label filter-label">Empresa:</label>
-                <select id="empresa-filter" class="form-select filter-select" style="max-width:350px;"></select>
-            </div>
-            <div class="col-md-9 d-flex align-items-end gap-2 flex-wrap" id="time-filters-container" style="display:none;">
-                <div>
-                    <label for="year-filter" class="form-label filter-label">Año:</label>
-                    <select id="year-filter" class="form-select filter-select"></select>
-                </div>
-                <div>
-                    <label for="month-filter" class="form-label filter-label">Mes:</label>
-                    <select id="month-filter" class="form-select filter-select">
-                        <option value="">(Todos)</option>
-                        <option value="01">Enero</option>
-                        <option value="02">Febrero</option>
-                        <option value="03">Marzo</option>
-                        <option value="04">Abril</option>
-                        <option value="05">Mayo</option>
-                        <option value="06">Junio</option>
-                        <option value="07">Julio</option>
-                        <option value="08">Agosto</option>
-                        <option value="09">Septiembre</option>
-                        <option value="10">Octubre</option>
-                        <option value="11">Noviembre</option>
-                        <option value="12">Diciembre</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="day-filter" class="form-label filter-label">Día:</label>
-                    <select id="day-filter" class="form-select filter-select">
-                        <option value="">(Todos)</option>
-                        <!-- Días se llenan dinámicamente -->
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- (Bloque original de filtros eliminado para evitar duplicación de IDs) -->
 
     <div id="loading-spinner" class="text-center my-5 d-none">
         <div class="spinner-border text-primary" role="status"></div>
@@ -122,12 +172,202 @@
     </div>
 
     <div id="report-output" class="d-none"></div>
+    <div id="charts-view" class="d-none">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Top Clientes Ventas EXW CTG (Ingresos)</h5>
+                <small class="text-muted" id="total-exw-general"></small>
+            </div>
+            <div class="card-body">
+                <!-- Filtros internos de la gráfica -->
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small text-primary mb-1" for="chart-clase-filter">Clase:</label>
+                        <select id="chart-clase-filter" class="form-select form-select-sm">
+                            <option value="">(Auto)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small text-primary mb-1" for="chart-subclase-filter">Sub Clase:</label>
+                        <select id="chart-subclase-filter" class="form-select form-select-sm">
+                            <option value="">(Todas)</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="chartTopClientesEXW" height="140"></canvas>
+                <div id="facturas-cliente-panel" class="mt-3 d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 text-primary" id="facturas-cliente-titulo">Facturas</h6>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('facturas-cliente-panel').classList.add('d-none');">Cerrar</button>
+                    </div>
+                    <div class="table-responsive" style="max-height:260px;">
+                        <table class="table table-sm table-striped align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th>Número</th><th>Fecha</th><th class="text-end">COP$</th><th class="text-end">Gln</th><th class="text-end">Bbl</th><th class="text-end">Ton</th></tr>
+                            </thead>
+                            <tbody id="facturas-cliente-tbody"></tbody>
+                            <tfoot class="table-secondary">
+                                <tr><th>Total</th><th></th><th class="text-end" id="facturas-cliente-total-cop"></th><th class="text-end" id="facturas-cliente-total-gln"></th><th class="text-end" id="facturas-cliente-total-bbl"></th><th class="text-end" id="facturas-cliente-total-ton"></th></tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+                <div class="text-end mt-2"><small class="text-muted">Aplica mismos filtros de Empresa y Tiempo + filtros internos de Clase/Sub Clase.</small></div>
+            </div>
+        </div>
+        <!-- Resumen global de facturación -->
+        <div class="card shadow-sm mb-4" id="facturacion-global-card" style="display:none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Total Facturación Cargada</h6>
+                <small class="text-muted" id="facturacion-global-total"></small>
+            </div>
+            <div class="card-body p-2">
+                <div class="table-responsive" style="max-height:260px;">
+                    <table class="table table-sm table-striped mb-0" id="facturacion-global-table">
+                        <thead class="table-light" id="facturacion-global-thead">
+                            <tr id="facturacion-global-head-row"><th>Cliente</th><th class="text-end">Facturas</th><th class="text-end">Total COP$</th><th class="text-end">Total Gln</th><th class="text-end">Total Bbl</th><th class="text-end">Total Ton</th></tr>
+                        </thead>
+                        <tbody id="facturacion-global-tbody"></tbody>
+                        <tfoot class="table-secondary" id="facturacion-global-tfoot">
+                            <tr id="facturacion-global-foot-row"><th colspan="2" class="text-end">Gran Total:</th><th class="text-end" id="facturacion-global-total-cop"></th><th class="text-end" id="facturacion-global-total-gln"></th><th class="text-end" id="facturacion-global-total-bbl"></th><th class="text-end" id="facturacion-global-total-ton"></th></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <!-- NUEVA GRAFICA: EGRESOS PROVEEDORES -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Top Proveedores (Egresos)</h5>
+                <small class="text-muted" id="total-proveedores-egresos"></small>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small text-primary mb-1" for="prov-tf-filter">Tipo Flujo Efectivo:</label>
+                        <select id="prov-tf-filter" class="form-select form-select-sm">
+                            <option value="">(Operación + Inversión)</option>
+                            <option value="OPERACION">Operación</option>
+                            <option value="INVERSION">Inversión</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small text-primary mb-1" for="prov-clase-filter">Clase:</label>
+                        <select id="prov-clase-filter" class="form-select form-select-sm">
+                            <option value="">(Auto)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label small text-primary mb-1" for="prov-subclase-filter">Sub Clase:</label>
+                        <select id="prov-subclase-filter" class="form-select form-select-sm">
+                            <option value="">(Todas)</option>
+                        </select>
+                    </div>
+                </div>
+                <canvas id="chartTopProveedoresEgresos" height="140"></canvas>
+                <div class="text-end mt-2"><small class="text-muted">Filtrado por Empresa / Tiempo + Tipo Flujo (Operación/Inversión) + Clase/Sub Clase.</small></div>
+            </div>
+        </div>
+        <!-- NUEVAS GRAFICAS: TOP TERCEROS INGRESOS / EGRESOS CON FILTRO DE TIPO DE FLUJO -->
+        <div class="card shadow-sm mb-3">
+            <div class="card-body py-2">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small text-primary mb-1" for="tf-tercero-filter">Tipo de Flujo:</label>
+                        <select id="tf-tercero-filter" class="form-select form-select-sm">
+                            <option value="">(Todos)</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small text-primary mb-1" for="tf-tercero-clase-filter">Clase:</label>
+                        <select id="tf-tercero-clase-filter" class="form-select form-select-sm">
+                            <option value="">(Todas)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Top Terceros (Ingresos)</h6>
+                        <small class="text-muted" id="ingresos-flujo-total"></small>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartIngresosFlujo" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Top Terceros (Egresos)</h6>
+                        <small class="text-muted" id="egresos-flujo-total"></small>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="chartEgresosFlujo" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.getElementById('file-upload').addEventListener('change', handleFile, false);
+    document.getElementById('file-facturacion').addEventListener('change', handleFacturacion, false);
+        const btnGuardar = document.getElementById('btn-guardar-dataset');
+    const btnCargarGuardado = document.getElementById('btn-cargar-guardado');
+
+    // Mostrar alertas flotantes
+    function pushAlert(tipo, mensaje, timeout=4000){
+        const zone = document.getElementById('alert-zone');
+        const id = 'al_'+Date.now()+Math.random().toString(16).slice(2);
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = `alert alert-${tipo} shadow-sm border mb-2 py-2 px-3 fade show`;
+        div.innerHTML = `<div class='d-flex justify-content-between align-items-start'><span class='small'>${mensaje}</span><button type='button' class='btn-close btn-close-white ms-2' data-bs-dismiss='alert'></button></div>`;
+        zone.appendChild(div);
+        if(timeout){ setTimeout(()=>{ div.classList.remove('show'); setTimeout(()=> div.remove(), 400); }, timeout); }
+    }
+
+    async function cargarGuardado(auto=false){
+        try{
+            const resp = await fetch('/api/flujo_efectivo_cached');
+            const data = await resp.json();
+            if(!data.success){ if(!auto) pushAlert('warning', data.message||'No hay datos guardados'); return; }
+            displayReport(data);
+            pushAlert('success', 'Datos cargados desde base de datos');
+            // Ya están guardados; desactivar botón guardar hasta nueva carga de archivo
+            if(btnGuardar) btnGuardar.disabled = true;
+        }catch(e){ if(!auto) pushAlert('danger','Error cargando guardado: '+e.message); }
+    }
+    if(btnCargarGuardado){ btnCargarGuardado.addEventListener('click', ()=> cargarGuardado(false)); }
+    // Auto al cargar página
+    document.addEventListener('DOMContentLoaded', ()=> cargarGuardado(true));
+
+    // Guardar: en este flujo ya se guarda automáticamente al subir, así que solo feedback
+    if(btnGuardar){
+        btnGuardar.addEventListener('click', ()=>{
+            pushAlert('info','El archivo ya se guarda automáticamente al subir. Vuelve a subir un archivo actualizado para persistir nuevos datos.');
+        });
+    }
+    (function(){
+        const panel = document.getElementById('panel-filtros-avanzados');
+        const btnToggle = document.getElementById('btn-toggle-filtros');
+        const btnHide = document.getElementById('btn-hide-filtros');
+        const btnReset = document.getElementById('btn-reset-filtros');
+        if(btnToggle){ btnToggle.addEventListener('click', ()=>{ panel.style.display = (panel.style.display==='none'||panel.style.display==='')?'block':'none'; }); }
+        if(btnHide){ btnHide.addEventListener('click', ()=> panel.style.display='none'); }
+        if(btnReset){ btnReset.addEventListener('click', ()=>{
+            globalEmpresaSeleccionada=''; globalYear=''; globalQuarter=''; globalMonth=''; globalDay='';
+            ['empresa-filter','year-filter','quarter-filter','month-filter','day-filter'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+            renderReport(globalReportData);
+        }); }
+    })();
 
     const currencyFormatter = new Intl.NumberFormat('es-CO', {
         style: 'currency', currency: 'COP', minimumFractionDigits: 2
@@ -161,66 +401,6 @@
         }
     }
     
-        // --- FUNCIÓN EXPANDIBLE DETALLE POR TIPO / TERCERO / FECHA ---
-        function createFlowDetailExpandable(title, resumen, detalle, tipoMonto) {
-                if (!resumen || Object.keys(resumen).length === 0) return '';
-                const flowTypes = Object.keys(resumen).sort();
-                let body = '';
-                let idx = 0;
-                for (const flowType of flowTypes) {
-                        const totalTipo = Object.values(resumen[flowType]).reduce((a,b)=>a+b,0);
-                        const sectionId = `flow-${title.replace(/\s+/g,'-')}-${idx}`;
-                        body += `<tr class="table-primary">
-                                                <td colspan="5">
-                                                        <button class="btn btn-sm btn-outline-primary me-2 toggle-btn" data-target="${sectionId}">+</button>
-                                                        <strong>${flowType}</strong>
-                                                </td>
-                                                <td class="text-end fw-bold">${currencyFormatter.format(totalTipo)}</td>
-                                        </tr>`;
-                        const tercerosOrdenados = Object.entries(resumen[flowType]).sort((a,b)=>b[1]-a[1]);
-                                    let inner = '';
-                        for (const [tercero, total] of tercerosOrdenados) {
-                                const rows = detalle.filter(r => (r.tipo_flujo||'SIN TIPO')===flowType && (r.tercero||'SIN TERCERO')===tercero);
-                                if (rows.length===0) continue;
-                                inner += `<tr class="table-secondary"><td colspan="6"><strong>${tercero}</strong> - Total: ${currencyFormatter.format(total)}</td></tr>`;
-                                for (const r of rows) {
-                                                    // Mostrar solo la columna relevante según tipoMonto
-                                                    const montoCol = tipoMonto === 'Crédito'
-                                                            ? `<td class=\"text-end\">${currencyFormatter.format(r.credito||0)}</td>`
-                                                            : `<td class=\"text-end\">${currencyFormatter.format(r.debito||0)}</td>`;
-                                                    inner += `<tr>
-                                                                            <td>${tercero}</td>
-                                                                            <td>${r.fecha}</td>
-                                                                            <td>${r.rubro||''}</td>
-                                                                            ${montoCol}
-                                                                            <td>${r.movimiento||''}</td>
-                                                                        </tr>`;
-                                }
-                        }
-                        body += `<tr class="d-none" id="${sectionId}"><td colspan="6" class="p-0">
-                                                <div class="table-responsive">
-                                                    <table class="table table-sm mb-0">
-                                                                    <thead class="table-light"><tr><th>Tercero</th><th>Fecha</th><th>Rubro</th><th>${tipoMonto}</th><th>Movimiento</th></tr></thead>
-                                                        <tbody>${inner}</tbody>
-                                                    </table>
-                                                </div>
-                                            </td></tr>`;
-                        idx++;
-                }
-                return `<div class="card">
-                                    <div class="card-header"><h5 class="mb-0">${title}</h5></div>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                                <tr><th colspan="5">Tipo / Detalle</th><th class="text-end">Total (${tipoMonto})</th></tr>
-                                            </thead>
-                                            <tbody>${body}</tbody>
-                                        </table>
-                                    </div>
-                                </div>`;
-        }
-        // --- FIN FUNCIÓN EXPANDIBLE ---
-
     function createComparisonTable(data) {
         if (!data || data.length === 0) return '';
         
@@ -315,8 +495,10 @@
     let globalReportData = null;
     let globalEmpresaSeleccionada = '';
     let globalYear = '';
+    let globalQuarter = '';
     let globalMonth = '';
     let globalDay = '';
+    let currentView = 'report'; // 'report' | 'charts'
 
 
     function updateEmpresaFilter(empresas) {
@@ -339,12 +521,13 @@
 
     // --- Filtros de Tiempo ---
     function updateTimeFilters(data) {
-        const container = document.getElementById('time-filters-container');
+        const panel = document.getElementById('panel-filtros-avanzados');
         const yearSelect = document.getElementById('year-filter');
+        const quarterSelect = document.getElementById('quarter-filter');
         const monthSelect = document.getElementById('month-filter');
         const daySelect = document.getElementById('day-filter');
         if (!data || !data.daily_comparison || data.daily_comparison.length === 0) {
-            container.style.display = 'none';
+            if(panel) panel.style.display = 'none';
             return;
         }
         // Extraer años únicos
@@ -355,6 +538,7 @@
         // Evento de cambio
         yearSelect.onchange = function() {
             globalYear = yearSelect.value;
+            globalQuarter=''; if(quarterSelect) quarterSelect.value='';
             globalMonth = '';
             globalDay = '';
             monthSelect.value = '';
@@ -362,8 +546,18 @@
             renderReport(globalReportData);
             updateDayOptions();
         };
+        if(quarterSelect){
+            if(globalQuarter) quarterSelect.value=globalQuarter;
+            quarterSelect.onchange = function(){
+                globalQuarter = quarterSelect.value;
+                if(globalQuarter){ globalMonth=''; monthSelect.value=''; globalDay=''; daySelect.value=''; }
+                renderReport(globalReportData);
+                updateDayOptions();
+            };
+        }
         monthSelect.onchange = function() {
             globalMonth = monthSelect.value;
+            if(globalMonth){ globalQuarter=''; if(quarterSelect) quarterSelect.value=''; }
             globalDay = '';
             daySelect.value = '';
             renderReport(globalReportData);
@@ -376,23 +570,40 @@
         // Llenar días según año y mes
         function updateDayOptions() {
             let days = [];
-            if (globalYear && globalMonth) {
-                days = [...new Set(data.daily_comparison.filter(row => row.fecha.startsWith(`${globalYear}-${globalMonth}`)).map(row => row.fecha.slice(8,10)))].sort();
+            if(globalYear){
+                let pool = data.daily_comparison.filter(r=> r.fecha.startsWith(globalYear));
+                if(globalQuarter){
+                    const qm = quarterMonths(globalQuarter);
+                    pool = pool.filter(r=> qm.includes(r.fecha.slice(5,7)));
+                } else if(globalMonth){
+                    pool = pool.filter(r=> r.fecha.slice(5,7)===globalMonth);
+                }
+                if(globalQuarter || globalMonth){
+                    days = [...new Set(pool.map(r=> r.fecha.slice(8,10)))].sort();
+                }
             }
             daySelect.innerHTML = '<option value="">(Todos)</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
             if (globalDay) daySelect.value = globalDay;
         }
         updateDayOptions();
-        container.style.display = '';
+        document.getElementById('year-filter-wrapper').style.display='block';
+        const qWrap = document.getElementById('quarter-filter-wrapper'); if(qWrap) qWrap.style.display='block';
+        document.getElementById('month-filter-wrapper').style.display='block';
+        document.getElementById('day-filter-wrapper').style.display='block';
     }
 
 
+    function quarterMonths(q){
+        if(!q) return [];
+        return q==='Q1'?['01','02','03']: q==='Q2'?['04','05','06']: q==='Q3'?['07','08','09']: q==='Q4'?['10','11','12']:[];
+    }
     function filterDataByEmpresaYTiempo(data, empresa, year, month, day) {
         // Filtrar daily_comparison
     let filteredDaily = data.daily_comparison || [];
     if (empresa) filteredDaily = filteredDaily.filter(row => (row.empresa || row.Empresa) === empresa);
         if (year) filteredDaily = filteredDaily.filter(row => row.fecha.startsWith(year));
-        if (month) filteredDaily = filteredDaily.filter(row => row.fecha.slice(5,7) === month);
+        if (globalQuarter){ const qm = quarterMonths(globalQuarter); filteredDaily = filteredDaily.filter(r=> qm.includes(r.fecha.slice(5,7))); }
+        else if (month) filteredDaily = filteredDaily.filter(row => row.fecha.slice(5,7) === month);
         if (day) filteredDaily = filteredDaily.filter(row => row.fecha.slice(8,10) === day);
 
         // Nuevo filtrado para detalle completo
@@ -401,7 +612,8 @@
             return det.filter(r => {
                 if (empresa && r.empresa !== empresa) return false;
                 if (year && !r.fecha.startsWith(year)) return false;
-                if (month && r.fecha.slice(5,7) !== month) return false;
+                if (globalQuarter){ const qm=quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+                else if (month && r.fecha.slice(5,7) !== month) return false;
                 if (day && r.fecha.slice(8,10) !== day) return false;
                 return true;
             });
@@ -439,7 +651,8 @@
             if (empresasSet.size>0 && !empresasSet.has(m.empresa)) return false;
             if (fechaMin && m.fecha < fechaMin) return false; // saldo inicial solo desde primera fecha mostrada
             if (globalYear && !m.fecha.startsWith(globalYear)) return false;
-            if (globalMonth && m.fecha.slice(5,7)!==globalMonth) return false;
+            if (globalQuarter){ const qm=quarterMonths(globalQuarter); if(!qm.includes(m.fecha.slice(5,7))) return false; }
+            else if (globalMonth && m.fecha.slice(5,7)!==globalMonth) return false;
             if (globalDay && m.fecha.slice(8,10)!==globalDay) return false;
             return true;
         });
@@ -464,12 +677,8 @@
         const outputDiv = document.getElementById('report-output');
         if (!data) return;
         let filtered = filterDataByEmpresaYTiempo(data, globalEmpresaSeleccionada, globalYear, globalMonth, globalDay);
-        outputDiv.innerHTML = `
-            ${createComparisonTable(filtered.daily_comparison)}
-            <div class="row mt-4 g-4">
-                <div class="col-lg-6">${createFlowDetailExpandable('Detalle de Egresos por Tipo de Flujo', filtered.outflows_by_type, filtered.detalle_filtrado, 'Crédito')}</div>
-                <div class="col-lg-6">${createFlowDetailExpandable('Detalle de Ingresos por Tipo de Flujo', filtered.inflows_by_type, filtered.detalle_filtrado, 'Débito')}</div>
-            </div>`;
+            outputDiv.innerHTML = `
+                ${createComparisonTable(filtered.daily_comparison)}`;
         // Activar toggles
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -490,6 +699,11 @@
             filtered.outflows_by_type
         );
         renderResumenDirecto(resumenFiltered, true);
+        if(currentView==='charts'){
+            recomputeTopClientesEXWFiltered();
+            recomputeTopProveedoresEgresosFiltered();
+            recomputeIngresoEgresoFlujoCharts();
+        }
     }
 
     function displayReport(data) {
@@ -504,6 +718,8 @@
         document.getElementById('report-output').classList.remove('d-none');
         // Primera render sin filtros usa resumen_directo original
         renderResumenDirecto(data.resumen_directo, false);
+    // Preparar gráfico inicial (oculto hasta que se cambie vista)
+    precomputeBaseEXW();
     }
     function renderResumenDirecto(resumen, filtered) {
         const cont = document.getElementById('resumen-directo');
@@ -553,6 +769,8 @@
             </div>`;
         cont.classList.remove('d-none');
         attachBreakdownHandlers();
+        cont.classList.remove('d-none');
+        attachBreakdownHandlers();
     }
 
     function attachBreakdownHandlers() {
@@ -585,6 +803,690 @@
         row.classList.remove('d-none');
         row.scrollIntoView({behavior:'smooth', block:'center'});
     }
+
+    // ------ GRAFICA TOP CLIENTES VENTAS EXW CTG ------
+    let topClientesChart = null;
+    let baseEXW = null; // datos base sin filtros (estructura clientes/subclases)
+    let chartClaseSelect = null;
+    let chartSubclaseSelect = null;
+    const ALLOWED_CLASSES = ['ANTICIPO VENTAS FOB CTG','VENTAS EXW CTG'];
+    // Configuración para proveedores (egresos)
+    // Para proveedores (egresos) detectaremos dinámicamente las clases presentes (excluyendo clases de ventas)
+    const SALES_CLASSES = ['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'];
+    let proveedoresChart = null;
+    let ingresosFlujoChart = null;
+    let egresosFlujoChart = null;
+    let provTfSelect = null, provClaseSelect = null, provSubclaseSelect = null;
+    const EXCLUDE_KEYWORDS = ['RENTA','UVA','MGO'];
+    let facturasData = [];
+    let facturasPorClienteBase = new Map(); // sin filtros de tiempo
+    let facturasPorCliente = new Map(); // filtrado actual
+    function aplicarFiltrosFacturas(){
+        facturasPorCliente = new Map();
+        facturasPorClienteBase.forEach((lista, cli)=>{
+            const filtradas = lista.filter(f=>{
+                if(globalYear && !(f.fecha||'').startsWith(globalYear)) return false;
+                if(globalMonth && (f.fecha||'').slice(5,7)!==globalMonth) return false;
+                if(globalDay && (f.fecha||'').slice(8,10)!==globalDay) return false;
+                return true;
+            });
+            if(filtradas.length){
+                filtradas.sort((a,b)=> (b.valor||0)-(a.valor||0));
+                facturasPorCliente.set(cli, filtradas);
+            }
+        });
+    }
+
+    function updateProvClaseSubOptions(detalleElegible){
+        if(!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
+        if(!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
+        if(!provClaseSelect || !provSubclaseSelect) return;
+        if(!detalleElegible || detalleElegible.length===0){
+            provClaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
+            provSubclaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
+            return;
+        }
+        // Detectar clases distintas de ventas (para egresos) presentes realmente
+        const clasesDisp = Array.from(new Set(detalleElegible.map(r=> (r.clase||'').toUpperCase()).filter(c=> c && !SALES_CLASSES.includes(c))));
+        const clasesFiltradas = clasesDisp.sort();
+        const prev = (provClaseSelect.value||'').toUpperCase();
+        provClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c=>`<option value="${c}">${c}</option>`).join('');
+        let selected = prev && clasesFiltradas.includes(prev) ? prev : '';
+        provClaseSelect.value = selected;
+        let subclases = [];
+        if(selected){
+            subclases = Array.from(new Set(detalleElegible.filter(r=> (r.clase||'').toUpperCase()===selected).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        } else {
+            subclases = Array.from(new Set(detalleElegible.filter(r=> clasesFiltradas.includes((r.clase||'').toUpperCase())).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        }
+        const prevSub = provSubclaseSelect.value;
+        provSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s=>`<option value="${s}">${s}</option>`).join('');
+        if(prevSub && subclases.includes(prevSub)) provSubclaseSelect.value = prevSub; else provSubclaseSelect.value='';
+    }
+
+    function attachProveedorFilters(){
+        if(!provTfSelect) provTfSelect = document.getElementById('prov-tf-filter');
+        if(!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
+        if(!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
+        if(!provTfSelect || provTfSelect.dataset.eventsBound) return;
+        provTfSelect.addEventListener('change', recomputeTopProveedoresEgresosFiltered);
+        provClaseSelect.addEventListener('change', ()=>{ recomputeTopProveedoresEgresosFiltered(); });
+        provSubclaseSelect.addEventListener('change', recomputeTopProveedoresEgresosFiltered);
+        provTfSelect.dataset.eventsBound='1';
+    }
+
+    function recomputeTopProveedoresEgresosFiltered(){
+        if(!globalReportData || !globalReportData.odoo_detalle){ renderTopProveedoresEgresos(null); return; }
+        const detalle = globalReportData.odoo_detalle.filter(r=>{
+            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            return true;
+        });
+        // Primero filtrar sólo registros de egresos verdaderos (egresos en Odoo suelen ser crédito > 0)
+        const potencialesEgresos = detalle.filter(r=> (Number(r.credito)||0) > 0 || (Number(r.debito)||0) < 0);
+        const tfSel = (provTfSelect && provTfSelect.value) ? provTfSelect.value.toUpperCase() : '';
+        // Filtrar por tipo flujo (operación / inversión) si aplica
+        const egresosTipo = potencialesEgresos.filter(r=>{
+            const tipoFlujo = (r.tipo_flujo||'').toUpperCase();
+            const esOper = /OPERACION|OPERACIÓN/.test(tipoFlujo);
+            const esInv = /INVERSION|INVERSI[ÓO]N/.test(tipoFlujo);
+            if(tfSel==='OPERACION') return esOper;
+            if(tfSel==='INVERSION') return esInv;
+            // Auto: incluir solo operación o inversión
+            return esOper || esInv;
+        });
+        // Actualizar selects con registros elegibles
+        updateProvClaseSubOptions(egresosTipo);
+        attachProveedorFilters();
+        const claseSel = (provClaseSelect && provClaseSelect.value) ? provClaseSelect.value.toUpperCase() : '';
+        const subSel = (provSubclaseSelect && provSubclaseSelect.value) ? provSubclaseSelect.value.toUpperCase() : '';
+        const filtrado = egresosTipo.filter(r=>{
+            const claseDato = (r.clase||'').toUpperCase();
+            const subDato = (r.subclase||'SIN SUBCLASE').toUpperCase();
+            if(claseSel && claseDato!==claseSel) return false;
+            if(subSel && subDato!==subSel) return false;
+            // Excluir keywords
+            if(EXCLUDE_KEYWORDS.some(k=> claseDato.includes(k) || subDato.includes(k))) return false;
+            return true;
+        });
+        if(filtrado.length===0){ renderTopProveedoresEgresos({proveedores:[], total_general:0}); return; }
+        const mapProv = new Map(); // proveedor -> total credito
+        filtrado.forEach(r=>{
+            const prov = (r.tercero || 'SIN PROVEEDOR') || 'SIN PROVEEDOR';
+            const val = Number(r.credito||0) > 0 ? Number(r.credito||0) : ( (Number(r.debito)||0) < 0 ? Math.abs(Number(r.debito)||0) : 0 );
+            mapProv.set(prov, (mapProv.get(prov)||0)+val);
+        });
+        let arrProv = Array.from(mapProv.entries()).map(([proveedor,total])=>({proveedor,total}));
+        arrProv.sort((a,b)=>b.total-a.total);
+        arrProv = arrProv.slice(0,10);
+        renderTopProveedoresEgresos({proveedores:arrProv, total_general: arrProv.reduce((a,c)=>a+c.total,0)});
+    }
+
+    function renderTopProveedoresEgresos(payload){
+        const canvas = document.getElementById('chartTopProveedoresEgresos');
+        if(!canvas) return;
+        const containerInfo = document.getElementById('total-proveedores-egresos');
+    if(!payload || !payload.proveedores || payload.proveedores.length===0){
+            containerInfo.textContent = 'Sin datos';
+            if(proveedoresChart){ proveedoresChart.destroy(); proveedoresChart=null; }
+            return;
+        }
+    containerInfo.textContent = 'Total filtrado: '+currencyFormatter.format(payload.total_general||0);
+    const labels = payload.proveedores.map(p=>p.proveedor);
+    const dataVals = payload.proveedores.map(p=>p.total);
+        const colors = labels.map((_,i)=> ['#dc3545','#fd7e14','#ffc107','#198754','#0dcaf0','#6c757d','#343a40','#0d6efd','#6610f2','#6f42c1'][i%10]);
+        const ctx = canvas.getContext('2d');
+        if(proveedoresChart) proveedoresChart.destroy();
+        proveedoresChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Crédito', data: dataVals, backgroundColor: colors }] },
+            options: {
+                plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=> 'Crédito: '+currencyFormatter.format(c.parsed.y||0) } } },
+                scales:{
+                    x:{
+                        ticks:{
+                            autoSkip:false,
+                            maxRotation:0,
+                            minRotation:0,
+                            callback:function(val){
+                                const label = this.getLabelForValue ? this.getLabelForValue(val) : '';
+                                const maxChars=14; const words=label.split(' ');
+                                const lines=[]; let line='';
+                                words.forEach(w=>{
+                                    if((line+w).length>maxChars){ if(line) lines.push(line.trim()); line=w+' '; } else { line+=w+' '; }
+                                });
+                                if(line) lines.push(line.trim());
+                                return lines.length>3 ? lines.slice(0,2).concat('…') : lines;
+                            }
+                        }
+                    },
+                    y:{ ticks:{ callback:v=>currencyFormatter.format(v) } }
+                },
+                responsive:true,
+                interaction:{ mode:'index', intersect:false }
+            }
+        });
+    }
+
+    function updateChartClaseSubclaseOptions(detalle){
+        if(!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
+        if(!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
+        if(!chartClaseSelect || !chartSubclaseSelect) return;
+        if(!detalle || detalle.length===0){
+            chartClaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
+            chartSubclaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
+            return;
+        }
+    const clasesDisponiblesSet = new Set(detalle.map(r=> (r.clase||'').toUpperCase()));
+    const clasesFiltradas = ALLOWED_CLASSES.filter(c=> clasesDisponiblesSet.has(c));
+        const prevClase = (chartClaseSelect.value||'').toUpperCase();
+        // Construir opciones mostrando solo las permitidas presentes
+        chartClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c=>`<option value="${c}">${c}</option>`).join('');
+        let selectedClase = prevClase && clasesFiltradas.includes(prevClase) ? prevClase : '';
+        if(!selectedClase){
+            if(clasesFiltradas.includes('VENTAS EXW CTG')) selectedClase = 'VENTAS EXW CTG';
+            else if(clasesFiltradas.includes('ANTICIPO VENTAS FOB CTG')) selectedClase = 'ANTICIPO VENTAS FOB CTG';
+        }
+        chartClaseSelect.value = selectedClase;
+        // Subclases derivadas
+        let subclases = [];
+        if(selectedClase){
+            subclases = Array.from(new Set(detalle.filter(r=> (r.clase||'').toUpperCase()===selectedClase).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        } else {
+            // Auto: subclases de cualquier clase permitida (solo las permitidas)
+            subclases = Array.from(new Set(detalle.filter(r=> ALLOWED_CLASSES.includes((r.clase||'').toUpperCase())).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        }
+        const prevSub = chartSubclaseSelect.value;
+        chartSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s=>`<option value="${s}">${s}</option>`).join('');
+        if(prevSub && subclases.includes(prevSub)) chartSubclaseSelect.value = prevSub; else chartSubclaseSelect.value='';
+    }
+
+    function attachChartInternalFilters(){
+        if(!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
+        if(!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
+        if(!chartClaseSelect || !chartSubclaseSelect) return;
+        if(chartClaseSelect.dataset.eventsBound) return;
+        chartClaseSelect.addEventListener('change', ()=>{
+            if(globalReportData && globalReportData.odoo_detalle){
+                const detalleFiltrado = globalReportData.odoo_detalle.filter(r=>{
+                    if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+                    if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+                    if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+                    if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+                    return true;
+                });
+                updateChartClaseSubclaseOptions(detalleFiltrado);
+            }
+            recomputeTopClientesEXWFiltered();
+            renderFacturacionGlobal();
+        });
+        chartSubclaseSelect.addEventListener('change', ()=> recomputeTopClientesEXWFiltered());
+        chartClaseSelect.dataset.eventsBound='1';
+    }
+    function renderTopClientesEXW(payload){
+        const chartsView = document.getElementById('charts-view');
+        if(currentView!=='charts') return; // sólo dibujar si vista activa
+        if(!payload || !payload.clientes || payload.clientes.length===0){
+            chartsView.classList.remove('d-none');
+            document.getElementById('chartTopClientesEXW').replaceWith(document.getElementById('chartTopClientesEXW').cloneNode(true));
+            return;
+        }
+        chartsView.classList.remove('d-none');
+        document.getElementById('total-exw-general').textContent = 'Total filtrado: ' + currencyFormatter.format(payload.total_general||0);
+        const labels = payload.clientes.map(c=>c.cliente);
+        // Obtener todas las subclases únicas
+        const subSet = new Set();
+        payload.clientes.forEach(c=> (c.subclases||[]).forEach(s=> subSet.add(s.subclase)) );
+        const subclases = Array.from(subSet).sort();
+        // Construir datasets apilados
+        const colors = [
+            '#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107',
+            '#198754','#20c997','#0dcaf0','#6c757d','#343a40'
+        ];
+        const datasets = subclases.map((sub,idx)=>{
+            return {
+                label: sub,
+                data: labels.map(cli=> {
+                    const clienteObj = payload.clientes.find(c=>c.cliente===cli);
+                    const subObj = (clienteObj.subclases||[]).find(s=>s.subclase===sub);
+                    return subObj ? subObj.total : 0;
+                }),
+                backgroundColor: colors[idx % colors.length],
+                stack: 'stack1'
+            };
+        });
+        const ctx = document.getElementById('chartTopClientesEXW').getContext('2d');
+        if(topClientesChart){ topClientesChart.destroy(); }
+    const claseActual = chartClaseSelect ? (chartClaseSelect.value||'').toUpperCase() : '';
+    // Mostrar facturas para EXW y FOB
+    const facturasHabilitadas = ['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'].includes(claseActual);
+        topClientesChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context){
+                                const val = context.parsed.y||0;
+                                if(!val) return null; // omitir líneas con 0
+                                return context.dataset.label+': '+currencyFormatter.format(val);
+                            },
+                            afterBody: function(items){
+                                if(!facturasHabilitadas) return;
+                                if(!items || !items.length) return;
+                                const cli = items[0].label;
+                                const arr = facturasPorCliente.get(cli.toUpperCase());
+                                if(!arr || !arr.length) return;
+                                const totalCop = arr.reduce((a,f)=> a + (f.valor||0), 0);
+                                const totalBbl = arr.reduce((a,f)=> a + (f.bbl||0), 0);
+                                const totalGln = arr.reduce((a,f)=> a + (f.gln||0), 0);
+                                const totalTon = arr.reduce((a,f)=> a + (f.ton||0), 0);
+                                const result = [`Total COP$: ${currencyFormatter.format(totalCop)}`];
+                                if(totalBbl) result.push(`Total Bbl: ${totalBbl.toLocaleString('es-CO')}`);
+                                if(totalGln) result.push(`Total Gln: ${totalGln.toLocaleString('es-CO')}`);
+                                if(totalTon) result.push(`Total Ton: ${totalTon.toLocaleString('es-CO')}`);
+                                return result;
+                            }
+                        }
+                    },
+                    legend: { position: 'bottom' }
+                },
+                onClick: (evt, elements)=>{
+                    if(!facturasHabilitadas) return; // solo mostrar panel cuando clase permitida
+                    if(!elements || !elements.length) return;
+                    const idx = elements[0].index;
+                    const cli = topClientesChart.data.labels[idx];
+                    const arr = facturasPorCliente.get(cli.toUpperCase())||[];
+                    const panel = document.getElementById('facturas-cliente-panel');
+                    const tbody = document.getElementById('facturas-cliente-tbody');
+                    const tit = document.getElementById('facturas-cliente-titulo');
+                    // Ajustar encabezado de la tabla según clase (EXW sin Etiqueta, FOB con Etiqueta)
+                    const panelTable = panel.querySelector('table');
+                    const thead = panelTable.querySelector('thead');
+                    const tfoot = panelTable.querySelector('tfoot');
+                    if(claseActual==='ANTICIPO VENTAS FOB CTG'){
+                        thead.innerHTML = `<tr><th>Número</th><th>Etiqueta</th><th>Fecha</th><th class='text-end'>COP$</th><th class='text-end'>Bbl</th><th class='text-end'>Gln</th><th class='text-end'>Ton</th></tr>`;
+                        tfoot.innerHTML = `<tr><th colspan='3'>Total</th><th class='text-end' id='facturas-cliente-total-cop'></th><th class='text-end' id='facturas-cliente-total-bbl'></th><th class='text-end' id='facturas-cliente-total-gln'></th><th class='text-end' id='facturas-cliente-total-ton'></th></tr>`;
+                    } else {
+                        thead.innerHTML = `<tr><th>Número</th><th>Fecha</th><th class='text-end'>COP$</th><th class='text-end'>Bbl</th><th class='text-end'>Gln</th><th class='text-end'>Ton</th></tr>`;
+                        tfoot.innerHTML = `<tr><th colspan='2'>Total</th><th class='text-end' id='facturas-cliente-total-cop'></th><th class='text-end' id='facturas-cliente-total-bbl'></th><th class='text-end' id='facturas-cliente-total-gln'></th><th class='text-end' id='facturas-cliente-total-ton'></th></tr>`;
+                    }
+                    if(!panel) return;
+                    tit.textContent = 'Facturas de '+cli;
+                    if(!arr.length){
+                        const colSpan = (claseActual==='ANTICIPO VENTAS FOB CTG')?7:6;
+                        tbody.innerHTML = `<tr><td colspan='${colSpan}' class='text-muted text-center'>Sin facturas cargadas</td></tr>`;
+                        document.getElementById('facturas-cliente-total-cop').textContent='';
+                        document.getElementById('facturas-cliente-total-bbl').textContent='';
+                        document.getElementById('facturas-cliente-total-gln').textContent='';
+                        document.getElementById('facturas-cliente-total-ton').textContent='';
+                    } else {
+                        let totalCop=0, totalBbl=0, totalGln=0, totalTon=0, hasBbl=false, hasGln=false, hasTon=false;
+                        tbody.innerHTML = arr.map(f=>{
+                            totalCop += f.valor||0; 
+                            totalBbl += f.bbl||0; if(f.bbl) hasBbl=true;
+                            totalGln += f.gln||0; if(f.gln) hasGln=true;
+                            totalTon += f.ton||0; if(f.ton) hasTon=true;
+                            
+                            if(claseActual==='ANTICIPO VENTAS FOB CTG'){
+                                return `<tr>
+                                    <td>${f.factura}</td>
+                                    <td>${f.etiqueta||''}</td>
+                                    <td>${f.fecha||''}</td>
+                                    <td class='text-end'>${currencyFormatter.format(f.valor||0)}</td>
+                                    <td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO') : ''}</td>
+                                    <td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO') : ''}</td>
+                                    <td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO') : ''}</td>
+                                </tr>`;
+                            }
+                            return `<tr>
+                                <td>${f.factura}</td>
+                                <td>${f.fecha||''}</td>
+                                <td class='text-end'>${currencyFormatter.format(f.valor||0)}</td>
+                                <td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO') : ''}</td>
+                                <td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO') : ''}</td>
+                                <td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO') : ''}</td>
+                            </tr>`;
+                        }).join('');
+                        
+                        document.getElementById('facturas-cliente-total-cop').textContent = currencyFormatter.format(totalCop);
+                        document.getElementById('facturas-cliente-total-bbl').textContent = hasBbl ? totalBbl.toLocaleString('es-CO') : '';
+                        document.getElementById('facturas-cliente-total-gln').textContent = hasGln ? totalGln.toLocaleString('es-CO') : '';
+                        document.getElementById('facturas-cliente-total-ton').textContent = hasTon ? totalTon.toLocaleString('es-CO') : '';
+                    }
+                    panel.classList.remove('d-none');
+                    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+                },
+                scales: {
+                    x: { 
+                        stacked: true,
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function(val, idx){
+                                // Obtener etiqueta original
+                                const label = this.getLabelForValue ? this.getLabelForValue(val) : (Array.isArray(val)? val.join(' '): val);
+                                if(!label) return '';
+                                const maxChars = 14; // caracteres por línea
+                                const words = label.split(' ');
+                                const lines = [];
+                                let line = '';
+                                words.forEach(w=>{
+                                    if((line + w).length > maxChars){
+                                        if(line) lines.push(line.trim());
+                                        line = w + ' ';
+                                    } else {
+                                        line += w + ' ';
+                                    }
+                                });
+                                if(line) lines.push(line.trim());
+                                // Limitar a 3 líneas y truncar con elipsis si excede
+                                if(lines.length > 3){
+                                    return lines.slice(0,2).concat('…');
+                                }
+                                return lines;
+                            }
+                        }
+                    },
+                    y: { stacked: true, ticks:{ callback: value=> currencyFormatter.format(value) } }
+                },
+                layout: { padding: { bottom: 10 } }
+            }
+        });
+    }
+
+    async function handleFacturacion(e){
+        const file = e.target.files[0];
+        if(!file) return;
+        const formData = new FormData();
+        formData.append('archivo_excel', file);
+        try{
+            const resp = await fetch('/api/procesar_facturacion', {method:'POST', body: formData});
+            const data = await resp.json();
+            if(!data.success) throw new Error(data.message||'Error procesando facturación');
+            
+            // Debug: Mostrar estructura de datos
+            console.log('Datos de facturación recibidos:', data);
+            if(data.facturas && data.facturas.length > 0) {
+                console.log('Primera factura:', data.facturas[0]);
+                console.log('Columnas disponibles en primera factura:', Object.keys(data.facturas[0]));
+            }
+            
+            facturasData = data.facturas||[];
+            facturasPorClienteBase = new Map();
+            facturasData.forEach(f=>{
+                const cli = (f.tercero||'SIN TERCERO').toUpperCase();
+                if(!facturasPorClienteBase.has(cli)) facturasPorClienteBase.set(cli, []);
+                facturasPorClienteBase.get(cli).push(f);
+            });
+            aplicarFiltrosFacturas();
+            if(currentView==='charts') recomputeTopClientesEXWFiltered();
+            renderFacturacionGlobal();
+        }catch(err){
+            alert('Error: '+err.message);
+        }
+    }
+    function precomputeBaseEXW(){
+        baseEXW = globalReportData && globalReportData.top_clientes_ventas_exw ? globalReportData.top_clientes_ventas_exw : null;
+    }
+    function recomputeTopClientesEXWFiltered(){
+        if(!globalReportData || !globalReportData.odoo_detalle){
+            renderTopClientesEXW(null); return;
+        }
+    // Reaplicar filtros de facturas por tiempo
+    aplicarFiltrosFacturas();
+    // Filtrar detalle por vista seleccionada
+        const detalle = globalReportData.odoo_detalle.filter(r=>{
+            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            return true;
+        });
+        updateChartClaseSubclaseOptions(detalle);
+        attachChartInternalFilters();
+        const selectedClaseRaw = chartClaseSelect ? chartClaseSelect.value : '';
+        const selectedClase = selectedClaseRaw.toUpperCase();
+        const selectedSubRaw = chartSubclaseSelect ? chartSubclaseSelect.value : '';
+        const selectedSub = selectedSubRaw.toUpperCase();
+        const incluirAmbas = !selectedClase; // modo Auto: combinar ambas permitidas
+        const exw = detalle.filter(r=> {
+            const claseDato = (r.clase||'').toUpperCase();
+            if(incluirAmbas){
+                if(!ALLOWED_CLASSES.includes(claseDato)) return false;
+            } else {
+                if(claseDato !== selectedClase) return false;
+            }
+            if(selectedSub && ( (r.subclase||'SIN SUBCLASE').toUpperCase() !== selectedSub)) return false;
+            return true;
+        });
+        if(exw.length===0){ renderTopClientesEXW({clientes:[], total_general:0}); return; }
+        const map = new Map();
+        exw.forEach(r=>{
+            const cli = r.tercero || 'SIN TERCERO';
+            const sub = r.subclase || 'SIN SUBCLASE';
+            const val = Number(r.debito||0);
+            if(!map.has(cli)) map.set(cli, new Map());
+            const inner = map.get(cli);
+            inner.set(sub, (inner.get(sub)||0)+val);
+        });
+        let arr = Array.from(map.entries()).map(([cli, inner])=>({
+            cliente: cli,
+            total: Array.from(inner.values()).reduce((a,b)=>a+b,0),
+            subclases: Array.from(inner.entries()).map(([sub,total])=>({subclase:sub,total}))
+        }));
+        arr.sort((a,b)=>b.total-a.total);
+        arr = arr.slice(0,10);
+    renderTopClientesEXW({clientes:arr,total_general:arr.reduce((a,c)=>a+c.total,0)});
+    renderFacturacionGlobal();
+    }
+
+    // ---- Graficas Ingresos / Egresos por Tipo de Flujo ----
+    function recomputeIngresoEgresoFlujoCharts(){
+        if(!globalReportData || !globalReportData.odoo_detalle) return;
+        const tfSelect = document.getElementById('tf-tercero-filter');
+        const claseSelect = document.getElementById('tf-tercero-clase-filter');
+        const tfFiltro = tfSelect ? (tfSelect.value||'').toUpperCase() : '';
+        const claseFiltro = claseSelect ? (claseSelect.value||'').toUpperCase() : '';
+        // Base filtrada por empresa/tiempo
+        const base = globalReportData.odoo_detalle.filter(r=>{
+            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            return true;
+        });
+        // Poblar tipos de flujo (siempre actualizar para reflejar filtros globales)
+        if(tfSelect){
+            const prev = tfSelect.value.toUpperCase();
+            const tipos = Array.from(new Set(base.map(r=> (r.tipo_flujo||'SIN TIPO').toUpperCase()))).sort();
+            tfSelect.innerHTML = '<option value="">(Todos)</option>'+tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
+            if(prev && tipos.includes(prev)) tfSelect.value = prev; else tfSelect.value='';
+            if(!tfSelect.dataset.eventsBound){
+                tfSelect.addEventListener('change', ()=>{ recomputeIngresoEgresoFlujoCharts(); });
+                tfSelect.dataset.eventsBound='1';
+            }
+        }
+        // Aplicar filtro de tipo flujo
+        const trasTipo = base.filter(r=> !tfFiltro || (r.tipo_flujo||'SIN TIPO').toUpperCase()===tfFiltro);
+        // Poblar clases a partir del subconjunto filtrado por tipo
+        if(claseSelect){
+            const prevClase = claseSelect.value.toUpperCase();
+            const clases = Array.from(new Set(trasTipo.map(r=> (r.clase||'SIN CLASE').toUpperCase()))).sort();
+            claseSelect.innerHTML = '<option value="">(Todas)</option>'+clases.map(c=>`<option value="${c}">${c}</option>`).join('');
+            if(prevClase && clases.includes(prevClase)) claseSelect.value = prevClase; else claseSelect.value='';
+            if(!claseSelect.dataset.eventsBound){
+                claseSelect.addEventListener('change', ()=>{ recomputeIngresoEgresoFlujoCharts(); });
+                claseSelect.dataset.eventsBound='1';
+            }
+        }
+        const detFiltrado = trasTipo.filter(r=> !claseFiltro || (r.clase||'SIN CLASE').toUpperCase()===claseFiltro);
+        // Agrupar por tercero
+        const ingresosMap = new Map();
+        const egresosMap = new Map();
+        detFiltrado.forEach(r=>{
+            const tercero = (r.tercero||'SIN TERCERO').toUpperCase();
+            const deb = Number(r.debito)||0;
+            const cred = Number(r.credito)||0;
+            if(deb>0) ingresosMap.set(tercero,(ingresosMap.get(tercero)||0)+deb);
+            if(cred>0) egresosMap.set(tercero,(egresosMap.get(tercero)||0)+cred);
+        });
+        let ingresosArr = Array.from(ingresosMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
+        let egresosArr = Array.from(egresosMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
+        renderTercerosChart('chartIngresosFlujo', ingresosArr, 'Débito', 'ingresos-flujo-total', ingresosArr.reduce((a,c)=>a+c[1],0));
+        renderTercerosChart('chartEgresosFlujo', egresosArr, 'Crédito', 'egresos-flujo-total', egresosArr.reduce((a,c)=>a+c[1],0));
+    }
+
+    function renderTercerosChart(canvasId, dataPairs, serieLabel, totalSpanId, total){
+        const canvas = document.getElementById(canvasId);
+        if(!canvas) return;
+        const span = document.getElementById(totalSpanId);
+        if(!dataPairs.length){
+            span.textContent = 'Sin datos';
+            if(canvas._chartInstance){ canvas._chartInstance.destroy(); canvas._chartInstance=null; }
+            return;
+        }
+        span.textContent = 'Total: '+currencyFormatter.format(total);
+        const labels = dataPairs.map(p=>p[0]);
+        const values = dataPairs.map(p=>p[1]);
+        const palette = ['#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754','#20c997','#0dcaf0','#6c757d','#343a40'];
+        if(canvas._chartInstance) canvas._chartInstance.destroy();
+        const ctx = canvas.getContext('2d');
+        canvas._chartInstance = new Chart(ctx, {
+            type:'bar',
+            data:{ labels, datasets:[{ label: serieLabel, data: values, backgroundColor: labels.map((_,i)=>palette[i%palette.length]) }] },
+            options:{
+                responsive:true,
+                plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=> serieLabel+': '+currencyFormatter.format(c.parsed.y||0) } } },
+                scales:{
+                    x:{
+                        ticks:{ display:false }, // ocultar etiquetas eje X para ganar espacio
+                        grid:{ display:false }
+                    },
+                    y:{ ticks:{ callback:v=>currencyFormatter.format(v) } }
+                },
+                layout:{ padding:{ bottom:0 } }
+            }
+        });
+    }
+
+    function renderFacturacionGlobal(){
+        const card = document.getElementById('facturacion-global-card');
+        if(!card) return;
+        const claseActual = chartClaseSelect ? (chartClaseSelect.value||'').toUpperCase() : '';
+    if(!['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'].includes(claseActual)){
+            card.style.display='none';
+            return;
+        }
+        if(!facturasPorCliente || facturasPorCliente.size===0){
+            card.style.display='none';
+            return;
+        }
+        const thead = document.getElementById('facturacion-global-thead');
+        const tfoot = document.getElementById('facturacion-global-tfoot');
+        const tbody = document.getElementById('facturacion-global-tbody');
+        const spanTotal = document.getElementById('facturacion-global-total');
+        const totalCopCell = document.getElementById('facturacion-global-total-cop');
+        const totalBblCell = document.getElementById('facturacion-global-total-bbl');
+        const totalGlnCell = document.getElementById('facturacion-global-total-gln');
+        const totalTonCell = document.getElementById('facturacion-global-total-ton');
+
+        let granTotalCop=0, granTotalBbl=0, granTotalGln=0, granTotalTon=0, anyBbl=false, anyGln=false, anyTon=false;
+        let filas = [];
+
+    if(claseActual === 'ANTICIPO VENTAS FOB CTG'){
+            // Agrupar por Cliente + Etiqueta
+            const mapa = new Map(); // key: cliente|| etiqueta
+            facturasPorCliente.forEach((lista, clienteUpper)=>{
+                lista.forEach(f=>{
+                    const etiqueta = (f.etiqueta||'').toString().trim() || 'SIN ETIQUETA';
+                    const key = clienteUpper+'||'+etiqueta;
+                    let obj = mapa.get(key);
+                    if(!obj){
+                        obj = {cliente:clienteUpper, etiqueta:etiqueta, cantidad:0, cop:0, bbl:0, gln:0, ton:0};
+                        mapa.set(key,obj);
+                    }
+                    obj.cantidad += 1;
+                    obj.cop += (f.valor||0);
+                    obj.bbl += (f.bbl||0);
+                    obj.gln += (f.gln||0);
+                    obj.ton += (f.ton||0);
+                });
+            });
+            filas = Array.from(mapa.values());
+            filas.forEach(r=>{
+                granTotalCop+=r.cop; 
+                granTotalBbl+=r.bbl; if(r.bbl>0) anyBbl=true;
+                granTotalGln+=r.gln; if(r.gln>0) anyGln=true;
+                granTotalTon+=r.ton; if(r.ton>0) anyTon=true;
+            });
+            filas.sort((a,b)=>b.cop-a.cop);
+            // Construir encabezado FOB con Etiqueta
+            thead.innerHTML = `<tr><th>Cliente</th><th>Etiqueta</th><th class='text-end'>Facturas</th><th class='text-end'>Total COP$</th><th class='text-end'>Total Bbl</th><th class='text-end'>Total Gln</th><th class='text-end'>Total Ton</th></tr>`;
+            tfoot.innerHTML = `<tr><th colspan='3' class='text-end'>Gran Total:</th><th class='text-end' id='facturacion-global-total-cop'></th><th class='text-end' id='facturacion-global-total-bbl'></th><th class='text-end' id='facturacion-global-total-gln'></th><th class='text-end' id='facturacion-global-total-ton'></th></tr>`;
+            tbody.innerHTML = filas.map(f=>`<tr><td>${f.cliente}</td><td>${f.etiqueta}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO'):''}</td></tr>`).join('');
+        } else { // VENTAS EXW CTG
+            facturasPorCliente.forEach((lista, clienteUpper)=>{
+                if(!lista.length) return;
+                const sumCop = lista.reduce((a,f)=>a+(f.valor||0),0);
+                const sumBbl = lista.reduce((a,f)=>a+(f.bbl||0),0);
+                const sumGln = lista.reduce((a,f)=>a+(f.gln||0),0);
+                const sumTon = lista.reduce((a,f)=>a+(f.ton||0),0);
+                granTotalCop += sumCop; 
+                granTotalBbl += sumBbl; if(sumBbl>0) anyBbl=true;
+                granTotalGln += sumGln; if(sumGln>0) anyGln=true;
+                granTotalTon += sumTon; if(sumTon>0) anyTon=true;
+                filas.push({cliente:clienteUpper, cantidad:lista.length, cop:sumCop, bbl:sumBbl, gln:sumGln, ton:sumTon});
+            });
+            filas.sort((a,b)=>b.cop-a.cop);
+            // Restaurar encabezado original EXW
+            thead.innerHTML = `<tr><th>Cliente</th><th class='text-end'>Facturas</th><th class='text-end'>Total COP$</th><th class='text-end'>Total Bbl</th><th class='text-end'>Total Gln</th><th class='text-end'>Total Ton</th></tr>`;
+            tfoot.innerHTML = `<tr><th colspan='2' class='text-end'>Gran Total:</th><th class='text-end' id='facturacion-global-total-cop'></th><th class='text-end' id='facturacion-global-total-bbl'></th><th class='text-end' id='facturacion-global-total-gln'></th><th class='text-end' id='facturacion-global-total-ton'></th></tr>`;
+            tbody.innerHTML = filas.map(f=>`<tr><td>${f.cliente}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO'):''}</td></tr>`).join('');
+        }
+
+        // Re-obtener referencias (tfoot replaced)
+        const newTotalCopCell = document.getElementById('facturacion-global-total-cop');
+        const newTotalBblCell = document.getElementById('facturacion-global-total-bbl');
+        const newTotalGlnCell = document.getElementById('facturacion-global-total-gln');
+        const newTotalTonCell = document.getElementById('facturacion-global-total-ton');
+
+    spanTotal.textContent = (claseActual==='ANTICIPO VENTAS FOB CTG'? 'Cliente / Etiqueta: ':'Clientes: ')+filas.length;
+        newTotalCopCell.textContent = currencyFormatter.format(granTotalCop);
+        newTotalBblCell.textContent = anyBbl? granTotalBbl.toLocaleString('es-CO'):'';
+        newTotalGlnCell.textContent = anyGln? granTotalGln.toLocaleString('es-CO'):'';
+        newTotalTonCell.textContent = anyTon? granTotalTon.toLocaleString('es-CO'):'';
+        card.style.display='block';
+    }
+
+    // Botón de alternar vistas
+    document.getElementById('toggle-view-btn').addEventListener('click', ()=>{
+        if(!globalReportData){return;}
+        if(currentView==='report'){
+            currentView='charts';
+            document.getElementById('report-output').classList.add('d-none');
+            document.getElementById('charts-view').classList.remove('d-none');
+            document.getElementById('toggle-view-btn').innerHTML='<i class="bi bi-table"></i><span>Ver Reporte</span>';
+            recomputeTopClientesEXWFiltered();
+            recomputeTopProveedoresEgresosFiltered();
+            recomputeIngresoEgresoFlujoCharts();
+        } else {
+            currentView='report';
+            document.getElementById('charts-view').classList.add('d-none');
+            document.getElementById('report-output').classList.remove('d-none');
+            document.getElementById('toggle-view-btn').innerHTML='<i class="bi bi-graph-up"></i><span>Ver Gráficos</span>';
+        }
+    });
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
  
 {% endblock %}
