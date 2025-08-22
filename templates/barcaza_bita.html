@@ -198,10 +198,10 @@
                                     <td>{{ fila.TK }}</td>
                                     <td>{{ fila.PRODUCTO }}</td>
                                     <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td> 
+                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S|default(0, true) }}</td> 
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -241,10 +241,10 @@
                                     <td>{{ fila.TK }}</td>
                                     <td>{{ fila.PRODUCTO }}</td>
                                     <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td> 
+                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
+                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S|default(0, true) }}</td> 
                                 </tr>
                                 {% else %}
                                 <tr>
@@ -292,17 +292,26 @@
             guardarBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
 
             try {
+                // Primero rellenar vacíos visibles con 0
+                document.querySelectorAll('.editable-cell').forEach(cell => {
+                    if (cell.textContent.trim() === '') cell.textContent = '0';
+                });
+
                 const datosAGuardar = [];
                 document.querySelectorAll(".barcaza-table tbody tr[data-tk]").forEach(fila => {
                     const celdas = fila.getElementsByTagName('td');
+                    const bls_60_raw = celdas[3].textContent.trim().replace(',', '.');
+                    const api_raw = celdas[4].textContent.trim().replace(',', '.');
+                    const bsw_raw = celdas[5].textContent.trim().replace(',', '.');
+                    const s_raw = celdas[6].textContent.trim().replace(',', '.');
                     datosAGuardar.push({
                         "TK": fila.dataset.tk,
                         "PRODUCTO": celdas[1].textContent.trim(),
                         "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.')) || 0,
-                        "BLS_60": celdas[3].textContent.trim().replace(',', '.'),
-                        "API": celdas[4].textContent.trim().replace(',', '.'),
-                        "BSW": celdas[5].textContent.trim().replace(',', '.'),
-                        "S": celdas[6].textContent.trim().replace(',', '.')
+                        "BLS_60": bls_60_raw === '' ? '0' : bls_60_raw,
+                        "API": api_raw === '' ? '0' : api_raw,
+                        "BSW": bsw_raw === '' ? '0' : bsw_raw,
+                        "S": s_raw === '' ? '0' : s_raw
                     });
                 });
 
@@ -337,6 +346,12 @@
                 guardarBtn.disabled = false;
                 guardarBtn.innerHTML = originalBtnText;
             }
+        });
+        // Autocompletar con 0 al salir de una celda vacía
+        document.querySelectorAll('.editable-cell').forEach(cell => {
+            cell.addEventListener('blur', () => {
+                if (cell.textContent.trim() === '') cell.textContent = '0';
+            });
         });
         
     });

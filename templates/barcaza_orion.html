@@ -92,10 +92,10 @@
                     <td>{{ fila.TK }}</td>
                     <td>{{ fila.PRODUCTO }}</td>
                     <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60 }}</td>
-                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API }}</td>
-                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW }}</td>
-                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
+                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S|default(0, true) }}</td>
                 </tr>
                 {% else %}
                 <tr>
@@ -188,7 +188,11 @@
     btn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
 
     const datosAGuardar = [];
-    let camposVacios = false;
+
+    // Rellenar celdas vacías con 0 antes de recolectar datos (seguridad)
+    document.querySelectorAll('.editable-cell').forEach(cell => {
+        if (cell.textContent.trim() === '') cell.textContent = '0';
+    });
 
     document.querySelectorAll(".barcaza-table tbody tr").forEach(fila => {
         if (!fila.dataset.tk) return; 
@@ -197,13 +201,16 @@
         const tkCompleto = fila.dataset.tk;
         const celdas = fila.getElementsByTagName('td');
 
-        // Validar que los campos editables no estén vacíos
-        const bls_60 = celdas[3].textContent.trim().replace(',', '.');
-        const api = celdas[4].textContent.trim().replace(',', '.');
-        const bsw = celdas[5].textContent.trim().replace(',', '.');
-        const s = celdas[6].textContent.trim().replace(',', '.');
+        // Tomar valores; si quedaron vacíos los convertimos a '0'
+        const bls_60_raw = celdas[3].textContent.trim().replace(',', '.');
+        const api_raw = celdas[4].textContent.trim().replace(',', '.');
+        const bsw_raw = celdas[5].textContent.trim().replace(',', '.');
+        const s_raw = celdas[6].textContent.trim().replace(',', '.');
 
-        if (!bls_60 || !api || !bsw || !s) camposVacios = true;
+        const bls_60 = bls_60_raw === '' ? '0' : bls_60_raw;
+        const api = api_raw === '' ? '0' : api_raw;
+        const bsw = bsw_raw === '' ? '0' : bsw_raw;
+        const s = s_raw === '' ? '0' : s_raw;
 
         datosAGuardar.push({
             "TK": tkCompleto,
@@ -216,13 +223,6 @@
             "grupo": grupo
         });
     });
-
-    if (camposVacios) {
-        mostrarAlerta('❌ Todos los campos deben estar llenos.', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
-        return;
-    }
 
     try {
         const response = await fetch("{{ url_for('guardar_registro_barcaza') }}", {
@@ -250,6 +250,14 @@
         btn.innerHTML = '<i class="bi bi-save2-fill"></i> Guardar Registro';
     }
 });
+    // Autocompletar con 0 cuando el usuario deja una celda editable vacía al perder el foco
+    document.querySelectorAll('.editable-cell').forEach(cell => {
+        cell.addEventListener('blur', () => {
+            if (cell.textContent.trim() === '') {
+                cell.textContent = '0';
+            }
+        });
+    });
     // =================================================================
     //  FUNCIÓN PARA MOSTRAR ALERTAS (notificaciones)
     // =================================================================
