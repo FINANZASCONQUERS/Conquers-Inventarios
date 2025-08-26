@@ -81,43 +81,21 @@
                 <label for="empresa-filter" class="form-label filter-label">Empresa</label>
                 <select id="empresa-filter" class="form-select filter-select"></select>
             </div>
-            <div class="col-4 col-md-2" id="year-filter-wrapper" style="display:none;">
-                <label for="year-filter" class="form-label filter-label">Año</label>
-                <select id="year-filter" class="form-select filter-select"></select>
+            <div class="col-12 col-md-3" id="banco-filter-container" style="display:none;">
+                <label for="banco-filter" class="form-label filter-label">Tipo Banco</label>
+                <select id="banco-filter" class="form-select filter-select"></select>
             </div>
-            <div class="col-4 col-md-2" id="quarter-filter-wrapper" style="display:none;">
-                <label for="quarter-filter" class="form-label filter-label">Trimestre</label>
-                <select id="quarter-filter" class="form-select filter-select">
-                    <option value="">(Todos)</option>
-                    <option value="Q1">Q1</option>
-                    <option value="Q2">Q2</option>
-                    <option value="Q3">Q3</option>
-                    <option value="Q4">Q4</option>
-                </select>
+            <div class="col-6 col-md-2" id="fecha-inicio-wrapper" style="display:none;">
+                <label for="fecha-inicio" class="form-label filter-label">Fecha Inicio</label>
+                <input type="date" id="fecha-inicio" class="form-control form-control-sm filter-select" />
             </div>
-            <div class="col-4 col-md-2" id="month-filter-wrapper" style="display:none;">
-                <label for="month-filter" class="form-label filter-label">Mes</label>
-                <select id="month-filter" class="form-select filter-select">
-                    <option value="">(Todos)</option>
-                    <option value="01">Enero</option>
-                    <option value="02">Febrero</option>
-                    <option value="03">Marzo</option>
-                    <option value="04">Abril</option>
-                    <option value="05">Mayo</option>
-                    <option value="06">Junio</option>
-                    <option value="07">Julio</option>
-                    <option value="08">Agosto</option>
-                    <option value="09">Septiembre</option>
-                    <option value="10">Octubre</option>
-                    <option value="11">Noviembre</option>
-                    <option value="12">Diciembre</option>
-                </select>
+            <div class="col-6 col-md-2" id="fecha-fin-wrapper" style="display:none;">
+                <label for="fecha-fin" class="form-label filter-label">Fecha Fin</label>
+                <input type="date" id="fecha-fin" class="form-control form-control-sm filter-select" />
             </div>
-            <div class="col-4 col-md-2" id="day-filter-wrapper" style="display:none;">
-                <label for="day-filter" class="form-label filter-label">Día</label>
-                <select id="day-filter" class="form-select filter-select">
-                    <option value="">(Todos)</option>
-                </select>
+            <div class="col-12 col-md-2" id="mes-completo-wrapper" style="display:none;">
+                <label for="mes-completo" class="form-label filter-label">Mes Completo</label>
+                <input type="month" id="mes-completo" class="form-control form-control-sm filter-select" />
             </div>
             <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end">
                 <button id="btn-reset-filtros" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
@@ -363,9 +341,10 @@
         if(btnToggle){ btnToggle.addEventListener('click', ()=>{ panel.style.display = (panel.style.display==='none'||panel.style.display==='')?'block':'none'; }); }
         if(btnHide){ btnHide.addEventListener('click', ()=> panel.style.display='none'); }
         if(btnReset){ btnReset.addEventListener('click', ()=>{
-            globalEmpresaSeleccionada=''; globalYear=''; globalQuarter=''; globalMonth=''; globalDay='';
-            ['empresa-filter','year-filter','quarter-filter','month-filter','day-filter'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+            globalEmpresaSeleccionada=''; globalTipoBancoSeleccionado=''; globalFechaInicio=''; globalFechaFin='';
+            ['empresa-filter','banco-filter','fecha-inicio','fecha-fin'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
             renderReport(globalReportData);
+            updateBancoFilter(globalReportData);
         }); }
     })();
 
@@ -436,6 +415,7 @@
                 <tr>
                     <td>${row.fecha}</td>
                     <td>${empresa}</td>
+                    <td>${row.tipo_banco || ''}</td>
                     <td class="text-end">${currencyFormatter.format(row.ingresos_bancos)}</td>
                     <td class="text-end">${currencyFormatter.format(row.ingresos_odoo)}</td>
                     <td class="text-end ${diffIngresosClass}">${currencyFormatter.format(row.diferencia_ingresos)}</td>
@@ -464,6 +444,7 @@
                             <tr>
                                 <th rowspan="2" class="align-middle">Fecha</th>
                                 <th rowspan="2" class="align-middle">Empresa</th>
+                                <th rowspan="2" class="align-middle">Tipo Banco</th>
                                 <th colspan="3">Ingresos</th>
                                 <th colspan="3">Egresos</th>
                             </tr>
@@ -476,6 +457,7 @@
                         <tfoot class="table-group-divider">
                             <tr class="fw-bold">
                                 <td>TOTALES</td>
+                                <td></td>
                                 <td></td>
                                 <td class="text-end">${currencyFormatter.format(totalIngresosBancos)}</td>
                                 <td class="text-end">${currencyFormatter.format(totalIngresosOdoo)}</td>
@@ -494,11 +476,17 @@
 
     let globalReportData = null;
     let globalEmpresaSeleccionada = '';
+    let globalTipoBancoSeleccionado = '';
     let globalYear = '';
     let globalQuarter = '';
     let globalMonth = '';
     let globalDay = '';
     let currentView = 'report'; // 'report' | 'charts'
+    let globalFechaInicio = '';
+    let globalFechaFin = '';
+    // Nuevos contenedores para guardar los resúmenes filtrados de ingresos/egresos (por tipo de flujo)
+    let globalFilteredInflowsByType = null;
+    let globalFilteredOutflowsByType = null;
 
 
     function updateEmpresaFilter(empresas) {
@@ -516,105 +504,97 @@
         select.onchange = function() {
             globalEmpresaSeleccionada = select.value;
             renderReport(globalReportData);
+            updateBancoFilter(globalReportData); // refrescar lista de bancos dependiente de empresa
+        };
+    }
+
+    function updateBancoFilter(data){
+        const container = document.getElementById('banco-filter-container');
+        const select = document.getElementById('banco-filter');
+        if(!data || !Array.isArray(data.daily_comparison) || data.daily_comparison.length===0){
+            container.style.display='none';
+            return;
+        }
+        // Filtrar set de bancos según empresa seleccionada (para relevancia)
+        let rows = data.daily_comparison;
+        if (globalEmpresaSeleccionada){
+            rows = rows.filter(r => (r.empresa || r.Empresa) === globalEmpresaSeleccionada);
+        }
+        const bancos = [...new Set(rows.map(r => (r.tipo_banco||'').trim()).filter(x=>x))].sort();
+        select.innerHTML = '<option value="">(Todos)</option>' + bancos.map(b=>`<option value="${b}">${b}</option>`).join('');
+        container.style.display='';
+        if(globalTipoBancoSeleccionado){
+            // Si la selección ya no existe (cambio de empresa) limpiar
+            if(!bancos.includes(globalTipoBancoSeleccionado)) globalTipoBancoSeleccionado='';
+            select.value = globalTipoBancoSeleccionado;
+        }
+        select.onchange = function(){
+            globalTipoBancoSeleccionado = select.value;
+            renderReport(globalReportData);
         };
     }
 
     // --- Filtros de Tiempo ---
     function updateTimeFilters(data) {
-        const panel = document.getElementById('panel-filtros-avanzados');
-        const yearSelect = document.getElementById('year-filter');
-        const quarterSelect = document.getElementById('quarter-filter');
-        const monthSelect = document.getElementById('month-filter');
-        const daySelect = document.getElementById('day-filter');
-        if (!data || !data.daily_comparison || data.daily_comparison.length === 0) {
-            if(panel) panel.style.display = 'none';
-            return;
-        }
-        // Extraer años únicos
-        const years = [...new Set(data.daily_comparison.map(row => row.fecha.slice(0,4)))].sort();
-        yearSelect.innerHTML = '<option value="">(Todos)</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
-        // Mantener selección
-        if (globalYear) yearSelect.value = globalYear;
-        // Evento de cambio
-        yearSelect.onchange = function() {
-            globalYear = yearSelect.value;
-            globalQuarter=''; if(quarterSelect) quarterSelect.value='';
-            globalMonth = '';
-            globalDay = '';
-            monthSelect.value = '';
-            daySelect.value = '';
-            renderReport(globalReportData);
-            updateDayOptions();
-        };
-        if(quarterSelect){
-            if(globalQuarter) quarterSelect.value=globalQuarter;
-            quarterSelect.onchange = function(){
-                globalQuarter = quarterSelect.value;
-                if(globalQuarter){ globalMonth=''; monthSelect.value=''; globalDay=''; daySelect.value=''; }
-                renderReport(globalReportData);
-                updateDayOptions();
-            };
-        }
-        monthSelect.onchange = function() {
-            globalMonth = monthSelect.value;
-            if(globalMonth){ globalQuarter=''; if(quarterSelect) quarterSelect.value=''; }
-            globalDay = '';
-            daySelect.value = '';
-            renderReport(globalReportData);
-            updateDayOptions();
-        };
-        daySelect.onchange = function() {
-            globalDay = daySelect.value;
-            renderReport(globalReportData);
-        };
-        // Llenar días según año y mes
-        function updateDayOptions() {
-            let days = [];
-            if(globalYear){
-                let pool = data.daily_comparison.filter(r=> r.fecha.startsWith(globalYear));
-                if(globalQuarter){
-                    const qm = quarterMonths(globalQuarter);
-                    pool = pool.filter(r=> qm.includes(r.fecha.slice(5,7)));
-                } else if(globalMonth){
-                    pool = pool.filter(r=> r.fecha.slice(5,7)===globalMonth);
-                }
-                if(globalQuarter || globalMonth){
-                    days = [...new Set(pool.map(r=> r.fecha.slice(8,10)))].sort();
-                }
+        const fechaInicioInput = document.getElementById('fecha-inicio');
+        const fechaFinInput = document.getElementById('fecha-fin');
+        const mesCompletoInput = document.getElementById('mes-completo');
+        if (!data || !data.daily_comparison || data.daily_comparison.length === 0) return;
+        document.getElementById('fecha-inicio-wrapper').style.display='block';
+        document.getElementById('fecha-fin-wrapper').style.display='block';
+        document.getElementById('mes-completo-wrapper').style.display='block';
+        function syncDateRange(){
+            globalFechaInicio = fechaInicioInput.value;
+            globalFechaFin = fechaFinInput.value;
+            if(mesCompletoInput && (fechaInicioInput.value==='' && fechaFinInput.value==='')){
+                mesCompletoInput.value=''; // limpiar mes si el usuario borra manualmente las fechas
             }
-            daySelect.innerHTML = '<option value="">(Todos)</option>' + days.map(d => `<option value="${d}">${d}</option>`).join('');
-            if (globalDay) daySelect.value = globalDay;
+            renderReport(globalReportData);
         }
-        updateDayOptions();
-        document.getElementById('year-filter-wrapper').style.display='block';
-        const qWrap = document.getElementById('quarter-filter-wrapper'); if(qWrap) qWrap.style.display='block';
-        document.getElementById('month-filter-wrapper').style.display='block';
-        document.getElementById('day-filter-wrapper').style.display='block';
+        if(fechaInicioInput) fechaInicioInput.onchange = syncDateRange;
+        if(fechaFinInput) fechaFinInput.onchange = syncDateRange;
+        if(mesCompletoInput) mesCompletoInput.onchange = function(){
+            const val = mesCompletoInput.value; // formato YYYY-MM
+            if(!val){
+                globalFechaInicio='';
+                globalFechaFin='';
+                if(fechaInicioInput) fechaInicioInput.value='';
+                if(fechaFinInput) fechaFinInput.value='';
+                renderReport(globalReportData);
+                return;
+            }
+            const [yy, mm] = val.split('-');
+            const first = yy+'-'+mm+'-01';
+            const lastDay = new Date(Number(yy), Number(mm), 0).getDate(); // mes siguiente día 0
+            const last = yy+'-'+mm+'-'+String(lastDay).padStart(2,'0');
+            globalFechaInicio = first;
+            globalFechaFin = last;
+            if(fechaInicioInput) fechaInicioInput.value = first;
+            if(fechaFinInput) fechaFinInput.value = last;
+            renderReport(globalReportData);
+        };
     }
 
 
-    function quarterMonths(q){
-        if(!q) return [];
-        return q==='Q1'?['01','02','03']: q==='Q2'?['04','05','06']: q==='Q3'?['07','08','09']: q==='Q4'?['10','11','12']:[];
-    }
     function filterDataByEmpresaYTiempo(data, empresa, year, month, day) {
         // Filtrar daily_comparison
     let filteredDaily = data.daily_comparison || [];
     if (empresa) filteredDaily = filteredDaily.filter(row => (row.empresa || row.Empresa) === empresa);
-        if (year) filteredDaily = filteredDaily.filter(row => row.fecha.startsWith(year));
-        if (globalQuarter){ const qm = quarterMonths(globalQuarter); filteredDaily = filteredDaily.filter(r=> qm.includes(r.fecha.slice(5,7))); }
-        else if (month) filteredDaily = filteredDaily.filter(row => row.fecha.slice(5,7) === month);
-        if (day) filteredDaily = filteredDaily.filter(row => row.fecha.slice(8,10) === day);
+        if (globalTipoBancoSeleccionado) filteredDaily = filteredDaily.filter(row => (row.tipo_banco||'').trim() === globalTipoBancoSeleccionado);
+        // Prioridad: rango de fechas si está definido
+        if(globalFechaInicio){ filteredDaily = filteredDaily.filter(r => r.fecha >= globalFechaInicio); }
+        if(globalFechaFin){ filteredDaily = filteredDaily.filter(r => r.fecha <= globalFechaFin); }
+    // si no hay rango, no se aplica filtro adicional (filtros antiguos eliminados)
 
         // Nuevo filtrado para detalle completo
         function filterDetalle(det) {
             if (!Array.isArray(det)) return [];
             return det.filter(r => {
                 if (empresa && r.empresa !== empresa) return false;
-                if (year && !r.fecha.startsWith(year)) return false;
-                if (globalQuarter){ const qm=quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-                else if (month && r.fecha.slice(5,7) !== month) return false;
-                if (day && r.fecha.slice(8,10) !== day) return false;
+                if (globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+                if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
+                if(globalFechaFin && r.fecha > globalFechaFin) return false;
+                // (filtros año/mes/día eliminados)
                 return true;
             });
         }
@@ -642,32 +622,94 @@
     }
 
     function recomputeResumenFiltered(filteredDaily, bancosMovs, inflowsResumen, outflowsResumen) {
-        // Determinar fechas visibles (para limitar saldo inicial a la primera fecha visible)
-        const fechas = [...new Set(filteredDaily.map(r=>r.fecha))].sort();
-        const fechaMin = fechas[0];
-        const empresasSet = new Set(filteredDaily.map(r=>r.empresa||r.Empresa));
-        // Filtrar movimientos bancos por empresa y rango fechas visibles (si hay filtros)
-        const movs = (bancosMovs||[]).filter(m => {
-            if (empresasSet.size>0 && !empresasSet.has(m.empresa)) return false;
-            if (fechaMin && m.fecha < fechaMin) return false; // saldo inicial solo desde primera fecha mostrada
-            if (globalYear && !m.fecha.startsWith(globalYear)) return false;
-            if (globalQuarter){ const qm=quarterMonths(globalQuarter); if(!qm.includes(m.fecha.slice(5,7))) return false; }
-            else if (globalMonth && m.fecha.slice(5,7)!==globalMonth) return false;
-            if (globalDay && m.fecha.slice(8,10)!==globalDay) return false;
+        // Saldo inicial = suma de todos los bancos del PRIMER DIA de CADA MES visible (o primer día disponible si falta el 01)
+        // Respeta filtro de empresa; ignora filtro de tipo banco.
+        // Si hay rango de fechas, solo meses dentro del rango.
+        const empresasSet = new Set(filteredDaily.map(r=> r.empresa || r.Empresa));
+        const movimientos = bancosMovs || [];
+        // Construir set de meses visibles a partir de daily (si hay) o de movimientos de saldo inicial.
+        let mesesVisibles = new Set();
+        if(filteredDaily.length){
+            filteredDaily.forEach(r=> mesesVisibles.add(r.fecha.slice(0,7)));
+        } else {
+            movimientos.filter(m=>m.clasificacion==='saldo_inicial').forEach(m=> mesesVisibles.add(m.fecha.slice(0,7)));
+        }
+        // Aplicar rango de fechas (si existe) sobre meses visibles
+        if(globalFechaInicio){
+            const mesInicio = globalFechaInicio.slice(0,7);
+            mesesVisibles = new Set([...mesesVisibles].filter(m=> m >= mesInicio));
+        }
+        if(globalFechaFin){
+            const mesFin = globalFechaFin.slice(0,7);
+            mesesVisibles = new Set([...mesesVisibles].filter(m=> m <= mesFin));
+        }
+        let saldoInicial = 0;
+        // Por cada mes visible: sumar saldo_inicial del día 01; si no existe, usar primer día disponible de ese mes.
+        [...mesesVisibles].sort().forEach(mes => {
+            const primerDia = mes+'-01';
+            // Filtrar movimientos de ese mes
+            const movMes = movimientos.filter(m=> m.fecha.startsWith(mes) && m.clasificacion==='saldo_inicial' && (!empresasSet.size || empresasSet.has(m.empresa)));
+            if(!movMes.length) return; // nada para ese mes
+            const exactos = movMes.filter(m=> m.fecha===primerDia);
+            const candidatos = exactos.length ? exactos : movMes.sort((a,b)=> a.fecha.localeCompare(b.fecha)).slice(0, movMes.length); // si no hay 01, usar todos (luego filtramos primer día disponible)
+            let fechaBase = primerDia;
+            if(!exactos.length){
+                // obtener menor fecha del mes
+                fechaBase = movMes.map(m=>m.fecha).sort()[0];
+            }
+            // Sumar todos los registros de saldo_inicial de esa fecha base
+            candidatos.forEach(m=>{
+                if(m.fecha===fechaBase){ saldoInicial += m.monto; }
+            });
+        });
+        // Ingresos / Egresos dentro del rango de fechas seleccionado (si hay)
+        const movsOperativos = movimientos.filter(m=>{
+            if(empresasSet.size>0 && !empresasSet.has(m.empresa)) return false;
+            if(globalFechaInicio && m.fecha < globalFechaInicio) return false;
+            if(globalFechaFin && m.fecha > globalFechaFin) return false;
             return true;
         });
-        let saldoInicial = 0, ingresos=0, egresos=0;
-        movs.forEach(m=>{
-            if (m.clasificacion==='saldo_inicial') saldoInicial += m.monto;
-            else if (m.clasificacion==='ingreso') ingresos += m.monto;
-            else if (m.clasificacion==='egreso') egresos += Math.abs(m.monto);
+        let ingresos=0, egresos=0;
+        movsOperativos.forEach(m=>{
+            if(m.clasificacion==='ingreso') ingresos += m.monto;
+            else if(m.clasificacion==='egreso') egresos += Math.abs(m.monto);
         });
+        // Sumar GMF: intentar primero desde outflowsResumen (claves que contengan GMF),
+        // si no hay, derivar desde detalle_filtrado (créditos cuyo movimiento contenga GMF)
+        let egresosGMF = 0;
+        let foundFromResumen = false;
+        if(outflowsResumen){
+            Object.keys(outflowsResumen).forEach(tf=>{
+                if(/gmf/i.test(tf)){
+                    Object.values(outflowsResumen[tf]).forEach(v=> egresosGMF += v);
+                    foundFromResumen = true;
+                }
+            });
+        }
+        if(!foundFromResumen){
+            // Intentar sumar desde movimientos bancos clasificados como egreso_gmf
+            movsOperativos.forEach(m=>{
+                if(m.clasificacion==='egreso_gmf') egresosGMF += Math.abs(m.monto);
+            });
+            if(egresosGMF===0){
+                // Buscar en detalle filtrado globalReportData.odoo_detalle como fallback
+                const det = (globalReportData && Array.isArray(globalReportData.odoo_detalle)) ? globalReportData.odoo_detalle : [];
+                det.forEach(r=>{
+                    if(r && typeof r.movimiento === 'string' && /gmf/i.test(r.movimiento)){
+                        const val = (typeof r.credito === 'number') ? r.credito : 0;
+                        egresosGMF += val;
+                    }
+                });
+            }
+        }
         return {
             saldo_inicial: saldoInicial,
             ingresos: ingresos,
             saldo_antes_egresos: saldoInicial + ingresos,
             egresos: egresos,
-            saldo_final: saldoInicial + ingresos - egresos,
+            egresos_gmf: egresosGMF,
+            egresos_total: egresos + egresosGMF,
+            saldo_final: saldoInicial + ingresos - (egresos + egresosGMF),
             inflows_by_type: inflowsResumen,
             outflows_by_type: outflowsResumen
         };
@@ -698,7 +740,19 @@
             filtered.inflows_by_type,
             filtered.outflows_by_type
         );
+    // Guardar breakdowns filtrados para usarlos en el modal/tabla de detalle
+    globalFilteredInflowsByType = filtered.inflows_by_type;
+    globalFilteredOutflowsByType = filtered.outflows_by_type;
         renderResumenDirecto(resumenFiltered, true);
+        // Si los breakdowns están visibles, refrescarlos en caliente
+        const ingresosRow = document.getElementById('breakdown-ingresos');
+        if(ingresosRow && !ingresosRow.classList.contains('d-none')){
+            showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, true);
+        }
+        const egresosRow = document.getElementById('breakdown-egresos');
+        if(egresosRow && !egresosRow.classList.contains('d-none')){
+            showBreakdown('egresos', globalFilteredOutflowsByType || globalReportData.outflows_by_type, true);
+        }
         if(currentView==='charts'){
             recomputeTopClientesEXWFiltered();
             recomputeTopProveedoresEgresosFiltered();
@@ -712,7 +766,8 @@
             data.daily_comparison = data.daily_comparison.map(r => ({...r, empresa: r.empresa || r.Empresa || ''}));
         }
         globalReportData = data;
-        updateEmpresaFilter(data.todas_las_empresas);
+    updateEmpresaFilter(data.todas_las_empresas);
+    updateBancoFilter(data);
         updateTimeFilters(data);
         renderReport(data);
         document.getElementById('report-output').classList.remove('d-none');
@@ -754,8 +809,8 @@
                 <div class="card text-white bg-danger h-100 shadow-sm position-relative">
                     <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-1" data-breakdown="egresos" title="Ver detalle">+</button>
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Egresos${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.egresos||0)}</div>
+                        <div class="small fw-semibold">Egresos (+GMF)${filtered?' (F)':''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format((resumen.egresos_total!=null)?resumen.egresos_total: (resumen.egresos||0)+(resumen.egresos_gmf||0))}</div>
                     </div>
                 </div>
             </div>
@@ -777,8 +832,12 @@
         document.querySelectorAll('[data-breakdown]')
             .forEach(btn => btn.addEventListener('click', () => {
                 const tipo = btn.getAttribute('data-breakdown');
-                if (tipo === 'ingresos') showBreakdown('ingresos', globalReportData.inflows_by_type, 'Débito');
-                else if (tipo === 'egresos') showBreakdown('egresos', globalReportData.outflows_by_type, 'Crédito');
+                // Usar siempre las estructuras filtradas si existen
+                if (tipo === 'ingresos') {
+                    showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, 'Débito');
+                } else if (tipo === 'egresos') {
+                    showBreakdown('egresos', globalFilteredOutflowsByType || globalReportData.outflows_by_type, 'Crédito');
+                }
             }));
         document.querySelectorAll('[data-close-breakdown]')
             .forEach(btn => btn.addEventListener('click', () => {
@@ -788,7 +847,7 @@
             }));
     }
 
-    function showBreakdown(tipo, nested) {
+    function showBreakdown(tipo, nested, skipScroll) {
         const row = document.getElementById(`breakdown-${tipo}`);
         const tbody = document.getElementById(`tbody-breakdown-${tipo}`);
         if (!nested || !tbody) return;
@@ -801,7 +860,9 @@
             }).join('');
         tbody.innerHTML = rows || '<tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>';
         row.classList.remove('d-none');
-        row.scrollIntoView({behavior:'smooth', block:'center'});
+        if(!skipScroll){
+            row.scrollIntoView({behavior:'smooth', block:'center'});
+        }
     }
 
     // ------ GRAFICA TOP CLIENTES VENTAS EXW CTG ------
@@ -1299,10 +1360,18 @@
         // Base filtrada por empresa/tiempo
         const base = globalReportData.odoo_detalle.filter(r=>{
             if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
-            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            // Rango de fechas (prioritario)
+            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            // (Compatibilidad con antiguos filtros año/mes si en algún lugar se reactivan)
+            if(!globalFechaInicio && !globalFechaFin){
+                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            }
+            // Filtro de tipo banco (coincide con daily_comparison en campo tipo_banco -> aquí 'banco')
+            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         // Poblar tipos de flujo (siempre actualizar para reflejar filtros globales)

@@ -13,6 +13,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 import pytz
 import pandas as pd
+import uuid
+import re
 from flask import g
 from flask import Response
 from weasyprint import HTML, CSS
@@ -548,6 +550,10 @@ def _ensure_refineria_completion_column():
     from sqlalchemy import inspect, text
     with app.app_context():
         insp = inspect(db.engine)
+        # Evitar error si la tabla aún no existe (por ejemplo, primera vez o DB recién borrada)
+        if 'programacion_cargue' not in insp.get_table_names():
+            print("[INIT] Tabla 'programacion_cargue' no existe todavía; se omite verificación de columna 'refineria_completado_en'. Ejecuta migraciones o crea las tablas primero.")
+            return
         cols = [c['name'] for c in insp.get_columns('programacion_cargue')]
         if 'refineria_completado_en' not in cols:
             try:
@@ -653,6 +659,7 @@ class FlujoBancoMovimiento(db.Model):
     empresa = db.Column(db.String(120), index=True)
     movimiento = db.Column(db.Text)
     monto = db.Column(db.Float)  # valor COP$
+    banco = db.Column(db.String(120), index=True)
     unique_hash = db.Column(db.String(64), unique=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
@@ -670,6 +677,7 @@ class FlujoOdooMovimiento(db.Model):
     rubro = db.Column(db.String(200))
     clase = db.Column(db.String(200))
     subclase = db.Column(db.String(200))
+    banco = db.Column(db.String(120), index=True)
     unique_hash = db.Column(db.String(64), unique=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
@@ -5043,7 +5051,7 @@ def flujo_efectivo():
 @permiso_requerido('flujo_efectivo')
 @app.route('/api/procesar_flujo_efectivo', methods=['POST'])
 def procesar_flujo_efectivo_api():
-    """Procesa Excel, guarda filas nuevas (bancos/odoo) evitando duplicados por hash y responde dataset completo persistido."""
+    """Procesa Excel y persiste TODOS los movimientos (bancos/odoo) sin eliminar duplicados. Responde dataset completo persistido."""
     if 'archivo_excel' not in request.files:
         return jsonify(success=False, message="No se encontró el archivo en la solicitud."), 400
     archivo = request.files['archivo_excel']
@@ -5061,6 +5069,22 @@ def procesar_flujo_efectivo_api():
         # Normalizar nombres de columnas (trim)
         df_bancos.columns = df_bancos.columns.str.strip()
         df_odoo.columns = df_odoo.columns.str.strip()
+
+        # --- NUEVO: detectar y normalizar columna de Banco aunque venga con otro nombre ---
+        def _ensure_banco_col(df):
+            if 'Banco' in df.columns:
+                return
+            # Posibles variantes que han aparecido en archivos reales
+            variantes = {
+                'banco','bancos','tipo banco','tipo_banco','banco/cuenta','banco - cuenta',
+                'cuenta','cuenta bancaria','entidad','entidad financiera','banco cuenta'
+            }
+            for c in df.columns:
+                if c.strip().lower() in variantes:
+                    df.rename(columns={c: 'Banco'}, inplace=True)
+                    return
+        _ensure_banco_col(df_bancos)
+        _ensure_banco_col(df_odoo)
 
         # Validar columnas mínimas
         required_bancos = {'FECHA DE OPERACIÓN', 'Movimiento', 'COP$', 'Empresa'}
@@ -5084,46 +5108,58 @@ def procesar_flujo_efectivo_api():
         df_odoo['Débito'] = clean_numeric(df_odoo['Débito'])
         df_odoo['Crédito'] = clean_numeric(df_odoo['Crédito'])
 
+        # Normalizar variantes de EGRESO GMF -> EGRESO_GMF (soporta espacios, guiones o múltiples separadores)
+        def _norm_mov(txt: str):
+            if not isinstance(txt, str):
+                return txt
+            t = txt.strip()
+            if re.search(r'EGRESO\s*[_\-]?\s*GMF', t, re.IGNORECASE):
+                return 'EGRESO_GMF'
+            return t
+        if 'Movimiento' in df_bancos.columns:
+            df_bancos['Movimiento'] = df_bancos['Movimiento'].astype(str).apply(_norm_mov)
+        if 'Movimiento' in df_odoo.columns:
+            df_odoo['Movimiento'] = df_odoo['Movimiento'].astype(str).apply(_norm_mov)
+
         # Fechas seguras
         df_bancos['FECHA DE OPERACIÓN'] = pd.to_datetime(df_bancos['FECHA DE OPERACIÓN'], errors='coerce')
         df_bancos = df_bancos.dropna(subset=['FECHA DE OPERACIÓN'])
         df_odoo['Fecha'] = pd.to_datetime(df_odoo['Fecha'], errors='coerce')
         df_odoo = df_odoo.dropna(subset=['Fecha'])
 
-        # Ingresos y egresos por fecha y Empresa (filtrando por Movimiento)
-        # Bancos - ingresos
+        # Normalizar columnas Banco (ambas hojas pueden o no traerla). Si no existe se crea vacía para tener consistencia.
+        if 'Banco' not in df_bancos.columns:
+            df_bancos['Banco'] = ''
+        if 'Banco' not in df_odoo.columns:
+            df_odoo['Banco'] = ''
+        df_bancos['Banco'] = df_bancos['Banco'].fillna('').astype(str)
+        df_odoo['Banco'] = df_odoo['Banco'].fillna('').astype(str)
+
+        # Ingresos / Egresos agrupando por Banco también
         mask_b_ing = df_bancos['Movimiento'].str.contains('INGRESO', case=False, na=False)
-        ing_b = df_bancos.loc[mask_b_ing].copy()
-        ing_b['fecha'] = ing_b['FECHA DE OPERACIÓN'].dt.date
-        bancos_ingresos = ing_b.groupby(['fecha', 'Empresa'])['COP$'].sum().reset_index().rename(columns={'COP$': 'ingresos_bancos'})
-
-        # Bancos - egresos
+        ing_b = df_bancos.loc[mask_b_ing].copy(); ing_b['fecha'] = ing_b['FECHA DE OPERACIÓN'].dt.date
+        bancos_ingresos = ing_b.groupby(['fecha', 'Empresa', 'Banco'])['COP$'].sum().reset_index().rename(columns={'COP$': 'ingresos_bancos'})
         mask_b_eg = df_bancos['Movimiento'].str.contains('EGRESO', case=False, na=False)
-        eg_b = df_bancos.loc[mask_b_eg].copy()
-        eg_b['fecha'] = eg_b['FECHA DE OPERACIÓN'].dt.date
+        eg_b = df_bancos.loc[mask_b_eg].copy(); eg_b['fecha'] = eg_b['FECHA DE OPERACIÓN'].dt.date
         eg_b['egresos_bancos'] = eg_b['COP$'].abs()
-        bancos_egresos = eg_b.groupby(['fecha', 'Empresa'])['egresos_bancos'].sum().reset_index()
+        bancos_egresos = eg_b.groupby(['fecha', 'Empresa', 'Banco'])['egresos_bancos'].sum().reset_index()
 
-        # Odoo - ingresos y egresos (filtrando por Movimiento)
         mask_o_ing = df_odoo['Movimiento'].str.contains('INGRESO', case=False, na=False)
-        ing_o = df_odoo.loc[mask_o_ing].copy()
-        ing_o['fecha'] = ing_o['Fecha'].dt.date
-        odoo_ingresos = ing_o.groupby(['fecha', 'Empresa'])['Débito'].sum().reset_index().rename(columns={'Débito': 'ingresos_odoo'})
-
+        ing_o = df_odoo.loc[mask_o_ing].copy(); ing_o['fecha'] = ing_o['Fecha'].dt.date
+        odoo_ingresos = ing_o.groupby(['fecha', 'Empresa', 'Banco'])['Débito'].sum().reset_index().rename(columns={'Débito': 'ingresos_odoo'})
         mask_o_eg = df_odoo['Movimiento'].str.contains('EGRESO', case=False, na=False)
-        eg_o = df_odoo.loc[mask_o_eg].copy()
-        eg_o['fecha'] = eg_o['Fecha'].dt.date
-        odoo_egresos = eg_o.groupby(['fecha', 'Empresa'])['Crédito'].sum().reset_index().rename(columns={'Crédito': 'egresos_odoo'})
+        eg_o = df_odoo.loc[mask_o_eg].copy(); eg_o['fecha'] = eg_o['Fecha'].dt.date
+        odoo_egresos = eg_o.groupby(['fecha', 'Empresa', 'Banco'])['Crédito'].sum().reset_index().rename(columns={'Crédito': 'egresos_odoo'})
 
-        # Unir todo por fecha y Empresa
-        comparativo_df = pd.merge(bancos_ingresos, bancos_egresos, on=['fecha', 'Empresa'], how='outer')
-        comparativo_df = pd.merge(comparativo_df, odoo_ingresos, on=['fecha', 'Empresa'], how='outer')
-        comparativo_df = pd.merge(comparativo_df, odoo_egresos, on=['fecha', 'Empresa'], how='outer')
+        comparativo_df = pd.merge(bancos_ingresos, bancos_egresos, on=['fecha', 'Empresa', 'Banco'], how='outer')
+        comparativo_df = pd.merge(comparativo_df, odoo_ingresos, on=['fecha', 'Empresa', 'Banco'], how='outer')
+        comparativo_df = pd.merge(comparativo_df, odoo_egresos, on=['fecha', 'Empresa', 'Banco'], how='outer')
         comparativo_df.fillna(0, inplace=True)
         comparativo_df['diferencia_ingresos'] = comparativo_df['ingresos_bancos'] - comparativo_df['ingresos_odoo']
         comparativo_df['diferencia_egresos'] = comparativo_df['egresos_bancos'] - comparativo_df['egresos_odoo']
         comparativo_df = comparativo_df.sort_values(by=['fecha', 'Empresa'], ascending=True)
         comparativo_df['fecha'] = comparativo_df['fecha'].astype(str)
+        comparativo_df.rename(columns={'Banco':'tipo_banco'}, inplace=True)
         daily_comparison_data = comparativo_df.to_dict(orient='records')
 
         # Lista de empresas para el frontend
@@ -5202,7 +5238,8 @@ def procesar_flujo_efectivo_api():
                 'movimiento': safe_text(r.get('Movimiento', '')),
                 # Nuevos campos necesarios para filtrar y recalcular TOP en frontend
                 'clase': safe_text(r.get(clase_col) if clase_col else ''),
-                'subclase': safe_text(r.get(subclase_col) if subclase_col else '')
+                'subclase': safe_text(r.get(subclase_col) if subclase_col else ''),
+                'banco': safe_text(r.get('Banco') if 'Banco' in df_detalle.columns else '')
             })
 
         # --- TOP CLIENTES VENTAS EXW CTG (ingresos) ---
@@ -5260,16 +5297,14 @@ def procesar_flujo_efectivo_api():
         df_bancos_mov['fecha'] = df_bancos_mov['__fecha_date'].dt.strftime('%Y-%m-%d')
         for _, r in df_bancos_mov.iterrows():
             movimiento_txt = str(r.get('Movimiento') or '')
-            # Excluir GMF de los movimientos enviados al frontend para totales
-            if 'GMF' in movimiento_txt.upper():
-                continue
+            mov_upper = movimiento_txt.upper()
             tipo = 'otro'
-            if 'SALDO INICIAL' in movimiento_txt.upper():
+            if 'SALDO INICIAL' in mov_upper:
                 tipo = 'saldo_inicial'
-            elif 'INGRESO' in movimiento_txt.upper():
+            elif 'INGRESO' in mov_upper:
                 tipo = 'ingreso'
-            elif 'EGRESO' in movimiento_txt.upper():
-                tipo = 'egreso'
+            elif 'EGRESO' in mov_upper:
+                tipo = 'egreso_gmf' if 'GMF' in mov_upper else 'egreso'
             bancos_movimientos.append({
                 'fecha': r.get('fecha'),
                 'empresa': r.get('Empresa'),
@@ -5283,48 +5318,44 @@ def procesar_flujo_efectivo_api():
         db.session.add(batch)
         db.session.flush()  # obtener batch.id
 
-        bancos_new = 0
-        odoo_new = 0
-
-        # Guardar Bancos movimientos crudos (excluyendo GMF) - dedupe
+        # Insertar SIEMPRE todas las filas (sin deduplicación). Se genera unique_hash aleatorio.
+        bancos_count = 0
         for _, r in df_bancos_mov.iterrows():
             mov_txt = str(r.get('Movimiento') or '')
-            if 'GMF' in mov_txt.upper():
-                continue
-            h = _hash_row(['BANCOS', r.get('fecha'), r.get('Empresa'), mov_txt, r.get('COP$')])
-            if not FlujoBancoMovimiento.query.filter_by(unique_hash=h).first():
-                db.session.add(FlujoBancoMovimiento(
-                    batch_id=batch.id,
-                    fecha=pd.to_datetime(r.get('__fecha_date')).date(),
-                    empresa=r.get('Empresa'),
-                    movimiento=mov_txt,
-                    monto=float(r.get('COP$',0) or 0),
-                    unique_hash=h
-                ))
-                bancos_new += 1
+            # Ya no excluimos GMF: se persiste para poder sumar en resumen y endpoint cached
+            banco_val = str(r.get('Banco') or '')
+            db.session.add(FlujoBancoMovimiento(
+                batch_id=batch.id,
+                fecha=pd.to_datetime(r.get('__fecha_date')).date(),
+                empresa=r.get('Empresa'),
+                movimiento=mov_txt,
+                monto=float(r.get('COP$',0) or 0),
+                banco=banco_val,
+                unique_hash=uuid.uuid4().hex
+            ))
+            bancos_count += 1
 
-        # Guardar Odoo detalle (dedupe)
+        odoo_count = 0
         for rec in detalle_records:
-            h = _hash_row(['ODOO', rec['fecha'], rec['empresa'], rec['movimiento'], rec['debito'], rec['credito']])
-            if not FlujoOdooMovimiento.query.filter_by(unique_hash=h).first():
-                db.session.add(FlujoOdooMovimiento(
-                    batch_id=batch.id,
-                    fecha=pd.to_datetime(rec['fecha']).date(),
-                    empresa=rec['empresa'],
-                    movimiento=rec['movimiento'],
-                    debito=rec['debito'],
-                    credito=rec['credito'],
-                    tipo_flujo=rec.get('tipo_flujo'),
-                    tercero=rec.get('tercero'),
-                    rubro=rec.get('rubro'),
-                    clase=rec.get('clase'),
-                    subclase=rec.get('subclase'),
-                    unique_hash=h
-                ))
-                odoo_new += 1
+            db.session.add(FlujoOdooMovimiento(
+                batch_id=batch.id,
+                fecha=pd.to_datetime(rec['fecha']).date(),
+                empresa=rec['empresa'],
+                movimiento=rec['movimiento'],
+                debito=rec['debito'],
+                credito=rec['credito'],
+                tipo_flujo=rec.get('tipo_flujo'),
+                tercero=rec.get('tercero'),
+                rubro=rec.get('rubro'),
+                clase=rec.get('clase'),
+                subclase=rec.get('subclase'),
+                banco=rec.get('banco'),
+                unique_hash=uuid.uuid4().hex
+            ))
+            odoo_count += 1
 
-        batch.total_bancos = bancos_new
-        batch.total_odoo = odoo_new
+        batch.total_bancos = bancos_count
+        batch.total_odoo = odoo_count
 
         db.session.commit()
 
@@ -5337,20 +5368,23 @@ def procesar_flujo_efectivo_api():
         bancos_ing_map = {}
         bancos_eg_map = {}
         for r in bancos_rows:
+            # Solo contabilizar movimientos INGRESO y EGRESO; SALDO INICIAL se ignora (pero ya NO filtramos GMF aquí para incluirlo en egresos_gmf por separado si se quiere)
             mtxt = (r.movimiento or '').upper()
-            key = (r.fecha.isoformat(), r.empresa)
-            if 'INGRESO' in mtxt and 'SALDO INICIAL' not in mtxt:
+            if 'SALDO INICIAL' in mtxt:
+                continue
+            # Asegurar consistencia de banco (None -> '')
+            banco_key = (r.banco or '').strip()
+            key = (r.fecha.isoformat(), r.empresa, banco_key)
+            if 'INGRESO' in mtxt:
                 bancos_ing_map[key] = bancos_ing_map.get(key,0) + r.monto
             elif 'EGRESO' in mtxt:
                 bancos_eg_map[key] = bancos_eg_map.get(key,0) + abs(r.monto)
-            elif 'SALDO INICIAL' in mtxt:
-                bancos_ing_map[key] = bancos_ing_map.get(key,0) + r.monto  # tratado como ingreso inicial
 
         odoo_ing_map = {}
         odoo_eg_map = {}
         for r in odoo_rows:
             mtxt = (r.movimiento or '').upper()
-            key = (r.fecha.isoformat(), r.empresa)
+            key = (r.fecha.isoformat(), r.empresa, r.banco or '')
             if 'INGRESO' in mtxt:
                 odoo_ing_map[key] = odoo_ing_map.get(key,0) + (r.debito or 0)
             if 'EGRESO' in mtxt:
@@ -5358,14 +5392,15 @@ def procesar_flujo_efectivo_api():
 
         keys_all = sorted(set(list(bancos_ing_map.keys()) + list(bancos_eg_map.keys()) + list(odoo_ing_map.keys()) + list(odoo_eg_map.keys())))
         daily_comparison_data = []
-        for (f,e) in keys_all:
-            ib = bancos_ing_map.get((f,e),0)
-            eb = bancos_eg_map.get((f,e),0)
-            io = odoo_ing_map.get((f,e),0)
-            eo = odoo_eg_map.get((f,e),0)
+        for (f,e,bk) in keys_all:
+            ib = bancos_ing_map.get((f,e,bk),0)
+            eb = bancos_eg_map.get((f,e,bk),0)
+            io = odoo_ing_map.get((f,e,bk),0)
+            eo = odoo_eg_map.get((f,e,bk),0)
             daily_comparison_data.append({
                 'fecha': f,
                 'Empresa': e,
+                'tipo_banco': bk or '',
                 'ingresos_bancos': ib,
                 'egresos_bancos': eb,
                 'ingresos_odoo': io,
@@ -5387,7 +5422,8 @@ def procesar_flujo_efectivo_api():
                 'tercero': r.tercero or 'SIN TERCERO',
                 'rubro': r.rubro or '',
                 'clase': r.clase or '',
-                'subclase': r.subclase or ''
+                'subclase': r.subclase or '',
+                'banco': r.banco or ''
             })
         todas_las_empresas = sorted({r.empresa for r in bancos_rows+odoo_rows if r.empresa})
 
@@ -5432,17 +5468,22 @@ def procesar_flujo_efectivo_api():
             elif 'INGRESO' in mov_upper:
                 tipo = 'ingreso'
             elif 'EGRESO' in mov_upper:
-                tipo = 'egreso'
-            if 'GMF' in mov_upper:  # mantener exclusión
+                tipo = 'egreso_gmf' if 'GMF' in mov_upper else 'egreso'
+            if tipo == 'otro':
                 continue
             bancos_movimientos.append({
                 'fecha': r.fecha.isoformat(),
                 'empresa': r.empresa,
                 'movimiento': r.movimiento,
                 'monto': r.monto,
-                'clasificacion': tipo
+                'clasificacion': tipo,
+                'tipo_banco': r.banco or ''
             })
 
+        # Calcular GMF separado para mostrarlo sumado en la tarjeta de egresos
+        egresos_gmf_raw = df_bancos.loc[
+            df_bancos['Movimiento'].str.contains('GMF', case=False, na=False), 'COP$'
+        ].abs().sum()
         response_data = {
             'success': True,
             'nuevos_bancos': batch.total_bancos,
@@ -5453,36 +5494,36 @@ def procesar_flujo_efectivo_api():
             'todas_las_empresas': todas_las_empresas,
             'odoo_detalle': detalle_records,
             'bancos_movimientos': bancos_movimientos,
-            # Resumen Método Directo básico desde hoja Bancos
-            'resumen_directo': (lambda: (
-                (lambda saldo_inicial, ingresos, egresos: {
-                    'saldo_inicial': float(saldo_inicial),
-                    'ingresos': float(ingresos),
-                    'saldo_antes_egresos': float(saldo_inicial + ingresos),
-                    'egresos': float(egresos),
-                    'saldo_final': float(saldo_inicial + ingresos - egresos)
-                })(
-                    # saldo_inicial: suma de filas cuyo Movimiento contenga 'SALDO INICIAL'
-                    df_bancos.loc[
-                        df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)
-                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
-                        'COP$'
-                    ].sum(),
-                    # ingresos: filas con 'INGRESO' (excluyendo SALDO INICIAL para evitar doble conteo)
-                    df_bancos.loc[
-                        df_bancos['Movimiento'].str.contains('INGRESO', case=False, na=False)
-                        & ~df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)
-                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
-                        'COP$'
-                    ].sum(),
-                    # egresos: suma absoluta de COP$ donde Movimiento contenga 'EGRESO'
-                    df_bancos.loc[
-                        df_bancos['Movimiento'].str.contains('EGRESO', case=False, na=False)
-                        & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
-                        'COP$'
-                    ].abs().sum()
-                )
-            ))()
+            # Resumen Método Directo básico desde hoja Bancos (incluye ahora egresos_gmf y egresos_total)
+            'resumen_directo': (lambda saldo_ini, ingresos, egresos_sin_gmf, egresos_gmf: {
+                'saldo_inicial': float(saldo_ini),
+                'ingresos': float(ingresos),
+                'saldo_antes_egresos': float(saldo_ini + ingresos),
+                'egresos': float(egresos_sin_gmf),
+                'egresos_gmf': float(egresos_gmf),
+                'egresos_total': float(egresos_sin_gmf + egresos_gmf),
+                'saldo_final': float(saldo_ini + ingresos - (egresos_sin_gmf + egresos_gmf))
+            })(
+                # saldo inicial
+                (lambda df: (
+                    0.0 if df.empty else df[df['FECHA DE OPERACIÓN'].dt.date == df['FECHA DE OPERACIÓN'].dt.date.min()]['COP$'].sum()
+                ))(df_bancos[df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)]),
+                # ingresos (sin SALDO INICIAL / GMF)
+                df_bancos.loc[
+                    df_bancos['Movimiento'].str.contains('INGRESO', case=False, na=False)
+                    & ~df_bancos['Movimiento'].str.contains('SALDO INICIAL', case=False, na=False)
+                    & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
+                    'COP$'
+                ].sum(),
+                # egresos sin GMF
+                df_bancos.loc[
+                    df_bancos['Movimiento'].str.contains('EGRESO', case=False, na=False)
+                    & ~df_bancos['Movimiento'].str.contains('GMF', case=False, na=False),
+                    'COP$'
+                ].abs().sum(),
+                # egresos GMF
+                egresos_gmf_raw
+            )
         }
         if top_clientes_exw:
             response_data['top_clientes_ventas_exw'] = top_clientes_exw
@@ -5514,6 +5555,75 @@ def procesar_flujo_efectivo_api():
 
 @login_required
 @permiso_requerido('flujo_efectivo')
+@app.route('/api/flujo_efectivo_simple', methods=['POST'])
+def flujo_efectivo_simple():
+    """Comparativo SIMPLE: (fecha, empresa) -> ingresos_bancos, saldo_inicial_bancos, ingresos_odoo.
+    Reglas:
+      - SALDO INICIAL (en Movimiento Bancos) se reporta separado (no suma en ingresos_bancos).
+      - INGRESO (Movimiento contiene 'INGRESO' y NO 'SALDO INICIAL') suma a ingresos_bancos.
+      - Ingresos Odoo = suma de Débito donde Movimiento contiene 'INGRESO'.
+      - No se calcula egresos ni diferencias, sólo comparativa de ingreso y saldo inicial.
+    """
+    if 'archivo_excel' not in request.files:
+        return jsonify(success=False, message='Falta archivo_excel'), 400
+    archivo = request.files['archivo_excel']
+    if archivo.filename == '' or not archivo.filename.lower().endswith(('.xlsx','.xls')):
+        return jsonify(success=False, message='Archivo inválido'), 400
+    try:
+        xls = pd.ExcelFile(archivo)
+        sheet_map = {n.strip().lower(): n for n in xls.sheet_names}
+        if 'bancos' not in sheet_map or 'odoo' not in sheet_map:
+            return jsonify(success=False, message='Debe incluir hojas Bancos y Odoo'), 400
+        df_b = pd.read_excel(xls, sheet_name=sheet_map['bancos'])
+        df_o = pd.read_excel(xls, sheet_name=sheet_map['odoo'])
+        # Normalizar
+        df_b.columns = df_b.columns.str.strip(); df_o.columns = df_o.columns.str.strip()
+        req_b = {'FECHA DE OPERACIÓN','Movimiento','COP$','Empresa'}
+        req_o = {'Fecha','Movimiento','Débito','Empresa'}
+        if req_b - set(df_b.columns):
+            return jsonify(success=False, message=f"Faltan columnas Bancos: {req_b - set(df_b.columns)}"), 400
+        if req_o - set(df_o.columns):
+            return jsonify(success=False, message=f"Faltan columnas Odoo: {req_o - set(df_o.columns)}"), 400
+        # Limpieza montos
+        def _cln(s):
+            return (s.astype(str)
+                     .str.replace(r"[^0-9\-.,]",'', regex=True)
+                     .str.replace(',','', regex=False)
+                     .replace('', '0')
+                     .pipe(pd.to_numeric, errors='coerce').fillna(0))
+        df_b['COP$'] = _cln(df_b['COP$'])
+        df_o['Débito'] = _cln(df_o['Débito'])
+        # Fechas
+        df_b['FECHA DE OPERACIÓN'] = pd.to_datetime(df_b['FECHA DE OPERACIÓN'], errors='coerce')
+        df_o['Fecha'] = pd.to_datetime(df_o['Fecha'], errors='coerce')
+        df_b = df_b.dropna(subset=['FECHA DE OPERACIÓN'])
+        df_o = df_o.dropna(subset=['Fecha'])
+        df_b['fecha'] = df_b['FECHA DE OPERACIÓN'].dt.date.astype(str)
+        df_o['fecha'] = df_o['Fecha'].dt.date.astype(str)
+        # Clasificaciones bancos
+        df_b['__mov'] = df_b['Movimiento'].astype(str).str.upper()
+        saldo_ini = df_b[df_b['__mov'].str.contains('SALDO INICIAL', na=False)]
+        ingresos_b = df_b[df_b['__mov'].str.contains('INGRESO', na=False) & ~df_b['__mov'].str.contains('SALDO INICIAL', na=False)]
+        # Ingresos Odoo
+        df_o['__mov'] = df_o['Movimiento'].astype(str).str.upper()
+        ingresos_o = df_o[df_o['__mov'].str.contains('INGRESO', na=False)]
+        # Agrupar
+        saldo_ini_grp = saldo_ini.groupby(['fecha','Empresa'])['COP$'].sum().reset_index().rename(columns={'COP$':'saldo_inicial_bancos'})
+        ing_b_grp = ingresos_b.groupby(['fecha','Empresa'])['COP$'].sum().reset_index().rename(columns={'COP$':'ingresos_bancos'})
+        ing_o_grp = ingresos_o.groupby(['fecha','Empresa'])['Débito'].sum().reset_index().rename(columns={'Débito':'ingresos_odoo'})
+        # Merge
+        out = pd.merge(saldo_ini_grp, ing_b_grp, on=['fecha','Empresa'], how='outer')
+        out = pd.merge(out, ing_o_grp, on=['fecha','Empresa'], how='outer')
+        out = out.fillna(0)
+        # Orden
+        out = out.sort_values(['fecha','Empresa'])
+        return jsonify(success=True, comparativo=out.to_dict(orient='records'))
+    except Exception as e:
+        app.logger.exception('Error flujo_efectivo_simple')
+        return jsonify(success=False, message='Error interno'), 500
+
+@login_required
+@permiso_requerido('flujo_efectivo')
 @app.route('/api/flujo_efectivo_cached', methods=['GET'])
 def flujo_efectivo_cached():
     """Devuelve los datos consolidados desde la base sin necesidad de re-subir archivo."""
@@ -5526,20 +5636,23 @@ def flujo_efectivo_cached():
         # Daily comparison
         bancos_ing_map = {}; bancos_eg_map = {}; odoo_ing_map={}; odoo_eg_map={}
         for r in bancos_rows:
-            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa)
-            if 'INGRESO' in mtxt and 'SALDO INICIAL' not in mtxt: bancos_ing_map[key]=bancos_ing_map.get(key,0)+r.monto
-            elif 'EGRESO' in mtxt: bancos_eg_map[key]=bancos_eg_map.get(key,0)+abs(r.monto)
-            elif 'SALDO INICIAL' in mtxt: bancos_ing_map[key]=bancos_ing_map.get(key,0)+r.monto
+            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa, r.banco or '')
+            if 'SALDO INICIAL' in mtxt or 'GMF' in mtxt:
+                continue
+            if 'INGRESO' in mtxt:
+                bancos_ing_map[key]=bancos_ing_map.get(key,0)+r.monto
+            elif 'EGRESO' in mtxt:
+                bancos_eg_map[key]=bancos_eg_map.get(key,0)+abs(r.monto)
         for r in odoo_rows:
-            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa)
+            mtxt=(r.movimiento or '').upper(); key=(r.fecha.isoformat(), r.empresa, r.banco or '')
             if 'INGRESO' in mtxt: odoo_ing_map[key]=odoo_ing_map.get(key,0)+(r.debito or 0)
             if 'EGRESO' in mtxt: odoo_eg_map[key]=odoo_eg_map.get(key,0)+(r.credito or 0)
         keys_all = sorted(set(list(bancos_ing_map.keys())+list(bancos_eg_map.keys())+list(odoo_ing_map.keys())+list(odoo_eg_map.keys())))
         daily=[]
-        for (f,e) in keys_all:
-            ib=bancos_ing_map.get((f,e),0); eb=bancos_eg_map.get((f,e),0); io=odoo_ing_map.get((f,e),0); eo=odoo_eg_map.get((f,e),0)
-            daily.append({'fecha':f,'Empresa':e,'ingresos_bancos':ib,'egresos_bancos':eb,'ingresos_odoo':io,'egresos_odoo':eo,'diferencia_ingresos':ib-io,'diferencia_egresos':eb-eo})
-        detalle=[{'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'debito':r.debito,'credito':r.credito,'tipo_flujo':r.tipo_flujo or 'SIN TIPO','tercero':r.tercero or 'SIN TERCERO','rubro':r.rubro or '','clase':r.clase or '','subclase':r.subclase or ''} for r in odoo_rows]
+        for (f,e,b) in keys_all:
+            ib=bancos_ing_map.get((f,e,b),0); eb=bancos_eg_map.get((f,e,b),0); io=odoo_ing_map.get((f,e,b),0); eo=odoo_eg_map.get((f,e,b),0)
+            daily.append({'fecha':f,'Empresa':e,'tipo_banco':(b or '').strip(),'ingresos_bancos':ib,'egresos_bancos':eb,'ingresos_odoo':io,'egresos_odoo':eo,'diferencia_ingresos':ib-io,'diferencia_egresos':eb-eo})
+        detalle=[{'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'debito':r.debito,'credito':r.credito,'tipo_flujo':r.tipo_flujo or 'SIN TIPO','tercero':r.tercero or 'SIN TERCERO','rubro':r.rubro or '','clase':r.clase or '','subclase':r.subclase or '','banco':r.banco or ''} for r in odoo_rows]
         inflows_by_type={}; outflows_by_type={}
         for r in odoo_rows:
             tf=(r.tipo_flujo or 'SIN TIPO'); terc=(r.tercero or 'SIN TERCERO')
@@ -5558,27 +5671,41 @@ def flujo_efectivo_cached():
             top_exw={'clientes':clientes_struct,'total_general':sum(x[1] for x in ranking)}
         bancos_mov=[]
         for r in bancos_rows:
-            mu=(r.movimiento or '').upper();
-            if 'GMF' in mu: continue
-            tipo='otro'
-            if 'SALDO INICIAL' in mu: tipo='saldo_inicial'
-            elif 'INGRESO' in mu: tipo='ingreso'
-            elif 'EGRESO' in mu: tipo='egreso'
-            bancos_mov.append({'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'monto':r.monto,'clasificacion':tipo})
+            mu=(r.movimiento or '').upper()
+            if 'SALDO INICIAL' in mu:
+                tipo='saldo_inicial'
+            elif 'INGRESO' in mu:
+                tipo='ingreso'
+            elif 'EGRESO' in mu:
+                tipo='egreso_gmf' if 'GMF' in mu else 'egreso'
+            else:
+                continue
+            bancos_mov.append({'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'monto':r.monto,'clasificacion':tipo,'tipo_banco':r.banco or ''})
         empresas=sorted({r.empresa for r in bancos_rows+odoo_rows if r.empresa})
-        resumen_directo = (lambda saldo_inicial, ingresos, egresos: {
-            'saldo_inicial': float(saldo_inicial),
-            'ingresos': float(ingresos),
-            'saldo_antes_egresos': float(saldo_inicial + ingresos),
-            'egresos': float(egresos),
-            'saldo_final': float(saldo_inicial + ingresos - egresos)
-        })(
-            sum(r.monto for r in bancos_rows if 'SALDO INICIAL' in (r.movimiento or '').upper()),
-            sum(r.monto for r in bancos_rows if 'INGRESO' in (r.movimiento or '').upper() and 'SALDO INICIAL' not in (r.movimiento or '').upper()),
-            sum(abs(r.monto) for r in bancos_rows if 'EGRESO' in (r.movimiento or '').upper())
-        )
+        # Calcular saldo inicial: sumatoria SALDO INICIAL del primer día (todos bancos)
+        saldo_inicial_rows = [r for r in bancos_rows if 'SALDO INICIAL' in (r.movimiento or '').upper()]
+        if saldo_inicial_rows:
+            # fecha mínima
+            first_date = min(r.fecha for r in saldo_inicial_rows)
+            saldo_inicial_total = sum(r.monto for r in saldo_inicial_rows if r.fecha == first_date)
+        else:
+            saldo_inicial_total = 0.0
+        ingresos_total = sum(r.monto for r in bancos_rows if 'INGRESO' in (r.movimiento or '').upper() and 'SALDO INICIAL' not in (r.movimiento or '').upper())
+        egresos_sin_gmf = sum(abs(r.monto) for r in bancos_rows if 'EGRESO' in (r.movimiento or '').upper() and 'GMF' not in (r.movimiento or '').upper())
+        egresos_gmf = sum(abs(r.monto) for r in bancos_rows if 'GMF' in (r.movimiento or '').upper())
+        egresos_total = egresos_sin_gmf + egresos_gmf
+        resumen_directo = {
+            'saldo_inicial': float(saldo_inicial_total),
+            'ingresos': float(ingresos_total),
+            'saldo_antes_egresos': float(saldo_inicial_total + ingresos_total),
+            'egresos': float(egresos_sin_gmf),
+            'egresos_gmf': float(egresos_gmf),
+            'egresos_total': float(egresos_total),
+            'saldo_final': float(saldo_inicial_total + ingresos_total - egresos_total)
+        }
         payload={'success':True,'daily_comparison':daily,'outflows_by_type':outflows_by_type,'inflows_by_type':inflows_by_type,'todas_las_empresas':empresas,'odoo_detalle':detalle,'bancos_movimientos':bancos_mov,'resumen_directo':resumen_directo}
-        if top_exw: payload['top_clientes_ventas_exw']=top_exw
+        if top_exw:
+            payload['top_clientes_ventas_exw']=top_exw
         return jsonify(payload)
     except Exception:
         app.logger.exception('Error recuperando cache flujo efectivo')
