@@ -743,6 +743,8 @@
     // Guardar breakdowns filtrados para usarlos en el modal/tabla de detalle
     globalFilteredInflowsByType = filtered.inflows_by_type;
     globalFilteredOutflowsByType = filtered.outflows_by_type;
+    // Guardar detalle filtrado para drill-down
+    window.globalFilteredDetalleFlujo = filtered.detalle_filtrado || [];
         renderResumenDirecto(resumenFiltered, true);
         // Si los breakdowns están visibles, refrescarlos en caliente
         const ingresosRow = document.getElementById('breakdown-ingresos');
@@ -851,14 +853,52 @@
         const row = document.getElementById(`breakdown-${tipo}`);
         const tbody = document.getElementById(`tbody-breakdown-${tipo}`);
         if (!nested || !tbody) return;
+        const detalle = window.globalFilteredDetalleFlujo || [];
+        const isIngresos = (tipo==='ingresos');
+        const valorKey = isIngresos ? 'debito' : 'credito';
         const rows = Object.keys(nested)
             .filter(flow => !/gmf/i.test(flow))
             .sort()
             .map(flow => {
                 const total = Object.values(nested[flow]).reduce((a,b)=>a+b,0);
-                return `<tr><td>${flow}</td><td class=\"text-end\">${currencyFormatter.format(total)}</td></tr>`;
+                // Detalle filtrado para este flow
+                const detalleFlow = detalle.filter(r => (r.tipo_flujo||'').toUpperCase() === flow.toUpperCase())
+                    .filter(r => Number(r[valorKey])>0)
+                    .sort((a,b)=> a.fecha.localeCompare(b.fecha));
+                const detalleHTML = detalleFlow.length ? `
+                    <div class='table-responsive mt-2'>
+                        <table class='table table-sm table-bordered mb-0'>
+                            <thead class='table-light'>
+                                <tr><th style="width:90px;">Fecha</th><th>Tercero</th><th class='text-end'>${isIngresos?'Débito':'Crédito'}</th></tr>
+                            </thead>
+                            <tbody>
+                                ${detalleFlow.map(d=>`<tr><td>${d.fecha||''}</td><td>${(d.tercero||'').toUpperCase()}</td><td class='text-end'>${currencyFormatter.format(Number(d[valorKey])||0)}</td></tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>` : `<div class='text-muted small mt-2'>Sin movimientos</div>`;
+                const id = 'flow_det_'+tipo+'_'+btoa(encodeURIComponent(flow)).replace(/=/g,'');
+                return `
+                <tr class='align-middle'>
+                    <td>
+                        <button class='btn btn-xs btn-outline-primary me-1 flow-expand-btn' data-target='${id}' style='--bs-btn-padding-y:.15rem; --bs-btn-padding-x:.35rem; font-size:.65rem;'>+</button>
+                        ${flow}
+                    </td>
+                    <td class=\"text-end\">${currencyFormatter.format(total)}</td>
+                </tr>
+                <tr id='${id}' class='d-none'><td colspan='2'>${detalleHTML}</td></tr>`;
             }).join('');
         tbody.innerHTML = rows || '<tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>';
+        // Eventos expandir/colapsar
+        tbody.querySelectorAll('.flow-expand-btn').forEach(btn=>{
+            btn.addEventListener('click', ()=>{
+                const targetId = btn.getAttribute('data-target');
+                const detailRow = document.getElementById(targetId);
+                if(!detailRow) return;
+                const hidden = detailRow.classList.contains('d-none');
+                detailRow.classList.toggle('d-none');
+                btn.textContent = hidden ? '-' : '+';
+            });
+        });
         row.classList.remove('d-none');
         if(!skipScroll){
             row.scrollIntoView({behavior:'smooth', block:'center'});
