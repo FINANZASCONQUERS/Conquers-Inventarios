@@ -660,6 +660,7 @@ class FlujoBancoMovimiento(db.Model):
     movimiento = db.Column(db.Text)
     monto = db.Column(db.Float)  # valor COP$
     banco = db.Column(db.String(120), index=True)
+    tipo_banco = db.Column(db.String(120), nullable=True)
     unique_hash = db.Column(db.String(64), unique=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
@@ -678,6 +679,7 @@ class FlujoOdooMovimiento(db.Model):
     clase = db.Column(db.String(200))
     subclase = db.Column(db.String(200))
     banco = db.Column(db.String(120), index=True)
+    tipo_banco = db.Column(db.String(120), nullable=True)
     unique_hash = db.Column(db.String(64), unique=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
