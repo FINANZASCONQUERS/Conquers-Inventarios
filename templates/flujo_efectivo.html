@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}git addgit add
 {% block head %}
     <title>Reporte de Flujo de Efectivo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -114,6 +114,20 @@
                     <button class="btn btn-sm btn-outline-secondary" data-close-breakdown="ingresos">Cerrar</button>
                 </div>
                 <div class="card-body p-2">
+                    <div class="row g-2 mb-2 align-items-end">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-0 text-primary">Clase</label>
+                            <select id="filtro-clase-ingresos" class="form-select form-select-sm">
+                                <option value="">(Todas)</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-0 text-primary">Sub Clase</label>
+                            <select id="filtro-subclase-ingresos" class="form-select form-select-sm">
+                                <option value="">(Todas)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-striped mb-0">
                             <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Débito</th></tr></thead>
@@ -132,6 +146,20 @@
                     <button class="btn btn-sm btn-outline-secondary" data-close-breakdown="egresos">Cerrar</button>
                 </div>
                 <div class="card-body p-2">
+                    <div class="row g-2 mb-2 align-items-end">
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-0 text-primary">Clase</label>
+                            <select id="filtro-clase-egresos" class="form-select form-select-sm">
+                                <option value="">(Todas)</option>
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label small mb-0 text-primary">Sub Clase</label>
+                            <select id="filtro-subclase-egresos" class="form-select form-select-sm">
+                                <option value="">(Todas)</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-striped mb-0">
                             <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Crédito</th></tr></thead>
@@ -856,6 +884,40 @@
         const detalle = window.globalFilteredDetalleFlujo || [];
         const isIngresos = (tipo==='ingresos');
         const valorKey = isIngresos ? 'debito' : 'credito';
+        // Filtros internos
+        const claseSelect = document.getElementById(`filtro-clase-${tipo}`);
+        const subclaseSelect = document.getElementById(`filtro-subclase-${tipo}`);
+        // Construir universo para opciones (solo registros con valor >0 segun tipo)
+        const universo = detalle.filter(r => Number(r[valorKey])>0);
+        const setClases = new Set();
+        universo.forEach(r=>{ if(r.clase) setClases.add(r.clase.toUpperCase()); });
+        // Mantener selección previa
+        const prevClase = claseSelect ? claseSelect.value.toUpperCase() : '';
+        if(claseSelect){
+            claseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setClases).sort().map(c=>`<option value="${c}">${c}</option>`).join('');
+            if(prevClase && setClases.has(prevClase)) claseSelect.value = prevClase; else claseSelect.value='';
+        }
+        // Subclases según clase seleccionada (si hay)
+        let setSub = new Set();
+        const claseFiltro = claseSelect ? (claseSelect.value||'').toUpperCase() : '';
+        universo.forEach(r=>{
+            if(!claseFiltro || (r.clase||'').toUpperCase()===claseFiltro){ if(r.subclase) setSub.add(r.subclase.toUpperCase()); }
+        });
+        const prevSub = subclaseSelect ? subclaseSelect.value.toUpperCase() : '';
+        if(subclaseSelect){
+            subclaseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setSub).sort().map(s=>`<option value="${s}">${s}</option>`).join('');
+            if(prevSub && setSub.has(prevSub)) subclaseSelect.value = prevSub; else subclaseSelect.value='';
+        }
+        const subFiltro = subclaseSelect ? (subclaseSelect.value||'').toUpperCase() : '';
+        // Reattach change events (idempotente)
+        if(claseSelect && !claseSelect.dataset.bound){
+            claseSelect.addEventListener('change', ()=> showBreakdown(tipo, nested, true));
+            claseSelect.dataset.bound='1';
+        }
+        if(subclaseSelect && !subclaseSelect.dataset.bound){
+            subclaseSelect.addEventListener('change', ()=> showBreakdown(tipo, nested, true));
+            subclaseSelect.dataset.bound='1';
+        }
         const rows = Object.keys(nested)
             .filter(flow => !/gmf/i.test(flow))
             .sort()
@@ -864,15 +926,17 @@
                 // Detalle filtrado para este flow
                 const detalleFlow = detalle.filter(r => (r.tipo_flujo||'').toUpperCase() === flow.toUpperCase())
                     .filter(r => Number(r[valorKey])>0)
-                    .sort((a,b)=> a.fecha.localeCompare(b.fecha));
+                    .filter(r => !claseFiltro || (r.clase||'').toUpperCase()===claseFiltro)
+                    .filter(r => !subFiltro || (r.subclase||'').toUpperCase()===subFiltro)
+                    .sort((a,b)=> (a.clase||'').localeCompare(b.clase||'') || (a.subclase||'').localeCompare(b.subclase||'') || a.fecha.localeCompare(b.fecha));
                 const detalleHTML = detalleFlow.length ? `
                     <div class='table-responsive mt-2'>
                         <table class='table table-sm table-bordered mb-0'>
                             <thead class='table-light'>
-                                <tr><th style="width:90px;">Fecha</th><th>Tercero</th><th class='text-end'>${isIngresos?'Débito':'Crédito'}</th></tr>
+                                <tr><th style=\"width:90px;\">Fecha</th><th>Clase</th><th>Sub Clase</th><th>Tercero</th><th class='text-end'>${isIngresos?'Débito':'Crédito'}</th></tr>
                             </thead>
                             <tbody>
-                                ${detalleFlow.map(d=>`<tr><td>${d.fecha||''}</td><td>${(d.tercero||'').toUpperCase()}</td><td class='text-end'>${currencyFormatter.format(Number(d[valorKey])||0)}</td></tr>`).join('')}
+                                ${detalleFlow.map(d=>`<tr><td>${d.fecha||''}</td><td>${(d.clase||'').toUpperCase()}</td><td>${(d.subclase||'').toUpperCase()}</td><td>${(d.tercero||'').toUpperCase()}</td><td class='text-end'>${currencyFormatter.format(Number(d[valorKey])||0)}</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>` : `<div class='text-muted small mt-2'>Sin movimientos</div>`;
