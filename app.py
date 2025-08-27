@@ -5312,7 +5312,9 @@ def procesar_flujo_efectivo_api():
                 'empresa': r.get('Empresa'),
                 'movimiento': movimiento_txt,
                 'monto': float(r.get('COP$', 0) or 0),
-                'clasificacion': tipo
+                'clasificacion': tipo,
+                'tipo_banco': str(r.get('Banco') or ''),
+                'banco': str(r.get('Banco') or '')
             })
 
         # ======================= PERSISTENCIA / DEDUP =======================
@@ -5333,6 +5335,7 @@ def procesar_flujo_efectivo_api():
                 movimiento=mov_txt,
                 monto=float(r.get('COP$',0) or 0),
                 banco=banco_val,
+                tipo_banco=banco_val,  # rellenamos también tipo_banco para compatibilidad
                 unique_hash=uuid.uuid4().hex
             ))
             bancos_count += 1
@@ -5403,6 +5406,7 @@ def procesar_flujo_efectivo_api():
                 'fecha': f,
                 'Empresa': e,
                 'tipo_banco': bk or '',
+                'banco': bk or '',  # alias legacy
                 'ingresos_bancos': ib,
                 'egresos_bancos': eb,
                 'ingresos_odoo': io,
@@ -5479,7 +5483,8 @@ def procesar_flujo_efectivo_api():
                 'movimiento': r.movimiento,
                 'monto': r.monto,
                 'clasificacion': tipo,
-                'tipo_banco': r.banco or ''
+                'tipo_banco': (r.tipo_banco or r.banco or '').strip(),
+                'banco': (r.banco or r.tipo_banco or '').strip()
             })
 
         # Calcular GMF separado para mostrarlo sumado en la tarjeta de egresos
@@ -5653,7 +5658,8 @@ def flujo_efectivo_cached():
         daily=[]
         for (f,e,b) in keys_all:
             ib=bancos_ing_map.get((f,e,b),0); eb=bancos_eg_map.get((f,e,b),0); io=odoo_ing_map.get((f,e,b),0); eo=odoo_eg_map.get((f,e,b),0)
-            daily.append({'fecha':f,'Empresa':e,'tipo_banco':(b or '').strip(),'ingresos_bancos':ib,'egresos_bancos':eb,'ingresos_odoo':io,'egresos_odoo':eo,'diferencia_ingresos':ib-io,'diferencia_egresos':eb-eo})
+            banco_norm = (b or '').strip()
+            daily.append({'fecha':f,'Empresa':e,'tipo_banco':banco_norm,'banco':banco_norm,'ingresos_bancos':ib,'egresos_bancos':eb,'ingresos_odoo':io,'egresos_odoo':eo,'diferencia_ingresos':ib-io,'diferencia_egresos':eb-eo})
         detalle=[{'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'debito':r.debito,'credito':r.credito,'tipo_flujo':r.tipo_flujo or 'SIN TIPO','tercero':r.tercero or 'SIN TERCERO','rubro':r.rubro or '','clase':r.clase or '','subclase':r.subclase or '','banco':r.banco or ''} for r in odoo_rows]
         inflows_by_type={}; outflows_by_type={}
         for r in odoo_rows:
@@ -5682,7 +5688,8 @@ def flujo_efectivo_cached():
                 tipo='egreso_gmf' if 'GMF' in mu else 'egreso'
             else:
                 continue
-            bancos_mov.append({'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'monto':r.monto,'clasificacion':tipo,'tipo_banco':r.banco or ''})
+            banco_norm = (r.tipo_banco or r.banco or '').strip()
+            bancos_mov.append({'fecha':r.fecha.isoformat(),'empresa':r.empresa,'movimiento':r.movimiento,'monto':r.monto,'clasificacion':tipo,'tipo_banco':banco_norm,'banco':banco_norm})
         empresas=sorted({r.empresa for r in bancos_rows+odoo_rows if r.empresa})
         # Calcular saldo inicial: sumatoria SALDO INICIAL del primer día (todos bancos)
         saldo_inicial_rows = [r for r in bancos_rows if 'SALDO INICIAL' in (r.movimiento or '').upper()]
