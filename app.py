@@ -31,6 +31,10 @@ import matplotlib.pyplot as plt
 from itertools import groupby
 import io
 from flask import Response
+import base64
+
+# --- Módulo modelo optimización (nuevo) ---
+from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -763,7 +767,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo"] 
+    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta y Rendimientos
@@ -806,7 +810,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Felipe De La Vega",
         "rol": "editor",
-        "area": ["simulador_rendimiento", "flujo_efectivo"] 
+    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion"] 
     },
 
         "accountingzf@conquerstrading.com": { 
@@ -841,6 +845,7 @@ USUARIOS = {
     "rol": "editor",
     "area": ["inventario_epp"]
 }
+
 
 }
    
@@ -1657,6 +1662,157 @@ def eliminar_evento_remolcador(id):
         db.session.rollback()
         app.logger.error(f"Error al eliminar evento de remolcador: {e}")
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+# ================== MODELO OPTIMIZACIÓN ==================
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion', methods=['GET','POST'])
+def modelo_optimizacion_page():
+    from flask import current_app
+    error = None
+    # Restricción extra: solo Felipe y German (y admin)
+    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
+    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+        flash('No tienes permiso para este módulo.', 'danger')
+        return redirect(url_for('home'))
+    resultados = None
+    grafico_base64 = None
+    excel_descargable = False
+    total_volumen = 0
+    total_costo_import = 0
+    brent_valor = ''
+    trm_valor = ''
+    generado_en = datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')
+    generar_excel = 'si'
+    component_data = []
+    componentes_cols = [
+        'USD/BBL CRUDO + FLETE Marino', 'Remolcador a CZF', 'USD/BBL Ingreso a CZF (Alm+OperPort 2)',
+        'USD/BBL %FIN mes', 'USD/BBL Alm+OperPort 1', 'Nacionalización USD/BBL', 'USD/Bbl Exportación', 'Transp Terrestre a CZF'
+    ]
+    componentes_alias = [
+        'CRUDO + FLETE', 'REMOLCADOR', 'INGRESO CZF', 'FINANCIACIÓN', 'ALM+OPER PORT', 'NACIONALIZACIÓN', 'EXPORTACIÓN', 'TRANSP TERRESTRE'
+    ]
+    component_stats = []
+    ranking_spread_imp = []
+    ranking_spread_exp = []
+    if request.method == 'POST':
+        generar_excel = request.form.get('generar_excel','si')
+        try:
+            excel_path = EXCEL_DEFAULT
+            if 'archivo_excel' in request.files and request.files['archivo_excel'].filename:
+                # Guardar temporalmente
+                up_file = request.files['archivo_excel']
+                tmp_path = os.path.join(BASE_DIR, 'upload_modelo_temp.xlsx')
+                up_file.save(tmp_path)
+                excel_path = tmp_path
+            data = ejecutar_modelo(excel_path, generar_excel == 'si')
+            resultados = data['resumen']
+            grafico_base64 = data['grafico_base64']
+            brent_valor = f"{data['BRENT']:.2f}" if data['BRENT'] is not None else ''
+            trm_valor = f"{data['TRM']:.2f}" if data.get('TRM') is not None else ''
+            total_volumen = f"{sum(r['Volumen'] for r in resultados):,.0f}"
+            total_costo_import = f"${sum(r['CostoTotalImp'] for r in resultados):,.2f}"
+            # Construir datos detallados para gráfica interactiva
+            df_det = data['df_result']
+            if not df_det.empty:
+                sub = df_det[['ID','Producto','Volumen Compra BBL','Puerto Llegada'] + componentes_cols].copy()
+                for _, row in sub.iterrows():
+                    comp_entry = {
+                        'ID': row['ID'],
+                        'Producto': row['Producto'],
+                        'Volumen Compra BBL': float(row['Volumen Compra BBL'] or 0) if row['Volumen Compra BBL'] is not None else 0,
+                        'Puerto Llegada': row['Puerto Llegada'] or ''
+                    }
+                    for col in componentes_cols:
+                        val = row[col]
+                        try:
+                            comp_entry[col] = float(val) if val is not None else 0.0
+                        except Exception:
+                            comp_entry[col] = 0.0
+                    component_data.append(comp_entry)
+                # Estadísticas comparativas por componente
+                for alias, col in zip(componentes_alias, componentes_cols):
+                    serie = df_det[col].astype(float).fillna(0)
+                    component_stats.append({
+                        'alias': alias,
+                        'min': round(float(serie.min()),4),
+                        'max': round(float(serie.max()),4),
+                        'avg': round(float(serie.mean()),4)
+                    })
+                # Rankings spreads
+                if 'Spread Total on Brent IMPORTACIONES' in df_det.columns:
+                    ranking_spread_imp = (
+                        df_det[['ID','Producto','Spread Total on Brent IMPORTACIONES']]
+                        .rename(columns={'Spread Total on Brent IMPORTACIONES':'valor'})
+                        .sort_values('valor', ascending=False)
+                        .head(10)
+                        .to_dict(orient='records')
+                    )
+                if 'Spread Exportaciones' in df_det.columns:
+                    ranking_spread_exp = (
+                        df_det[['ID','Producto','Spread Exportaciones']]
+                        .rename(columns={'Spread Exportaciones':'valor'})
+                        .sort_values('valor', ascending=False)
+                        .head(10)
+                        .to_dict(orient='records')
+                    )
+            if data['excel_bytes']:
+                # Guardar en archivo temporal (no en sesión para evitar exceder tamaño cookie)
+                from uuid import uuid4
+                tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo_excel')
+                os.makedirs(tmp_dir, exist_ok=True)
+                # Limpieza simple de archivos viejos (> 2 horas)
+                try:
+                    import time
+                    now = time.time()
+                    for fname in os.listdir(tmp_dir):
+                        fpath = os.path.join(tmp_dir, fname)
+                        if os.path.isfile(fpath) and now - os.path.getmtime(fpath) > 7200:
+                            try: os.remove(fpath)
+                            except Exception: pass
+                except Exception:
+                    pass
+                filename = f"modelo_{uuid4().hex}.xlsx"
+                file_path = os.path.join(tmp_dir, filename)
+                with open(file_path, 'wb') as f:
+                    f.write(data['excel_bytes'])
+                session['modelo_excel_path'] = file_path
+                excel_descargable = True
+        except Exception as e:
+            current_app.logger.error(f"Error modelo optimización: {e}")
+            error = str(e)
+    return render_template('modelo_optimizacion.html',
+                           nombre=session.get('nombre'),
+                           resultados=resultados,
+                           grafico_base64=grafico_base64,
+                           excel_descargable=excel_descargable,
+                           total_volumen=total_volumen,
+                           total_costo_import=total_costo_import,
+                           brent_valor=brent_valor,
+                           trm_valor=trm_valor,
+                           generado_en=generado_en,
+                           generar_excel=generar_excel,
+                           component_data=component_data,
+                           componentes_cols=componentes_cols,
+                           componentes_alias=componentes_alias,
+                           component_stats=component_stats,
+                           ranking_spread_imp=ranking_spread_imp,
+                           ranking_spread_exp=ranking_spread_exp,
+                           error=error)
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/descargar')
+def descargar_resultado_modelo():
+    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
+    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+        flash('No tienes permiso para este módulo.', 'danger')
+        return redirect(url_for('home'))
+    file_path = session.get('modelo_excel_path')
+    if not file_path or not os.path.isfile(file_path):
+        flash('No hay archivo para descargar', 'warning')
+        return redirect(url_for('modelo_optimizacion_page'))
+    return send_file(file_path, as_attachment=True, download_name='Resultados_modelo.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
        
 @login_required
@@ -4533,7 +4689,8 @@ def get_epp_items():
             "observaciones": item.observaciones,
             "fecha_vencimiento": item.fecha_vencimiento.isoformat() if item.fecha_vencimiento else None,
             "dias_para_vencer": (item.fecha_vencimiento - today).days if item.fecha_vencimiento else None,
-            "stock_bajo": item.stock_actual <= 5 # Inteligencia: alerta de stock bajo
+            # Alerta de stock bajo solo si NO es Equipos de Emergencia
+            "stock_bajo": (item.categoria != 'Equipos de Emergencia') and (item.stock_actual <= 5)
         }
         items_list.append(item_dict)
     return jsonify(items_list)
@@ -5719,6 +5876,31 @@ def flujo_efectivo_cached():
     except Exception:
         app.logger.exception('Error recuperando cache flujo efectivo')
         return jsonify(success=False, message='Error interno.'), 500
+
+@login_required
+@permiso_requerido('flujo_efectivo')
+@app.route('/api/flujo_efectivo_delete_all', methods=['DELETE'])
+def flujo_efectivo_delete_all():
+    """Elimina TODOS los registros cargados del módulo Flujo de Efectivo (batches, bancos y odoo).
+
+    Uso previsto: antes de volver a subir un archivo completo actualizado para evitar duplicados
+    de meses anteriores. Tras la eliminación se puede subir un Excel que contenga histórico + meses nuevos.
+    """
+    try:
+        # Primero eliminar movimientos hijos para respetar FK (no hay cascade definido)
+        deleted_bancos = db.session.query(FlujoBancoMovimiento).delete(synchronize_session=False)
+        deleted_odoo = db.session.query(FlujoOdooMovimiento).delete(synchronize_session=False)
+        deleted_batches = db.session.query(FlujoUploadBatch).delete(synchronize_session=False)
+        db.session.commit()
+        return jsonify(success=True,
+                       message="Datos de Flujo de Efectivo eliminados correctamente.",
+                       eliminados_bancos=deleted_bancos,
+                       eliminados_odoo=deleted_odoo,
+                       eliminados_batches=deleted_batches)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception('Error eliminando datos de flujo de efectivo')
+        return jsonify(success=False, message=f'Error interno: {e}'), 500
 
 @login_required
 @permiso_requerido('flujo_efectivo')

@@ -29,6 +29,17 @@
         .dashboard-toolbar { background:rgba(255,255,255,.85); backdrop-filter:blur(6px); border:1px solid #e2e8f0; border-radius:18px; padding:1rem 1.25rem; margin-bottom:1.25rem; box-shadow:0 4px 16px -4px rgba(0,0,0,.06); }
         .dashboard-toolbar .toolbar-actions { gap:.75rem; }
         #toggle-view-btn { font-weight:600; display:inline-flex; align-items:center; gap:.35rem; }
+    /* Botones estilo icon square */
+    .btn-icon-square{position:relative;display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;width:64px;height:64px;padding:.35rem;border-radius:16px;font-size:.6rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;line-height:1.05;border:1px solid #d0dae6;background:#fff;transition:all .25s cubic-bezier(.4,0,.2,1);}
+    .btn-icon-square i{font-size:1.25rem;}
+    .btn-icon-square:hover{box-shadow:0 6px 18px -4px rgba(0,0,0,.12);transform:translateY(-2px);}
+    .btn-icon-square.btn-primary{background:linear-gradient(135deg,#0d6efd,#3e8ef7);color:#fff;border:none;}
+    .btn-icon-square.btn-outline-primary{background:#f5f9ff;color:#0d6efd;border:1px solid #c4dcff;}
+    .btn-icon-square.btn-outline-success{background:#f4fff7;color:#198754;border:1px solid #b7e7c9;}
+    .btn-icon-square.btn-outline-secondary{background:#f5f6f8;color:#495057;border:1px solid #d6d9de;}
+    .btn-icon-square.btn-outline-danger{background:#fff5f5;color:#d63344;border:1px solid #f5c2c7;}
+    .btn-icon-square small{font-weight:600;}
+    @media (max-width:992px){.btn-icon-square{width:56px;height:56px;font-size:.55rem;}}
         #resumen-directo .card { position:relative; overflow:hidden; }
         #resumen-directo .card:after { content:""; position:absolute; width:120px; height:120px; top:-40px; right:-40px; background:radial-gradient(circle at center, rgba(255,255,255,.4), transparent 70%); }
         #resumen-directo .card .small { font-size:.6rem; letter-spacing:.5px; }
@@ -49,27 +60,22 @@
             </div>
         </div>
         <div class="toolbar-actions d-flex flex-wrap align-items-end">
-            <div class="d-flex flex-column">
+            <div class="d-flex flex-column me-3" style="min-width:200px;">
                 <label for="file-upload" class="filter-label mb-1">Excel Bancos</label>
-                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="min-width:180px;">
+                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls">
             </div>
-            <div class="d-flex flex-column">
+            <div class="d-flex flex-column me-3" style="min-width:200px;">
                 <label for="file-facturacion" class="filter-label mb-1">Facturación</label>
-                <input type="file" id="file-facturacion" class="form-control form-control-sm filter-select" accept=".xlsx, .xls" style="min-width:180px;">
+                <input type="file" id="file-facturacion" class="form-control form-control-sm filter-select" accept=".xlsx, .xls">
             </div>
             <div class="d-flex flex-column">
-                <label class="filter-label mb-1">Vista</label>
-                <button id="toggle-view-btn" class="btn btn-outline-primary btn-sm"><i class="bi bi-graph-up"></i><span>Ver Gráficos</span></button>
-            </div>
-            <div class="d-flex flex-column">
-                <label class="filter-label mb-1">Filtros</label>
-                <button id="btn-toggle-filtros" class="btn btn-light btn-sm border"><i class="bi bi-funnel"></i></button>
-            </div>
-        <div class="d-flex flex-column">
-                <label class="filter-label mb-1">Datos</label>
-                <div class="btn-group">
-                    <button id="btn-cargar-guardado" class="btn btn-outline-success btn-sm" title="Cargar último guardado"><i class="bi bi-cloud-download"></i></button>
-                    <button id="btn-guardar-dataset" class="btn btn-success btn-sm" title="Guardar (persistir)" disabled><i class="bi bi-save"></i></button>
+                <label class="filter-label mb-1">Acciones</label>
+                <div class="d-flex flex-wrap gap-2">
+                    <button id="btn-cargar-guardado" class="btn btn-outline-success btn-icon-square" title="Cargar último dataset guardado"><i class="bi bi-cloud-download"></i><small>Cargar</small></button>
+                    <button id="toggle-view-btn" class="btn btn-outline-primary btn-icon-square" title="Alternar vista tablas / gráficos"><i class="bi bi-graph-up"></i><small>Vista</small></button>
+                    <button id="btn-toggle-filtros" class="btn btn-outline-secondary btn-icon-square" title="Mostrar/Ocultar filtros avanzados"><i class="bi bi-funnel"></i><small>Filtros</small></button>
+                    <button id="btn-guardar-dataset" class="btn btn-primary btn-icon-square" title="Información guardado" disabled><i class="bi bi-save"></i><small>Info</small></button>
+                    <button id="btn-eliminar-datos" class="btn btn-outline-danger btn-icon-square" title="Eliminar todos los datos cargados"><i class="bi bi-trash"></i><small>Vaciar</small></button>
                 </div>
             </div>
         </div>
@@ -327,6 +333,7 @@
     document.getElementById('file-facturacion').addEventListener('change', handleFacturacion, false);
         const btnGuardar = document.getElementById('btn-guardar-dataset');
     const btnCargarGuardado = document.getElementById('btn-cargar-guardado');
+    const btnEliminarDatos = document.getElementById('btn-eliminar-datos');
 
     // Mostrar alertas flotantes
     function pushAlert(tipo, mensaje, timeout=4000){
@@ -352,6 +359,60 @@
         }catch(e){ if(!auto) pushAlert('danger','Error cargando guardado: '+e.message); }
     }
     if(btnCargarGuardado){ btnCargarGuardado.addEventListener('click', ()=> cargarGuardado(false)); }
+        // Modal confirmación eliminación
+        const deleteModalHtml = `
+        <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-danger text-white">
+                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>Confirmar limpieza</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2">Vas a eliminar <strong>todos</strong> los datos actuales del Flujo de Efectivo (bancos y Odoo).</p>
+                        <ul class="small text-muted mb-3">
+                            <li>La acción no se puede deshacer.</li>
+                            <li>Luego podrás subir un nuevo archivo consolidado.</li>
+                        </ul>
+                        <div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle me-1"></i>Recomendado: asegúrate de tener el Excel completo antes de vaciar.</div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" id="confirm-delete-all" class="btn btn-danger"><i class="bi bi-trash"></i> Vaciar datos</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', deleteModalHtml);
+        let deleteModalInstance = null;
+        if(btnEliminarDatos){
+                btnEliminarDatos.addEventListener('click', ()=>{
+                        if(!deleteModalInstance){ deleteModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmDelete')); }
+                        deleteModalInstance.show();
+                });
+                document.addEventListener('click', async (ev)=>{
+                        if(ev.target && ev.target.id === 'confirm-delete-all'){
+                                const btn = ev.target; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Eliminando';
+                                try{
+                                        const resp = await fetch('/api/flujo_efectivo_delete_all', {method:'DELETE'});
+                                        const data = await resp.json();
+                                        if(!data.success){ pushAlert('danger', data.message||'Error eliminando'); }
+                                        else {
+                                                pushAlert('success', 'Datos eliminados: Bancos '+data.eliminados_bancos+' | Odoo '+data.eliminados_odoo);
+                                                globalReportData = null;
+                                                document.getElementById('report-output').innerHTML = '<div class="alert alert-info">No hay datos. Sube un nuevo archivo para iniciar.</div>';
+                                                document.getElementById('report-output').classList.remove('d-none');
+                                                document.getElementById('charts-view').classList.add('d-none');
+                                                document.getElementById('resumen-directo').classList.add('d-none');
+                                        }
+                                }catch(e){ pushAlert('danger','Error: '+e.message); }
+                                finally {
+                                        btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash"></i> Vaciar datos';
+                                        if(deleteModalInstance) deleteModalInstance.hide();
+                                }
+                        }
+                });
+        }
     // Auto al cargar página
     document.addEventListener('DOMContentLoaded', ()=> cargarGuardado(true));
 

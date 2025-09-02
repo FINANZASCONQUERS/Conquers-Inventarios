@@ -319,6 +319,7 @@
                         {% endif %}
                         {% if 'inventario_epp' in session.get('area', []) %}{% set _ = user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
                         {% endif %}
+                        {% if 'modelo_optimizacion' in session.get('area', []) %}{% set _ = user_planillas.append(('modelo_optimizacion_page', 'Modelo Optimización', 'cpu')) %}{% endif %}
                         {% if user_planillas|length > 0 %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle quick-access-btn" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

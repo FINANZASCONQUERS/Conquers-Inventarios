@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% block title %}Modelo Optimización | Conquers{% endblock %}
+{% block content %}
+<div class="container-fluid px-2 px-md-4">
+	<h1 class="h3 mb-4">Modelo de Optimización de Contratos</h1>
+	<form method="post" enctype="multipart/form-data" class="mb-3 p-3 border rounded bg-white shadow-sm">
+		<div class="row g-3 align-items-end">
+			<div class="col-xl-4 col-md-6">
+				<label class="form-label fw-semibold small">Archivo Variables.xlsx (opcional)</label>
+				<input type="file" class="form-control form-control-sm" name="archivo_excel" accept=".xlsx">
+			</div>
+			<div class="col-xl-2 col-md-3">
+				<label class="form-label fw-semibold small">Generar Excel</label>
+				<select name="generar_excel" class="form-select form-select-sm">
+					<option value="si" {% if generar_excel!='no' %}selected{% endif %}>Sí</option>
+					<option value="no" {% if generar_excel=='no' %}selected{% endif %}>No</option>
+				</select>
+			</div>
+			<div class="col-xl-2 col-md-3">
+				<button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-cpu me-1"></i> Ejecutar</button>
+			</div>
+			{% if excel_descargable %}
+			<div class="col-xl-2 col-md-4">
+				<a href="{{ url_for('descargar_resultado_modelo') }}" class="btn btn-primary btn-sm w-100"><i class="bi bi-download me-1"></i> Descargar</a>
+			</div>
+			{% endif %}
+		</div>
+	</form>
+
+	{% if error %}
+		<div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}</div>
+	{% endif %}
+
+	{% if resultados %}
+	<div class="row g-3 mb-4">
+		<div class="col-md-4 col-xl-3">
+			<div class="p-3 bg-white border rounded shadow-sm h-100">
+				<div class="small text-muted">Total Volumen (BBL)</div>
+				<div class="fs-5 fw-bold">{{ '{:,.0f}'.format(total_volumen|float) }}</div>
+			</div>
+		</div>
+		<div class="col-md-4 col-xl-3">
+			<div class="p-3 bg-white border rounded shadow-sm h-100">
+				<div class="small text-muted">Costo Total Importación (USD)</div>
+				<div class="fs-5 fw-bold">${{ '{:,.2f}'.format(total_costo_import|float) }}</div>
+			</div>
+		</div>
+		<div class="col-md-4 col-xl-3">
+			<div class="p-3 bg-white border rounded shadow-sm h-100">
+				<div class="small text-muted">BRENT</div>
+				<div class="fs-5 fw-bold">${{ '{:,.2f}'.format(brent_valor|float) }}</div>
+			</div>
+		</div>
+		<div class="col-md-4 col-xl-3">
+			<div class="p-3 bg-white border rounded shadow-sm h-100">
+				<div class="small text-muted">TRM</div>
+				<div class="fs-5 fw-bold">{% if trm_valor %}${{ '{:,.2f}'.format(trm_valor|float) }}{% else %}-{% endif %}</div>
+			</div>
+		</div>
+		<div class="col-md-12 col-xl-3 d-flex align-items-end">
+			<div class="text-muted small">Generado: {{ generado_en }}</div>
+		</div>
+	</div>
+	{% endif %}
+
+	{% if component_data %}
+	<div class="card shadow-sm border-0 mb-4">
+		<div class="card-header bg-dark text-white py-2">
+			<div class="d-flex flex-wrap align-items-center gap-3">
+				<strong>Filtros</strong>
+				<div class="d-flex flex-wrap gap-2 w-100 w-lg-auto">
+					<select id="selID" class="form-select form-select-sm filtro-select" title="ID"></select>
+					<select id="selProducto" class="form-select form-select-sm filtro-select" title="Producto"></select>
+					<select id="selPuerto" class="form-select form-select-sm filtro-select" title="Puerto Llegada"></select>
+					<select id="selVolumen" class="form-select form-select-sm filtro-select" title="Rango Volumen (BBL)"></select>
+					<button id="btnResetFiltros" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-counterclockwise"></i></button>
+				</div>
+			</div>
+		</div>
+		<div class="card-body pb-3">
+			<div class="mb-2 small text-muted">Activar/Desactivar Componentes:</div>
+			<div class="d-flex flex-wrap gap-2 mb-3">
+				{% for alias in componentes_alias %}
+				<div class="form-check form-check-inline">
+					<input class="form-check-input comp-toggle" type="checkbox" value="{{ loop.index0 }}" id="comp{{ loop.index0 }}" checked>
+					<label class="form-check-label small" for="comp{{ loop.index0 }}">{{ alias }}</label>
+				</div>
+				{% endfor %}
+			</div>
+			<div class="ratio" style="--bs-aspect-ratio:55%;">
+				<canvas id="chartStacked"></canvas>
+			</div>
+			<div class="small text-muted mt-2" id="resumenFiltro"></div>
+					{% if component_stats %}
+					<hr>
+					<div class="row g-3">
+						<div class="col-lg-6">
+							<h6 class="fw-semibold">Resumen Componentes (USD/BBL)</h6>
+							<div class="table-responsive" style="max-height:260px;">
+								<table class="table table-sm table-striped align-middle mb-0">
+									<thead class="table-light">
+										<tr><th>Componente</th><th class="text-end">Min</th><th class="text-end">Prom</th><th class="text-end">Max</th></tr>
+									</thead>
+									<tbody>
+										{% for c in component_stats %}
+										<tr>
+											<td>{{ c.alias }}</td>
+											<td class="text-end">${{ '%.4f'|format(c.min) }}</td>
+											<td class="text-end text-primary">${{ '%.4f'|format(c.avg) }}</td>
+											<td class="text-end">${{ '%.4f'|format(c.max) }}</td>
+										</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							</div>
+						</div>
+						<div class="col-lg-3">
+							<h6 class="fw-semibold">Top Spread Importaciones</h6>
+							<ol class="small mb-0">
+								{% for r in ranking_spread_imp %}
+									<li><strong>{{ r.ID }}</strong> {{ r.Producto }} <span class="text-muted">(${{ '%.4f'|format(r.valor) }})</span></li>
+								{% endfor %}
+							</ol>
+						</div>
+						<div class="col-lg-3">
+							<h6 class="fw-semibold">Top Spread Exportaciones</h6>
+							<ol class="small mb-0">
+								{% for r in ranking_spread_exp %}
+									<li><strong>{{ r.ID }}</strong> {{ r.Producto }} <span class="text-muted">(${{ '%.4f'|format(r.valor) }})</span></li>
+								{% endfor %}
+							</ol>
+						</div>
+					</div>
+					{% endif %}
+
+						{% if component_data and resultados %}
+						<div class="card shadow-sm border-0 mb-4" id="cardComparacion">
+							<div class="card-header bg-secondary text-white py-2 d-flex flex-wrap align-items-center gap-2">
+								<strong>Comparación Lado a Lado</strong>
+								<select id="cmpA" class="form-select form-select-sm w-auto"></select>
+								<select id="cmpB" class="form-select form-select-sm w-auto"></select>
+								<button class="btn btn-outline-light btn-sm" id="btnSwap" title="Intercambiar"><i class="bi bi-arrow-left-right"></i></button>
+								<div class="ms-auto small" id="cmpInfo"></div>
+							</div>
+							<div class="card-body">
+								<div id="tablaComparacionWrapper" class="table-responsive" style="max-height:540px;">
+									<!-- Tabla comparación dinámica -->
+								</div>
+								<div class="small text-muted mt-2">Diferencia = B - A | %Dif = (B - A) / A. Colores: verde ↑ mejor, rojo ↓ peor (según criterio costo/spread).</div>
+							</div>
+						</div>
+						{% endif %}
+		</div>
+	</div>
+	{% endif %}
+
+	{% if resultados %}
+	<div class="card border-0 shadow-sm">
+		<div class="card-header bg-success text-white py-2">Detalle Resumido</div>
+		<div class="table-responsive" style="max-height:550px;">
+			<table class="table table-sm table-hover mb-0 align-middle">
+				<thead class="table-success sticky-top">
+					<tr>
+						<th>ID</th><th>Contrato</th><th>Producto</th><th class="text-end">Volumen</th>
+						<th class="text-end">Spread Imp</th><th class="text-end">Costo Total Imp</th>
+						<th class="text-end">Spread Exp</th><th class="text-end">Utilidad Exp</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for fila in resultados %}
+					<tr>
+						<td>{{ fila.ID }}</td>
+						<td>{{ fila.CONTRATO }}</td>
+						<td>{{ fila.Producto }}</td>
+						<td class="text-end">{{ '{:,.0f}'.format(fila.Volumen|float) }}</td>
+						<td class="text-end">${{ '%.4f'|format(fila.SpreadImp) }}</td>
+						<td class="text-end">${{ '%.2f'|format(fila.CostoTotalImp) }}</td>
+						<td class="text-end">${{ '%.4f'|format(fila.SpreadExp) }}</td>
+						<td class="text-end">${{ '%.4f'|format(fila.UtilidadExp) }}</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{% if component_data %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="application/json" id="rawDataJSON">{{ component_data | tojson | safe }}</script>
+<script type="application/json" id="compColsJSON">{{ componentes_cols | tojson | safe }}</script>
+<script type="application/json" id="compAliasesJSON">{{ componentes_alias | tojson | safe }}</script>
+{% if resultados %}<script type="application/json" id="resumenDataJSON">{{ resultados | tojson | safe }}</script>{% endif %}
+<script>
+(() => {
+	const rawData = JSON.parse(document.getElementById('rawDataJSON').textContent);
+	const compCols = JSON.parse(document.getElementById('compColsJSON').textContent);
+	const compAliases = JSON.parse(document.getElementById('compAliasesJSON').textContent);
+	const colores = ['#1f77b4','#d62728','#ff9800','#279e68','#8c564b','#6a5acd','#17becf','#b5bd61'];
+	const selID = document.getElementById('selID');
+	const selProd = document.getElementById('selProducto');
+	const selPuerto = document.getElementById('selPuerto');
+	const selVolumen = document.getElementById('selVolumen');
+	const resumenFiltro = document.getElementById('resumenFiltro');
+	const toggles = [...document.querySelectorAll('.comp-toggle')];
+	let chart;
+
+	function uniqueSorted(arr, key){
+		return [...new Set(arr.map(o => (o[key] ?? '').toString()))].filter(v=>v!=='' ).sort((a,b)=>a.localeCompare(b,'es')); }
+
+	function buildVolumeBins(data, bins=5){
+		const vols = data.map(r=>r['Volumen Compra BBL']||0).filter(v=>v>0);
+		if(!vols.length) return [];
+		const min = Math.min(...vols), max = Math.max(...vols);
+		const step = (max-min)/bins;
+		const ranges=[];
+		for(let i=0;i<bins;i++){
+			const a = min + i*step;
+			const b = i===bins-1? max : (min + (i+1)*step);
+			ranges.push({label:`${Math.round(a).toLocaleString()} - ${Math.round(b).toLocaleString()}`, min:a, max:b});
+		}
+		return ranges;
+	}
+
+	function populateSelect(select, values, label){
+		select.innerHTML='';
+		const optAll = document.createElement('option');
+		optAll.value=''; optAll.textContent=`Todos ${label||''}`; select.appendChild(optAll);
+		values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; select.appendChild(o); });
+	}
+
+	function initFilters(){
+		populateSelect(selID, uniqueSorted(rawData,'ID'), 'ID');
+		populateSelect(selProd, uniqueSorted(rawData,'Producto'), 'Productos');
+		populateSelect(selPuerto, uniqueSorted(rawData,'Puerto Llegada'), 'Puertos');
+		const bins = buildVolumeBins(rawData,6);
+		selVolumen.innerHTML='';
+		const optAll = document.createElement('option'); optAll.value=''; optAll.textContent='Todos Volúmenes'; selVolumen.appendChild(optAll);
+		bins.forEach(b=>{ const o=document.createElement('option'); o.value=`${b.min}|${b.max}`; o.textContent=b.label; selVolumen.appendChild(o); });
+	}
+
+	function aplicaFiltro(){
+		const vID = selID.value;
+		const vProd = selProd.value;
+		const vPuerto = selPuerto.value;
+		const vVol = selVolumen.value; let minV=-Infinity,maxV=Infinity;
+		if(vVol){ const parts=vVol.split('|'); minV=parseFloat(parts[0]); maxV=parseFloat(parts[1]); }
+		const filtrado = rawData.filter(r=>
+			(!vID || r.ID==vID) &&
+			(!vProd || r.Producto==vProd) &&
+			(!vPuerto || (r['Puerto Llegada']||'')==vPuerto) &&
+			( (r['Volumen Compra BBL']||0) >= minV && (r['Volumen Compra BBL']||0) <= maxV )
+		);
+		return filtrado;
+	}
+
+	function construir(){
+		const datos = aplicaFiltro();
+		const activos = toggles.filter(t=>t.checked).map(t=>parseInt(t.value));
+		const labels = datos.map(r=> r.ID + '\n' + (r.Producto||''));
+		const datasets = activos.map(i=>({
+			label: compAliases[i],
+			data: datos.map(r=> r[compCols[i]] || 0),
+			backgroundColor: colores[i%colores.length],
+			stack: 'stack'
+		}));
+		const totVol = datos.reduce((s,r)=> s + (r['Volumen Compra BBL']||0),0);
+		resumenFiltro.textContent = `${datos.length} contratos filtrados | Volumen total: ${Math.round(totVol).toLocaleString()} BBL`;
+		const ctx = document.getElementById('chartStacked').getContext('2d');
+		if(chart) chart.destroy();
+		chart = new Chart(ctx, {
+			type: 'bar',
+			data: {labels, datasets},
+			options:{
+				indexAxis:'y',
+				responsive:true,
+				maintainAspectRatio:false,
+				interaction:{mode:'nearest', intersect:false},
+				plugins:{
+					legend:{position:'bottom'},
+					tooltip:{
+						callbacks:{
+							title:(items)=> items[0].label.replace('\n',' '),
+							label:(ctx)=> `${ctx.dataset.label}: $${ctx.parsed.x.toFixed(4)} USD/BBL`,
+							footer:(items)=>{
+								const total = items.reduce((s,i)=> s + i.parsed.x,0);
+								return 'Total: $' + total.toFixed(4) + ' USD/BBL';
+							}
+						}
+					}
+				},
+				scales:{
+					x:{stacked:true, title:{display:true, text:'USD/BBL'}},
+					y:{stacked:true, ticks:{autoSkip:false}}
+				}
+			}
+		});
+	}
+
+	function bind(){
+		[selID, selProd, selPuerto, selVolumen].forEach(s=> s.addEventListener('change', construir));
+		toggles.forEach(t=> t.addEventListener('change', construir));
+		document.getElementById('btnResetFiltros').addEventListener('click', e=>{
+			e.preventDefault();
+			[selID, selProd, selPuerto, selVolumen].forEach(s=> s.value='');
+			toggles.forEach(t=> t.checked = true);
+			construir();
+		});
+	}
+
+	initFilters();
+	bind();
+	construir();
+})();
+
+	// ===== COMPARACIÓN LADO A LADO =====
+	(() => {
+		if(!document.getElementById('resumenDataJSON')) return; // No hay datos
+		const resumen = JSON.parse(document.getElementById('resumenDataJSON').textContent); // [{ID, CONTRATO, Producto, Volumen,...}]
+		const compData = JSON.parse(document.getElementById('rawDataJSON').textContent);   // component_data
+		const compCols = JSON.parse(document.getElementById('compColsJSON').textContent);
+		const compAliases = JSON.parse(document.getElementById('compAliasesJSON').textContent);
+		const selA = document.getElementById('cmpA');
+		const selB = document.getElementById('cmpB');
+		const wrapper = document.getElementById('tablaComparacionWrapper');
+		const info = document.getElementById('cmpInfo');
+		const btnSwap = document.getElementById('btnSwap');
+
+		// Construir claves únicas (ID|Producto) para evitar colisiones
+		function keyOf(r){ return r.ID + '|' + (r.Producto||''); }
+		const mapResumen = {}; resumen.forEach(r => { mapResumen[keyOf(r)] = r; });
+		const mapComp = {}; compData.forEach(r => { mapComp[keyOf(r)] = r; });
+
+		function poblarSelect(sel){
+			sel.innerHTML = ''; const opt = document.createElement('option'); opt.value=''; opt.textContent='Seleccione'; sel.appendChild(opt);
+			resumen.forEach(r => { const o = document.createElement('option'); o.value = keyOf(r); o.textContent = r.ID + ' - ' + (r.Producto||''); sel.appendChild(o); });
+		}
+		poblarSelect(selA); poblarSelect(selB);
+
+		function fmt(v, dec=4, money=false){ if(v===null||v===undefined||isNaN(v)) return '-'; const f = dec===0?0:dec; const num = Number(v).toFixed(f); return money? ('$'+num): num; }
+		function fmtInt(v){ if(v===null||v===undefined||isNaN(v)) return '-'; return Number(v).toLocaleString(undefined,{maximumFractionDigits:0}); }
+		function fmtMoney2(v){ if(v===null||v===undefined||isNaN(v)) return '-'; return '$'+Number(v).toFixed(2); }
+		function diffClass(metric, val){
+			if(val==='-'|| val===null) return '';
+			if(metric==='SpreadImp' || metric==='SpreadExp' || metric==='UtilidadExp'){
+				return parseFloat(val) > 0 ? 'table-success' : (parseFloat(val)<0? 'table-danger':'');
+			} else { // Costos -> menor mejor
+				return parseFloat(val) < 0 ? 'table-success' : (parseFloat(val)>0? 'table-danger':'');
+			}
+		}
+
+		const resumenMetrics = [
+			{field:'Volumen', label:'Volumen (BBL)', fmt:(v)=>fmtInt(v), metric:'Volumen'},
+			{field:'SpreadImp', label:'Spread Importación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'SpreadImp'},
+			{field:'CostoTotalImp', label:'Costo Total Importación (USD)', fmt:(v)=>fmtMoney2(v), metric:'CostoTotalImp'},
+			{field:'SpreadExp', label:'Spread Exportación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'SpreadExp'},
+			{field:'UtilidadExp', label:'Utilidad Exportación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'UtilidadExp'}
+		];
+
+		function render(){
+			const ka = selA.value, kb = selB.value;
+			const aR = mapResumen[ka]; const bR = mapResumen[kb];
+			const aC = mapComp[ka]; const bC = mapComp[kb];
+			if(!ka || !kb){ wrapper.innerHTML = '<div class="text-muted p-3">Selecciona dos contratos para comparar.</div>'; info.textContent=''; return; }
+			if(!aR||!bR||!aC||!bC){ wrapper.innerHTML = '<div class="text-warning p-3">No se encontraron datos completos para ambos contratos.</div>'; return; }
+			info.textContent = (aR.ID + ' vs ' + bR.ID);
+			let html = '<table class="table table-sm table-bordered align-middle mb-0">';
+			html += '<thead class="table-light"><tr><th>Concepto</th><th>'+aR.ID+'</th><th>'+bR.ID+'</th><th>Diferencia</th><th>%Dif</th></tr></thead><tbody>';
+			// Componentes
+			for(let i=0;i<compCols.length;i++){
+				const col = compCols[i]; const alias = compAliases[i];
+				const va = aC[col]||0; const vb = bC[col]||0; const diff = vb - va; const pct = va!==0? diff/va*100: null;
+				const cls = diffClass('CostoTotalImp', diff.toFixed(4));
+				html += `<tr class="${cls}"><td>${alias}</td><td class="text-end">${fmt(va,4,true)}</td><td class="text-end">${fmt(vb,4,true)}</td><td class="text-end">${fmt(diff,4,true)}</td><td class="text-end">${pct===null?'-':fmt(pct,2)+'%'}</td></tr>`;
+			}
+			html += '<tr class="table-secondary"><th colspan="5">Métricas Resumen</th></tr>';
+			resumenMetrics.forEach(m => {
+				const va = aR[m.field]; const vb = bR[m.field]; const diff = (vb - va); const pct = va!==0? diff/va*100: null;
+				const cls = diffClass(m.metric, diff.toFixed(4));
+				html += `<tr class="${cls}"><td>${m.label}</td><td class="text-end">${m.fmt(va)}</td><td class="text-end">${m.fmt(vb)}</td><td class="text-end">${m.field==='Volumen'?fmtInt(diff): (m.metric==='CostoTotalImp'?fmtMoney2(diff):fmt(diff,4,true))}</td><td class="text-end">${pct===null?'-':fmt(pct,2)+'%'}</td></tr>`;
+			});
+			html += '</tbody></table>';
+			wrapper.innerHTML = html;
+		}
+
+		selA.addEventListener('change', render); selB.addEventListener('change', render);
+		btnSwap.addEventListener('click', e=>{ e.preventDefault(); const tmp = selA.value; selA.value = selB.value; selB.value = tmp; render(); });
+	})();
+</script>
+{% endif %}
+{% endblock %}
