@@ -3564,6 +3564,58 @@ def api_comparar_facturas():
         return jsonify(success=False, message=f"Ocurrió un error al procesar los archivos: {str(e)}"), 500
     
 @login_required
+@permiso_exclusivo('accountingzf@conquerstrading.com')
+@app.route('/api/exportar_facturas_excel', methods=['POST'])
+def exportar_facturas_excel():
+    """Recibe un JSON con la lista de facturas faltantes (tras posibles exclusiones de Caja Menor)
+    y devuelve un archivo Excel descargable."""
+    try:
+        data = request.get_json(silent=True) or {}
+        facturas = data.get('facturas', [])
+        if not isinstance(facturas, list) or not facturas:
+            return jsonify(success=False, message='No se recibieron facturas válidas.'), 400
+
+        # Estructurar DataFrame
+        df = pd.DataFrame([
+            {
+                'Factura (Normalizada)': f.get('factura'),
+                'Emisor (DIAN)': f.get('emisor')
+            }
+            for f in facturas if f.get('factura')
+        ])
+
+        if df.empty:
+            return jsonify(success=False, message='La lista está vacía tras el filtrado.'), 400
+
+        # Generar Excel en memoria
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Faltantes')
+            ws = writer.sheets['Faltantes']
+            # Auto ancho simple
+            for col in ws.columns:
+                max_length = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    try:
+                        val = str(cell.value) if cell.value is not None else ''
+                        if len(val) > max_length:
+                            max_length = len(val)
+                    except Exception:
+                        pass
+                ws.column_dimensions[col_letter].width = min(max_length + 2, 60)
+        output.seek(0)
+
+        filename = f"facturas_faltantes_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        return send_file(output,
+                         as_attachment=True,
+                         download_name=filename,
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    except Exception as e:
+        app.logger.error(f"Error exportando Excel faltantes: {e}")
+        return jsonify(success=False, message='Error interno al generar el Excel.'), 500
+
+@login_required
 @permiso_requerido('control_remolcadores')    
 @app.route('/control_remolcadores')
 def control_remolcadores_page():

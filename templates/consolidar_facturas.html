@@ -48,6 +48,9 @@
                         <button id="btnEliminarCajaMenor" class="btn btn-danger btn-sm ms-2" style="display:none;">
                             <i class="bi bi-trash me-1"></i>Eliminar Caja Menor
                         </button>
+                        <button id="btnDescargarExcel" class="btn btn-success btn-sm ms-2" style="display:none;">
+                            <i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel
+                        </button>
                     </div>
                 </div>
                 <div id="listaFaltantes" class="list-group list-group-flush"></div>
@@ -68,6 +71,8 @@
         const filtroInput = document.getElementById('filtroResultados');
         const btnSeleccionarCajaMenor = document.getElementById('btnSeleccionarCajaMenor');
         const btnEliminarCajaMenor = document.getElementById('btnEliminarCajaMenor');
+    const btnDescargarExcel = document.getElementById('btnDescargarExcel');
+    let facturasFaltantesOriginal = [];
 
         // --- INICIO: LÓGICA PARA EL FILTRO DE BÚSQUEDA ---
         if (filtroInput) {
@@ -129,9 +134,11 @@
                 loadingSpinner.style.display = 'none';
                 if (data.success) {
                     const faltantes = data.faltantes || [];
+                    facturasFaltantesOriginal = JSON.parse(JSON.stringify(faltantes)); // copia profunda
                     conteoFaltantes.textContent = `${faltantes.length} Faltante(s)`;
                     renderFaltantes(faltantes);
                     resultadosContainer.style.display = 'block';
+                    btnDescargarExcel.style.display = faltantes.length ? 'inline-block' : 'none';
                 } else {
                     alert(`Error: ${data.message}`);
                 }
@@ -166,8 +173,51 @@
                 conteoFaltantes.textContent = `${restantes} Faltante(s)`;
                 if (restantes === 0) {
                     listaFaltantes.innerHTML = '<div class="list-group-item list-group-item-success">¡Excelente! Todas las facturas de la DIAN están en Odoo.</div>';
+                    btnDescargarExcel.style.display = 'none';
+                } else {
+                    btnDescargarExcel.style.display = 'inline-block';
                 }
             }
+        });
+
+        // Preparar y descargar Excel
+        btnDescargarExcel.addEventListener('click', function() {
+            // Construir lista actual basada en los elementos visibles (no eliminados)
+            const actuales = [];
+            document.querySelectorAll('#listaFaltantes .list-group-item').forEach(item => {
+                const strong = item.querySelector('strong');
+                if (!strong) return; // mensaje final
+                const texto = strong.textContent.trim(); // Factura: ABC-123
+                const factura = texto.replace(/^Factura:\s*/i,'').trim();
+                const emisorSmall = item.querySelector('small');
+                let emisor = emisorSmall ? emisorSmall.textContent.replace(/Emisor \(DIAN\):/i,'').trim() : '';
+                actuales.push({ factura, emisor });
+            });
+            if (!actuales.length) { alert('No hay facturas para exportar.'); return; }
+            btnDescargarExcel.disabled = true;
+            btnDescargarExcel.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando...';
+            fetch("{{ url_for('exportar_facturas_excel') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ facturas: actuales })
+            }).then(resp => {
+                if (!resp.ok) throw new Error('Error generando Excel');
+                return resp.blob();
+            }).then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'facturas_faltantes.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            }).catch(err => {
+                alert(err.message);
+            }).finally(() => {
+                btnDescargarExcel.disabled = false;
+                btnDescargarExcel.innerHTML = '<i class="bi bi-file-earmark-excel me-1"></i>Descargar Excel';
+            });
         });
     });
     </script>

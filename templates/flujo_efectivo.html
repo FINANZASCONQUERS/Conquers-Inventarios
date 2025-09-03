@@ -299,26 +299,27 @@
                 </div>
             </div>
         </div>
+        <!-- Layout vertical para mejorar legibilidad de etiquetas en eje X -->
         <div class="row g-4 mb-4">
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
+            <div class="col-12">
+                <div class="card shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Top Terceros (Ingresos)</h6>
                         <small class="text-muted" id="ingresos-flujo-total"></small>
                     </div>
                     <div class="card-body">
-                        <canvas id="chartIngresosFlujo" height="160"></canvas>
+                        <canvas id="chartIngresosFlujo" height="140"></canvas>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6">
-                <div class="card shadow-sm h-100">
+            <div class="col-12">
+                <div class="card shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">Top Terceros (Egresos)</h6>
                         <small class="text-muted" id="egresos-flujo-total"></small>
                     </div>
                     <div class="card-body">
-                        <canvas id="chartEgresosFlujo" height="160"></canvas>
+                        <canvas id="chartEgresosFlujo" height="140"></canvas>
                     </div>
                 </div>
             </div>
@@ -526,7 +527,10 @@
 
         return `
             <div class="card mt-4">
-                <div class="card-header"><h5 class="mb-0">Conciliación Diaria (Bancos vs. Odoo)</h5></div>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Conciliación Diaria (Bancos vs. Odoo)</h5>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btn-export-conciliacion"><i class="bi bi-file-earmark-excel"></i> Excel</button>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover table-bordered mb-0">
                         <thead class="table-light text-center" style="position: sticky; top: 0;">
@@ -576,6 +580,32 @@
     // Nuevos contenedores para guardar los resúmenes filtrados de ingresos/egresos (por tipo de flujo)
     let globalFilteredInflowsByType = null;
     let globalFilteredOutflowsByType = null;
+    // Flag primera carga para limpiar filtros siempre
+    let firstCargaFlujo = true;
+    function resetInternalFilters(){
+        const ids = [
+            'chart-clase-filter','chart-subclase-filter',
+            'prov-tf-filter','prov-clase-filter','prov-subclase-filter',
+            'tf-tercero-filter','tf-tercero-clase-filter',
+            'filtro-clase-ingresos','filtro-subclase-ingresos',
+            'filtro-clase-egresos','filtro-subclase-egresos'
+        ];
+        ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.value=''; } });
+        // Forzar recálculo de charts si estamos en vista charts
+        if(currentView==='charts'){
+            recomputeTopClientesEXWFiltered();
+            recomputeTopProveedoresEgresosFiltered();
+            recomputeIngresoEgresoFlujoCharts();
+        }
+        // Si breakdowns visibles, refrescar sin filtros internos
+        ['ingresos','egresos'].forEach(t=>{
+            const row = document.getElementById('breakdown-'+t);
+            if(row && !row.classList.contains('d-none')){
+                if(t==='ingresos') showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, true);
+                else showBreakdown('egresos', globalFilteredOutflowsByType || globalReportData.outflows_by_type, true);
+            }
+        });
+    }
 
 
     function updateEmpresaFilter(empresas) {
@@ -666,140 +696,117 @@
 
 
     function filterDataByEmpresaYTiempo(data, empresa, year, month, day) {
-        // Filtrar daily_comparison
-    let filteredDaily = data.daily_comparison || [];
-    if (empresa) filteredDaily = filteredDaily.filter(row => (row.empresa || row.Empresa) === empresa);
-        if (globalTipoBancoSeleccionado) filteredDaily = filteredDaily.filter(row => (row.tipo_banco||'').trim() === globalTipoBancoSeleccionado);
-        // Prioridad: rango de fechas si está definido
-        if(globalFechaInicio){ filteredDaily = filteredDaily.filter(r => r.fecha >= globalFechaInicio); }
-        if(globalFechaFin){ filteredDaily = filteredDaily.filter(r => r.fecha <= globalFechaFin); }
-    // si no hay rango, no se aplica filtro adicional (filtros antiguos eliminados)
+        // Filtrar daily_comparison base
+        let filteredDaily = data.daily_comparison || [];
+        if (empresa) filteredDaily = filteredDaily.filter(row => (row.empresa || row.Empresa) === empresa);
+        if (globalTipoBancoSeleccionado) filteredDaily = filteredDaily.filter(row => (row.tipo_banco || '').trim() === globalTipoBancoSeleccionado);
+        if (globalFechaInicio) filteredDaily = filteredDaily.filter(r => r.fecha >= globalFechaInicio);
+        if (globalFechaFin) filteredDaily = filteredDaily.filter(r => r.fecha <= globalFechaFin);
 
-        // Nuevo filtrado para detalle completo
+        // Filtrar detalle de Odoo según los mismos criterios (empresa, tipo banco, rango fechas)
         function filterDetalle(det) {
             if (!Array.isArray(det)) return [];
             return det.filter(r => {
                 if (empresa && r.empresa !== empresa) return false;
-                if (globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
-                if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
-                if(globalFechaFin && r.fecha > globalFechaFin) return false;
-                // (filtros año/mes/día eliminados)
+                if (globalTipoBancoSeleccionado && (r.banco || '').trim() !== globalTipoBancoSeleccionado) return false;
+                if (globalFechaInicio && r.fecha < globalFechaInicio) return false;
+                if (globalFechaFin && r.fecha > globalFechaFin) return false;
                 return true;
             });
         }
         const detalleFiltrado = filterDetalle(data.odoo_detalle || []);
-        function buildResumenFiltrado(resumen) {
-            if (!resumen) return {};
-            const validKeys = new Set(detalleFiltrado.map(r => (r.tipo_flujo||'SIN TIPO')+'||'+(r.tercero||'SIN TERCERO')));
-            const res = {};
-            for (const tf in resumen) {
-                for (const ter in resumen[tf]) {
-                    const key = (tf||'SIN TIPO')+'||'+(ter||'SIN TERCERO');
-                    if (validKeys.has(key)) {
-                        (res[tf] ||= {})[ter] = resumen[tf][ter];
-                    }
-                }
+
+        // Recalcular inflows/outflows SOLO con el detalle filtrado (evita usar agregados globales)
+        const inflows_by_type = {};
+        const outflows_by_type = {};
+        detalleFiltrado.forEach(r => {
+            const tipoFlujo = (r.tipo_flujo || 'SIN TIPO').toUpperCase();
+            const tercero = (r.tercero || 'SIN TERCERO').toUpperCase();
+            const deb = Number(r.debito) || 0;
+            const cred = Number(r.credito) || 0;
+            if (deb > 0) {
+                (inflows_by_type[tipoFlujo] ||= {});
+                inflows_by_type[tipoFlujo][tercero] = (inflows_by_type[tipoFlujo][tercero] || 0) + deb;
             }
-            return res;
-        }
-        return { 
+            if (cred > 0) {
+                (outflows_by_type[tipoFlujo] ||= {});
+                outflows_by_type[tipoFlujo][tercero] = (outflows_by_type[tipoFlujo][tercero] || 0) + cred;
+            }
+        });
+
+        return {
             daily_comparison: filteredDaily,
-            inflows_by_type: buildResumenFiltrado(data.inflows_by_type),
-            outflows_by_type: buildResumenFiltrado(data.outflows_by_type),
+            inflows_by_type,
+            outflows_by_type,
             detalle_filtrado: detalleFiltrado
         };
     }
 
     function recomputeResumenFiltered(filteredDaily, bancosMovs, inflowsResumen, outflowsResumen) {
-        // Saldo inicial = suma de todos los bancos del PRIMER DIA de CADA MES visible (o primer día disponible si falta el 01)
-        // Respeta filtro de empresa; ignora filtro de tipo banco.
-        // Si hay rango de fechas, solo meses dentro del rango.
-        const empresasSet = new Set(filteredDaily.map(r=> r.empresa || r.Empresa));
+        // Empresas en el daily filtrado
+        const empresasSet = new Set(filteredDaily.map(r => r.empresa || r.Empresa));
         const movimientos = bancosMovs || [];
-        // Construir set de meses visibles a partir de daily (si hay) o de movimientos de saldo inicial.
+
+        // Determinar meses visibles: de daily_comparison filtrado o de saldos iniciales si no hay.
         let mesesVisibles = new Set();
-        if(filteredDaily.length){
-            filteredDaily.forEach(r=> mesesVisibles.add(r.fecha.slice(0,7)));
+        if (filteredDaily.length) {
+            filteredDaily.forEach(r => mesesVisibles.add(r.fecha.slice(0, 7)));
         } else {
-            movimientos.filter(m=>m.clasificacion==='saldo_inicial').forEach(m=> mesesVisibles.add(m.fecha.slice(0,7)));
+            movimientos.filter(m => m.clasificacion === 'saldo_inicial').forEach(m => mesesVisibles.add(m.fecha.slice(0, 7)));
         }
-        // Aplicar rango de fechas (si existe) sobre meses visibles
-        if(globalFechaInicio){
-            const mesInicio = globalFechaInicio.slice(0,7);
-            mesesVisibles = new Set([...mesesVisibles].filter(m=> m >= mesInicio));
+        if (globalFechaInicio) {
+            const mesIni = globalFechaInicio.slice(0, 7);
+            mesesVisibles = new Set([...mesesVisibles].filter(m => m >= mesIni));
         }
-        if(globalFechaFin){
-            const mesFin = globalFechaFin.slice(0,7);
-            mesesVisibles = new Set([...mesesVisibles].filter(m=> m <= mesFin));
+        if (globalFechaFin) {
+            const mesFin = globalFechaFin.slice(0, 7);
+            mesesVisibles = new Set([...mesesVisibles].filter(m => m <= mesFin));
         }
+
+        // Calcular saldo inicial mes a mes (día 01; si falta tomar primer día existente)
         let saldoInicial = 0;
-        // Por cada mes visible: sumar saldo_inicial del día 01; si no existe, usar primer día disponible de ese mes.
         [...mesesVisibles].sort().forEach(mes => {
-            const primerDia = mes+'-01';
-            // Filtrar movimientos de ese mes
-            const movMes = movimientos.filter(m=> m.fecha.startsWith(mes) && m.clasificacion==='saldo_inicial' && (!empresasSet.size || empresasSet.has(m.empresa)));
-            if(!movMes.length) return; // nada para ese mes
-            const exactos = movMes.filter(m=> m.fecha===primerDia);
-            const candidatos = exactos.length ? exactos : movMes.sort((a,b)=> a.fecha.localeCompare(b.fecha)).slice(0, movMes.length); // si no hay 01, usar todos (luego filtramos primer día disponible)
+            const movMes = movimientos.filter(m => m.fecha.startsWith(mes) && m.clasificacion === 'saldo_inicial' && (!empresasSet.size || empresasSet.has(m.empresa)));
+            if (!movMes.length) return;
+            const primerDia = mes + '-01';
             let fechaBase = primerDia;
-            if(!exactos.length){
-                // obtener menor fecha del mes
-                fechaBase = movMes.map(m=>m.fecha).sort()[0];
+            if (!movMes.some(m => m.fecha === primerDia)) {
+                fechaBase = movMes.map(m => m.fecha).sort()[0];
             }
-            // Sumar todos los registros de saldo_inicial de esa fecha base
-            candidatos.forEach(m=>{
-                if(m.fecha===fechaBase){ saldoInicial += m.monto; }
+            movMes.forEach(m => { if (m.fecha === fechaBase) saldoInicial += m.monto; });
+        });
+
+        // NUEVA LÓGICA: Siempre calcular ingresos / egresos desde la hoja de Bancos (movimientos clasificados)
+        let ingresos = 0; let egresos = 0; let egresosGMF = 0;
+        if(movimientos.length){
+            const movsOper = movimientos.filter(m => {
+                if (empresasSet.size && !empresasSet.has(m.empresa)) return false;
+                if (globalFechaInicio && m.fecha < globalFechaInicio) return false;
+                if (globalFechaFin && m.fecha > globalFechaFin) return false;
+                if (globalTipoBancoSeleccionado && (m.tipo_banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+                return true;
             });
-        });
-        // Ingresos / Egresos dentro del rango de fechas seleccionado (si hay)
-        const movsOperativos = movimientos.filter(m=>{
-            if(empresasSet.size>0 && !empresasSet.has(m.empresa)) return false;
-            if(globalFechaInicio && m.fecha < globalFechaInicio) return false;
-            if(globalFechaFin && m.fecha > globalFechaFin) return false;
-            return true;
-        });
-        let ingresos=0, egresos=0;
-        movsOperativos.forEach(m=>{
-            if(m.clasificacion==='ingreso') ingresos += m.monto;
-            else if(m.clasificacion==='egreso') egresos += Math.abs(m.monto);
-        });
-        // Sumar GMF: intentar primero desde outflowsResumen (claves que contengan GMF),
-        // si no hay, derivar desde detalle_filtrado (créditos cuyo movimiento contenga GMF)
-        let egresosGMF = 0;
-        let foundFromResumen = false;
-        if(outflowsResumen){
-            Object.keys(outflowsResumen).forEach(tf=>{
-                if(/gmf/i.test(tf)){
-                    Object.values(outflowsResumen[tf]).forEach(v=> egresosGMF += v);
-                    foundFromResumen = true;
-                }
+            movsOper.forEach(m => {
+                const clasif = (m.clasificacion||'').toLowerCase();
+                if (clasif === 'ingreso') ingresos += (m.monto||0);
+                else if (clasif === 'egreso') egresos += Math.abs(m.monto||0);
+                else if (clasif === 'egreso_gmf') egresosGMF += Math.abs(m.monto||0);
             });
         }
-        if(!foundFromResumen){
-            // Intentar sumar desde movimientos bancos clasificados como egreso_gmf
-            movsOperativos.forEach(m=>{
-                if(m.clasificacion==='egreso_gmf') egresosGMF += Math.abs(m.monto);
-            });
-            if(egresosGMF===0){
-                // Buscar en detalle filtrado globalReportData.odoo_detalle como fallback
-                const det = (globalReportData && Array.isArray(globalReportData.odoo_detalle)) ? globalReportData.odoo_detalle : [];
-                det.forEach(r=>{
-                    if(r && typeof r.movimiento === 'string' && /gmf/i.test(r.movimiento)){
-                        const val = (typeof r.credito === 'number') ? r.credito : 0;
-                        egresosGMF += val;
-                    }
-                });
-            }
-        }
+
+        const saldoAntesEgresos = saldoInicial + ingresos;
+        const egresosTotal = egresos + egresosGMF;
+        const saldoFinal = saldoAntesEgresos - egresosTotal;
+
         return {
             saldo_inicial: saldoInicial,
-            ingresos: ingresos,
-            saldo_antes_egresos: saldoInicial + ingresos,
-            egresos: egresos,
+            ingresos,
+            saldo_antes_egresos: saldoAntesEgresos,
+            egresos,
             egresos_gmf: egresosGMF,
-            egresos_total: egresos + egresosGMF,
-            saldo_final: saldoInicial + ingresos - (egresos + egresosGMF),
-            inflows_by_type: inflowsResumen,
+            egresos_total: egresosTotal,
+            saldo_final: saldoFinal,
+            inflows_by_type: inflowsResumen, // se mantienen para breakdown, aunque resumen usa bancos
             outflows_by_type: outflowsResumen
         };
     }
@@ -810,6 +817,12 @@
         let filtered = filterDataByEmpresaYTiempo(data, globalEmpresaSeleccionada, globalYear, globalMonth, globalDay);
             outputDiv.innerHTML = `
                 ${createComparisonTable(filtered.daily_comparison)}`;
+        // Guardar referencia global para exportación
+        window.lastConciliacionFiltered = filtered.daily_comparison || [];
+        const exportBtn = document.getElementById('btn-export-conciliacion');
+        if(exportBtn){
+            exportBtn.addEventListener('click', exportConciliacionExcel);
+        }
         // Activar toggles
         document.querySelectorAll('.toggle-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -851,6 +864,26 @@
         }
     }
 
+    function exportConciliacionExcel(){
+        const data = window.lastConciliacionFiltered || [];
+        if(!data.length){ pushAlert('warning','No hay datos para exportar'); return; }
+        // Construir contenido TSV compatible con Excel
+        let tsv = 'Fecha\tEmpresa\tTipo Banco\tIngresos Bancos\tIngresos Odoo\tDiferencia Ingresos\tEgresos Bancos\tEgresos Odoo\tDiferencia Egresos\n';
+        let totIB=0, totIO=0, totEB=0, totEO=0, totDI=0, totDE=0;
+        data.forEach(r=>{
+            tsv += [r.fecha, (r.empresa||r.Empresa||''), (r.tipo_banco||''), r.ingresos_bancos, r.ingresos_odoo, r.diferencia_ingresos, r.egresos_bancos, r.egresos_odoo, r.diferencia_egresos].join('\t')+'\n';
+            totIB += r.ingresos_bancos; totIO += r.ingresos_odoo; totDI += r.diferencia_ingresos; totEB += r.egresos_bancos; totEO += r.egresos_odoo; totDE += r.diferencia_egresos;
+        });
+        tsv += ['TOTALES','', '', totIB, totIO, totDI, totEB, totEO, totDE].join('\t')+'\n';
+        const blob = new Blob([tsv], {type:'application/vnd.ms-excel'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const fecha = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        a.href = url; a.download = `conciliacion_diaria_${fecha}.xls`;
+        document.body.appendChild(a); a.click();
+        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+    }
+
     function displayReport(data) {
         // Normalizar daily_comparison para asegurar 'empresa'
         if (Array.isArray(data.daily_comparison)) {
@@ -860,6 +893,16 @@
     updateEmpresaFilter(data.todas_las_empresas);
     updateBancoFilter(data);
         updateTimeFilters(data);
+        // Limpiar filtros sólo en la primera carga para que no haya selección predeterminada
+        if(firstCargaFlujo){
+            globalEmpresaSeleccionada='';
+            globalTipoBancoSeleccionado='';
+            globalFechaInicio='';
+            globalFechaFin='';
+            ['empresa-filter','banco-filter','fecha-inicio','fecha-fin','mes-completo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+            resetInternalFilters();
+            firstCargaFlujo = false;
+        }
         renderReport(data);
         document.getElementById('report-output').classList.remove('d-none');
         // Primera render sin filtros usa resumen_directo original
@@ -1051,9 +1094,15 @@
         facturasPorCliente = new Map();
         facturasPorClienteBase.forEach((lista, cli)=>{
             const filtradas = lista.filter(f=>{
-                if(globalYear && !(f.fecha||'').startsWith(globalYear)) return false;
-                if(globalMonth && (f.fecha||'').slice(5,7)!==globalMonth) return false;
-                if(globalDay && (f.fecha||'').slice(8,10)!==globalDay) return false;
+                // Prioridad: rango de fechas si está definido
+                if(globalFechaInicio && (!f.fecha || f.fecha < globalFechaInicio)) return false;
+                if(globalFechaFin && (!f.fecha || f.fecha > globalFechaFin)) return false;
+                // Compatibilidad con filtros antiguos (año/mes/día) sólo si no se usa rango
+                if(!globalFechaInicio && !globalFechaFin){
+                    if(globalYear && !(f.fecha||'').startsWith(globalYear)) return false;
+                    if(globalMonth && (f.fecha||'').slice(5,7)!==globalMonth) return false;
+                    if(globalDay && (f.fecha||'').slice(8,10)!==globalDay) return false;
+                }
                 return true;
             });
             if(filtradas.length){
@@ -1105,10 +1154,18 @@
         if(!globalReportData || !globalReportData.odoo_detalle){ renderTopProveedoresEgresos(null); return; }
         const detalle = globalReportData.odoo_detalle.filter(r=>{
             if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
-            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            // Filtro por rango de fechas prioritario
+            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            // Compatibilidad con filtros antiguos sólo si no hay rango
+            if(!globalFechaInicio && !globalFechaFin){
+                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            }
+            // Filtro de banco (tipo de banco)
+            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         // Primero filtrar sólo registros de egresos verdaderos (egresos en Odoo suelen ser crédito > 0)
@@ -1209,20 +1266,16 @@
     const clasesDisponiblesSet = new Set(detalle.map(r=> (r.clase||'').toUpperCase()));
     const clasesFiltradas = ALLOWED_CLASSES.filter(c=> clasesDisponiblesSet.has(c));
         const prevClase = (chartClaseSelect.value||'').toUpperCase();
-        // Construir opciones mostrando solo las permitidas presentes
+        // Construir opciones mostrando solo las permitidas presentes (sin auto-seleccionar)
         chartClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c=>`<option value="${c}">${c}</option>`).join('');
-        let selectedClase = prevClase && clasesFiltradas.includes(prevClase) ? prevClase : '';
-        if(!selectedClase){
-            if(clasesFiltradas.includes('VENTAS EXW CTG')) selectedClase = 'VENTAS EXW CTG';
-            else if(clasesFiltradas.includes('ANTICIPO VENTAS FOB CTG')) selectedClase = 'ANTICIPO VENTAS FOB CTG';
-        }
-        chartClaseSelect.value = selectedClase;
+        // Mantener si el usuario ya eligió; si no, dejar vacío
+        chartClaseSelect.value = (prevClase && clasesFiltradas.includes(prevClase)) ? prevClase : '';
         // Subclases derivadas
         let subclases = [];
-        if(selectedClase){
-            subclases = Array.from(new Set(detalle.filter(r=> (r.clase||'').toUpperCase()===selectedClase).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        if(chartClaseSelect.value){
+            const sel = chartClaseSelect.value.toUpperCase();
+            subclases = Array.from(new Set(detalle.filter(r=> (r.clase||'').toUpperCase()===sel).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
         } else {
-            // Auto: subclases de cualquier clase permitida (solo las permitidas)
             subclases = Array.from(new Set(detalle.filter(r=> ALLOWED_CLASSES.includes((r.clase||'').toUpperCase())).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
         }
         const prevSub = chartSubclaseSelect.value;
@@ -1239,9 +1292,14 @@
             if(globalReportData && globalReportData.odoo_detalle){
                 const detalleFiltrado = globalReportData.odoo_detalle.filter(r=>{
                     if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
-                    if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-                    if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-                    if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+                    if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
+                    if(globalFechaFin && r.fecha > globalFechaFin) return false;
+                    if(!globalFechaInicio && !globalFechaFin){
+                        if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+                        if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+                        if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+                    }
+                    if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
                     return true;
                 });
                 updateChartClaseSubclaseOptions(detalleFiltrado);
@@ -1471,10 +1529,18 @@
     // Filtrar detalle por vista seleccionada
         const detalle = globalReportData.odoo_detalle.filter(r=>{
             if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
-            if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-            if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-            else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-            if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            // Rango fechas prioritario
+            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            // Compatibilidad filtros antiguos
+            if(!globalFechaInicio && !globalFechaFin){
+                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
+                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
+                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            }
+            // Filtro de banco
+            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         updateChartClaseSubclaseOptions(detalle);
@@ -1603,12 +1669,36 @@
                 plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=> serieLabel+': '+currencyFormatter.format(c.parsed.y||0) } } },
                 scales:{
                     x:{
-                        ticks:{ display:false }, // ocultar etiquetas eje X para ganar espacio
-                        grid:{ display:false }
+                        grid:{ display:false },
+                        ticks:{
+                            autoSkip:false,
+                            maxRotation:0,
+                            minRotation:0,
+                            callback:function(value){
+                                const raw = this.getLabelForValue ? this.getLabelForValue(value) : '';
+                                if(!raw) return '';
+                                const MAX_CHARS = 14; // igual que primeras gráficas
+                                const words = raw.split(/\s+/);
+                                const lines=[]; let line='';
+                                words.forEach(w=>{
+                                    if((line + w).length > MAX_CHARS){
+                                        if(line) lines.push(line.trim());
+                                        line = w + ' ';
+                                    } else {
+                                        line += w + ' ';
+                                    }
+                                });
+                                if(line) lines.push(line.trim());
+                                if(lines.length>3){
+                                    return lines.slice(0,2).concat('…');
+                                }
+                                return lines;
+                            }
+                        }
                     },
                     y:{ ticks:{ callback:v=>currencyFormatter.format(v) } }
                 },
-                layout:{ padding:{ bottom:0 } }
+                layout:{ padding:{ bottom:4 } }
             }
         });
     }
@@ -1710,6 +1800,8 @@
             document.getElementById('report-output').classList.add('d-none');
             document.getElementById('charts-view').classList.remove('d-none');
             document.getElementById('toggle-view-btn').innerHTML='<i class="bi bi-table"></i><span>Ver Reporte</span>';
+            // Limpiar filtros internos al entrar a gráficos
+            resetInternalFilters();
             recomputeTopClientesEXWFiltered();
             recomputeTopProveedoresEgresosFiltered();
             recomputeIngresoEgresoFlujoCharts();
