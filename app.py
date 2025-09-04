@@ -3,7 +3,7 @@ import hashlib
 from datetime import datetime, time, date, timedelta
 import os
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file # Añadido send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app # Añadido send_file y current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl 
 from io import BytesIO # Para Excel
@@ -3019,12 +3019,33 @@ def descargar_reporte_planta_pdf():
         })
     # ======== FIN DE LA SOLUCIÓN DEFINITIVA ========
 
-    # Se pasa la lista de datos ya limpios a la plantilla
+    # Totales para badges (estilo similar a reporte gráfico despachos)
+    total_bls = sum(r['bls_60'] for r in registros_limpios)
+    total_cap = sum(r['max_cap'] for r in registros_limpios)
+
+    # Cargar logo como base64
+    logo_base64 = None
+    try:
+        logo_candidates = ['Logo_de_empresa.jpeg', 'Conquers_4_Logo.png', 'logo.jpeg']
+        for fname in logo_candidates:
+            logo_path = os.path.join(current_app.root_path, 'static', fname)
+            if os.path.exists(logo_path):
+                import base64
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+                break
+    except Exception as e:
+        print(f"Error cargando logo para planta PDF: {e}")
+
     html_para_pdf = render_template('reportes_pdf/planta_pdf.html',
                                     registros=registros_limpios,
-                                    fecha_reporte=fecha_reporte_str)
+                                    fecha_reporte=fecha_reporte_str,
+                                    total_bls=total_bls,
+                                    total_cap=total_cap,
+                                    logo_base64=logo_base64,
+                                    fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'))
     
-    pdf = HTML(string=html_para_pdf).write_pdf()
+    pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
     return Response(pdf,
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_planta.pdf'})
@@ -4498,15 +4519,27 @@ def exportar_programacion_cargue(formato):
 
     # 3. Lógica para generar el archivo PDF
     elif formato == 'pdf':
+        # Cargar logo en base64 (igual que otros reportes)
+        logo_base64 = None
+        try:
+            logo_path = os.path.join(current_app.root_path, 'static', 'Logo_de_empresa.jpeg')
+            if os.path.exists(logo_path):
+                with open(logo_path, 'rb') as f:
+                    import base64
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+        except Exception as e:
+            print(f"Error cargando logo para programación cargue: {e}")
+
         # Renderizamos una plantilla HTML especial para el PDF
         html_para_pdf = render_template(
             'reportes_pdf/programacion_cargue_pdf.html',
             registros=registros,
-            fecha_reporte=datetime.now().strftime('%d de %B de %Y')
+            fecha_reporte=datetime.now().strftime('%d de %B de %Y'),
+            logo_base64=logo_base64
         )
-        
-        # Usamos WeasyPrint para convertir el HTML a PDF
-        pdf = HTML(string=html_para_pdf).write_pdf()
+
+        # Usamos WeasyPrint para convertir el HTML a PDF (base_url para recursos relativos)
+        pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
         
         # Devolvemos el PDF como una descarga
         return Response(
@@ -4553,23 +4586,38 @@ def reporte_grafico_despachos():
     today = date.today()
     fecha_inicio_str = request.args.get('fecha_inicio', '')
     fecha_fin_str = request.args.get('fecha_fin', '')
+    mes_str = request.args.get('mes', '')  # formato esperado YYYY-MM
     cliente_filtro = request.args.get('cliente', '')
+    tipo_grafico = request.args.get('tipo', 'bar')  # 'bar' (horizontal) o 'pie'
+    producto_filtro = request.args.get('producto', 'ambos').lower()  # 'ambos' | 'fo4' | 'diluyente'
 
-    # Si no hay fechas, no filtrar por fecha (mostrar todo)
-    if fecha_inicio_str:
+    # Prioridad: si se elige mes, se ignoran fechas individuales
+    fecha_inicio = None
+    fecha_fin = None
+    if mes_str:
         try:
-            fecha_inicio = date.fromisoformat(fecha_inicio_str)
-        except (ValueError, TypeError):
+            anio, mes = map(int, mes_str.split('-'))
+            fecha_inicio = date(anio, mes, 1)
+            # calcular último día del mes
+            if mes == 12:
+                fecha_fin = date(anio, 12, 31)
+            else:
+                fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
+        except Exception:
             fecha_inicio = None
-    else:
-        fecha_inicio = None
-    if fecha_fin_str:
-        try:
-            fecha_fin = date.fromisoformat(fecha_fin_str)
-        except (ValueError, TypeError):
             fecha_fin = None
     else:
-        fecha_fin = None
+        # Si no hay fechas, no filtrar por fecha (mostrar todo)
+        if fecha_inicio_str:
+            try:
+                fecha_inicio = date.fromisoformat(fecha_inicio_str)
+            except (ValueError, TypeError):
+                fecha_inicio = None
+        if fecha_fin_str:
+            try:
+                fecha_fin = date.fromisoformat(fecha_fin_str)
+            except (ValueError, TypeError):
+                fecha_fin = None
 
     # Obtener lista de clientes únicos
     clientes = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
@@ -4584,6 +4632,15 @@ def reporte_grafico_despachos():
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None)
     )
+    # Filtro por producto (FO4, Diluyente, Ambos)
+    if producto_filtro == 'fo4':
+        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
+    elif producto_filtro == 'diluyente':
+        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
+    else:  # ambos
+        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), (
+            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%')
+        ))
     if fecha_inicio:
         query = query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
     if fecha_fin:
@@ -4611,16 +4668,13 @@ def reporte_grafico_despachos():
         resumen_productos = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
     grafico_base64 = None
+    total_box_text = None  # Texto para tarjeta externa (solo barras)
     total_barriles_general = 0
     if datos_despacho:
         clientes_graf = [resultado[0] for resultado in datos_despacho]
         barriles = [float(resultado[1]) for resultado in datos_despacho]
         total_barriles_general = sum(barriles)
-
-        fig, ax = plt.subplots(figsize=(12, max(6, len(clientes_graf) * 0.5)))
-        bars = ax.barh(clientes_graf, barriles, color='#0b8552')
-        ax.set_xlabel('Total de Barriles Despachados')
-        ax.set_ylabel('Cliente')
+        # Periodo para títulos
         if fecha_inicio and fecha_fin:
             periodo = f"{fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}"
         elif fecha_inicio:
@@ -4629,76 +4683,385 @@ def reporte_grafico_despachos():
             periodo = f"Hasta {fecha_fin.strftime('%d/%m/%Y')}"
         else:
             periodo = "Todo el periodo"
-        ax.set_title(f"Total de Barriles Despachados por Cliente\n({periodo})")
-        ax.invert_yaxis()
-        for bar in bars:
-            width = bar.get_width()
-            ax.text(width + (max(barriles) * 0.01), bar.get_y() + bar.get_height()/2,
-                    f'{width:,.2f}', ha='left', va='center', fontsize=9)
-        ax.grid(axis='x', linestyle='--', alpha=0.6)
-        plt.tight_layout()
-        grafico_base64 = convertir_plot_a_base64(fig)
+
+        # ---- Calcular FO4 y Diluyente por cliente (solo si se muestran ambos) ----
+        fo4_vals = []
+        diluyente_vals = []
+        fo4_total_general = 0
+        diluyente_total_general = 0
+        if producto_filtro == 'ambos':
+            base_filters = [
+                ProgramacionCargue.estado == 'DESPACHADO',
+                ProgramacionCargue.cliente.isnot(None),
+                ProgramacionCargue.barriles.isnot(None),
+                ProgramacionCargue.producto_a_cargar.isnot(None)
+            ]
+            fo4_query = db.session.query(
+                ProgramacionCargue.cliente,
+                func.sum(ProgramacionCargue.barriles).label('fo4_barriles')
+            ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
+            dil_query = db.session.query(
+                ProgramacionCargue.cliente,
+                func.sum(ProgramacionCargue.barriles).label('dil_barriles')
+            ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
+            if fecha_inicio:
+                fo4_query = fo4_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+                dil_query = dil_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+            if fecha_fin:
+                fo4_query = fo4_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+                dil_query = dil_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+            if cliente_filtro:
+                fo4_query = fo4_query.filter(ProgramacionCargue.cliente == cliente_filtro)
+                dil_query = dil_query.filter(ProgramacionCargue.cliente == cliente_filtro)
+            fo4_map = {c: float(v) for c, v in fo4_query.group_by(ProgramacionCargue.cliente).all()}
+            dil_map = {c: float(v) for c, v in dil_query.group_by(ProgramacionCargue.cliente).all()}
+            fo4_vals = [fo4_map.get(c, 0.0) for c in clientes_graf]
+            diluyente_vals = [dil_map.get(c, 0.0) for c in clientes_graf]
+            fo4_total_general = sum(fo4_vals)
+            diluyente_total_general = sum(diluyente_vals)
+
+        if tipo_grafico == 'pie':
+            import numpy as np
+            from matplotlib import cm
+            fig, ax = plt.subplots(figsize=(16, 16))
+            # Paletas según producto seleccionado
+            if producto_filtro == 'fo4':
+                colors = ['#ff9f43'] * len(barriles)
+            elif producto_filtro == 'diluyente':
+                colors = ['#1d7ed6'] * len(barriles)
+            else:  # ambos
+                colors = cm.Blues(np.linspace(0.35, 0.85, len(barriles)))
+
+            # Etiquetas incluyendo FO4 cuando exista
+            etiquetas = []
+            if producto_filtro == 'ambos':
+                for i, c in enumerate(clientes_graf):
+                    partes = []
+                    if fo4_vals[i] > 0:
+                        partes.append(f"FO4 {fo4_vals[i]:,.0f}")
+                    if diluyente_vals[i] > 0:
+                        partes.append(f"DIL {diluyente_vals[i]:,.0f}")
+                    etiquetas.append(f"{c}\n" + ' | '.join(partes) if partes else c)
+            else:
+                etiquetas = clientes_graf
+
+            def autopct_func(pct):
+                valor_abs = pct * total_barriles_general / 100.0
+                return f"{pct:.1f}%\n{valor_abs:,.0f}"
+
+            wedges, texts, autotexts = ax.pie(
+                barriles,
+                labels=etiquetas,
+                startangle=150,
+                colors=colors,
+                autopct=autopct_func,
+                pctdistance=0.72,
+                labeldistance=1.1,
+                wedgeprops={'linewidth': 1, 'edgecolor': 'white'}
+            )
+            # Donut interior
+            centro = plt.Circle((0, 0), 0.48, fc='white')
+            fig.gca().add_artist(centro)
+            texto_centro = f"TOTAL\n{total_barriles_general:,.0f} BBL"
+            fig.text(0.5, 0.5, texto_centro, ha='center', va='center', fontsize=18, fontweight='bold', color='#0b8552')
+            titulo = "Distribución de Despachos (Donut)"
+            if producto_filtro == 'fo4':
+                titulo += " – FO4"
+            elif producto_filtro == 'diluyente':
+                titulo += " – Diluyente"
+            elif fo4_total_general > 0 or diluyente_total_general > 0:
+                titulo += " – FO4 + Diluyente"
+            ax.set_title(f"{titulo}\nPeriodo: {periodo}", fontsize=20, pad=28, fontweight='bold')
+            for t in texts:
+                t.set_fontsize(9.5)
+            for at in autotexts:
+                at.set_fontsize(9)
+        else:
+            # --- Barras horizontales mejoradas ---
+            from matplotlib.ticker import FuncFormatter
+            from matplotlib.colors import LinearSegmentedColormap
+            altura = max(10, len(clientes_graf) * 0.75)
+            fig, ax = plt.subplots(figsize=(32, altura))
+            cmap = LinearSegmentedColormap.from_list('verde_prof', ['#0b8552', '#3bbf84'])
+            max_val = max(barriles)
+            min_val = min(barriles)
+            if max_val == min_val:
+                norm_vals = [0.6 for _ in barriles]
+            else:
+                norm_vals = [(v - min_val) / (max_val - min_val) for v in barriles]
+            y_pos = list(range(len(clientes_graf)))
+            labels_rank = [f"{i+1}. {c}" for i, c in enumerate(clientes_graf)]
+            if producto_filtro == 'ambos':
+                # Barras apiladas FO4 y Diluyente
+                bars_dil = ax.barh(
+                    y_pos,
+                    diluyente_vals,
+                    color=[cmap(n) for n in norm_vals],
+                    edgecolor='#0b8552', linewidth=0.5, height=0.72, label='Diluyente'
+                )
+                bars_fo4 = ax.barh(
+                    y_pos,
+                    fo4_vals,
+                    left=diluyente_vals,
+                    color='#ff9f43', edgecolor='#c86e00', linewidth=0.5, height=0.72, label='FO4'
+                )
+                # Etiquetas internas por segmento (Diluyente y FO4)
+                umbral_seg = max_val * 0.035 if max_val > 0 else 0
+                for i, (dil, fo4) in enumerate(zip(diluyente_vals, fo4_vals)):
+                    if dil > 0 and dil >= umbral_seg:
+                        ax.text(dil / 2, i, f"DIL {dil:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                    if fo4 > 0 and fo4 >= umbral_seg:
+                        ax.text(dil + fo4 / 2, i, f"FO4 {fo4:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+            else:
+                color_single = '#ff9f43' if producto_filtro == 'fo4' else '#1d7ed6'
+                bars_single = ax.barh(
+                    y_pos,
+                    barriles,
+                    color=[color_single] * len(barriles),
+                    edgecolor='#0b8552', linewidth=0.6, height=0.72,
+                    label='FO4' if producto_filtro == 'fo4' else 'Diluyente'
+                )
+            ax.set_yticks(y_pos)
+            ax.set_yticklabels(labels_rank, fontsize=12)
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _ : f'{x:,.0f}'))
+            ax.set_xlabel('Barriles despachados', fontweight='bold', fontsize=14, labelpad=12)
+            titulo_bar = "Total de Barriles Despachados por Cliente"
+            if producto_filtro == 'fo4':
+                titulo_bar += " – FO4"
+            elif producto_filtro == 'diluyente':
+                titulo_bar += " – Diluyente"
+            elif producto_filtro == 'ambos':
+                titulo_bar += " – FO4 + Diluyente"
+            ax.set_title(f"{titulo_bar}\nPeriodo: {periodo}", fontsize=20, pad=22, fontweight='bold')
+            total_box_text = f"TOTAL {total_barriles_general:,.2f} BBL"
+            if producto_filtro == 'ambos':
+                for i, (dil, fo4) in enumerate(zip(diluyente_vals, fo4_vals)):
+                    total_width = dil + fo4
+                    ax.text(total_width + (max_val * 0.008), i, f'{total_width:,.2f}', ha='left', va='center', color='#0b8552', fontweight='bold', fontsize=11)
+                ax.legend(loc='lower right')
+            else:
+                for i, total_width in enumerate(barriles):
+                    ax.text(total_width + (max_val * 0.008), i, f'{total_width:,.2f}', ha='left', va='center', color='#0b8552', fontweight='bold', fontsize=11)
+                ax.legend(loc='lower right')
+            ax.invert_yaxis()
+            for spine in ['top', 'right', 'left']:
+                ax.spines[spine].set_visible(False)
+            ax.spines['bottom'].set_color('#9aa0ac')
+            ax.tick_params(axis='y', length=0)
+            ax.xaxis.grid(True, linestyle='--', linewidth=0.6, alpha=0.35)
+            ax.set_axisbelow(True)
+            ax.set_facecolor('#fcfdfd')
+            fig.patch.set_facecolor('#ffffff')
+
+    # Margen y ajuste de layout
+    plt.tight_layout(rect=[0.03, 0.02, 0.98, 0.95])
+    grafico_base64 = convertir_plot_a_base64(fig)
 
     return render_template(
         'reporte_grafico_despachos.html',
         grafico_base64=grafico_base64,
         datos_tabla=datos_despacho,
         total_barriles=total_barriles_general,
+    total_box_text=total_box_text,
         filtros={
-            'fecha_inicio': fecha_inicio.isoformat() if fecha_inicio else '',
-            'fecha_fin': fecha_fin.isoformat() if fecha_fin else '',
-            'cliente': cliente_filtro
+            'fecha_inicio': fecha_inicio.isoformat() if (fecha_inicio_str and fecha_inicio and not mes_str) else '',
+            'fecha_fin': fecha_fin.isoformat() if (fecha_fin_str and fecha_fin and not mes_str) else '',
+            'mes': mes_str,
+        'cliente': cliente_filtro,
+            'producto': producto_filtro
         },
         clientes=clientes,
         resumen_productos=resumen_productos,
-        now=datetime.now()
+    now=datetime.now(),
+    tipo=tipo_grafico,
+    producto=producto_filtro
     )
 
 @login_required
 @permiso_requerido('programacion_cargue')
 @app.route('/descargar_reporte_grafico_despachos_pdf')
 def descargar_reporte_grafico_despachos_pdf():
+    # Parámetros y lógica equivalente a la vista HTML
     today = date.today()
-    fecha_inicio_str = request.args.get('fecha_inicio', today.replace(day=1).isoformat())
-    fecha_fin_str = request.args.get('fecha_fin', today.isoformat())
+    fecha_inicio_str = request.args.get('fecha_inicio', '')
+    fecha_fin_str = request.args.get('fecha_fin', '')
+    mes_str = request.args.get('mes', '')
+    cliente_filtro = request.args.get('cliente', '')
+    producto_filtro = request.args.get('producto', 'ambos').lower()  # ambos | fo4 | diluyente
+    tipo_grafico = request.args.get('tipo', 'bar')
 
-    try:
-        fecha_inicio = date.fromisoformat(fecha_inicio_str)
-        fecha_fin = date.fromisoformat(fecha_fin_str)
-    except (ValueError, TypeError):
-        fecha_inicio = today.replace(day=1)
-        fecha_fin = today
+    fecha_inicio = None
+    fecha_fin = None
+    if mes_str:
+        try:
+            anio, mes = map(int, mes_str.split('-'))
+            fecha_inicio = date(anio, mes, 1)
+            fecha_fin = date(anio, mes, 28) + timedelta(days=4)
+            fecha_fin = fecha_fin - timedelta(days=fecha_fin.day)
+        except Exception:
+            fecha_inicio = None
+            fecha_fin = None
+    else:
+        if fecha_inicio_str:
+            try:
+                fecha_inicio = date.fromisoformat(fecha_inicio_str)
+            except Exception:
+                fecha_inicio = None
+        if fecha_fin_str:
+            try:
+                fecha_fin = date.fromisoformat(fecha_fin_str)
+            except Exception:
+                fecha_fin = None
 
-    datos_despacho = db.session.query(
+    base_query = db.session.query(
         ProgramacionCargue.cliente,
         func.sum(ProgramacionCargue.barriles).label('total_barriles')
     ).filter(
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None),
-        ProgramacionCargue.fecha_despacho.between(fecha_inicio, fecha_fin)
-    ).group_by(
-        ProgramacionCargue.cliente
-    ).order_by(
-        func.sum(ProgramacionCargue.barriles).desc()
-    ).all()
+        ProgramacionCargue.producto_a_cargar.isnot(None)
+    )
+    if producto_filtro == 'fo4':
+        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
+    elif producto_filtro == 'diluyente':
+        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
+    else:
+        base_query = base_query.filter(
+            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%')
+        )
+    if fecha_inicio:
+        base_query = base_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+    if fecha_fin:
+        base_query = base_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+    if cliente_filtro:
+        base_query = base_query.filter(ProgramacionCargue.cliente == cliente_filtro)
+    datos_despacho = base_query.group_by(ProgramacionCargue.cliente).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
-    total_barriles_general = sum([float(r[1]) for r in datos_despacho]) if datos_despacho else 0
+    total_barriles_general = sum(float(r[1]) for r in datos_despacho) if datos_despacho else 0
 
-    # Renderiza la plantilla especial para PDF (debes crearla)
+    grafico_base64 = None
+    total_box_text = None
+    tabla_detalle = []  # (cliente, diluyente, fo4, total)
+    total_fo4 = 0.0
+    total_dil = 0.0
+
+    if datos_despacho:
+        clientes_graf = [r[0] for r in datos_despacho]
+        barriles = [float(r[1]) for r in datos_despacho]
+        # Mapas por producto (calculamos siempre para poder mostrar columnas aun si se filtró uno)
+        def build_product_map(pattern):
+            q = db.session.query(ProgramacionCargue.cliente, func.sum(ProgramacionCargue.barriles).label('val')).filter(
+                ProgramacionCargue.estado=='DESPACHADO',
+                ProgramacionCargue.barriles.isnot(None),
+                ProgramacionCargue.producto_a_cargar.isnot(None),
+                ProgramacionCargue.producto_a_cargar.ilike(pattern)
+            )
+            if fecha_inicio:
+                q = q.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+            if fecha_fin:
+                q = q.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+            if cliente_filtro:
+                q = q.filter(ProgramacionCargue.cliente==cliente_filtro)
+            return {c: float(v) for c,v in q.group_by(ProgramacionCargue.cliente).all()}
+        fo4_map = build_product_map('%FO4%')
+        dil_map = build_product_map('%DILUYENTE%')
+        fo4_vals = [fo4_map.get(c,0.0) for c in clientes_graf]
+        dil_vals = [dil_map.get(c,0.0) for c in clientes_graf]
+        total_fo4 = sum(fo4_vals)
+        total_dil = sum(dil_vals)
+        # Construir tabla detalle
+        for c, d, f in zip(clientes_graf, dil_vals, fo4_vals):
+            tabla_detalle.append((c, d, f, d+f))
+        # Crear gráfico (solo barras para PDF por estabilidad)
+        from matplotlib.colors import LinearSegmentedColormap
+        from matplotlib.ticker import FuncFormatter
+        altura = max(10, len(clientes_graf) * 0.75)
+        fig, ax = plt.subplots(figsize=(24, altura))
+        cmap = LinearSegmentedColormap.from_list('dil_cmap', ['#1d7ed6', '#63b3ff'])
+        max_val = max(barriles)
+        min_val = min(barriles)
+        norm_vals = [0.5 if max_val==min_val else (v-min_val)/(max_val-min_val) for v in barriles]
+        y_pos = list(range(len(clientes_graf)))
+        labels_rank = [f"{i+1}. {c}" for i,c in enumerate(clientes_graf)]
+        if producto_filtro == 'fo4':
+            ax.barh(y_pos, fo4_vals, color='#ff9f43', edgecolor='#c86e00', height=0.68, label='FO4')
+        elif producto_filtro == 'diluyente':
+            ax.barh(y_pos, dil_vals, color=[cmap(n) for n in norm_vals], edgecolor='#0b3d66', height=0.68, label='Diluyente')
+        else:  # ambos
+            ax.barh(y_pos, dil_vals, color=[cmap(n) for n in norm_vals], edgecolor='#0b3d66', height=0.68, label='Diluyente')
+            ax.barh(y_pos, fo4_vals, left=dil_vals, color='#ff9f43', edgecolor='#c86e00', height=0.68, label='FO4')
+        if producto_filtro == 'ambos':
+            ax.legend(loc='lower right', frameon=False, fontsize=10)
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(labels_rank, fontsize=11)
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x,_: f"{x:,.0f}"))
+        ax.set_xlabel('Barriles despachados', fontweight='bold')
+        titulo_pdf = 'Total Despachado por Cliente'
+        if producto_filtro=='ambos':
+            titulo_pdf += ' – FO4 + Diluyente'
+        elif producto_filtro=='fo4':
+            titulo_pdf += ' – FO4'
+        else:
+            titulo_pdf += ' – Diluyente'
+        ax.set_title(titulo_pdf, fontweight='bold', fontsize=16, pad=16)
+        # Etiquetas finales
+        totales_linea = [d+f for d,f in zip(dil_vals, fo4_vals)]
+        for i,v in enumerate(totales_linea):
+            ax.text(v + (max_val*0.006), i, f"{v:,.0f}", va='center', fontsize=9, color='#0b3d66')
+        if producto_filtro=='ambos':
+            for i,(d,f) in enumerate(zip(dil_vals, fo4_vals)):
+                umbral_seg = max_val * 0.05 if max_val>0 else 0
+                if d>0 and d>=umbral_seg:
+                    ax.text(d/2, i, f"DIL {d:,.0f}", ha='center', va='center', color='white', fontsize=7, fontweight='bold')
+                if f>0 and f>=umbral_seg:
+                    ax.text(d+f/2, i, f"FO4 {f:,.0f}", ha='center', va='center', color='white', fontsize=7, fontweight='bold')
+        ax.invert_yaxis()
+        ax.xaxis.grid(True, linestyle='--', alpha=0.3)
+        for spine in ['top','right','left']:
+            ax.spines[spine].set_visible(False)
+        fig.patch.set_facecolor('#ffffff')
+        plt.tight_layout()
+        grafico_base64 = convertir_plot_a_base64(fig)
+        # Texto total
+        total_box_text = f"TOTAL {total_barriles_general:,.2f} BBL"\
+            + (f" | FO4 {total_fo4:,.0f} BBL" if total_fo4>0 else '')\
+            + (f" | Diluyente {total_dil:,.0f} BBL" if total_dil>0 else '')
+
+    periodo_txt = 'Todo el periodo'
+    if fecha_inicio and fecha_fin:
+        periodo_txt = f"{fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}"
+    elif fecha_inicio:
+        periodo_txt = f"Desde {fecha_inicio.strftime('%d/%m/%Y')}"
+    elif fecha_fin:
+        periodo_txt = f"Hasta {fecha_fin.strftime('%d/%m/%Y')}"
+
+    # Obtener logo como base64
+    logo_base64 = None
+    try:
+        logo_path = os.path.join(current_app.root_path, 'static', 'Logo_de_empresa.jpeg')
+        if os.path.exists(logo_path):
+            import base64
+            with open(logo_path, 'rb') as f:
+                logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+    except Exception:
+        logo_base64 = None
+
     html_para_pdf = render_template(
         'reportes_pdf/reporte_grafico_despachos_pdf.html',
-        datos_tabla=datos_despacho,
+    grafico_base64=grafico_base64,
+    datos_tabla=tabla_detalle,
         total_barriles=total_barriles_general,
-        fecha_inicio=fecha_inicio.strftime('%d/%m/%Y'),
-        fecha_fin=fecha_fin.strftime('%d/%m/%Y')
+        total_box_text=total_box_text,
+        periodo=periodo_txt,
+        producto=producto_filtro,
+        tipo=tipo_grafico,
+        fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'),
+        logo_base64=logo_base64
     )
-    pdf = HTML(string=html_para_pdf).write_pdf()
-    return Response(
-        pdf,
-        mimetype='application/pdf',
-        headers={'Content-Disposition': 'attachment;filename=reporte_grafico_despachos.pdf'}
-    )
+    # Proveer base_url para que recursos relativos funcionen si se agregan
+    pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
+    return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition':'attachment;filename=reporte_grafico_despachos.pdf'})
   
 @login_required
 @permiso_requerido('inventario_epp')
@@ -4843,6 +5206,131 @@ def get_epp_assignments():
     } for a in asignaciones]
     
     return jsonify(data)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/upload_excel', methods=['POST'])
+def upload_programacion_excel():
+    """Carga masiva de ProgramacionCargue desde un archivo Excel (.xlsx).
+
+    Reglas:
+    - Si se pasa ?replace=1 se eliminan los registros existentes antes de insertar.
+    - Columnas aceptadas: nombres iguales a los campos del modelo; se permiten variantes con espacios o mayúsculas.
+    - Campos fecha/hora se parsean; numéricos se convierten a float.
+    - Si falta 'fecha_programacion' se usa la fecha de hoy.
+    - Si no viene 'barriles' pero sí 'galones', se calcula barriles = galones/42.
+    """
+    if 'excel_file' not in request.files:
+        return jsonify(success=False, message='No se encontró archivo (campo excel_file).'), 400
+    f = request.files['excel_file']
+    if not f.filename.lower().endswith('.xlsx'):
+        return jsonify(success=False, message='Formato no soportado. Use .xlsx'), 400
+    try:
+        import pandas as pd
+        from pandas.api.types import is_numeric_dtype
+        df = pd.read_excel(f)
+        # Normalizar nombres de columnas -> minusculas sin espacios dobles
+        original_cols = list(df.columns)
+        norm_map = {}
+        for c in original_cols:
+            norm = str(c).strip().lower().replace(' ', '_')
+            norm_map[c] = norm
+        df.rename(columns=norm_map, inplace=True)
+        # Mapeo alternativo (por si el usuario usa variantes comunes)
+        alias = {
+            'empresa': 'empresa_transportadora',
+            'transportadora': 'empresa_transportadora',
+            'conductor': 'nombre_conductor',
+            'cedula': 'cedula_conductor',
+            'celular': 'celular_conductor',
+            'producto': 'producto_a_cargar',
+            'fecha': 'fecha_programacion',
+            'fecha_de_programacion': 'fecha_programacion',
+            'fecha_programada': 'fecha_programacion',
+            'fecha_despacho_programada': 'fecha_despacho',
+            'hora_llegada': 'hora_llegada_estimada',
+            'hora_estimacion': 'hora_llegada_estimada',
+            'guia': 'numero_guia'
+        }
+        for c in list(df.columns):
+            if c in alias and alias[c] not in df.columns:
+                df.rename(columns={c: alias[c]}, inplace=True)
+        # Lista de campos manejados
+        campos_modelo = {c.name for c in ProgramacionCargue.__table__.columns if c.name not in ('id')}
+        filas_creadas = 0
+        registros = []
+        hoy = date.today()
+        def parse_fecha(val):
+            if pd.isna(val) or val == '':
+                return None
+            if isinstance(val, (datetime, date)):
+                return val.date() if isinstance(val, datetime) else val
+            for fmt in ('%Y-%m-%d','%d/%m/%Y','%Y/%m/%d','%d-%m-%Y'):
+                try:
+                    return datetime.strptime(str(val).strip(), fmt).date()
+                except Exception:
+                    pass
+            return None
+        def parse_hora(val):
+            if pd.isna(val) or val == '':
+                return None
+            if isinstance(val, time):
+                return val
+            if isinstance(val, datetime):
+                return val.time().replace(microsecond=0)
+            try:
+                # Aceptar formatos HH:MM o HH:MM:SS
+                partes = str(val).strip().split(':')
+                if len(partes) >= 2:
+                    h = int(partes[0]); m = int(partes[1]); s = int(partes[2]) if len(partes) > 2 else 0
+                    return time(hour=h, minute=m, second=s)
+            except Exception:
+                return None
+            return None
+        for _, row in df.iterrows():
+            datos = {}
+            for campo in campos_modelo:
+                if campo in row.index:
+                    val = row[campo]
+                    if campo in ('fecha_programacion','fecha_despacho'):
+                        val = parse_fecha(val)
+                    elif campo == 'hora_llegada_estimada':
+                        val = parse_hora(val)
+                    elif campo in ('galones','barriles','temperatura','api_obs','api_corregido'):
+                        try:
+                            val = float(val) if not pd.isna(val) and val != '' else None
+                        except Exception:
+                            val = None
+                    elif pd.isna(val):
+                        val = None
+                    datos[campo] = val
+            # Defaults
+            if not datos.get('fecha_programacion'):
+                datos['fecha_programacion'] = hoy
+            if datos.get('galones') and not datos.get('barriles'):
+                try:
+                    datos['barriles'] = float(datos['galones'])/42.0
+                except Exception:
+                    pass
+            datos['ultimo_editor'] = session.get('nombre')
+            # Normalizar estado
+            if datos.get('estado'):
+                est = str(datos['estado']).strip().upper()
+                if est not in ('PROGRAMADO','CARGANDO','DESPACHADO'):
+                    est = 'PROGRAMADO'
+                datos['estado'] = est
+            registro = ProgramacionCargue(**{k:v for k,v in datos.items() if k in campos_modelo})
+            registros.append(registro)
+        if request.args.get('replace') == '1':
+            db.session.query(ProgramacionCargue).delete()
+        db.session.add_all(registros)
+        db.session.commit()
+        filas_creadas = len(registros)
+        return jsonify(success=True, message=f'Se cargaron {filas_creadas} registros.', total=filas_creadas, replace=bool(request.args.get('replace')=='1'))
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f'Error al cargar Excel programación: {e}')
+        return jsonify(success=False, message='Error procesando el archivo: ' + str(e)), 500
 
 @login_required
 @permiso_requerido('inventario_epp')

@@ -1,124 +1,96 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte de Programación de Cargue</title>
+    <meta charset="UTF-8" />
+    <title>Programación de Cargue</title>
     <style>
-        @page { 
-            size: portrait; /* Cambiamos a página vertical */
-            margin: 1.5cm; 
-        }
-        body { 
-            font-family: sans-serif; 
-            font-size: 9px;
-            color: #333;
-        }
-        .header h1 { 
-            text-align: center; 
-            color: #2c3e50; 
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        .header p { 
-            text-align: center; 
-            color: #666; 
-            font-size: 11px;
-            margin-top: 0;
-        }
-        /* Contenedor para cada registro individual */
-        .record-container {
-            border: 1px solid #b0bec5;
-            border-radius: 8px;
-            margin-bottom: 15px; /* Espacio entre registros */
-            padding: 10px;
-            page-break-inside: avoid; /* Evita que un registro se parta entre dos páginas */
-            background-color: #fcfcfc;
-        }
-        .record-header {
-            border-bottom: 1px solid #b0bec5;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .record-header .placa {
-            color: #0d47a1;
-        }
-        .record-header .estado {
-            float: right; /* Alinea el estado a la derecha */
-            padding: 4px 8px;
-            border-radius: 4px;
-            color: white;
-            font-size: 10px;
-        }
-        /* Estilos para los diferentes estados */
-        .estado-PROGRAMADO { background-color: #546e7a; }
-        .estado-CARGANDO { background-color: #fbc02d; color: #333; }
-        .estado-DESPACHADO { background-color: #388e3c; }
-
-        /* Contenedor para las dos tablas (programación y medición) */
-        .details-wrapper {
-            display: flex;
-            justify-content: space-between;
-        }
-        .details-table {
-            width: 49%; /* Cada tabla ocupa casi la mitad */
-            border-collapse: collapse;
-        }
-        .details-table td {
-            border: 1px solid #eceff1;
-            padding: 5px;
-        }
-        .details-table td:first-child {
-            font-weight: bold;
-            background-color: #f5f5f5;
-            width: 40%;
-        }
+        @page { size:A4 portrait; margin:15mm 15mm 18mm 15mm; }
+        body { font-family:'Segoe UI', Arial, sans-serif; font-size:10px; color:#2d3436; background:#f0f3f7; }
+        h1 { font-size:20px; margin:2px 0 0 0; color:#1b4f72; }
+        .watermark { position:fixed; top:40%; left:18%; font-size:110px; color:#1b4f7214; transform:rotate(-25deg); z-index:0; }
+        .header { text-align:center; margin-bottom:10px; position:relative; z-index:2; }
+        .brand { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .brand img { height:54px; }
+        .badge-fecha { background:#1b4f72; color:#fff; padding:6px 14px; border-radius:20px; font-size:11px; display:inline-block; font-weight:600; letter-spacing:.5px; }
+        .layout { border:1px solid #d9e2ea; background:#fff; border-radius:12px; padding:14px 18px 12px; box-shadow:0 1px 2px #00000010; position:relative; z-index:1; }
+        .resumen { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+        .chip { background:#e8f1f8; color:#1b4f72; padding:4px 10px; border-radius:16px; font-size:10px; font-weight:600; }
+        /* Cards de cada registro */
+        .record { border:1px solid #e1e7ec; border-radius:10px; padding:10px 12px 8px; margin-bottom:12px; background:#fbfdff; page-break-inside:avoid; }
+        .record-header { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:6px; font-size:12px; font-weight:600; color:#1b4f72; }
+        .estado-pill { font-size:10px; padding:4px 8px; border-radius:14px; font-weight:600; letter-spacing:.3px; background:#607d8b; color:#fff; }
+        .estado-PROGRAMADO { background:#607d8b; }
+        .estado-CARGANDO { background:#fbc02d; color:#2d3436; }
+        .estado-DESPACHADO { background:#0b8552; }
+        .producto-tag { background:#1b4f72; color:#fff; padding:4px 10px; border-radius:14px; font-size:10px; font-weight:600; }
+        .placa { background:#17a2b8; color:#fff; padding:4px 10px; border-radius:14px; font-size:10px; font-weight:600; letter-spacing:.5px; }
+        .details-wrapper { display:flex; gap:10px; }
+        .col { width:50%; }
+        table.meta { width:100%; border-collapse:collapse; }
+        table.meta td { padding:4px 6px; border-bottom:1px solid #ecf0f1; vertical-align:top; }
+        table.meta td.label { width:42%; font-weight:600; font-size:10px; background:#f4f7fb; color:#1b4f72; border-right:1px solid #e5eaef; }
+        .precintos-box { margin-top:6px; background:#f4f8fa; border:1px dashed #b6c8d6; padding:6px 8px; font-family:monospace; font-size:9px; border-radius:6px; white-space:pre-wrap; word-break:break-all; }
+        .footer { margin-top:6px; font-size:9px; color:#7d8a97; text-align:right; }
+        .seccion-titulo { font-size:13px; color:#1b4f72; margin:14px 0 6px; text-align:center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Reporte de Programación de Vehículos</h1>
-        <p>Generado el: {{ fecha_reporte }}</p>
+<div class="watermark">CONQUERS</div>
+<div class="header">
+    <div class="brand">
+        {% if logo_base64 %}
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
+        {% endif %}
+        <h1>Programación de Vehículos</h1>
+        <div class="badge-fecha">Generado: {{ fecha_reporte }}</div>
     </div>
+</div>
 
+<div class="layout">
     {% if registros %}
+        <div class="seccion-titulo">Detalle de Programaciones</div>
         {% for r in registros %}
-        <div class="record-container">
+        <div class="record">
             <div class="record-header">
-                <span class="estado estado-{{ r.estado or 'PROGRAMADO' }}">{{ r.estado or 'PROGRAMADO' }}</span>
-                <span class="placa">Placa: {{ r.placa or 'N/A' }}</span> | {{ r.producto_a_cargar or 'Sin Producto' }}
+                <span class="estado-pill estado-{{ r.estado or 'PROGRAMADO' }}">{{ r.estado or 'PROGRAMADO' }}</span>
+                <span class="placa">{{ r.placa or 'SIN PLACA' }}</span>
+                {% if r.producto_a_cargar %}<span class="producto-tag">{{ r.producto_a_cargar }}</span>{% endif %}
+                {% if r.destino %}<span class="chip">Destino: {{ r.destino }}</span>{% endif %}
+                {% if r.cliente %}<span class="chip">Cliente: {{ r.cliente }}</span>{% endif %}
             </div>
-
             <div class="details-wrapper">
-                <table class="details-table">
-                    <tr><td>Fecha Programación</td><td>{{ r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '' }}</td></tr>
-                    <tr><td>Hora Estimada</td><td>{{ r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '' }}</td></tr>
-                    <tr><td>Transportadora</td><td>{{ r.empresa_transportadora or '' }}</td></tr>
-                    <tr><td>Tanque</td><td>{{ r.tanque or '' }}</td></tr>
-                    <tr><td>Conductor</td><td>{{ r.nombre_conductor or '' }}</td></tr>
-                    <tr><td>Cédula</td><td>{{ r.cedula_conductor or '' }}</td></tr>
-                    <tr><td>Celular</td><td>{{ r.celular_conductor or '' }}</td></tr>
-                    <tr><td>Destino</td><td>{{ r.destino or '' }}</td></tr>
-                    <tr><td>Cliente</td><td>{{ r.cliente or '' }}</td></tr>
-                    <tr><td>Número de Guía</td><td>{{ r.numero_guia or '' }}</td></tr>
-                    <tr><td>Fecha Despacho</td><td>{{ r.fecha_despacho or '' }}</td></tr>
-                </table>
-
-                <table class="details-table">
-                    <tr><td>Galones</td><td>{{ '%.2f'|format(r.galones) if r.galones is not none else '' }}</td></tr>
-                    <tr><td>Barriles</td><td>{{ '%.2f'|format(r.barriles) if r.barriles is not none else '' }}</td></tr>
-                    <tr><td>Temperatura (°F)</td><td>{{ '%.2f'|format(r.temperatura) if r.temperatura is not none else '' }}</td></tr>
-                    <tr><td>API Observado</td><td>{{ '%.2f'|format(r.api_obs) if r.api_obs is not none else '' }}</td></tr>
-                    <tr><td>API Corregido</td><td>{{ '%.2f'|format(r.api_corregido) if r.api_corregido is not none else '' }}</td></tr>
-                    <tr><td colspan="2" style="font-weight: bold; background-color: #f5f5f5;">Precintos</td></tr>
-                    <tr><td colspan="2" style="font-family: monospace; white-space: pre-wrap; word-break: break-all;">{{ r.precintos or 'Sin precintos' }}</td></tr>
-                </table>
+                <div class="col">
+                    <table class="meta">
+                        <tr><td class="label">Fecha Programación</td><td>{{ r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '' }}</td></tr>
+                        <tr><td class="label">Hora Estimada</td><td>{{ r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '' }}</td></tr>
+                        <tr><td class="label">Transportadora</td><td>{{ r.empresa_transportadora or '' }}</td></tr>
+                        <tr><td class="label">Tanque</td><td>{{ r.tanque or '' }}</td></tr>
+                        <tr><td class="label">Conductor</td><td>{{ r.nombre_conductor or '' }}</td></tr>
+                        <tr><td class="label">Cédula</td><td>{{ r.cedula_conductor or '' }}</td></tr>
+                        <tr><td class="label">Celular</td><td>{{ r.celular_conductor or '' }}</td></tr>
+                        <tr><td class="label">Número Guía</td><td>{{ r.numero_guia or '' }}</td></tr>
+                        <tr><td class="label">Fecha Despacho</td><td>{{ r.fecha_despacho or '' }}</td></tr>
+                    </table>
+                </div>
+                <div class="col">
+                    <table class="meta">
+                        <tr><td class="label">Galones</td><td>{{ '%.2f'|format(r.galones) if r.galones is not none else '' }}</td></tr>
+                        <tr><td class="label">Barriles</td><td>{{ '%.2f'|format(r.barriles) if r.barriles is not none else '' }}</td></tr>
+                        <tr><td class="label">Temperatura (°F)</td><td>{{ '%.2f'|format(r.temperatura) if r.temperatura is not none else '' }}</td></tr>
+                        <tr><td class="label">API Observado</td><td>{{ '%.2f'|format(r.api_obs) if r.api_obs is not none else '' }}</td></tr>
+                        <tr><td class="label">API Corregido</td><td>{{ '%.2f'|format(r.api_corregido) if r.api_corregido is not none else '' }}</td></tr>
+                    </table>
+                    <div class="precintos-box">{{ r.precintos or 'Sin precintos' }}</div>
+                </div>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p>No hay registros para mostrar.</p>
+        <p style="text-align:center; color:#888; margin:30px 0;">No hay registros para mostrar.</p>
     {% endif %}
+    <div class="footer">Reporte interno - Página {{ page_number|default('1') }}</div>
+</div>
 </body>
 </html>

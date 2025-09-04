@@ -1,255 +1,73 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte de Despachos por Cliente</title>
-    <style>
-        @page { 
-            size: A4; 
-            margin: 1.5cm;
-            @top-center {
-                content: "Reporte de Despachos por Cliente";
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 14px;
-                color: #2c3e50;
-            }
-            @bottom-center {
-                content: "Página " counter(page) " de " counter(pages);
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 12px;
-                color: #7f8c8d;
-            }
-        }
-        
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            background: #f8f9fa; 
-            color: #2c3e50;
-            line-height: 1.6;
-        }
-        
-        .header { 
-            text-align: center; 
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .header h1 { 
-            color: #2980b9; 
-            font-size: 24px; 
-            margin-bottom: 5px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .header .periodo { 
-            color: #7f8c8d; 
-            font-size: 14px; 
-            margin-top: 0;
-            background: #f1f8fe;
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: 500;
-        }
-        
-        .header .fecha-generacion {
-            color: #95a5a6;
-            font-size: 12px;
-            margin-top: 8px;
-        }
-        
-        .main-grid {
-            display: flex;
-            flex-direction: row;
-            gap: 25px;
-            margin-top: 15px;
-        }
-        
-        .left-panel { 
-            flex: 2; 
-        }
-        
-        .right-panel { 
-            flex: 1; 
-        }
-        
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        
-        .card-header {
-            padding: 12px 15px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e0e0e0;
-            font-weight: 600;
-            color: #2980b9;
-            font-size: 15px;
-        }
-        
-        .card-body {
-            padding: 15px;
-        }
-        
-        .total-box {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: #fff;
-            text-align: center;
-            border-radius: 8px;
-            padding: 20px 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        
-        .total-box .label {
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
-            opacity: 0.9;
-        }
-        
-        .total-box .value {
-            font-size: 32px;
-            font-weight: 700;
-            margin: 5px 0;
-        }
-        
-        .total-box .unit {
-            font-size: 12px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            opacity: 0.8;
-        }
-        
-        .grafico-container {
-            text-align: center;
-        }
-        
-        .grafico-container img {
-            max-width: 100%;
-            max-height: 400px;
-            border-radius: 6px;
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        
-        .table th {
-            background: #f8f9fa;
-            color: #2980b9;
-            text-align: left;
-            padding: 10px 12px;
-            font-weight: 600;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        
-        .table td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .table td:last-child {
-            text-align: right;
-            font-weight: 500;
-            color: #2c3e50;
-        }
-        
-        .no-data {
-            text-align: center;
-            padding: 30px;
-            color: #95a5a6;
-            font-style: italic;
-        }
-        
-        .watermark {
-            position: fixed;
-            bottom: 10%;
-            right: 10%;
-            opacity: 0.1;
-            font-size: 72px;
-            color: #2980b9;
-            transform: rotate(-30deg);
-            pointer-events: none;
-            z-index: -1;
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Reporte Gráfico Despachos</title>
+<style>
+@page { size:A4 landscape; margin:15mm 15mm 18mm 15mm; }
+body { font-family:'Segoe UI', Arial, sans-serif; font-size:12px; color:#2d3436; background:#f5f7fa; }
+h1 { font-size:20px; margin:0; color:#1b4f72; }
+.header { text-align:center; margin-bottom:4px; }
+.brand { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.brand img { height:60px; }
+.meta { display:none; }
+.badge-total { background:#0b8552; color:#fff; padding:10px 14px; border-radius:8px; font-size:11px; font-weight:600; line-height:1.2; }
+.layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:14px 18px 10px; }
+.chart-wrapper { position:relative; }
+.chart-wrapper img { width:100%; border:1px solid #e5e9ed; border-radius:6px; }
+.sub { font-size:11px; color:#7d8a97; margin-top:4px; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { padding:6px 8px; border-bottom:1px solid #ecf0f1; }
+th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; background:#f4f7fb; color:#1b4f72; }
+td:last-child, th:last-child { text-align:right; }
+.footer { margin-top:6px; font-size:10px; color:#8d99a6; text-align:right; }
+.watermark { position:fixed; top:40%; left:20%; font-size:120px; color:#1b4f7215; transform:rotate(-25deg); }
+</style>
 </head>
 <body>
-    <div class="watermark">CONFIDENCIAL</div>
+<div class="watermark">CONQUERS</div>
+<div class="header">
+    <div class="brand">
+        {% if logo_base64 %}
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
+        {% endif %}
+        <h1 style="margin-top:2px;">Distribución de Despachos</h1>
+        <div class="badge-total" style="margin-top:4px;">{{ total_box_text if total_box_text else ('TOTAL %.2f BBL'|format(total_barriles)) }}</div>
+    </div>
+</div>
 
-    <!-- Encabezado corporativo -->
-    <div class="reporte-header" style="display: flex; align-items: center; border-bottom: 3px solid #003366; margin-bottom: 20px; padding-bottom: 10px;">
-        <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" style="height: 70px; margin-right: 25px;" alt="Logo Empresa">
-        <div>
-            <div style="color: #003366; font-size: 24pt; font-weight: bold; margin: 0;">Reporte Analítico de Despachos</div>
-            <div style="color: #555; font-size: 12pt; margin-top: 5px;">Consolidado mensual de despachos</div>
-            <div style="color: #7f8c8d; font-size: 14px; margin-top: 8px;">Período: {{ fecha_inicio }} a {{ fecha_fin }}</div>
-            <div style="color: #95a5a6; font-size: 12px; margin-top: 2px;">Generado el: {{ fecha_generacion|default('hoy', true) }}</div>
-        </div>
+<div class="layout">
+    <div class="chart-wrapper">
+        {% if grafico_base64 %}
+            <img src="data:image/png;base64,{{ grafico_base64 }}" alt="Gráfico" />
+        {% else %}
+            <p style="text-align:center; margin:40px 0; color:#888;">Sin datos para mostrar.</p>
+        {% endif %}
     </div>
-    
-    <div class="main-grid">
-        <div class="left-panel">
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-chart-pie"></i> Distribución de Despachos
-                </div>
-                <div class="card-body grafico-container">
-                    {% if grafico_base64 %}
-                        <img src="data:image/png;base64,{{ grafico_base64 }}" />
-                    {% else %}
-                        <div class="no-data">
-                            <i class="fas fa-chart-pie fa-3x"></i>
-                            <p>No hay datos disponibles para generar el gráfico</p>
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        
-        <div class="right-panel">
-            <div class="total-box">
-                <div class="label">Total Despachado</div>
-                <div class="value">{{ '%.2f'|format(total_barriles) }}</div>
-                <div class="unit">Barriles</div>
-            </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <i class="fas fa-table"></i> Detalle por Cliente
-                </div>
-                <div class="card-body">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in datos_tabla %}
-                            <tr>
-                                <td>{{ row[0]|truncate(20) }}</td>
-                                <td>{{ '%.2f'|format(row[1]) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+        <div class="sub" style="margin-top:6px; font-size:10px;">(Leyenda integrada en el gráfico. Colores: Azul = Diluyente, Naranja = FO4)</div>
     </div>
+
+    <div style="page-break-before:always;"></div>
+    <h2 style="font-size:16px; color:#1b4f72; text-align:center; margin:0 0 8px 0;">Detalle de clientes ordenado por barriles despachados</h2>
+    <table>
+            <thead>
+                <tr><th>#</th><th>Cliente</th><th>Diluyente</th><th>FO4</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+                {% for cliente, dil, fo4, tot in datos_tabla %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ cliente }}</td>
+                    <td>{{ '%.2f'|format(dil) }}</td>
+                    <td>{{ '%.2f'|format(fo4) }}</td>
+                    <td>{{ '%.2f'|format(tot) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    <div class="footer">Reporte interno - Página {{ page_number|default('1') }}</div>
+</div>
 </body>
 </html>

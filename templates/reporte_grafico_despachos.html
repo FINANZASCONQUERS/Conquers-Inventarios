@@ -4,11 +4,15 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
+    <!-- Header mejorado -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-chart-pie me-2 text-primary"></i>Reporte Gráfico de Despachos</h1>
+        <div>
+            <h1 class="h3 mb-1 text-gray-900"><i class="fas fa-chart-pie me-2 text-primary"></i>Reporte Gráfico de Despachos</h1>
+            <p class="text-gray-600 mb-0">Visualización analítica de los despachos realizados</p>
+        </div>
         <div>
             <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin) }}" 
-               class="btn btn-danger btn-icon-split" target="_blank">
+               class="btn btn-danger btn-icon-split shadow-sm" target="_blank">
                 <span class="icon text-white-50">
                     <i class="fas fa-file-pdf"></i>
                 </span>
@@ -17,61 +21,92 @@
         </div>
     </div>
 
+    <!-- Tarjeta de filtros mejorada -->
     <div class="card shadow mb-4 border-left-primary">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
+        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white border-bottom-0">
             <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-1"></i> Filtros de Búsqueda</h6>
+            <div class="dropdown no-arrow">
+                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" 
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end shadow animated--fade-in" 
+                    aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" href="#" onclick="resetFilters()">
+                        <i class="fas fa-undo fa-sm me-2"></i>Restablecer filtros
+                    </a></li>
+                </ul>
+            </div>
         </div>
-        <div class="card-body">
-            <form method="GET" action="{{ url_for('reporte_grafico_despachos') }}" class="row g-3">
-                <div class="col-md-4">
-                    <label for="fecha_inicio" class="form-label text-gray-700">Fecha de Inicio</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                        <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <label for="fecha_fin" class="form-label text-gray-700">Fecha de Fin</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
-                        <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+        <div class="card-body pt-0">
+            <form method="GET" action="{{ url_for('reporte_grafico_despachos') }}" class="row g-3 mt-2">
+                <div class="col-md-3">
+                    <label for="fecha_inicio" class="form-label text-gray-700 small font-weight-bold">Fecha de Inicio</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar-alt text-primary"></i></span>
+                        <input type="date" class="form-control form-control-sm" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <label for="cliente" class="form-label text-gray-700">Cliente</label>
-                    <select class="form-select" id="cliente" name="cliente">
-                        <option value="">Todos</option>
+                    <label for="fecha_fin" class="form-label text-gray-700 small font-weight-bold">Fecha de Fin</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar-alt text-primary"></i></span>
+                        <input type="date" class="form-control form-control-sm" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label for="mes" class="form-label text-gray-700 small font-weight-bold">Mes</label>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light"><i class="fas fa-calendar text-primary"></i></span>
+                        <input type="month" class="form-control form-control-sm" id="mes" name="mes" value="{{ filtros.mes }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="cliente" class="form-label text-gray-700 small font-weight-bold">Cliente</label>
+                    <select class="form-select form-select-sm" id="cliente" name="cliente">
+                        <option value="">Todos los clientes</option>
                         {% for cli in clientes %}
                         <option value="{{ cli }}" {% if filtros.cliente == cli %}selected{% endif %}>{{ cli }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary btn-block me-2 w-100">
-                        <i class="fas fa-search me-1"></i> Buscar
-                    </button>
+                <div class="col-md-2">
+                    <label for="producto" class="form-label text-gray-700 small font-weight-bold">Producto</label>
+                    <select class="form-select form-select-sm" id="producto" name="producto">
+                        <option value="ambos" {% if filtros.producto=='ambos' %}selected{% endif %}>Ambos (FO4 + Diluyente)</option>
+                        <option value="fo4" {% if filtros.producto=='fo4' %}selected{% endif %}>FO4</option>
+                        <option value="diluyente" {% if filtros.producto=='diluyente' %}selected{% endif %}>Diluyente</option>
+                    </select>
                 </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm btn-block w-100 shadow-sm"><i class="fas fa-search me-1"></i> Buscar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de resumen de productos (si aplica) -->
     {% if resumen_productos and filtros.cliente %}
     <div class="row mt-4">
         <div class="col-lg-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-gradient-primary text-white py-2 border-0">
                     <h6 class="mb-0"><i class="fas fa-table me-1"></i> Cantidad Despachada por Producto para <b>{{ filtros.cliente }}</b></h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover table-sm mb-0">
-                            <thead class="table-light">
+                        <table class="table table-sm table-hover table-striped mb-0">
+                            <thead class="thead-light">
                                 <tr>
-                                    <th class="text-center">Producto</th>
-                                    <th class="text-center">Barriles</th>
+                                    <th class="text-center ps-4">Producto</th>
+                                    <th class="text-center pe-4">Barriles</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for producto, total in resumen_productos %}
                                 <tr>
-                                    <td class="text-truncate" style="max-width: 150px;" title="{{ producto }}">{{ producto }}</td>
-                                    <td class="text-end font-weight-bold">{{ "%.2f"|format(total) }}</td>
+                                    <td class="text-truncate ps-4" style="max-width: 150px;" title="{{ producto }}">{{ producto }}</td>
+                                    <td class="text-end font-weight-bold pe-4">{{ "%.2f"|format(total) }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -82,113 +117,42 @@
         </div>
     </div>
     {% endif %}
-            </form>
-        </div>
-    </div>
 
+    <!-- Gráfico o mensaje de no datos -->
     {% if grafico_base64 %}
-    <div class="row">
-        <div class="col-xl-8 col-lg-7">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-bar me-1"></i> Distribución de Despachos por Cliente
-                    </h6>
-                    <div class="dropdown no-arrow">
-                        <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" 
-                           data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow animated--fade-in" 
-                            aria-labelledby="dropdownMenuLink">
-                            <li><a class="dropdown-item" href="#" onclick="downloadChart()">
-                                <i class="fas fa-download fa-sm me-2"></i>Descargar Imagen
-                            </a></li>
-                        </ul>
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow border-0">
+                <div class="card-header py-3 d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-between bg-white border-0">
+                    <div class="d-flex flex-column">
+                        <h5 class="m-0 font-weight-bold text-primary d-flex align-items-center gap-2">
+                            <i class="fas fa-chart-bar"></i>
+                            Distribución de Despachos por Cliente
+                        </h5>
+                        <small class="text-muted">Formato: {{ 'Barras Horizontales' if tipo!='pie' else 'Donut (Pie)' }} | Vista: {% if producto=='fo4' %}FO4{% elif producto=='diluyente' %}Diluyente{% else %}FO4 + Diluyente{% endif %}</small>
                     </div>
-                </div>
-                <div class="card-body">
-                    <div class="chart-area">
-                        <img src="data:image/png;base64,{{ grafico_base64 }}" class="img-fluid w-100" alt="Gráfico de Despachos" id="chartImage">
-                    </div>
-                    <hr>
-                    <div class="small text-muted">
-                        <i class="fas fa-info-circle me-1"></i> Reporte generado el {{ now.strftime('%d/%m/%Y %H:%M') }}
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-xl-4 col-lg-5">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-info-circle me-1"></i> Resumen General
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <div class="border-left-primary border-bottom-primary p-3 rounded">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Despachado
-                            </div>
-                            <div class="h2 mb-0 font-weight-bold text-gray-800">{{ "%.2f"|format(total_barriles) }}</div>
-                            <div class="text-xs font-weight-bold text-gray-500 text-uppercase">
-                                Barriles
-                            </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Formato">
+                            <a class="btn btn-outline-primary {% if tipo!='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='bar') }}">Barras</a>
+                            <a class="btn btn-outline-primary {% if tipo=='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='pie') }}">Donut</a>
                         </div>
+                        <button class="btn btn-success btn-sm" onclick="downloadChart()"><i class="fas fa-image me-1"></i>PNG</button>
                     </div>
-
-                    <div class="mb-4">
-                        <div class="card bg-gradient-info text-white shadow">
-                            <div class="card-body">
-                                <div class="row no-gutters align-items-center">
-                                    <div class="col me-2">
-                                        <div class="text-xs font-weight-bold text-white text-uppercase mb-1">
-                                            Período del Reporte
-                                        </div>
-                                        <div class="h6 mb-0 font-weight-light">
-                                            {{ filtros.fecha_inicio }} al {{ filtros.fecha_fin }}
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <i class="fas fa-calendar fa-2x text-white-300"></i>
-                                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="chart-area mb-3 border rounded bg-light p-3 position-relative">
+                                {% set altura_bar = (datos_tabla|length * 55 + 240) if datos_tabla|length>8 else 820 %}
+                                <img src="data:image/png;base64,{{ grafico_base64 }}" class="w-100 grafico-img {% if tipo=='pie' %}grafico-pie{% else %}grafico-bar{% endif %}" alt="Gráfico de Despachos" id="chartImage" data-altura-bar="{{ altura_bar }}" />
+                                <div class="position-absolute top-0 end-0 m-2">
+                                    <span class="badge bg-success text-start" style="white-space:normal; line-height:1.1; font-size:0.75rem;">
+                                        {% if total_box_text %}{{ total_box_text|safe }}{% else %}TOTAL {{ '%.2f'|format(total_barriles) }} BBL{% endif %}
+                                    </span>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="card shadow">
-                        <div class="card-header py-3">
-                            <h6 class="m-0 font-weight-bold text-primary">
-                                <i class="fas fa-table me-1"></i> Detalle por Cliente
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-hover table-sm" width="100%" cellspacing="0">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th class="text-center">Cliente</th>
-                                            <th class="text-center">Barriles</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for cliente, total in datos_tabla %}
-                                        <tr>
-                                            <td class="text-truncate" style="max-width: 150px;" title="{{ cliente }}">{{ cliente }}</td>
-                                            <td class="text-end font-weight-bold">{{ "%.2f"|format(total) }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                    <tfoot class="font-weight-bold">
-                                        <tr>
-                                            <td class="text-center">TOTAL</td>
-                                            <td class="text-end">{{ "%.2f"|format(total_barriles) }}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                            <div class="small text-muted text-center mt-3">
+                                <i class="fas fa-info-circle me-1"></i> Generado el {{ now.strftime('%d/%m/%Y %H:%M') }} — Puedes cambiar el formato arriba.
                             </div>
                         </div>
                     </div>
@@ -197,14 +161,14 @@
         </div>
     </div>
     {% else %}
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 bg-white">
+    <div class="card shadow mb-4 border-0">
+        <div class="card-header py-3 bg-white border-0">
             <h6 class="m-0 font-weight-bold text-primary">
                 <i class="fas fa-exclamation-triangle me-1"></i> Información no disponible
             </h6>
         </div>
         <div class="card-body text-center py-5">
-            <i class="fas fa-chart-pie fa-4x mb-3 text-gray-400"></i>
+            <i class="fas fa-chart-pie fa-4x mb-3 text-gray-300"></i>
             <h5 class="text-gray-800">No se encontraron datos de despachos</h5>
             <p class="text-gray-600 mb-0">Para el rango de fechas seleccionado no existen registros de despachos.</p>
             <p class="text-gray-600">Por favor, intente con otro período.</p>
@@ -220,24 +184,79 @@ function downloadChart() {
     link.href = document.getElementById('chartImage').src;
     link.click();
 }
+
+function resetFilters() {
+    document.getElementById('fecha_inicio').value = '';
+    document.getElementById('fecha_fin').value = '';
+    document.getElementById('mes').value = '';
+    document.getElementById('cliente').selectedIndex = 0;
+    document.getElementById('producto').selectedIndex = 0;
+}
+
+// Exclusividad: si se elige mes, limpiar fechas; si se ajusta una fecha, limpiar mes
+document.addEventListener('DOMContentLoaded', () => {
+    const mesInput = document.getElementById('mes');
+    const fi = document.getElementById('fecha_inicio');
+    const ff = document.getElementById('fecha_fin');
+    if(mesInput){
+        mesInput.addEventListener('input', () => {
+            if(mesInput.value){
+                fi.value='';
+                ff.value='';
+            }
+        });
+    }
+    [fi, ff].forEach(el => el && el.addEventListener('input', () => {
+        if(fi.value || ff.value){
+            document.getElementById('mes').value='';
+        }
+    }));
+});
 </script>
 
 <style>
     .border-left-primary {
-        border-left: 0.25rem solid #4e73df !important;
+        border-left: 0.35rem solid #4e73df !important;
     }
-    .border-bottom-primary {
-        border-bottom: 1px solid #4e73df !important;
+    .card {
+        border-radius: 0.5rem;
     }
-    .card-header {
-        border-bottom: 1px solid #e3e6f0;
+    .card-header:first-child {
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .btn {
+        border-radius: 0.35rem;
+    }
+    .form-control, .form-select {
+        border-radius: 0.35rem;
     }
     .table thead th {
         vertical-align: middle;
         font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-top: 0;
     }
     .table tbody td {
         vertical-align: middle;
+    }
+    .bg-gradient-primary {
+        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
+    }
+    .shadow-sm {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    img.grafico-img { object-fit: contain; width:100%; }
+    img.grafico-bar { max-height: 820px; }
+    img.grafico-pie { max-height: 1100px; }
+    @media (min-width:1400px){
+        img.grafico-bar { max-height: 1000px; }
+        img.grafico-pie { max-height: 1300px; }
     }
 </style>
 {% endblock %}

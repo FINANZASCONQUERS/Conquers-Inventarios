@@ -1,120 +1,112 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte de Asignaciones EPP</title>
+    <meta charset="UTF-8" />
+    <title>Reporte Asignaciones EPP</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            font-size: 11px;
-            background: #f8f9fa;
-            color: #222;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 900px;
-            margin: 30px auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-            padding: 32px 36px 24px 36px;
-        }
-        h1 {
-            text-align: center;
-            color: #1a237e;
-            font-size: 2.1em;
-            margin-bottom: 8px;
-            letter-spacing: 1px;
-        }
-        p {
-            text-align: center;
-            color: #555;
-            margin-bottom: 24px;
-        }
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 10px;
-            background: #fafbfc;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(26,35,126,0.04);
-        }
-        th, td {
-            padding: 10px 8px;
-            text-align: left;
-        }
-        th {
-            background: linear-gradient(90deg, #283593 0%, #1976d2 100%);
-            color: #fff;
-            font-weight: 600;
-            border-bottom: 2px solid #1565c0;
-            font-size: 1em;
-        }
-        td {
-            border-bottom: 1px solid #e3e6f0;
-            font-size: 0.98em;
-        }
-        tr:last-child td {
-            border-bottom: none;
-        }
-        tr:nth-child(even) td {
-            background: #f1f6fb;
-        }
-        tr:hover td {
-            background: #e3f2fd;
-        }
-        .badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 8px;
-            font-size: 0.92em;
-            color: #fff;
-            background: #1976d2;
-            font-weight: 500;
-        }
-        @media print {
-            body, .container {
-                box-shadow: none !important;
-                background: #fff !important;
-                padding: 0 !important;
-            }
-            .container {
-                margin: 0;
-            }
-        }
+        /* Formato página similar a reporte gráfico */
+        @page { size:A4 portrait; margin:15mm 15mm 18mm 15mm; }
+        body { font-family:'Segoe UI', Arial, sans-serif; font-size:11px; color:#2d3436; background:#f5f7fa; margin:0; }
+        h1 { font-size:20px; margin:0; color:#1b4f72; }
+        .watermark { position:fixed; top:40%; left:18%; font-size:120px; color:#1b4f7215; transform:rotate(-25deg); pointer-events:none; }
+        .header { text-align:center; margin-bottom:6px; }
+        .brand { display:flex; flex-direction:column; align-items:center; gap:2px; }
+        .brand img { height:60px; }
+        .badge-total { background:#0b8552; color:#fff; padding:8px 14px; border-radius:8px; font-size:11px; font-weight:600; line-height:1.1; margin-top:4px; }
+        .layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:14px 18px 16px; }
+        table { width:100%; border-collapse:collapse; margin-top:10px; }
+        th, td { padding:6px 7px; border-bottom:1px solid #ecf0f1; }
+        th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; background:#f4f7fb; color:#1b4f72; }
+        tbody tr:nth-child(even) { background:#f8fbfd; }
+        tbody tr:hover { background:#eaf4fb; }
+        td { font-size:10.5px; }
+        .chip { background:#1b4f72; color:#fff; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:600; display:inline-block; min-width:32px; text-align:center; }
+        .meta-line { font-size:10px; color:#587187; margin-top:2px; }
+        .footer { margin-top:8px; font-size:9.5px; color:#8d99a6; text-align:right; }
+        .filters { margin-top:6px; font-size:10px; color:#34495e; display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+        .filters span { background:#eef3f7; border:1px solid #d9e3ea; padding:3px 8px; border-radius:14px; font-size:9.5px; }
+        .split { display:flex; gap:14px; }
+        .col { flex:1; }
+        .section-title { margin:18px 0 6px; font-size:14px; color:#1b4f72; text-align:center; }
+        .summary-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:10px; margin-top:10px; }
+        .card { background:#fdfefe; border:1px solid #e3eaee; border-radius:8px; padding:8px 10px; }
+        .card h3 { margin:0 0 4px; font-size:11px; font-weight:600; color:#1b4f72; }
+        .card .val { font-size:14px; font-weight:700; color:#0b8552; }
+        .card small { display:block; margin-top:2px; font-size:9px; color:#607d8b; }
+        .page-break { page-break-before:always; }
+        /* Evitar cortes feos de filas */
+        tr { page-break-inside:avoid; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Reporte de Historial de Entregas</h1>
-        <p>Generado el: <strong>{{ fecha_reporte }}</strong></p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Fecha Entrega</th>
-                    <th>Empleado</th>
-                    <th>Elemento</th>
-                    <th>Referencia</th>
-                    <th>Talla/Medida</th>
-                    <th>Cantidad</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for a in asignaciones %}
-                <tr>
-                    <td>{{ a.fecha_entrega.strftime('%Y-%m-%d') }}</td>
-                    <td>{{ a.empleado_nombre }}</td>
-                    <td>{{ a.item.nombre }}</td>
-                    <td>{{ a.item.referencia or '-' }}</td>
-                    <td>{{ a.item.talla or '-' }}</td>
-                    <td><span class="badge">{{ a.cantidad_entregada }}</span></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="watermark">CONQUERS</div>
+
+<div class="header">
+    <div class="brand">
+        {% if logo_base64 %}
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
+        {% endif %}
+        <h1>Historial de Entregas EPP</h1>
+        <div class="badge-total">Total Registros: {{ asignaciones|length }}</div>
+        <div class="meta-line">Generado: {{ fecha_reporte }}{% if rango_fecha %} | Rango: {{ rango_fecha }}{% endif %}</div>
     </div>
+    {% if filtros and filtros|length %}
+    <div class="filters">
+        {% for k,v in filtros.items() if v %}
+            <span>{{ k|replace('_',' ')|title }}: {{ v }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="layout">
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Empleado</th>
+                <th>Elemento</th>
+                <th>Referencia</th>
+                <th>Talla / Medida</th>
+                <th>Cantidad</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for a in asignaciones %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ a.fecha_entrega.strftime('%Y-%m-%d') if a.fecha_entrega else '-' }}</td>
+                <td>{{ a.empleado_nombre }}</td>
+                <td>{{ a.item.nombre }}</td>
+                <td>{{ a.item.referencia or '-' }}</td>
+                <td>{{ a.item.talla or '-' }}</td>
+                <td><span class="chip">{{ a.cantidad_entregada }}</span></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <div class="footer">Reporte interno - Página 1</div>
+</div>
+
+{% if resumen_categoria %}
+<div class="page-break"></div>
+<h2 class="section-title">Resumen por Categoría</h2>
+<div class="layout">
+    <div class="summary-grid">
+        {% for cat, datos in resumen_categoria.items() %}
+            <div class="card">
+                <h3>{{ cat }}</h3>
+                <div class="val">{{ datos.total }}</div>
+                <small>Asignaciones | Última: {{ datos.ultima_fecha }}</small>
+            </div>
+        {% endfor %}
+    </div>
+    <div class="footer">Reporte interno - Resumen</div>
+</div>
+{% endif %}
+
 </body>
 </html>

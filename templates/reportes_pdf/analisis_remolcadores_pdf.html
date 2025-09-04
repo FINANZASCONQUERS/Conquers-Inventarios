@@ -1,244 +1,114 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>Reporte Ejecutivo: Análisis de Remolcadores</title>
     <style>
-        @page {
-            size: letter landscape;
-            margin: 1cm 1.5cm 2cm 1.5cm;
-            @top-center {
-                content: "Reporte Ejecutivo - Eficiencia de Remolcadores";
-                font-size: 12pt;
-                color: #2c3e50;
-                font-weight: bold;
-            }
-            @bottom-right {
-                content: "Página " counter(page) " de " counter(pages);
-                font-size: 9pt;
-                color: #666;
-            }
-        }
-        
-        body { 
-            font-family: 'Calibri', 'Arial', sans-serif;
-            font-size: 10pt;
-            line-height: 1.35;
-            color: #333;
-            margin: 0;
-            padding: 0;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #0056b3;
-            page-break-after: avoid;
-        }
-        
-        .header h1 { 
-            color: #0056b3; 
-            font-size: 20pt;
-            margin: 5px 0;
-            font-weight: 600;
-        }
-        
-        .header p { 
-            color: #555;
-            font-size: 11pt;
-            margin: 3px 0;
-        }
-        
-        .logo {
-            height: 60px;
-            margin-bottom: 8px;
-        }
-        
-        .section { 
-            margin-bottom: 20px;
-            page-break-inside: avoid;
-        }
-        
-        .section-title {
-            background-color: #0056b3;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 11pt;
-            margin-bottom: 12px;
-            page-break-after: avoid;
-        }
-        
-        .table-container {
-            margin-bottom: 15px;
-            overflow-x: visible;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 9pt;
-            page-break-inside: avoid;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        th {
-            background-color: #007bff;
-            color: white;
-            padding: 8px 10px;
-            text-align: left;
-            font-weight: bold;
-            border: 1px solid #ddd;
-        }
-        
-        td {
-            padding: 7px 10px;
-            border: 1px solid #ddd;
-            vertical-align: middle;
-        }
-        
-        tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        
-        tr:hover {
-            background-color: #e9f0fd;
-        }
-        
-        .chart-container {
-            text-align: center;
-            margin: 20px auto;
-            page-break-inside: avoid;
-            max-height: 16cm;
-            overflow: hidden;
-        }
-        
-        .chart-container img {
-            max-width: 100%;
-            max-height: 16cm;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border: 1px solid #eee;
-            border-radius: 4px;
-        }
-        
-        .footer {
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            text-align: center;
-            font-size: 8pt;
-            color: #666;
-            padding: 5px 0;
-            border-top: 1px solid #eee;
-            background-color: white;
-        }
-        
-        .two-columns {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
-            margin-bottom: 15px;
-        }
-        
-        .column {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .highlight {
-            background-color: #fffde7;
-            font-weight: bold;
-        }
-        
-        .summary-card {
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            border-radius: 0 4px 4px 0;
-        }
-        
-        .no-data {
-            text-align: center;
-            color: #999;
-            font-style: italic;
-            padding: 20px;
-            border: 1px dashed #ddd;
-            background-color: #fafafa;
-        }
-        
-        @media print {
-            .footer {
-                position: fixed;
-            }
-            .two-columns {
-                page-break-inside: avoid;
-            }
-        }
+        /* Página y tipografía alineada al estilo gráfico de despachos */
+        @page { size: A4 landscape; margin:15mm 15mm 18mm 15mm; }
+        body { font-family:'Segoe UI','Calibri','Arial',sans-serif; font-size:11px; color:#2d3436; background:#f5f7fa; margin:0; }
+        h1 { font-size:20px; margin:0; color:#1b4f72; }
+        h2 { font-size:16px; margin:0 0 8px 0; color:#1b4f72; }
+        .watermark { position:fixed; top:40%; left:18%; font-size:130px; color:#1b4f7215; transform:rotate(-25deg); letter-spacing:4px; }
+        .brand { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .brand img { height:60px; }
+        .header { text-align:center; margin-bottom:8px; }
+    .layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:16px 18px 14px; margin-bottom:12px; }
+    .summary { background:#fff; border:1px solid #dce3ea; border-left:5px solid #1b4f72; padding:10px 14px; border-radius:8px; font-size:11px; line-height:1.35; margin:6px 0 10px; }
+        .section-block { margin-bottom:14px; }
+        .section-title { font-size:13px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; color:#1b4f72; margin:0 0 6px 0; border-bottom:2px solid #1b4f72; padding-bottom:4px; }
+        table { width:100%; border-collapse:collapse; font-size:10px; }
+        th, td { padding:6px 8px; border-bottom:1px solid #ecf0f1; }
+        th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.5px; background:#f4f7fb; color:#1b4f72; }
+        td.num, th.num { text-align:right; }
+        tr:last-child td { border-bottom:none; }
+        .alt-row:nth-child(even) { background:#fafcfe; }
+    .chart-wrapper { position:relative; margin-top:6px; }
+    .chart-wrapper img { width:100%; border:1px solid #e5e9ed; border-radius:6px; }
+    .chart-wrapper.full img { width:100%; max-height:570px; object-fit:contain; }
+    .layout.chart-page { padding:10px 12px 10px; }
+        .no-data { text-align:center; margin:28px 0; font-style:italic; color:#7d8a97; }
+        .footer { margin-top:4px; font-size:9px; color:#8d99a6; text-align:right; }
+        .mini-note { font-size:9px; color:#7d8a97; margin-top:4px; }
+        .page-break { page-break-before:always; }
     </style>
 </head>
 <body>
-    <div class="header">
+<div class="watermark">CONQUERS</div>
+
+<div class="header">
+    <div class="brand">
         {% if logo_base64 %}
-    <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo Empresa" class="logo">
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
         {% endif %}
-        <h1>Reporte Ejecutivo de Eficiencia Operativa</h1>
-        <p>Análisis de Tiempos de Remolcadores | {{ fecha_reporte }}</p>
-        <p>Generado por: Departamento de Operaciones</p>
+    <h1>Eficiencia Operativa Remolcadores</h1>
     </div>
+</div>
 
-    <div class="summary-card">
-        <strong>Resumen Ejecutivo:</strong> Este reporte presenta el análisis comparativo de tiempos operativos con y sin carga, duración de tanqueo y eficiencia general por maniobra para el período analizado.
+<!-- Página 1: Resumen + Tiempos con Carga -->
+<div class="layout chart-page">
+    <div class="summary">
+        <strong>Resumen Ejecutivo:</strong> Este reporte compara tiempos con y sin carga, duración de tanqueo y horas totales por maniobra para el período analizado, facilitando la identificación de oportunidades de mejora operativa.
     </div>
-
-    <div class="two-columns">
-        <div class="column">
-            <div class="section">
-                <div class="section-title">1. Tiempos con Carga</div>
-                <div class="table-container">
-                    {{ resultados.tabla_cargado_html|safe }}
-                </div>
-            </div>
-        </div>
-        
-        <div class="column">
-            <div class="section">
-                <div class="section-title">2. Tiempos sin Carga</div>
-                <div class="table-container">
-                    {{ resultados.tabla_vacio_html|safe }}
-                </div>
-            </div>
+    <div class="section-block">
+        <div class="section-title">1. Tiempos con Carga</div>
+        <div class="table-container alt-row">
+            {{ resultados.tabla_cargado_html|safe }}
         </div>
     </div>
+    <div class="footer">© {{ now.year }} Sistema Remolcadores | Documento Interno</div>
+</div>
 
-    <div class="section">
-        <div class="section-title">3. Duración de Tanqueo por Mes y Maniobra</div>
-        <div class="chart-container">
+<div class="page-break"></div>
+
+<!-- Página 2: Tiempos sin Carga -->
+<div class="layout chart-page">
+    <div class="section-block">
+        <div class="section-title">2. Tiempos sin Carga</div>
+        <div class="table-container alt-row">
+            {{ resultados.tabla_vacio_html|safe }}
+        </div>
+    </div>
+    <div class="footer">© {{ now.year }} Sistema Remolcadores | Documento Interno</div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- Página 3: Gráfico Duración de Tanqueo -->
+<div class="layout">
+    <div class="section-block" style="margin-bottom:4px;">
+        <div class="section-title">3. Duración de Tanqueo (Mes vs Maniobra)</div>
+        <div class="chart-wrapper full">
             {% if resultados.grafico_tanqueo_b64 %}
-                <img src="data:image/png;base64,{{ resultados.grafico_tanqueo_b64 }}" alt="Análisis de Duración de Tanqueo">
+                <img src="data:image/png;base64,{{ resultados.grafico_tanqueo_b64 }}" alt="Duración de Tanqueo" />
             {% else %}
-                <p class="no-data">Datos de tanqueo no disponibles</p>
+                <p class="no-data">Sin datos</p>
             {% endif %}
+            <div class="mini-note">Promedios mensuales por tipo de maniobra.</div>
         </div>
     </div>
-    
-    <div class="section">
-        <div class="section-title">4. Total de Horas por Maniobra (Análisis Comparativo)</div>
-        <div class="chart-container">
-            {% if resultados.grafico_total_b64 %}
-                <img src="data:image/png;base64,{{ resultados.grafico_total_b64 }}" alt="Comparativo de Horas Totales">
-            {% else %}
-                <p class="no-data">Datos comparativos no disponibles</p>
-            {% endif %}
-        </div>
-    </div>
+    <div class="footer">© {{ now.year }} Sistema Remolcadores | Documento Interno</div>
+</div>
 
-    <div class="footer">
-        © {{ now.year }} Sistema de Gestión de Remolcadores | Documento Confidencial | Versión del Reporte: 1.0
+<div class="page-break"></div>
+
+<!-- Página 4: Gráfico Horas por Maniobra -->
+<div class="layout">
+    <div class="section-block" style="margin-bottom:4px;">
+        <div class="section-title">4. Total de Horas por Maniobra (Comparativo)</div>
+        <div class="chart-wrapper full">
+            {% if resultados.grafico_total_b64 %}
+                <img src="data:image/png;base64,{{ resultados.grafico_total_b64 }}" alt="Horas por Maniobra" />
+            {% else %}
+                <p class="no-data">Sin datos</p>
+            {% endif %}
+            <div class="mini-note">Comparación consolidada para priorizar acciones.</div>
+        </div>
     </div>
+    <div class="footer">© {{ now.year }} Sistema Remolcadores | Documento Interno</div>
+</div>
+
 </body>
 </html>

@@ -20,7 +20,7 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="h3 text-primary"><i class="fas fa-ship me-2"></i>Control de Tiempos de Remolcadores</h2>
-        {% if session.email in ['ops@conquerstrading.com', 'finance@conquerstrading.com'] %}
+    {% if session.email in ['ops@conquerstrading.com', 'finance@conquerstrading.com'] or session.get('rol') == 'admin' %}
             <div class="d-flex gap-2">
                 <a href="{{ url_for('reporte_analisis_remolcadores') }}" class="btn btn-warning"><i class="fas fa-chart-line me-2"></i>Ver Reporte</a>
             </div>

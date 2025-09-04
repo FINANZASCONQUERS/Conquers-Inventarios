@@ -1,138 +1,81 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte de Planta</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
-        body {
-            font-family: 'Montserrat', Arial, sans-serif;
-            background: #f8fafb;
-            margin: 0;
-            padding: 0;
-            color: #222;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            background: linear-gradient(90deg, #0b8552 0%, #1e3c72 100%);
-            padding: 24px 40px 16px 40px;
-            border-bottom: 4px solid #0b8552;
-        }
-        .header img {
-            height: 60px;
-            margin-right: 32px;
-        }
-        .header-title {
-            color: #fff;
-            font-size: 2.4rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin: 0;
-        }
-        .subtitle {
-            margin: 32px 0 8px 0;
-            font-size: 1.15rem;
-            color: #0b8552;
-            text-align: right;
-            padding-right: 40px;
-        }
-        .table-container {
-            background: #fff;
-            margin: 0 auto 32px auto;
-            border-radius: 14px;
-            box-shadow: 0 4px 24px rgba(30,60,114,0.08);
-            max-width: 1100px;
-            padding: 32px 40px 24px 40px;
-        }
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 0;
-            font-size: 1.05rem;
-        }
-        th, td {
-            border: none;
-            padding: 12px 10px;
-            text-align: left;
-        }
-        th {
-            background: #0b8552;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1.08rem;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        }
-        tr {
-            background: #f8fafb;
-            transition: background 0.2s;
-        }
-        tr:nth-child(even) {
-            background: #eaf5f0;
-        }
-        tr:hover {
-            background: #d2f3e3;
-        }
-        td {
-            color: #222;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        tfoot td {
-            font-weight: 700;
-            background: #f1f1f1;
-        }
-        .footer {
-            text-align: right;
-            color: #888;
-            font-size: 0.95rem;
-            margin: 0 40px 18px 0;
-        }
-        @media (max-width: 800px) {
-            .header, .table-container { padding: 16px; }
-            .subtitle, .footer { padding-right: 16px; }
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Inventario Planta</title>
+<style>
+@page { size:A4 portrait; margin:15mm 15mm 18mm 15mm; }
+body { font-family:'Segoe UI','Montserrat',Arial,sans-serif; font-size:12px; color:#2d3436; background:#f5f7fa; margin:0; }
+.watermark { position:fixed; top:40%; left:15%; font-size:110px; color:#1b4f7215; transform:rotate(-25deg); }
+.header { text-align:center; margin-bottom:8px; }
+.brand { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.brand img { height:70px; }
+h1 { font-size:22px; margin:4px 0 0; color:#1b4f72; letter-spacing:.5px; }
+.periodo { font-size:11px; color:#546e7a; }
+.badges { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.badge { background:#0b8552; color:#fff; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:600; box-shadow:0 2px 4px #0b855233; }
+.layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:14px 18px 10px; }
+table { width:100%; border-collapse:collapse; margin-top:4px; }
+th, td { padding:7px 8px; border-bottom:1px solid #ecf0f1; }
+th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; background:#f4f7fb; color:#1b4f72; }
+tbody tr:nth-child(even){ background:#fbfdff; }
+tbody tr:hover { background:#eef7fa; }
+td.numeric { text-align:right; font-variant-numeric:tabular-nums; }
+.footer { margin-top:8px; font-size:10px; color:#8d99a6; text-align:right; }
+</style>
 </head>
 <body>
-    <div class="header">
-        <img src="/static/Conquers_4_Logo.png" alt="Logo Empresa">
-        <div class="header-title">Reporte de Inventario de Planta</div>
+<div class="watermark">CONQUERS</div>
+<div class="header">
+    <div class="brand">
+        {% if logo_base64 %}
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:24px;font-weight:700;color:#1b4f72;">LOGO</div>
+        {% endif %}
+        <h1>Inventario de Planta</h1>
+        <div class="periodo">{{ fecha_reporte }}</div>
+        <div class="badges">
+            <div class="badge">Total BLS @60°F: {{ '%.2f'|format(total_bls) }}</div>
+            <div class="badge" style="background:#1e3c72;">Capacidad Total: {{ '%.2f'|format(total_cap) }}</div>
+        </div>
     </div>
-    <div class="subtitle">
-        Datos correspondientes al día: <strong>{{ fecha_reporte }}</strong>
-    </div>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Tanque (TK)</th>
-                    <th>Producto</th>
-                    <th>Capacidad Máx.</th>
-                    <th>BLS @60°F</th>
-                    <th>API</th>
-                    <th>%BSW</th>
-                    <th>%S</th>
-                </tr>
-            </thead>
-            <tbody>
+</div>
+
+<div class="layout">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:11%">TK</th>
+                <th style="width:24%">Producto</th>
+                <th style="width:13%">Cap. Máx.</th>
+                <th style="width:13%">BLS @60°F</th>
+                <th style="width:9%">API</th>
+                <th style="width:9%">%BSW</th>
+                <th style="width:9%">%S</th>
+                <th style="width:12%">% Ocup.</th>
+            </tr>
+        </thead>
+        <tbody>
             {% for r in registros %}
+            {% set ocup = ( (r.bls_60 / r.max_cap) * 100 ) if r.max_cap else 0 %}
             <tr>
                 <td>{{ r.tk }}</td>
                 <td>{{ r.producto }}</td>
-                <td>{{ "%.2f"|format(r.max_cap) }}</td>
-                <td>{{ "%.2f"|format(r.bls_60) }}</td>
-                <td>{{ "%.2f"|format(r.api) }}</td>
-                <td>{{ "%.2f"|format(r.bsw) }}</td>
-                <td>{{ "%.2f"|format(r.s) }}</td>
+                <td class="numeric">{{ '%.0f'|format(r.max_cap) }}</td>
+                <td class="numeric">{{ '%.0f'|format(r.bls_60) }}</td>
+                <td class="numeric">{{ '%.1f'|format(r.api) }}</td>
+                <td class="numeric">{{ '%.2f'|format(r.bsw) }}</td>
+                <td class="numeric">{{ '%.2f'|format(r.s) }}</td>
+                <td class="numeric">{{ '%.1f'|format(ocup) }}</td>
             </tr>
             {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <div class="footer">
-        Reporte generado automáticamente | Conquers Trading &copy; {{ fecha_reporte.split('-')[0] }}
-    </div>
+        </tbody>
+    </table>
+</div>
+
+<div class="footer">
+    Generado: {{ fecha_generacion }} | Sistema Inventarios Conquers
+</div>
 </body>
 </html>
