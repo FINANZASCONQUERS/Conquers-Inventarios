@@ -12,9 +12,9 @@ body { font-family:'Segoe UI','Montserrat',Arial,sans-serif; font-size:12px; col
 .brand img { height:70px; }
 h1 { font-size:22px; margin:4px 0 0; color:#1b4f72; letter-spacing:.5px; }
 .periodo { font-size:11px; color:#546e7a; }
-.badges { display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin-top:6px; }
-.badge { background:#0b8552; color:#fff; padding:8px 12px; border-radius:8px; font-size:11px; font-weight:600; box-shadow:0 2px 4px #0b855233; }
-.layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:14px 18px 10px; }
+.badges { display:none; }
+.badge { display:none; }
+.layout { display:none; }
 table { width:100%; border-collapse:collapse; margin-top:4px; }
 th, td { padding:7px 8px; border-bottom:1px solid #ecf0f1; }
 th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px; background:#f4f7fb; color:#1b4f72; }
@@ -22,6 +22,11 @@ tbody tr:nth-child(even){ background:#fbfdff; }
 tbody tr:hover { background:#eef7fa; }
 td.numeric { text-align:right; font-variant-numeric:tabular-nums; }
 .footer { margin-top:8px; font-size:10px; color:#8d99a6; text-align:right; }
+.historial-title { margin-top:18px; font-size:16px; color:#1b4f72; border-bottom:2px solid #1b4f72; padding-bottom:4px; }
+.historial-table th { background:#1b4f72; color:#fff; }
+.historial-table tbody tr:nth-child(even){ background:#f2f6f9; }
+.historial-wrapper { margin-top:10px; }
+.small { font-size:10px; }
 </style>
 </head>
 <body>
@@ -42,40 +47,74 @@ td.numeric { text-align:right; font-variant-numeric:tabular-nums; }
     </div>
 </div>
 
-<div class="layout">
-    <table>
-        <thead>
-            <tr>
-                <th style="width:11%">TK</th>
-                <th style="width:24%">Producto</th>
-                <th style="width:13%">Cap. Máx.</th>
-                <th style="width:13%">BLS @60°F</th>
-                <th style="width:9%">API</th>
-                <th style="width:9%">%BSW</th>
-                <th style="width:9%">%S</th>
-                <th style="width:12%">% Ocup.</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in registros %}
-            {% set ocup = ( (r.bls_60 / r.max_cap) * 100 ) if r.max_cap else 0 %}
-            <tr>
-                <td>{{ r.tk }}</td>
-                <td>{{ r.producto }}</td>
-                <td class="numeric">{{ '%.0f'|format(r.max_cap) }}</td>
-                <td class="numeric">{{ '%.0f'|format(r.bls_60) }}</td>
-                <td class="numeric">{{ '%.1f'|format(r.api) }}</td>
-                <td class="numeric">{{ '%.2f'|format(r.bsw) }}</td>
-                <td class="numeric">{{ '%.2f'|format(r.s) }}</td>
-                <td class="numeric">{{ '%.1f'|format(ocup) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<!-- Tabla principal y badges removidos según solicitud -->
 
 <div class="footer">
     Generado: {{ fecha_generacion }} | Sistema Inventarios Conquers
 </div>
+
+{% if historial_grouped and historial_grouped|length > 0 %}
+<style>
+.day-block { background:#ffffff; border:1px solid #cfd9e1; border-radius:10px; padding:10px 14px 12px; margin-top:14px; box-shadow:0 2px 4px rgba(0,0,0,.07); }
+.day-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.day-title { font-size:14px; font-weight:600; color:#1b4f72; }
+.day-meta { font-size:10px; color:#60717c; }
+.day-table { width:100%; border-collapse:collapse; font-size:10px; }
+.day-table th { background:#1b4f72; color:#fff; padding:5px 6px; text-align:left; font-size:9px; letter-spacing:.4px; }
+.day-table td { padding:4px 6px; border-bottom:1px solid #edf1f4; }
+.day-table tbody tr:nth-child(even){ background:#f6f9fc; }
+.day-table tbody tr:hover { background:#eef5fa; }
+.day-table tfoot td { background:#e8f1f7; font-weight:600; border-top:2px solid #1b4f72; font-size:9px; }
+</style>
+<div class="historial-wrapper">
+    <div class="historial-title">Historial Consolidado{% if fecha_reporte %} {{ fecha_reporte }}{% endif %}</div>
+    {% for grupo in historial_grouped %}
+    <div class="day-block">
+        <div class="day-header">
+            <div class="day-title">Fecha: {{ grupo.dia }}</div>
+            <div class="day-meta">Registros: {{ grupo.registros|length }}</div>
+        </div>
+        <table class="day-table">
+                <thead>
+                        <tr>
+                                <th style="width:10%">TK</th>
+                                <th style="width:18%">Producto</th>
+                                <th style="width:12%">BLS @60°F</th>
+                                <th style="width:8%">API</th>
+                                <th style="width:8%">%BSW</th>
+                                <th style="width:8%">%S</th>
+                                <th style="width:14%">Usuario</th>
+                                <th style="width:22%">Hora</th>
+                        </tr>
+                </thead>
+                <tbody>
+                        {% for h in grupo.registros %}
+                        <tr>
+                                <td>{{ h.tk }}</td>
+                                <td>{{ h.producto }}</td>
+                                <td class="numeric">{{ '%.0f'|format(h.bls_60) }}</td>
+                                <td class="numeric">{{ '%.1f'|format(h.api) }}</td>
+                                <td class="numeric">{{ '%.2f'|format(h.bsw) }}</td>
+                                <td class="numeric">{{ '%.2f'|format(h.s) }}</td>
+                                <td>{{ h.usuario }}</td>
+                                <td>{{ h.fecha[11:] }}</td>
+                        </tr>
+                        {% endfor %}
+                </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="text-align:right;">Total Día</td>
+                <td class="numeric">{{ '%.0f'|format(grupo.registros|sum(attribute='bls_60')) }}</td>
+                <td class="numeric">-</td>
+                <td class="numeric">-</td>
+                <td class="numeric">-</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+        </table>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 </body>
 </html>

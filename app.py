@@ -3004,6 +3004,84 @@ def descargar_reporte_planta_pdf():
         flash("No hay datos para generar el PDF con el filtro seleccionado.", "warning")
         return redirect(url_for('reporte_planta'))
 
+    # ===== HISTORIAL SEGÚN FILTRO =====
+    # Determinar rango de fechas para el historial (inicio y fin) según filtro_tipo y valor
+    start_dt = None
+    end_dt = None
+    try:
+        if valor:
+            if filtro_tipo == 'dia':
+                fecha_obj = date.fromisoformat(valor)
+                start_dt = datetime.combine(fecha_obj, time.min)
+                end_dt = datetime.combine(fecha_obj, time.max)
+            elif filtro_tipo == 'mes':
+                ano, mes = map(int, valor.split('-'))
+                fecha_ini = date(ano, mes, 1)
+                fecha_fin = (fecha_ini + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+            elif filtro_tipo == 'trimestre':
+                ano_str, q_str = valor.split('-Q')
+                ano = int(ano_str)
+                trimestre = int(q_str)
+                mes_ini = (trimestre - 1) * 3 + 1
+                mes_fin = trimestre * 3
+                fecha_ini = date(ano, mes_ini, 1)
+                fecha_fin = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+            elif filtro_tipo == 'anual':
+                ano = int(valor)
+                fecha_ini = date(ano, 1, 1)
+                fecha_fin = date(ano, 12, 31)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+        # Si no se especifica filtro, se considera todo el histórico (start_dt permanece None)
+    except Exception:
+        # En caso de error en parsing, ignorar y no limitar historial
+        start_dt = None
+        end_dt = None
+
+    historial_query = db.session.query(RegistroPlanta)
+    if end_dt:
+        historial_query = historial_query.filter(RegistroPlanta.timestamp <= end_dt)
+    if start_dt:
+        historial_query = historial_query.filter(RegistroPlanta.timestamp >= start_dt)
+
+    historial_db = (historial_query
+                     .order_by(RegistroPlanta.timestamp.desc(), RegistroPlanta.tk.asc())
+                     .all())
+
+    historial_registros = [
+        {
+            'fecha': r.timestamp.strftime('%Y-%m-%d %H:%M'),
+            'tk': r.tk,
+            'producto': r.producto,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0,
+            'usuario': r.usuario
+        }
+        for r in historial_db
+    ]
+
+    # Agrupación por fecha (día) para mostrar un cuadro por fecha
+    from collections import OrderedDict
+    grupos = OrderedDict()
+    for item in historial_registros:
+        dia = item['fecha'][:10]  # 'YYYY-MM-DD'
+        if dia not in grupos:
+            grupos[dia] = []
+        grupos[dia].append(item)
+    # Construir lista ordenada (ya viene en orden descendente por timestamp)
+    historial_grouped = []
+    for dia, regs in grupos.items():
+        historial_grouped.append({
+            'dia': dia,
+            'registros': regs
+        })
+
     # ======== INICIO DE LA SOLUCIÓN DEFINITIVA ========
     # Se crea una nueva lista de diccionarios, asegurando que los valores nulos se conviertan en 0.0
     registros_limpios = []
@@ -3039,6 +3117,8 @@ def descargar_reporte_planta_pdf():
 
     html_para_pdf = render_template('reportes_pdf/planta_pdf.html',
                                     registros=registros_limpios,
+                                    historial=historial_registros,
+                                    historial_grouped=historial_grouped,
                                     fecha_reporte=fecha_reporte_str,
                                     total_bls=total_bls,
                                     total_cap=total_cap,
@@ -3111,10 +3191,51 @@ def descargar_reporte_orion_pdf():
     total_consolidado = calcular_estadisticas(todos_los_tanques_lista)
 
     # 4. Renderizar la plantilla HTML del PDF
+    # ===== Historial Orion (agrupado por día) =====
+    historial_query = db.session.query(RegistroBarcazaOrion)
+    historial_query = historial_query.filter(RegistroBarcazaOrion.timestamp <= timestamp_limite)
+    historial_db = historial_query.order_by(RegistroBarcazaOrion.timestamp.desc(), RegistroBarcazaOrion.tk.asc()).all()
+    historial_registros = [
+        {
+            'fecha': r.timestamp.strftime('%Y-%m-%d %H:%M'),
+            'tk': r.tk,
+            'producto': r.producto,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0,
+            'usuario': r.usuario,
+            'grupo': r.grupo
+        } for r in historial_db
+    ]
+    from collections import OrderedDict
+    grupos = OrderedDict()
+    for item in historial_registros:
+        dia = item['fecha'][:10]
+        if dia not in grupos:
+            grupos[dia] = []
+        grupos[dia].append(item)
+    historial_grouped = [{'dia': dia, 'registros': regs} for dia, regs in grupos.items()]
+
+    # Cargar logo base64 (mismo método que planta)
+    logo_base64 = None
+    try:
+        logo_candidates = ['Logo_de_empresa.jpeg', 'Conquers_4_Logo.png', 'logo.jpeg']
+        for fname in logo_candidates:
+            logo_path = os.path.join(current_app.root_path, 'static', fname)
+            if os.path.exists(logo_path):
+                import base64 as _b64
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = _b64.b64encode(f.read()).decode('utf-8')
+                break
+    except Exception as e:
+        print(f"Error cargando logo Orion PDF: {e}")
+
     html_para_pdf = render_template('reportes_pdf/orion_pdf.html',
-                                    datos_agrupados=datos_agrupados,
-                                    total_consolidado=total_consolidado,
-                                    fecha_reporte=fecha_seleccionada.strftime('%d de %B de %Y'))
+                                    historial_grouped=historial_grouped,
+                                    fecha_reporte=fecha_seleccionada.strftime('%d de %B de %Y'),
+                                    logo_base64=logo_base64,
+                                    fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'))
     
     pdf = HTML(string=html_para_pdf).write_pdf()
     return Response(pdf,
@@ -3186,13 +3307,51 @@ def descargar_reporte_bita_pdf():
     stats_oidech = calcular_estadisticas(tanques_oidech)
 
     # Renderizar la plantilla del PDF
+    # ===== Historial BITA (agrupado por día) =====
+    historial_query = db.session.query(RegistroBarcazaBita)
+    if timestamp_limite:
+        historial_query = historial_query.filter(RegistroBarcazaBita.timestamp <= timestamp_limite)
+    historial_db = historial_query.order_by(RegistroBarcazaBita.timestamp.desc(), RegistroBarcazaBita.tk.asc()).all()
+    historial_registros = [
+        {
+            'fecha': r.timestamp.strftime('%Y-%m-%d %H:%M'),
+            'tk': r.tk,
+            'producto': r.producto,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0,
+            'usuario': r.usuario
+        } for r in historial_db
+    ]
+    from collections import OrderedDict
+    grupos_bita = OrderedDict()
+    for item in historial_registros:
+        dia = item['fecha'][:10]
+        if dia not in grupos_bita:
+            grupos_bita[dia] = []
+        grupos_bita[dia].append(item)
+    historial_grouped = [{'dia': dia, 'registros': regs} for dia, regs in grupos_bita.items()]
+
+    # Cargar logo base64 para BITA
+    logo_base64 = None
+    try:
+        logo_candidates = ['Logo_de_empresa.jpeg', 'Conquers_4_Logo.png', 'logo.jpeg']
+        for fname in logo_candidates:
+            logo_path = os.path.join(current_app.root_path, 'static', fname)
+            if os.path.exists(logo_path):
+                import base64 as _b64
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = _b64.b64encode(f.read()).decode('utf-8')
+                break
+    except Exception as e:
+        print(f"Error cargando logo BITA PDF: {e}")
+
     html_para_pdf = render_template('reportes_pdf/bita_pdf.html',
-                                    tanques_marinse=tanques_marinse,
-                                    stats_marinse=stats_marinse,
-                                    tanques_oidech=tanques_oidech,
-                                    stats_oidech=stats_oidech,
-                                    total_consolidado=total_consolidado,
-                                    fecha_reporte=fecha_reporte_str)
+                                    historial_grouped=historial_grouped,
+                                    fecha_reporte=fecha_reporte_str,
+                                    logo_base64=logo_base64,
+                                    fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'))
 
     pdf = HTML(string=html_para_pdf).write_pdf()
     return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=reporte_barcaza_bita.pdf'})

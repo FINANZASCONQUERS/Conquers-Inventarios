@@ -1,206 +1,94 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Reporte Barcaza BITA</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
-        body {
-            font-family: 'Montserrat', Arial, sans-serif;
-            background: #f8fafb;
-            margin: 0;
-            padding: 0;
-            color: #222;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            background: linear-gradient(90deg, #0b8552 0%, #1e3c72 100%);
-            padding: 24px 40px 16px 40px;
-            border-bottom: 4px solid #0b8552;
-        }
-        .header img {
-            height: 60px;
-            margin-right: 32px;
-        }
-        .header-title {
-            color: #fff;
-            font-size: 2.2rem;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin: 0;
-        }
-        .subtitle {
-            margin: 32px 0 8px 0;
-            font-size: 1.08rem;
-            color: #0b8552;
-            text-align: right;
-            padding-right: 40px;
-        }
-        .table-container {
-            background: #fff;
-            margin: 0 auto 32px auto;
-            border-radius: 14px;
-            box-shadow: 0 4px 24px rgba(30,60,114,0.08);
-            max-width: 1100px;
-            padding: 32px 40px 24px 40px;
-        }
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 0;
-            font-size: 1.01rem;
-        }
-        th, td {
-            border: none;
-            padding: 10px 8px;
-            text-align: left;
-        }
-        th {
-            background: #0b8552;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1.05rem;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        }
-        tr {
-            background: #f8fafb;
-            transition: background 0.2s;
-        }
-        tr:nth-child(even) {
-            background: #eaf5f0;
-        }
-        tr:hover {
-            background: #d2f3e3;
-        }
-        td {
-            color: #222;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .summary-table {
-            margin-top: 10px;
-            width: 60%;
-            font-size: 1.01rem;
-        }
-        .summary-table td {
-            font-weight: bold;
-            padding: 8px 6px;
-        }
-        .total-consolidado {
-            margin: 0 auto 32px auto;
-            background-color: #eaf5f0;
-            padding: 24px 40px 18px 40px;
-            border: 1.5px solid #0b8552;
-            border-radius: 12px;
-            max-width: 900px;
-            box-shadow: 0 2px 12px rgba(30,60,114,0.07);
-        }
-        .total-consolidado h2 {
-            color: #1e3c72;
-            border: none;
-            margin-top: 0;
-            margin-bottom: 18px;
-            font-size: 1.25rem;
-        }
-        .footer {
-            text-align: right;
-            color: #888;
-            font-size: 0.95rem;
-            margin: 0 40px 18px 0;
-        }
-        @media (max-width: 800px) {
-            .header, .table-container, .total-consolidado { padding: 16px; }
-            .subtitle, .footer { padding-right: 16px; }
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>Inventario BITA</title>
+<style>
+@page { size:A4 portrait; margin:15mm 15mm 18mm 15mm; }
+body { font-family:'Segoe UI','Montserrat',Arial,sans-serif; font-size:12px; color:#2d3436; background:#f5f7fa; margin:0; }
+.watermark { position:fixed; top:40%; left:15%; font-size:110px; color:#1b4f7215; transform:rotate(-25deg); }
+.header { text-align:center; margin-bottom:8px; }
+.brand { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.brand img { height:70px; }
+h1 { font-size:22px; margin:4px 0 0; color:#1b4f72; letter-spacing:.5px; }
+.periodo { font-size:11px; color:#546e7a; }
+.footer { margin-top:8px; font-size:10px; color:#8d99a6; text-align:right; }
+.day-block { background:#ffffff; border:1px solid #cfd9e1; border-radius:10px; padding:10px 12px 10px; margin-top:14px; box-shadow:0 2px 4px rgba(0,0,0,.06); }
+.day-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+.day-title { font-size:14px; font-weight:600; color:#1b4f72; }
+.day-meta { font-size:10px; color:#60717c; }
+table { width:100%; border-collapse:collapse; }
+th, td { padding:6px 6px; border-bottom:1px solid #ecf0f1; }
+th { background:#1b4f72; color:#fff; font-size:10px; text-align:left; letter-spacing:.4px; }
+tbody tr:nth-child(even){ background:#fbfdff; }
+tbody tr:hover { background:#eef7fa; }
+td.numeric { text-align:right; font-variant-numeric:tabular-nums; }
+table tfoot td { background:#e8f1f7; font-weight:600; border-top:2px solid #1b4f72; font-size:9px; }
+</style>
 </head>
 <body>
-    <div class="header">
-        <img src="/static/Conquers_4_Logo.png" alt="Logo Empresa">
-        <div class="header-title">Reporte de Inventario - Barcaza BITA</div>
+<div class="watermark">CONQUERS</div>
+<div class="header">
+    <div class="brand">
+        {% if logo_base64 %}
+            <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+        {% else %}
+            <div style="font-size:24px;font-weight:700;color:#1b4f72;">LOGO</div>
+        {% endif %}
+        <h1>Inventario BITA</h1>
+        <div class="periodo">{{ fecha_reporte }}</div>
     </div>
-    <div class="subtitle">
-        Datos correspondientes a: <strong>{{ fecha_reporte }}</strong>
+</div>
+
+{% if historial_grouped %}
+  {% for grupo in historial_grouped %}
+  <div class="day-block">
+    <div class="day-header">
+      <div class="day-title">Fecha: {{ grupo.dia }}</div>
+      <div class="day-meta">Registros: {{ grupo.registros|length }}</div>
     </div>
-    <div class="table-container">
-        <h2>Barcaza Marinse</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Tanque (TK)</th>
-                    <th>Producto</th>
-                    <th>Capacidad Máx.</th>
-                    <th>BLS @60°F</th>
-                    <th>API</th>
-                    <th>%BSW</th>
-                    <th>%S</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tanque in tanques_marinse %}
-                <tr>
-                    <td>{{ tanque.TK }}</td>
-                    <td>{{ tanque.PRODUCTO }}</td>
-                    <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
-                    <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
-                    <td>{{ "%.2f"|format(tanque.API) }}</td>
-                    <td>{{ "%.2f"|format(tanque.BSW) }}</td>
-                    <td>{{ "%.2f"|format(tanque.S) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <table class="summary-table">
-            <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_marinse.total_bls) }}</td></tr>
-            <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_marinse.prom_api) }}</td></tr>
-        </table>
-    </div>
-    <div class="table-container">
-        <h2>Barcaza Oidech</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Tanque (TK)</th>
-                    <th>Producto</th>
-                    <th>Capacidad Máx.</th>
-                    <th>BLS @60°F</th>
-                    <th>API</th>
-                    <th>%BSW</th>
-                    <th>%S</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tanque in tanques_oidech %}
-                <tr>
-                    <td>{{ tanque.TK }}</td>
-                    <td>{{ tanque.PRODUCTO }}</td>
-                    <td>{{ "%.2f"|format(tanque.MAX_CAP) }}</td>
-                    <td>{{ "%.2f"|format(tanque.BLS_60) }}</td>
-                    <td>{{ "%.2f"|format(tanque.API) }}</td>
-                    <td>{{ "%.2f"|format(tanque.BSW) }}</td>
-                    <td>{{ "%.2f"|format(tanque.S) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <table class="summary-table">
-            <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(stats_oidech.total_bls) }}</td></tr>
-            <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(stats_oidech.prom_api) }}</td></tr>
-        </table>
-    </div>
-    <div class="total-consolidado">
-        <h2>Total Consolidado de la Operación</h2>
-        <table class="summary-table">
-            <tr><td>Total BLS @60°F:</td><td>{{ "%.2f"|format(total_consolidado.total_bls) }}</td></tr>
-            <tr><td>Promedio Ponderado API:</td><td>{{ "%.2f"|format(total_consolidado.prom_api) }}</td></tr>
-            <tr><td>Promedio Ponderado %BSW:</td><td>{{ "%.4f"|format(total_consolidado.prom_bsw) }}</td></tr>
-            <tr><td>Promedio Ponderado %S:</td><td>{{ "%.4f"|format(total_consolidado.prom_s) }}</td></tr>
-        </table>
-    </div>
-    <div class="footer">
-        Reporte generado automáticamente | Conquers Trading &copy; {{ fecha_reporte.split('-')[0] }}
-    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width:12%">TK</th>
+                <th style="width:20%">Producto</th>
+                <th style="width:14%">BLS @60°F</th>
+                <th style="width:8%">API</th>
+                <th style="width:8%">%BSW</th>
+                <th style="width:8%">%S</th>
+                <th style="width:18%">Usuario</th>
+                <th style="width:12%">Hora</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for h in grupo.registros %}
+            <tr>
+                <td>{{ h.tk }}</td>
+                <td>{{ h.producto }}</td>
+                <td class="numeric">{{ '%.0f'|format(h.bls_60) }}</td>
+                <td class="numeric">{{ '%.1f'|format(h.api) }}</td>
+                <td class="numeric">{{ '%.2f'|format(h.bsw) }}</td>
+                <td class="numeric">{{ '%.2f'|format(h.s) }}</td>
+                <td>{{ h.usuario }}</td>
+                <td>{{ h.fecha[11:] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="text-align:right;">Total Día</td>
+                <td class="numeric">{{ '%.0f'|format(grupo.registros|sum(attribute='bls_60')) }}</td>
+                <td class="numeric">-</td>
+                <td class="numeric">-</td>
+                <td class="numeric">-</td>
+                <td colspan="2"></td>
+            </tr>
+        </tfoot>
+    </table>
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div class="footer">Generado: {{ fecha_generacion }} | Sistema Inventarios Conquers</div>
 </body>
 </html>
