@@ -200,6 +200,20 @@
             font-weight: 500;
             color: var(--color-text-muted);
         }
+        .tanque-toneladas {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #555;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.25rem;
+        }
+        .tanque-toneladas span {
+            background: #eef2f5;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
 
         .tanque-progress {
             height: 10px;
@@ -614,6 +628,22 @@
             const maxCap = parseFloat(data.MAX_CAP) || 0;
             const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
             const nivel = determinarNivel(porcentaje);
+
+            // Cálculo de toneladas: TK-102 usa divisor 6.7, TK-110 usa divisor 7.4
+            let toneladasHTML = '';
+            if (data.TK === 'TK-102') {
+                const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
+                toneladasHTML = `
+                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
+                        <span>Ton: ${ton67.toFixed(2)}</span>
+                    </div>`;
+            } else if (data.TK === 'TK-110') {
+                const ton74 = bls60 > 0 ? (bls60 / 7.4) : 0;
+                toneladasHTML = `
+                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 7.4\">
+                        <span>Ton: ${ton74.toFixed(2)}</span>
+                    </div>`;
+            }
             
             const card = document.createElement("div");
             card.className = "tanque-card";
@@ -637,6 +667,7 @@
                         <div class="tanque-volume">
                             ${bls60.toLocaleString('es-CO')} <span class="tanque-volume-unit">BLS</span>
                         </div>
+                        ${toneladasHTML}
                         
                         <div class="tanque-progress">
                             <div class="tanque-progress-bar ${nivel}" style="width: ${porcentaje}%"></div>
