@@ -2003,7 +2003,8 @@ def barcaza_orion():
                            tanques_margoth=tanques_margoth,
                            tanques_odisea=tanques_odisea,
                            nombre=session.get("nombre"),
-                           fecha_seleccionada=fecha_seleccionada.isoformat())
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat())
 
 @app.cli.command("sync-orion")
 def sync_orion_tanks():
@@ -2280,6 +2281,16 @@ def guardar_registro_bita():
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
+        def to_float(v):
+            if v is None:
+                return None
+            s = str(v).strip().replace(',', '.')
+            if s == '':
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
         today_start = datetime.combine(date.today(), time.min)
         today_end = datetime.combine(date.today(), time.max)
 
@@ -2295,10 +2306,10 @@ def guardar_registro_bita():
             if registro_existente:
                 # ACTUALIZAR
                 registro_existente.usuario = session.get("nombre", "No identificado")
-                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
-                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
-                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
-                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
+                registro_existente.api = to_float(datos_tanque.get('API'))
+                registro_existente.bsw = to_float(datos_tanque.get('BSW'))
+                registro_existente.s = to_float(datos_tanque.get('S'))
                 registro_existente.timestamp = datetime.utcnow()
             else:
                 # CREAR
@@ -2307,11 +2318,11 @@ def guardar_registro_bita():
                     usuario=session.get("nombre", "No identificado"),
                     tk=tk,
                     producto=datos_tanque.get('PRODUCTO'),
-                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                    max_cap=to_float(datos_tanque.get('MAX_CAP')),
+                    bls_60=to_float(datos_tanque.get('BLS_60')),
+                    api=to_float(datos_tanque.get('API')),
+                    bsw=to_float(datos_tanque.get('BSW')),
+                    s=to_float(datos_tanque.get('S'))
                 )
                 db.session.add(nuevo_registro)
         
@@ -2330,6 +2341,16 @@ def guardar_registro_barcaza():
         return jsonify(success=False, message="Formato incorrecto."), 400
     
     try:
+        def to_float(v):
+            if v is None:
+                return None
+            s = str(v).strip().replace(',', '.')
+            if s == '':
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
         today_start = datetime.combine(date.today(), time.min)
         today_end = datetime.combine(date.today(), time.max)
 
@@ -2347,10 +2368,10 @@ def guardar_registro_barcaza():
             if registro_existente:
                 # ACTUALIZAR
                 registro_existente.usuario = session.get("nombre", "No identificado")
-                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
-                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
-                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
-                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
+                registro_existente.api = to_float(datos_tanque.get('API'))
+                registro_existente.bsw = to_float(datos_tanque.get('BSW'))
+                registro_existente.s = to_float(datos_tanque.get('S'))
                 registro_existente.timestamp = datetime.utcnow()
             else:
                 # CREAR
@@ -2360,11 +2381,11 @@ def guardar_registro_barcaza():
                     tk=tk,
                     grupo=grupo,
                     producto=datos_tanque.get('PRODUCTO'),
-                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                    max_cap=to_float(datos_tanque.get('MAX_CAP')),
+                    bls_60=to_float(datos_tanque.get('BLS_60')),
+                    api=to_float(datos_tanque.get('API')),
+                    bsw=to_float(datos_tanque.get('BSW')),
+                    s=to_float(datos_tanque.get('S'))
                 )
                 db.session.add(nuevo_registro)
         
@@ -2480,6 +2501,16 @@ def guardar_registro_planta():
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
+        def to_float(v):
+            if v is None:
+                return None
+            s = str(v).strip().replace(',', '.')
+            if s == '':
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
         today_start = datetime.combine(date.today(), time.min)
         today_end = datetime.combine(date.today(), time.max)
 
@@ -2495,10 +2526,10 @@ def guardar_registro_planta():
             if registro_existente:
                 # Si existe, lo ACTUALIZAMOS
                 registro_existente.usuario = session.get("nombre", "No identificado")
-                registro_existente.bls_60 = float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None
-                registro_existente.api = float(datos_tanque.get('API')) if datos_tanque.get('API') else None
-                registro_existente.bsw = float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None
-                registro_existente.s = float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
+                registro_existente.api = to_float(datos_tanque.get('API'))
+                registro_existente.bsw = to_float(datos_tanque.get('BSW'))
+                registro_existente.s = to_float(datos_tanque.get('S'))
                 registro_existente.timestamp = datetime.utcnow()
             else:
                 # Si no existe para hoy, CREAMOS uno nuevo
@@ -2507,11 +2538,11 @@ def guardar_registro_planta():
                     usuario=session.get("nombre", "No identificado"),
                     tk=tk,
                     producto=datos_tanque.get('PRODUCTO'),
-                    max_cap=float(datos_tanque.get('MAX_CAP')) if datos_tanque.get('MAX_CAP') else None,
-                    bls_60=float(datos_tanque.get('BLS_60')) if datos_tanque.get('BLS_60') else None,
-                    api=float(datos_tanque.get('API')) if datos_tanque.get('API') else None,
-                    bsw=float(datos_tanque.get('BSW')) if datos_tanque.get('BSW') else None,
-                    s=float(datos_tanque.get('S')) if datos_tanque.get('S') else None
+                    max_cap=to_float(datos_tanque.get('MAX_CAP')),
+                    bls_60=to_float(datos_tanque.get('BLS_60')),
+                    api=to_float(datos_tanque.get('API')),
+                    bsw=to_float(datos_tanque.get('BSW')),
+                    s=to_float(datos_tanque.get('S'))
                 )
                 db.session.add(nuevo_registro)
         
