@@ -90,8 +90,8 @@
                 {% for fila in tanques_list %}
                 <tr data-tk="{{ fila.TK }}" data-grupo="{{ fila.grupo }}">
                     <td>{{ fila.TK }}</td>
-                    <td>{{ fila.PRODUCTO }}</td>
-                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                    <td data-field="PRODUCTO">{{ fila.PRODUCTO }}</td>
+                    <td data-field="MAX_CAP">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
                     <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
                     <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
                     <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
@@ -199,27 +199,25 @@
 
         const grupo = fila.dataset.grupo;
         const tkCompleto = fila.dataset.tk;
-        const celdas = fila.getElementsByTagName('td');
-
-        // Tomar valores; si quedaron vacíos los convertimos a '0'
-        const bls_60_raw = celdas[3].textContent.trim().replace(',', '.');
-        const api_raw = celdas[4].textContent.trim().replace(',', '.');
-        const bsw_raw = celdas[5].textContent.trim().replace(',', '.');
-        const s_raw = celdas[6].textContent.trim().replace(',', '.');
-
-        const bls_60 = bls_60_raw === '' ? '0' : bls_60_raw;
-        const api = api_raw === '' ? '0' : api_raw;
-        const bsw = bsw_raw === '' ? '0' : bsw_raw;
-        const s = s_raw === '' ? '0' : s_raw;
+        // Helpers robustos por data-field
+        const getTxt = (field) => {
+            const el = fila.querySelector(`[data-field="${field}"]`);
+            return (el ? el.textContent : '').trim();
+        };
+        const getNum = (field) => {
+            const v = getTxt(field).replace(',', '.');
+            const n = parseFloat(v === '' ? '0' : v);
+            return Number.isFinite(n) ? n : 0;
+        };
 
         datosAGuardar.push({
             "TK": tkCompleto,
-            "PRODUCTO": celdas[1].textContent.trim(),
-            "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.') || 0),
-            "BLS_60": bls_60,
-            "API": api,
-            "BSW": bsw,
-            "S": s,
+            "PRODUCTO": getTxt('PRODUCTO'),
+            "MAX_CAP": getNum('MAX_CAP'),
+            "BLS_60": getNum('BLS_60'),
+            "API": getNum('API'),
+            "BSW": getNum('BSW'),
+            "S": getNum('S'),
             "grupo": grupo
         });
     });

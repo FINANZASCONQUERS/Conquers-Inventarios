@@ -1678,10 +1678,11 @@ def modelo_optimizacion_page():
     resultados = None
     grafico_base64 = None
     excel_descargable = False
-    total_volumen = 0
-    total_costo_import = 0
-    brent_valor = ''
-    trm_valor = ''
+    # Importes numéricos (el template aplica el formato)
+    total_volumen = 0.0
+    total_costo_import = 0.0
+    brent_valor = None
+    trm_valor = None
     generado_en = datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')
     generar_excel = 'si'
     component_data = []
@@ -1708,14 +1709,17 @@ def modelo_optimizacion_page():
             data = ejecutar_modelo(excel_path, generar_excel == 'si')
             resultados = data['resumen']
             grafico_base64 = data['grafico_base64']
-            brent_valor = f"{data['BRENT']:.2f}" if data['BRENT'] is not None else ''
-            trm_valor = f"{data['TRM']:.2f}" if data.get('TRM') is not None else ''
-            total_volumen = f"{sum(r['Volumen'] for r in resultados):,.0f}"
-            total_costo_import = f"${sum(r['CostoTotalImp'] for r in resultados):,.2f}"
+            # Enviar valores crudos como números; el template se encarga del formato
+            brent_valor = float(data['BRENT']) if data['BRENT'] is not None else None
+            trm_valor = float(data.get('TRM')) if data.get('TRM') is not None else None
+            total_volumen = float(sum(r['Volumen'] for r in resultados))
+            total_costo_import = float(sum(r['CostoTotalImp'] for r in resultados))
             # Construir datos detallados para gráfica interactiva
             df_det = data['df_result']
             if not df_det.empty:
-                sub = df_det[['ID','Producto','Volumen Compra BBL','Puerto Llegada'] + componentes_cols].copy()
+                # Incluimos 'Flete Marino' (valor total) para poder calcular USD/BBL en el tooltip
+                extra_cols = ['Flete Marino'] if 'Flete Marino' in df_det.columns else []
+                sub = df_det[['ID','Producto','Volumen Compra BBL','Puerto Llegada'] + extra_cols + componentes_cols].copy()
                 for _, row in sub.iterrows():
                     comp_entry = {
                         'ID': row['ID'],
@@ -1723,6 +1727,12 @@ def modelo_optimizacion_page():
                         'Volumen Compra BBL': float(row['Volumen Compra BBL'] or 0) if row['Volumen Compra BBL'] is not None else 0,
                         'Puerto Llegada': row['Puerto Llegada'] or ''
                     }
+                    # Guardamos Flete Marino total para calcular USD/BBL en el frontend (si existe)
+                    if 'Flete Marino' in row.index:
+                        try:
+                            comp_entry['Flete Marino'] = float(row['Flete Marino'] or 0)
+                        except Exception:
+                            comp_entry['Flete Marino'] = 0.0
                     for col in componentes_cols:
                         val = row[col]
                         try:

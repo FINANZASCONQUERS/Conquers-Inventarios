@@ -245,15 +245,40 @@ def ejecutar_modelo(excel_path: str, generar_excel: bool = False):
     # Preparar datos de resumen para la UI
     resumen_rows = []
     for _, r in df_result.iterrows():
+        # Totales en USD por ítem
+        petroleo = float(r.get('Valor Compra Crudo') or 0)
+        flete = float(r.get('Flete Marino') or 0)
+        costo_fin = float(r.get('Costo Financiación') or 0)
+        alm1 = float(r.get('Almacenamiento1') or 0)
+        oper1 = float(r.get('Oper Portuaria 1') or 0)
+        alm2 = float(r.get('Almacenamiento 2') or 0)
+        oper2 = float(r.get('Oper Portuaria 2') or 0)
+        ingreso_czf = float(r.get('Costo Ingreso CZF') or 0)
+        remolcador = float(r.get('Remolcador Ingreso CZF') or 0)
+        transp_ter = float(r.get('Transporte Terrestre a CZF') or 0)
+        nacional = float(r.get('Gasto Nacionalización') or 0)
+        exporta = float(r.get('Gasto Exportación') or 0)
         resumen_rows.append({
             'ID': r['ID'],
             'CONTRATO': r['CONTRATO'],
             'Producto': r['Producto'],
             'Volumen': float(r['Volumen Compra BBL'] or 0),
+            # Spreads y totales existentes para otros usos
             'SpreadImp': round(float(r['Spread Total on Brent IMPORTACIONES'] or 0), 4),
             'CostoTotalImp': round(float(r['Costo Total hasta ingreso TK 109 SPD CZF'] or 0), 2),
             'SpreadExp': round(float(r['Spread Exportaciones'] or 0), 4),
             'UtilidadExp': round(float(r['Utilidad Exportaciones HC´s ECP u Otros'] or 0), 4),
+            # Nuevos totales discretizados en USD
+            'PetroleoUSD': round(petroleo, 2),
+            'FleteUSD': round(flete, 2),
+            'FinanciacionUSD': round(costo_fin, 2),
+            'AlmOper1USD': round(alm1 + oper1, 2),
+            'IngresoCZFUSD': round(ingreso_czf, 2),
+            'RemolcadorUSD': round(remolcador, 2),
+            'TranspTerUSD': round(transp_ter, 2),
+            'AlmOper2USD': round(alm2 + oper2, 2),
+            'NacionalizacionUSD': round(nacional, 2),
+            'ExportacionUSD': round(exporta, 2),
         })
 
     grafico_base64 = None

@@ -36,13 +36,13 @@
 		<div class="col-md-4 col-xl-3">
 			<div class="p-3 bg-white border rounded shadow-sm h-100">
 				<div class="small text-muted">Total Volumen (BBL)</div>
-				<div class="fs-5 fw-bold">{{ '{:,.0f}'.format(total_volumen|float) }}</div>
+				<div class="fs-5 fw-bold" id="cardTotalVolumen">{{ '{:,.0f}'.format(total_volumen|float) }}</div>
 			</div>
 		</div>
 		<div class="col-md-4 col-xl-3">
 			<div class="p-3 bg-white border rounded shadow-sm h-100">
 				<div class="small text-muted">Costo Total Importación (USD)</div>
-				<div class="fs-5 fw-bold">${{ '{:,.2f}'.format(total_costo_import|float) }}</div>
+				<div class="fs-5 fw-bold" id="cardTotalCostoImp">${{ '{:,.2f}'.format(total_costo_import|float) }}</div>
 			</div>
 		</div>
 		<div class="col-md-4 col-xl-3">
@@ -158,28 +158,75 @@
 	<div class="card border-0 shadow-sm">
 		<div class="card-header bg-success text-white py-2">Detalle Resumido</div>
 		<div class="table-responsive" style="max-height:550px;">
-			<table class="table table-sm table-hover mb-0 align-middle">
-				<thead class="table-success sticky-top">
-					<tr>
-						<th>ID</th><th>Contrato</th><th>Producto</th><th class="text-end">Volumen</th>
-						<th class="text-end">Spread Imp</th><th class="text-end">Costo Total Imp</th>
-						<th class="text-end">Spread Exp</th><th class="text-end">Utilidad Exp</th>
+			<table class="table table-sm table-hover mb-0 align-middle table-modern">
+				<thead>
+					<tr class="th-shadow">
+						<th class="sticky-col col-id">ID</th>
+						<th class="sticky-col-2 col-contrato">Contrato</th>
+						<th class="sticky-col-3 col-producto">Producto</th>
+						<th class="text-end">Volumen (BBL)</th>
+						<th class="text-end">Petróleo (USD)</th>
+						<th class="text-end">Flete (USD)</th>
+						<th class="text-end">Financiación (USD)</th>
+						<th class="text-end">Alm & Oper 1 (USD)</th>
+						<th class="text-end">Ingreso CZF (USD)</th>
+						<th class="text-end">Remolcador (USD)</th>
+						<th class="text-end">Transp Ter (USD)</th>
+						<th class="text-end">Alm & Oper 2 (USD)</th>
+						<th class="text-end">Nacionalización (USD)</th>
+						<th class="text-end">Exportación (USD)</th>
+						<th class="text-end">Costo Total Imp (USD)</th>
+						<th class="text-end">Spread Imp (USD/BBL)</th>
+						<th class="text-end">Spread Exp (USD/BBL)</th>
+						<th class="text-end">Utilidad Exp (USD/BBL)</th>
 					</tr>
 				</thead>
 				<tbody>
 					{% for fila in resultados %}
 					<tr>
-						<td>{{ fila.ID }}</td>
-						<td>{{ fila.CONTRATO }}</td>
-						<td>{{ fila.Producto }}</td>
+						<td class="sticky-col col-id">{{ fila.ID }}</td>
+						<td class="sticky-col-2 col-contrato">{{ fila.CONTRATO }}</td>
+						<td class="sticky-col-3 col-producto">{{ fila.Producto }}</td>
 						<td class="text-end">{{ '{:,.0f}'.format(fila.Volumen|float) }}</td>
-						<td class="text-end">${{ '%.4f'|format(fila.SpreadImp) }}</td>
-						<td class="text-end">${{ '%.2f'|format(fila.CostoTotalImp) }}</td>
-						<td class="text-end">${{ '%.4f'|format(fila.SpreadExp) }}</td>
-						<td class="text-end">${{ '%.4f'|format(fila.UtilidadExp) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.PetroleoUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.FleteUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.FinanciacionUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.AlmOper1USD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.IngresoCZFUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.RemolcadorUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.TranspTerUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.AlmOper2USD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.NacionalizacionUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.ExportacionUSD|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.CostoTotalImp|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.SpreadImp|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.SpreadExp|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(fila.UtilidadExp|default(0)|float) }}</td>
 					</tr>
 					{% endfor %}
 				</tbody>
+				<tfoot>
+					<tr>
+						<td class="sticky-col col-id">Totales</td>
+						<td class="sticky-col-2 col-contrato"></td>
+						<td class="sticky-col-3 col-producto"></td>
+						<td class="text-end">{{ '{:,.0f}'.format(total_volumen|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='PetroleoUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='FleteUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='FinanciacionUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='AlmOper1USD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='IngresoCZFUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='RemolcadorUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='TranspTerUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='AlmOper2USD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='NacionalizacionUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='ExportacionUSD')|default(0)|float) }}</td>
+						<td class="text-end">${{ '{:,.2f}'.format(total_costo_import|float) }}</td>
+						<td class="text-end">-</td>
+						<td class="text-end">-</td>
+						<td class="text-end">-</td>
+					</tr>
+				</tfoot>
 			</table>
 		</div>
 	</div>
@@ -208,6 +255,14 @@
 	const resumenFiltro = document.getElementById('resumenFiltro');
 	const toggles = [...document.querySelectorAll('.comp-toggle')];
 	let chart;
+	// Elementos de tarjetas que se actualizarán con el filtro
+	const cardVol = document.getElementById('cardTotalVolumen');
+	const cardCosto = document.getElementById('cardTotalCostoImp');
+	// Resumen (para costo total importación por contrato)
+	let resumenRows = [];
+	if (document.getElementById('resumenDataJSON')) {
+		try { resumenRows = JSON.parse(document.getElementById('resumenDataJSON').textContent); } catch(e) { resumenRows = []; }
+	}
 
 	function uniqueSorted(arr, key){
 		return [...new Set(arr.map(o => (o[key] ?? '').toString()))].filter(v=>v!=='' ).sort((a,b)=>a.localeCompare(b,'es')); }
@@ -270,6 +325,17 @@
 		}));
 		const totVol = datos.reduce((s,r)=> s + (r['Volumen Compra BBL']||0),0);
 		resumenFiltro.textContent = `${datos.length} contratos filtrados | Volumen total: ${Math.round(totVol).toLocaleString()} BBL`;
+
+		// Actualizar tarjetas
+		if (cardVol) { cardVol.textContent = (Math.round(totVol)).toLocaleString(); }
+		if (cardCosto) {
+			// mapear claves ID|Producto para filtrar el resumen correspondiente
+			const claves = new Set(datos.map(r => `${r.ID}|${r.Producto||''}`));
+			const costoTotal = resumenRows
+				.filter(r => claves.has(`${r.ID}|${r.Producto||''}`))
+				.reduce((acc, r) => acc + (Number(r.CostoTotalImp)||0), 0);
+			cardCosto.textContent = '$' + (costoTotal.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}));
+		}
 		const ctx = document.getElementById('chartStacked').getContext('2d');
 		if(chart) chart.destroy();
 		chart = new Chart(ctx, {
@@ -279,22 +345,46 @@
 				indexAxis:'y',
 				responsive:true,
 				maintainAspectRatio:false,
-				interaction:{mode:'nearest', intersect:false},
+				// Evita tooltips del "vecino": requiere intersección con la barra y usa distancia en eje Y
+				interaction:{mode:'nearest', intersect:true, axis:'y'},
 				plugins:{
 					legend:{position:'bottom'},
 					tooltip:{
+						// Mejora legibilidad del recuadro
+						padding: 10,
+						bodyFont: { size: 13 },
+						titleFont: { size: 13 },
+						footerFont: { size: 12 },
 						callbacks:{
 							title:(items)=> items[0].label.replace('\n',' '),
-							label:(ctx)=> `${ctx.dataset.label}: $${ctx.parsed.x.toFixed(4)} USD/BBL`,
+							label:(ctx)=>{
+								const label = ctx.dataset.label;
+								const val = ctx.parsed.x;
+								// Encontrar fila original por índice
+								const idx = ctx.dataIndex;
+								const row = (aplicaFiltro())[idx];
+								if(label && label.toUpperCase().includes('CRUDO') && label.toUpperCase().includes('FLETE')){
+									const vol = (row && Number(row['Volumen Compra BBL'])) || 0;
+									const fleteTotal = (row && Number(row['Flete Marino'])) || 0;
+									const fleteBbl = vol>0 ? (fleteTotal/vol) : 0;
+									// El valor de la barra CRUDO+FLETE ya representa (Spread on Brent + fleteBbl)
+									// Por tanto spread = val - fleteBbl (con mínimo 0 si datos faltan)
+									const spread = val - fleteBbl;
+									const fmt = (n)=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+									return `CRUDO + FLETE: $${fmt(val)} USD/BBL (Spread: $${fmt(spread)} + Flete: $${fmt(fleteBbl)})`;
+								}
+								const fmt = (n)=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
+								return `${label}: $${fmt(val)} USD/BBL`;
+							},
 							footer:(items)=>{
 								const total = items.reduce((s,i)=> s + i.parsed.x,0);
-								return 'Total: $' + total.toFixed(4) + ' USD/BBL';
+								return 'Total: $' + Number(total).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + ' USD/BBL';
 							}
 						}
 					}
 				},
 				scales:{
-					x:{stacked:true, title:{display:true, text:'USD/BBL'}},
+					x:{stacked:true, title:{display:true, text:'USD/BBL'}, ticks:{ callback:(value)=> '$' + Number(value).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) }},
 					y:{stacked:true, ticks:{autoSkip:false}}
 				}
 			}
