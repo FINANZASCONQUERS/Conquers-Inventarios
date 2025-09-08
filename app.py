@@ -337,6 +337,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
 
+# Asegura que la sesión de BD no quede en estado inválido entre requests
+@app.teardown_request
+def shutdown_session(exception=None):
+    try:
+        if exception:
+            db.session.rollback()
+    finally:
+        db.session.remove()
+
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
 
@@ -2416,6 +2425,7 @@ def dashboard_reportes():
             ultimo_registro.timestamp, ultimo_registro.usuario
             )
     except Exception as e:
+        db.session.rollback()
         print(f"Error al cargar resumen de Planta: {e}")
 
     # --- Resumen para BARCAZA ORION ---
@@ -2430,6 +2440,7 @@ def dashboard_reportes():
                 ultimo_registro.timestamp, ultimo_registro.usuario
             )
     except Exception as e:
+        db.session.rollback()
         print(f"Error al cargar resumen de Orion: {e}")
 
     # --- Resumen para BARCAZA BITA ---
@@ -2444,6 +2455,7 @@ def dashboard_reportes():
                 ultimo_registro.timestamp, ultimo_registro.usuario
             )
     except Exception as e:
+        db.session.rollback()
         print(f"Error al cargar resumen de BITA: {e}")
 
     # --- Resumen para TRÁNSITO ---
@@ -2461,6 +2473,7 @@ def dashboard_reportes():
             transito_summary['edms_count'] = sum(1 for r in registros_validos if r.tipo_transito == 'general')
             
     except Exception as e:
+        db.session.rollback()
         print(f"Error al cargar resumen de Tránsito: {e}")
 
     # --- Renderizar la plantilla ---
