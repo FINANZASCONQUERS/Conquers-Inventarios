@@ -1,276 +1,148 @@
 {% extends "base.html" %}
 
-{% block title %}Sistema de Gestión de Inventario{% endblock %}
-{% block navbar_brand_text %}Dashboard{% endblock %}
+{% block title %}Dashboard | Sistema de Gestión{% endblock %}
 
-{% block main_style %}
-    background-color: #f8f9fa;
-    font-family: 'Inter', sans-serif;
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=1.0" />
+{% endblock %}
+
+{% block page_header %}
+<div class="page-header-pro mb-5 fade-in-up">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <div>
+            <ul class="breadcrumb-mini mb-2">
+                <li>Inicio</li>
+                <li>Panel</li>
+                <li>Dashboard</li>
+            </ul>
+            <h1 class="mb-2"><i class="bi bi-speedometer2 me-2 text-primary"></i>Panel de Control</h1>
+            <div class="page-header-meta">
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-calendar-check"></i><span id="current-date">{{ current_date }}</span></span>
+                <span class="vr"></span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-activity"></i>Estado consolidado</span>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-soft-primary btn-icon" data-loading="false" id="refreshDashboard" data-bs-toggle="tooltip" data-bs-title="Actualizar datos">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+            <a href="{{ url_for('home') }}" class="btn btn-outline-primary d-flex align-items-center gap-2"><i class="bi bi-house"></i><span>Inicio</span></a>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block content %}
-
-<div class="container-xxl my-5">
-    <!-- Header Section Mejorado -->
-    <div class="dashboard-header mb-5 text-center py-4 rounded-4 shadow-sm bg-white position-relative">
-        <h1 class="display-4 fw-bold mb-2 text-primary-emphasis" style="letter-spacing: 1px;">
-            <i class="bi bi-speedometer2 me-2 text-primary"></i> Panel de Control
-        </h1>
-        <div class="text-secondary fs-5">
-            <i class="bi bi-calendar-check me-1"></i>
-            <span id="current-date">{{ current_date }}</span>
-        </div>
-        <div class="position-absolute top-0 end-0 p-3 d-none d-md-block">
-            <img src="/static/Conquers_4_Logo.png" alt="Logo" style="height: 48px; opacity: 0.12;">
+<div class="row access-grid">
+    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-1">
+        <div class="dash-card theme-planta h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="dash-icon"><i class="bi bi-buildings-fill"></i></div>
+                <div class="text-end small text-muted fw-medium">
+                    <div class="dash-updated"><i class="bi bi-clock-history text-planta"></i> {{ planta_summary.info_completa }}</div>
+                </div>
+            </div>
+            <h3 class="dash-title text-planta">Reporte Planta</h3>
+            <p class="mb-2 small text-muted flex-grow-1">Indicadores operativos y consolidado de entradas / salidas en planta.</p>
+            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_planta') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
         </div>
     </div>
 
-    <!-- Access Cards Mejoradas -->
-    <div class="row g-4 justify-content-center">
-        <!-- Planta Card -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0 shadow-lg">
-                <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-planta-soft mx-auto mb-4 shadow-sm">
-                        <i class="bi bi-buildings-fill text-planta"></i>
-                    </div>
-                    <h3 class="h5 mb-2 fw-semibold text-planta">Reporte Planta</h3>
-                    <div class="update-info mb-3">
-                        <div class="update-badge bg-white text-dark border border-1 border-planta">
-                            <i class="bi bi-clock-history text-planta me-1"></i>
-                            <small>{{ planta_summary.info_completa }}</small>
-                        </div>
-                    </div>
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_planta') }}" class="btn btn-planta btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
-                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
+    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-2">
+        <div class="dash-card theme-transito h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="dash-icon"><i class="bi bi-truck"></i></div>
+                <div class="text-end small text-muted fw-medium">
+                    <div class="dash-updated"><i class="bi bi-clock-history text-transito"></i> {{ transito_summary.info_completa }}</div>
                 </div>
             </div>
+            <h3 class="dash-title text-transito">Reporte Tránsito</h3>
+            <p class="mb-2 small text-muted">Seguimiento de movimientos y tiempos logísticos en tránsito.</p>
+            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_transito') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
         </div>
-        <!-- Tránsito Card -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0 shadow-lg">
-                <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-transito-soft mx-auto mb-4 shadow-sm">
-                        <i class="bi bi-truck text-transito"></i>
-                    </div>
-                    <h3 class="h5 mb-2 fw-semibold text-transito">Reporte Tránsito</h3>
-                    <div class="update-info mb-3">
-                        <div class="update-badge bg-white text-dark border border-1 border-transito">
-                            <i class="bi bi-clock-history text-transito me-1"></i>
-                            <small>{{ transito_summary.info_completa }}</small>
-                        </div>
-                    </div>
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_transito') }}" class="btn btn-transito btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
-                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-3">
+        <div class="dash-card theme-orion h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="dash-icon"><i class="bi bi-water"></i></div>
+                <div class="text-end small text-muted fw-medium">
+                    <div class="dash-updated"><i class="bi bi-clock-history text-orion"></i> {{ orion_summary.info_completa }}</div>
                 </div>
             </div>
+            <h3 class="dash-title text-orion">Barcaza Orion</h3>
+            <p class="mb-2 small text-muted">Resumen operativo y métricas clave de la barcaza Orion.</p>
+            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_barcaza') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
         </div>
-        <!-- Orion Card -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0 shadow-lg">
-                <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-orion-soft mx-auto mb-4 shadow-sm">
-                        <i class="bi bi-water text-orion"></i>
-                    </div>
-                    <h3 class="h5 mb-2 fw-semibold text-orion">Barcaza Orion</h3>
-                    <div class="update-info mb-3">
-                        <div class="update-badge bg-white text-dark border border-1 border-orion">
-                            <i class="bi bi-clock-history text-orion me-1"></i>
-                            <small>{{ orion_summary.info_completa }}</small>
-                        </div>
-                    </div>
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_barcaza') }}" class="btn btn-orion btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
-                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
+    </div>
+
+    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-4">
+        <div class="dash-card theme-bita h-100">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="dash-icon"><i class="bi bi-tsunami"></i></div>
+                <div class="text-end small text-muted fw-medium">
+                    <div class="dash-updated"><i class="bi bi-clock-history text-bita"></i> {{ bita_summary.info_completa }}</div>
                 </div>
             </div>
+            <h3 class="dash-title text-bita">Barcaza BITA</h3>
+            <p class="mb-2 small text-muted">Resumen operativo y métricas clave de la barcaza BITA.</p>
+            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_barcaza_bita') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
         </div>
-        <!-- Bita Card -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card access-card h-100 border-0 shadow-lg">
-                <div class="card-body text-center p-4 d-flex flex-column">
-                    <div class="access-icon bg-bita-soft mx-auto mb-4 shadow-sm">
-                        <i class="bi bi-tsunami text-bita"></i>
-                    </div>
-                    <h3 class="h5 mb-2 fw-semibold text-bita">Barcaza BITA</h3>
-                    <div class="update-info mb-3">
-                        <div class="update-badge bg-white text-dark border border-1 border-bita">
-                            <i class="bi bi-clock-history text-bita me-1"></i>
-                            <small>{{ bita_summary.info_completa }}</small>
-                        </div>
-                    </div>
-                    <div class="mt-auto">
-                        <a href="{{ url_for('reporte_barcaza_bita') }}" class="btn btn-bita btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
-                            <span>Acceder</span> <i class="bi bi-arrow-right"></i>
-                        </a>
-                    </div>
+    </div>
+</div>
+
+<div class="mt-5 fade-in-up delay-2">
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="dash-card h-100">
+                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center mb-2">
+                    <h4 class="mb-0 d-flex align-items-center gap-2"><i class="bi bi-bell-fill text-info"></i><span>Alertas / Eventos</span></h4>
+                    <div class="small text-muted">Actualizado al cargar la página</div>
                 </div>
+                {% if alerts and alerts|length > 0 %}
+                <ul class="list-unstyled mb-0 small" id="alertList">
+                    {% for a in alerts %}
+                    <li class="py-2 d-flex flex-wrap align-items-start gap-2 border-bottom last-border-0">
+                        <span class="badge rounded-pill bg-{{ 'danger' if a.severity=='danger' else 'warning' if a.severity=='warning' else 'info' if a.severity=='info' else 'success' }} text-dark-emphasis d-inline-flex align-items-center gap-1" style="font-weight:600;">
+                            <i class="bi bi-{{ a.icon }}"></i>{{ a.category }}
+                        </span>
+                        <span class="flex-grow-1 lh-sm">{{ a.message }}</span>
+                        {% if loop.first and a.severity in ['danger','warning'] %}
+                            <span class="ms-auto text-muted small fst-italic">Prioridad alta</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                    <div class="small text-muted">Sin alertas generadas.</div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<style>
-    :root {
-        --planta: #fd7e14;
-        --planta-soft: rgba(253, 126, 20, 0.08);
-        --transito: #0d6efd;
-        --transito-soft: rgba(13, 110, 253, 0.08);
-        --orion: #6f42c1;
-        --orion-soft: rgba(111, 66, 193, 0.08);
-        --bita: #198754;
-        --bita-soft: rgba(25, 135, 84, 0.08);
-    }
+{% endblock %}
 
-    .dashboard-header {
-        background: linear-gradient(90deg, #f8f9fa 60%, #e9ecef 100%);
-        border-radius: 1.5rem;
-        box-shadow: 0 2px 16px rgba(0,0,0,0.04);
-        border: 1px solid #e3e3e3;
-    }
-
-    .access-card {
-        border-radius: 1.25rem;
-        transition: box-shadow 0.3s, transform 0.2s;
-        background-color: #fff;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-        border: 1px solid #f0f0f0;
-        min-height: 370px;
-    }
-    .access-card:hover {
-        transform: translateY(-7px) scale(1.03);
-        box-shadow: 0 8px 32px rgba(0,0,0,0.13);
-        border-color: #e0e0e0;
-    }
-    .access-icon {
-        width: 80px;
-        height: 80px;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.5rem;
-        background: #fff;
-        border: 2px solid #f0f0f0;
-        margin-bottom: 1.2rem;
-    }
-    .btn-planta {
-        background: linear-gradient(90deg, #fd7e14 80%, #ffb877 100%);
-        color: #fff;
-        border: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px rgba(253,126,20,0.08);
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-planta:hover {
-        background: linear-gradient(90deg, #ffb877 0%, #fd7e14 100%);
-        box-shadow: 0 4px 16px rgba(253,126,20,0.18);
-    }
-    .btn-transito {
-        background: linear-gradient(90deg, #0d6efd 80%, #6ea8fe 100%);
-        color: #fff;
-        border: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px rgba(13,110,253,0.08);
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-transito:hover {
-        background: linear-gradient(90deg, #6ea8fe 0%, #0d6efd 100%);
-        box-shadow: 0 4px 16px rgba(13,110,253,0.18);
-    }
-    .btn-orion {
-        background: linear-gradient(90deg, #6f42c1 80%, #b197fc 100%);
-        color: #fff;
-        border: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px rgba(111,66,193,0.08);
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-orion:hover {
-        background: linear-gradient(90deg, #b197fc 0%, #6f42c1 100%);
-        box-shadow: 0 4px 16px rgba(111,66,193,0.18);
-    }
-    .btn-bita {
-        background: linear-gradient(90deg, #198754 80%, #71e3a3 100%);
-        color: #fff;
-        border: none;
-        font-weight: 600;
-        font-size: 1.1rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 2px 8px rgba(25,135,84,0.08);
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-    .btn-bita:hover {
-        background: linear-gradient(90deg, #71e3a3 0%, #198754 100%);
-        box-shadow: 0 4px 16px rgba(25,135,84,0.18);
-    }
-    .update-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.4rem 1rem;
-        border-radius: 1.5rem;
-        font-size: 0.95rem;
-        background: #f8f9fa;
-        font-weight: 500;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    }
-    .update-info {
-        min-height: 2.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    .text-planta { color: var(--planta) !important; }
-    .text-transito { color: var(--transito) !important; }
-    .text-orion { color: var(--orion) !important; }
-    .text-bita { color: var(--bita) !important; }
-
-    @media (max-width: 1200px) {
-        .access-card { min-height: 340px; }
-    }
-    @media (max-width: 992px) {
-        .access-card { min-height: 300px; }
-    }
-    @media (max-width: 768px) {
-        .access-icon {
-            width: 60px;
-            height: 60px;
-            font-size: 1.75rem;
-        }
-        .dashboard-header {
-            padding: 1.5rem 0.5rem;
-        }
-    }
-    @media (max-width: 576px) {
-        .dashboard-header {
-            font-size: 1.1rem;
-        }
-        .access-card { min-height: 220px; }
-    }
-</style>
-
+{% block scripts %}
+{{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Format date
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.addEventListener('DOMContentLoaded', () => {
         const dateElement = document.getElementById('current-date');
         if (dateElement) {
-            const currentDate = new Date();
-            dateElement.textContent = currentDate.toLocaleDateString('es-ES', options);
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            dateElement.textContent = new Date().toLocaleDateString('es-ES', options);
+        }
+        const refreshBtn = document.getElementById('refreshDashboard');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.setAttribute('data-loading','true');
+                try {
+                    // Aquí podrías hacer un fetch a un endpoint para refrescar KPIs
+                    await new Promise(r=>setTimeout(r,1200));
+                } finally {
+                    refreshBtn.setAttribute('data-loading','false');
+                }
+            });
         }
     });
 </script>

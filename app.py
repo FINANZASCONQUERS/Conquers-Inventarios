@@ -2463,13 +2463,135 @@ def dashboard_reportes():
     except Exception as e:
         print(f"Error al cargar resumen de Tránsito: {e}")
 
+    # --- Construcción de ALERTAS ÚTILES ---
+    alerts = []  # Cada alerta: {severity, category, message, icon}
+
+    def add_alert(severity, category, message):
+        icon_map = {
+            'danger': 'exclamation-octagon-fill',
+            'warning': 'exclamation-triangle-fill',
+            'info': 'info-circle-fill',
+            'success': 'check-circle-fill'
+        }
+        alerts.append({
+            'severity': severity,
+            'category': category,
+            'message': message,
+            'icon': icon_map.get(severity, 'info-circle')
+        })
+
+    now_utc = datetime.utcnow()
+
+    # Helper para obtener último por clave (tk) de una lista de registros con timestamp
+    def latest_by(records, attr):
+        latest = {}
+        for r in records:
+            key = getattr(r, attr, None)
+            if key is None:
+                continue
+            cur = latest.get(key)
+            if not cur or r.timestamp > cur.timestamp:
+                latest[key] = r
+        return list(latest.values())
+
+    # Planta: niveles bajos / altos y desactualización
+    try:
+        if planta_summary['datos']:
+            latest_tanques = latest_by(planta_summary['datos'], 'tk')
+            low, high = [], []
+            for r in latest_tanques:
+                if r.max_cap and r.bls_60 is not None:
+                    try:
+                        pct = (float(r.bls_60) / float(r.max_cap)) * 100 if r.max_cap else None
+                    except Exception:
+                        pct = None
+                    if pct is not None:
+                        if pct < 15:
+                            low.append((r.tk, pct))
+                        elif pct > 90:
+                            high.append((r.tk, pct))
+            if low:
+                detalle = ', '.join(f"{tk}:{pct:.1f}%" for tk, pct in low[:4])
+                add_alert('warning', 'PLANTA', f'Tanques con nivel bajo (<15%): {detalle}' + (' ...' if len(low) > 4 else ''))
+            if high:
+                detalle = ', '.join(f"{tk}:{pct:.1f}%" for tk, pct in high[:4])
+                add_alert('info', 'PLANTA', f'Tanques con nivel alto (>90%): {detalle}' + (' ...' if len(high) > 4 else ''))
+            # Staleness (último update > 24h)
+            ultimo = max(planta_summary['datos'], key=lambda r: r.timestamp)
+            if (now_utc - ultimo.timestamp).total_seconds() > 24*3600:
+                add_alert('danger', 'PLANTA', 'Inventario sin actualización en las últimas 24 horas.')
+        else:
+            add_alert('info', 'PLANTA', 'Sin registros de inventario disponibles.')
+    except Exception:
+        add_alert('warning', 'PLANTA', 'Error evaluando niveles de planta.')
+
+    # Barcaza Orion / BITA: evaluar porcentaje total consolidado y staleness (>36h)
+    for summary, categoria in [
+        (orion_summary, 'ORION'),
+        (bita_summary, 'BITA')
+    ]:
+        try:
+            if summary['datos']:
+                latest_tanques = latest_by(summary['datos'], 'tk')
+                total_cap = 0.0
+                total_bls = 0.0
+                for r in latest_tanques:
+                    try:
+                        cap = float(r.max_cap) if r.max_cap is not None else 0
+                        bls = float(r.bls_60) if r.bls_60 is not None else 0
+                    except Exception:
+                        cap, bls = 0, 0
+                    total_cap += cap
+                    total_bls += bls
+                pct_total = (total_bls / total_cap * 100) if total_cap > 0 else None
+                if pct_total is not None:
+                    if pct_total < 10:
+                        add_alert('danger', categoria, f'Nivel crítico {pct_total:.1f}% (<10%).')
+                    elif pct_total < 15:
+                        add_alert('warning', categoria, f'Nivel consolidado bajo {pct_total:.1f}% (<15%).')
+                    elif pct_total > 90:
+                        add_alert('info', categoria, f'Nivel alto {pct_total:.1f}% (>90%).')
+                ultimo = max(summary['datos'], key=lambda r: r.timestamp)
+                if (now_utc - ultimo.timestamp).total_seconds() > 36*3600:
+                    add_alert('danger', categoria, 'Sin actualización en las últimas 36 horas.')
+            else:
+                add_alert('info', categoria, 'Sin registros cargados.')
+        except Exception:
+            add_alert('warning', categoria, 'Error evaluando niveles consolidados.')
+
+    # Tránsito: registros incompletos últimas 24h y volumen de actividad
+    try:
+        if transito_summary['datos']:
+            recientes = [r for r in transito_summary['datos'] if (now_utc - r.timestamp).total_seconds() <= 24*3600]
+            if recientes:
+                incompletos = [r for r in recientes if r.api is None or r.bsw is None or r.nsv is None]
+                if incompletos:
+                    add_alert('warning', 'TRANSITO', f'Registros incompletos últimas 24h: {len(incompletos)} (API/BSW/NSV faltantes).')
+                # Actividad baja: menos de 3 registros 24h
+                if len(recientes) < 3:
+                    add_alert('info', 'TRANSITO', 'Baja actividad en las últimas 24 horas.')
+            else:
+                add_alert('info', 'TRANSITO', 'Sin movimientos registrados en las últimas 24 horas.')
+            ultimo = max(transito_summary['datos'], key=lambda r: r.timestamp)
+            if (now_utc - ultimo.timestamp).total_seconds() > 48*3600:
+                add_alert('danger', 'TRANSITO', 'Sin actualización en más de 48 horas.')
+        else:
+            add_alert('info', 'TRANSITO', 'Sin registros de tránsito disponibles.')
+    except Exception:
+        add_alert('warning', 'TRANSITO', 'Error evaluando registros de tránsito.')
+
+    # Ordenar alertas por severidad importancia
+    severity_rank = {'danger': 0, 'warning': 1, 'info': 2, 'success': 3}
+    alerts.sort(key=lambda a: severity_rank.get(a['severity'], 99))
+
     # --- Renderizar la plantilla ---
     return render_template("dashboard_reportes.html",
                            nombre=session.get("nombre"),
                            planta_summary=planta_summary,
                            orion_summary=orion_summary,
                            bita_summary=bita_summary,
-                           transito_summary=transito_summary)
+                           transito_summary=transito_summary,
+                           alerts=alerts)
 
 @login_required                        
 @app.route('/guardar-datos-planta', methods=['POST'])
@@ -3499,6 +3621,299 @@ def simulador_rendimiento():
     return render_template('simulador_rendimiento.html', nombre=session.get("nombre"))
 
 @login_required
+@permiso_requerido('simulador_rendimiento')
+@app.route('/descargar_reporte_mezcla_pdf', methods=['POST'])
+def descargar_reporte_mezcla_pdf():
+    """Genera un PDF del reporte de mezcla de crudos con el mismo estilo visual que
+    el reporte gráfico de despachos. Espera un JSON con la estructura:
+    {
+        total_barrels: number,
+        products: { PROD: { barrels, yield_pct, api, sulfur }, ... },
+        components: [ { name, mixture_volume, barrels_by_product, api_by_product, sulfur_by_product, total_barrels_input }, ... ]
+    }
+    """
+    try:
+        payload = request.get_json(silent=True) or {}
+        total_barrels = float(payload.get('total_barrels') or 0)
+        products_map = payload.get('products') or {}
+        components = payload.get('components') or []
+        # Orden de productos (mantener orden estable)
+        product_names = list(products_map.keys())
+        # Preparar filas para tabla resumen de mezcla
+        mezcla_product_rows = []
+        for prod in product_names:
+            info = products_map.get(prod, {})
+            mezcla_product_rows.append({
+                'producto': prod,
+                'yield_pct': info.get('yield_pct', 0),
+                'barrels': info.get('barrels', 0),
+                'api': info.get('api', 0),
+                'sulfur': info.get('sulfur', 0)
+            })
+        # Mapa rápido de mezcla por producto
+        mezcla_map = {r['producto']: r for r in mezcla_product_rows}
+        # API y azufre global de la mezcla (ponderado por barriles, API con SG)
+        try:
+            sg_total = 0.0; vol_total_products = 0.0; sulfur_total = 0.0
+            for r in mezcla_product_rows:
+                bbl = float(r['barrels'] or 0)
+                api_p = float(r['api'] or 0)
+                sg = 141.5 / (api_p + 131.5) if (api_p + 131.5) != 0 else 0
+                sg_total += sg * bbl
+                vol_total_products += bbl
+                sulfur_total += (float(r['sulfur'] or 0) * bbl)
+            mezcla_overall_api = ( (141.5 / (sg_total / vol_total_products)) - 131.5 ) if vol_total_products > 0 and sg_total>0 else 0
+            mezcla_overall_sulfur = (sulfur_total / vol_total_products) if vol_total_products>0 else 0
+        except Exception:
+            mezcla_overall_api = 0
+            mezcla_overall_sulfur = 0
+        # Preparar tabla de componentes (por crudo y por producto)
+        componente_rows = []
+        # Para comparativo por crudo con/sin KERO, agrupamos por base_crude
+        comparativo_por_crudo = {}
+        for comp in components:
+            row = {
+                'name': comp.get('name') or comp.get('nombre') or 'CRUDO',
+                'total_volume': comp.get('mixture_volume') or 0,
+                'productos': []
+            }
+            # Añadir temperaturas de corte si vienen desde el front (pueden faltar si eran antiguas corridas)
+            cp = comp.get('cut_points') or comp.get('cutPoints') or {}
+            try:
+                row['cut_points'] = {
+                    'nafta': cp.get('nafta'),
+                    'kero': cp.get('kero'),
+                    'fo4': cp.get('fo4')
+                }
+            except Exception:
+                row['cut_points'] = {'nafta': None, 'kero': None, 'fo4': None}
+            barrels_by_product = comp.get('barrels_by_product') or {}
+            api_by_product = comp.get('api_by_product') or {}
+            sulfur_by_product = comp.get('sulfur_by_product') or {}
+            total_volume = float(row['total_volume'] or 0) or 0
+            # variables para overall
+            sg_sum_comp = 0.0; sulfur_sum_comp = 0.0
+            for prod in product_names:
+                base_bbl = float(barrels_by_product.get(prod, 0) or 0)
+                total_input = float(comp.get('total_barrels_input') or 0) or 1
+                # Escala a volumen de mezcla real
+                scale = (row['total_volume'] / total_input) if total_input > 0 else 0
+                bbl_scaled = base_bbl * scale
+                pct = (bbl_scaled / row['total_volume'] * 100) if row['total_volume'] else 0
+                api_p = api_by_product.get(prod, 0) or 0
+                sulfur_p = sulfur_by_product.get(prod, 0) or 0
+                # acumular para overall
+                if bbl_scaled>0 and (api_p + 131.5)!=0:
+                    sg_sum_comp += (141.5/(api_p+131.5)) * bbl_scaled
+                sulfur_sum_comp += sulfur_p * bbl_scaled
+                row['productos'].append({
+                    'yield_pct': pct,
+                    'barrels': bbl_scaled,
+                    'api': api_p,
+                    'sulfur': sulfur_p,
+                    'delta_yield_pct': pct - (mezcla_map.get(prod, {}).get('yield_pct', 0)),
+                    'delta_api': api_p - (mezcla_map.get(prod, {}).get('api', 0)),
+                    'delta_sulfur': sulfur_p - (mezcla_map.get(prod, {}).get('sulfur', 0))
+                })
+            # overall metrics component
+            if total_volume>0 and sg_sum_comp>0:
+                overall_api_comp = (141.5 / (sg_sum_comp / total_volume)) - 131.5
+            else:
+                overall_api_comp = 0
+            overall_sulfur_comp = (sulfur_sum_comp / total_volume) if total_volume>0 else 0
+            row['overall_api'] = overall_api_comp
+            row['overall_sulfur'] = overall_sulfur_comp
+            row['delta_overall_api'] = overall_api_comp - mezcla_overall_api
+            row['delta_overall_sulfur'] = overall_sulfur_comp - mezcla_overall_sulfur
+            componente_rows.append(row)
+
+            # --- Construcción de comparativo por crudo (con/sin KERO) ---
+            try:
+                base_name = (comp.get('base_crude') or comp.get('name') or comp.get('nombre') or '').strip()
+                inc_kero = bool(comp.get('include_kero'))
+                if base_name:
+                    grp = comparativo_por_crudo.setdefault(base_name, {'con': None, 'sin': None})
+                    # Guardamos rendimientos (%) por producto de este componente
+                    rend = {p: 0 for p in product_names}
+                    for i, p in enumerate(product_names):
+                        try:
+                            rend[p] = float(row['productos'][i]['yield_pct'] or 0)
+                        except Exception:
+                            rend[p] = 0
+                    # Guardamos una versión compacta
+                    compact = {
+                        'name': row['name'],
+                        'order': product_names,
+                        'yields_pct': rend,
+                        'api_by_product': {p: float(api_by_product.get(p, 0) or 0) for p in product_names}
+                    }
+                    if inc_kero:
+                        grp['con'] = compact
+                    else:
+                        grp['sin'] = compact
+            except Exception:
+                pass
+        # Logo base64 (igual estilo al reporte de despachos)
+        logo_base64 = None
+        try:
+            logo_path = os.path.join(current_app.root_path, 'static', 'Logo_de_empresa.jpeg')
+            if os.path.exists(logo_path):
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+        except Exception:
+            logo_base64 = None
+        html_para_pdf = render_template(
+            'reportes_pdf/reporte_mezcla_crudos_pdf.html',
+            total_barrels=total_barrels,
+            mezcla_product_rows=mezcla_product_rows,
+            producto_headers=product_names,
+            componente_rows=componente_rows,
+            mezcla_overall_api=mezcla_overall_api,
+            mezcla_overall_sulfur=mezcla_overall_sulfur,
+            comparativo_por_crudo=comparativo_por_crudo,
+            fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'),
+            logo_base64=logo_base64
+        )
+        pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
+        return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition':'attachment;filename=reporte_mezcla_crudos.pdf'})
+    except Exception as e:
+        current_app.logger.error(f"Error generando PDF mezcla: {e}")
+        return jsonify(success=False, message='Error generando PDF'), 500
+
+@login_required
+@permiso_requerido('simulador_rendimiento')
+@app.route('/descargar_comparativo_kero_pdf', methods=['POST'])
+def descargar_comparativo_kero_pdf():
+    """Genera un PDF comparativo Con vs Sin KERO por crudo.
+    Espera JSON: { resultados: [ { base_crude, include_kero, order:[], yields:{}, api_by_product:{}, sulfur_by_product:{} }, ... ] }"""
+    try:
+        data = request.get_json(silent=True) or {}
+        resultados = data.get('resultados') or []
+        # Agrupar por base_crude -> {'con': {...}, 'sin': {...}}
+        grupos = {}
+        all_products = []
+        for r in resultados:
+            base = (r.get('base_crude') or r.get('base') or '').strip()
+            if not base:
+                continue
+            g = grupos.setdefault(base, {'con': None, 'sin': None, 'order': r.get('order') or list((r.get('yields') or {}).keys())})
+            orden = r.get('order') or g['order']
+            if orden and len(orden) > len(g['order']):
+                g['order'] = orden
+            all_products.extend(g['order'])
+            compact = {
+                'yields_pct': r.get('yields') or {},
+                'api_by_product': r.get('api_by_product') or {},
+                'sulfur_by_product': r.get('sulfur_by_product') or {}
+            }
+            if r.get('include_kero'):
+                g['con'] = compact
+            else:
+                g['sin'] = compact
+        # Normalizar listas productos global
+        all_products = list(dict.fromkeys(all_products))
+        # Resumen global simple: cantidad crudos con/sin pares completos
+        total_bases = len(grupos)
+        pares_completos = sum(1 for v in grupos.values() if v.get('con') and v.get('sin'))
+        resumen_global = [
+            {'nombre': 'Crudos distintos', 'valor': total_bases, 'nota': None},
+            {'nombre': 'Pares completos', 'valor': pares_completos, 'nota': None},
+            {'nombre': 'Fecha', 'valor': datetime.now().strftime('%d/%m/%Y %H:%M'), 'nota': None}
+        ]
+        # Logo
+        logo_base64 = None
+        try:
+            logo_path = os.path.join(current_app.root_path, 'static', 'Logo_de_empresa.jpeg')
+            if os.path.exists(logo_path):
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+        except Exception:
+            pass
+        html_para_pdf = render_template('reportes_pdf/comparativo_kero_pdf.html',
+                                        comparativos=grupos,
+                                        resumen_global=resumen_global,
+                                        fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'),
+                                        logo_base64=logo_base64)
+        pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
+        return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=comparativo_kero.pdf'})
+    except Exception as e:
+        current_app.logger.error(f"Error comparativo KERO PDF: {e}")
+        return jsonify(success=False, message='Error generando PDF comparativo'), 500
+
+@login_required
+@permiso_requerido('simulador_rendimiento')
+@app.route('/descargar_comparativo_kero_excel', methods=['POST'])
+def descargar_comparativo_kero_excel():
+    """Genera Excel comparativo KERO. Hoja por crudo o una consolidada.
+    Estructura: misma que PDF endpoint."""
+    try:
+        import io, xlsxwriter
+        data = request.get_json(silent=True) or {}
+        resultados = data.get('resultados') or []
+        grupos = {}
+        all_products = []
+        for r in resultados:
+            base = (r.get('base_crude') or r.get('base') or '').strip()
+            if not base:
+                continue
+            g = grupos.setdefault(base, {'con': None, 'sin': None, 'order': r.get('order') or list((r.get('yields') or {}).keys())})
+            orden = r.get('order') or g['order']
+            if orden and len(orden) > len(g['order']):
+                g['order'] = orden
+            all_products.extend(g['order'])
+            compact = {
+                'yields_pct': r.get('yields') or {},
+                'api_by_product': r.get('api_by_product') or {},
+                'sulfur_by_product': r.get('sulfur_by_product') or {}
+            }
+            if r.get('include_kero'):
+                g['con'] = compact
+            else:
+                g['sin'] = compact
+        output = io.BytesIO()
+        wb = xlsxwriter.Workbook(output, {'in_memory': True})
+        fmt_pct = wb.add_format({'num_format': '0.00'} )
+        fmt_api = wb.add_format({'num_format': '0.00'} )
+        fmt_s  = wb.add_format({'num_format': '0.0000'} )
+        fmt_delta_pos = wb.add_format({'font_color':'#0b8552'})
+        fmt_delta_neg = wb.add_format({'font_color':'#c0392b'})
+        # Hoja consolidada
+        ws = wb.add_worksheet('Consolidado')
+        headers = ['Crudo','Producto','% Con','% Sin','Δ %','API Con','API Sin','Δ API','%S Con','%S Sin','Δ %S']
+        for c,h in enumerate(headers): ws.write(0,c,h)
+        row_idx=1
+        for base, pair in grupos.items():
+            order = pair.get('order') or []
+            for prod in order:
+                con_y = (pair.get('con') or {}).get('yields_pct',{}).get(prod,0)
+                sin_y = (pair.get('sin') or {}).get('yields_pct',{}).get(prod,0)
+                d_y = con_y - sin_y
+                api_c = (pair.get('con') or {}).get('api_by_product',{}).get(prod,0)
+                api_s = (pair.get('sin') or {}).get('api_by_product',{}).get(prod,0)
+                d_api = api_c - api_s
+                s_c = (pair.get('con') or {}).get('sulfur_by_product',{}).get(prod,0)
+                s_s = (pair.get('sin') or {}).get('sulfur_by_product',{}).get(prod,0)
+                d_s = s_c - s_s
+                ws.write(row_idx,0,base)
+                ws.write(row_idx,1,prod)
+                ws.write_number(row_idx,2,con_y,fmt_pct)
+                ws.write_number(row_idx,3,sin_y,fmt_pct)
+                ws.write_number(row_idx,4,d_y, fmt_delta_pos if d_y>0 else fmt_delta_neg if d_y<0 else None)
+                ws.write_number(row_idx,5,api_c,fmt_api)
+                ws.write_number(row_idx,6,api_s,fmt_api)
+                ws.write_number(row_idx,7,d_api, fmt_delta_pos if d_api>0 else fmt_delta_neg if d_api<0 else None)
+                ws.write_number(row_idx,8,s_c,fmt_s)
+                ws.write_number(row_idx,9,s_s,fmt_s)
+                ws.write_number(row_idx,10,d_s, fmt_delta_pos if d_s>0 else fmt_delta_neg if d_s<0 else None)
+                row_idx+=1
+        wb.close()
+        output.seek(0)
+        return Response(output.read(), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition':'attachment;filename=comparativo_kero.xlsx'})
+    except Exception as e:
+        current_app.logger.error(f"Error comparativo KERO Excel: {e}")
+        return jsonify(success=False, message='Error generando Excel comparativo'), 500
+
+@login_required
 @app.route('/api/calcular_rendimiento', methods=['POST'])
 def api_calcular_rendimiento():
     """
@@ -3531,19 +3946,27 @@ def api_calcular_rendimiento():
                     return p1['percent'] + (temp_objetivo - p1['tempC']) * (p2['percent'] - p1['percent']) / (p2['tempC'] - p1['tempC'])
             return 100
 
-        # 1. Calcular Rendimientos (Lógica condicional)
+    # 1. Calcular Rendimientos (Lógica condicional)
         porc_nafta = interpolar_porcentaje(puntos_corte.get('nafta', 0))
         porc_fo4_acumulado = interpolar_porcentaje(puntos_corte.get('fo4', 0))
 
         if incluir_kero:
             porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
             ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
+            # Cálculo base de rendimientos por cortes acumulados
             rendimientos = {
                 "NAFTA": max(0, porc_nafta),
                 "KERO": max(0, porc_kero_acumulado - porc_nafta),
                 "FO4": max(0, porc_fo4_acumulado - porc_kero_acumulado),
                 "FO6": max(0, 100 - porc_fo4_acumulado)
             }
+            # Ajuste solicitado original: KERO = KERO - 5% NAFTA + 10% FO4.
+            # Tras el ajuste vamos a NORMALIZAR todos los cortes para que la suma sea 100 antes de cálculos de propiedades.
+            kero_base = rendimientos["KERO"]
+            nafta_y = rendimientos["NAFTA"]
+            fo4_y = rendimientos["FO4"]
+            kero_ajustado = kero_base - 0.05 * nafta_y + 0.10 * fo4_y
+            rendimientos["KERO"] = max(0, kero_ajustado)  # sin redondear todavía, mantenemos precisión
         else: # Si no se incluye kero
             ORDEN_PRODUCTOS = ["NAFTA", "FO4", "FO6"]
             rendimientos = {
@@ -3552,17 +3975,21 @@ def api_calcular_rendimiento():
                 "FO4": max(0, porc_fo4_acumulado - porc_nafta), # FO4 absorbe el corte de KERO
                 "FO6": max(0, 100 - porc_fo4_acumulado)
             }
-        
-        # El resto de los cálculos (Azufre, API, Viscosidad) son robustos
-        # y manejarán correctamente un rendimiento de 0 para KERO.
+        # --- NORMALIZACIÓN (para evitar sesgo en API y %S) ---
+        suma_original = sum(rendimientos.values()) or 0
+        if suma_original > 0:
+            for k in rendimientos.keys():
+                rendimientos[k] = (rendimientos[k] * 100.0) / suma_original
+        # Guardamos la suma original para referencia / auditoría (puede diferir de 100 si hubo ajuste)
+        suma_post_norm = sum(rendimientos.values())
         
         # 2. Calcular Azufre por Producto
         azufre_por_producto = {}
         FACTORES_AZUFRE = {'NAFTA': 0.05, 'KERO': 0.15, 'FO4': 1.0, 'FO6': 2.5}
         if azufre_crudo > 0:
-            # El denominador se calcula sobre todos los productos posibles para mantener consistencia.
-            # Si el rendimiento de KERO es 0, simplemente no aportará a la suma.
+            # Usamos los rendimientos NORMALIZADOS (sum=100) para evitar sesgo.
             denominador_k_s = sum(rendimientos.get(p, 0) * FACTORES_AZUFRE[p] for p in FACTORES_AZUFRE)
+            # azufre_crudo = (Σ yield_p * (k_s * factor_p)) / 100  => k_s = 100 * azufre_crudo / denominador
             k_s = (100 * azufre_crudo) / denominador_k_s if denominador_k_s > 0 else 0
             for p in FACTORES_AZUFRE:
                 azufre_por_producto[p] = round(k_s * FACTORES_AZUFRE.get(p, 0), 4)
@@ -3573,19 +4000,19 @@ def api_calcular_rendimiento():
         def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
         def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
         sg_crudo_real = api_a_sg(api_crudo)
-        sg_productos_estandar = {p: api_a_sg(api) for p, api in API_ESTANDAR.items()}
-        # Si el rendimiento de un producto es 0, no aportará a la reconstitución.
-        sg_reconstituido = sum(rendimientos.get(p, 0) / 100 * sg_productos_estandar[p] for p in API_ESTANDAR if rendimientos.get(p, 0) > 0)
-        factor_ajuste_sg = sg_crudo_real / sg_reconstituido if sg_reconstituido > 0 else 1
+        sg_estandar = {p: api_a_sg(a) for p, a in API_ESTANDAR.items()}
+        # Usamos fracciones normalizadas (rendimientos ya suman 100) => fracción = y/100
+        sg_reconstituido = sum((rendimientos.get(p, 0)/100.0) * sg_estandar[p] for p in API_ESTANDAR if rendimientos.get(p,0) > 0)
+        factor_ajuste_sg = (sg_crudo_real / sg_reconstituido) if sg_reconstituido > 0 else 1
         for p in API_ESTANDAR:
-            sg_ajustado = sg_productos_estandar[p] * factor_ajuste_sg
-            api_por_producto[p] = round(sg_a_api(sg_ajustado), 1)
+            sg_adj = sg_estandar[p] * factor_ajuste_sg
+            api_por_producto[p] = round(sg_a_api(sg_adj), 2)  # más precisión
 
         # 4. Calcular Viscosidad por Producto
         viscosidad_por_producto = {}
         VISCOSIDAD_STD = {'NAFTA': 0.8, 'KERO': 2.0, 'FO4': 4.0, 'FO6': 380.0}
         if viscosidad_crudo > 0:
-            log_visc_reconstituido = sum(rendimientos.get(p,0)/100 * math.log(VISCOSIDAD_STD[p]) for p in VISCOSIDAD_STD if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
+            log_visc_reconstituido = sum((rendimientos.get(p,0)/100.0) * math.log(VISCOSIDAD_STD[p]) for p in VISCOSIDAD_STD if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
             visc_reconstituido = math.exp(log_visc_reconstituido) if log_visc_reconstituido != 0 else 1
             factor_ajuste_visc = viscosidad_crudo / visc_reconstituido if visc_reconstituido > 0 else 1
             for p in VISCOSIDAD_STD:
@@ -3595,7 +4022,9 @@ def api_calcular_rendimiento():
         return jsonify({
             "success": True, 
             "order": ORDEN_PRODUCTOS,
-            "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},
+            "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},  # ya normalizados
+            "sum_percent_original": round(suma_original, 4),
+            "sum_percent_normalized": round(suma_post_norm, 4),
             "sulfur_by_product": {p: azufre_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
             "api_by_product": {p: api_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
             "viscosity_by_product": {p: viscosidad_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS}

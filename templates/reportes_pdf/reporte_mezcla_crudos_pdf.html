@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Reporte Mezcla de Crudos</title>
+<style>
+@page { size:A4 landscape; margin:15mm 15mm 18mm 15mm; }
+body { font-family:'Segoe UI', Arial, sans-serif; font-size:12px; color:#2d3436; background:#f5f7fa; }
+h1 { font-size:20px; margin:0; color:#1b4f72; }
+.header { text-align:center; margin-bottom:4px; }
+.brand { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.brand img { height:60px; }
+.badge-total { background:#0b8552; color:#fff; padding:10px 14px; border-radius:8px; font-size:11px; font-weight:600; line-height:1.2; }
+.layout { border:1px solid #e0e6ec; background:#fff; border-radius:10px; padding:14px 18px 10px; }
+.section-title { font-size:15px; margin:14px 0 6px; color:#1b4f72; text-align:center; }
+.small-note { font-size:10px; color:#7d8a97; margin-top:6px; }
+.table-wrapper { margin-top:6px; }
+.table-wrapper table { width:100%; border-collapse:collapse; }
+.table-wrapper th, .table-wrapper td { padding:5px 6px; border-bottom:1px solid #ecf0f1; font-size:11px; }
+.table-wrapper th { background:#f4f7fb; color:#1b4f72; text-transform:uppercase; letter-spacing:.5px; }
+.table-wrapper td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.watermark { position:fixed; top:40%; left:20%; font-size:120px; color:#1b4f7215; transform:rotate(-25deg); }
+.badge-prod { display:inline-block; padding:2px 6px; background:#1b4f72; color:#fff; border-radius:4px; font-size:10px; }
+.grid-metrics { display:flex; flex-wrap:wrap; gap:10px; margin-top:8px; }
+.metric-box { flex:1 1 180px; background:#ffffff; border:1px solid #e2e7ec; border-radius:8px; padding:8px 10px; }
+.metric-box span { display:block; font-size:10px; color:#6c7a89; text-transform:uppercase; letter-spacing:.5px; }
+.metric-box b { font-size:13px; color:#193b55; }
+.delta-pos { color:#0b8552; font-weight:600; }
+.delta-neg { color:#c0392b; font-weight:600; }
+.overall-box { margin-top:10px; background:#ffffff; border:1px solid #dfe5ea; border-left:4px solid #1b4f72; padding:8px 10px; border-radius:8px; font-size:11px; display:flex; gap:18px; flex-wrap:wrap; }
+.overall-box .ov-item span { display:block; font-size:9px; text-transform:uppercase; color:#607080; letter-spacing:.5px; }
+.overall-box .ov-item b { font-size:13px; color:#1b4f72; }
+.footer { margin-top:8px; font-size:10px; color:#8d99a6; text-align:right; }
+/* Component cards */
+.component-section-title { font-size:16px; color:#1b4f72; text-align:center; margin:0 0 10px 0; }
+.component-grid { display:flex; flex-wrap:wrap; gap:12px; }
+.component-card { flex:1 1 48%; background:#ffffff; border:1px solid #d2d9df; border-left:5px solid #1b4f72; border-radius:10px; padding:0 0 10px 0; box-sizing:border-box; page-break-inside:avoid; box-shadow:0 1px 2px #00000008,0 3px 6px -3px #00000012; }
+.component-card .card-head { background:linear-gradient(90deg,#f3f7fa,#ffffff); padding:10px 14px 8px; border-bottom:1px solid #e5ebef; border-top-left-radius:10px; border-top-right-radius:10px; display:flex; justify-content:space-between; align-items:flex-end; }
+.component-card .card-head h3 { margin:0; font-size:13px; letter-spacing:.5px; font-weight:600; color:#1b4f72; }
+.component-card .card-head .vol { font-size:11px; color:#516070; font-weight:500; }
+.component-inner { padding:6px 14px 0; }
+.cuts-row { font-size:9.5px; color:#4d5b67; margin:2px 14px 6px; display:flex; flex-wrap:wrap; gap:10px; }
+.cut-pill { background:#eef3f6; padding:3px 6px; border-radius:6px; font-weight:500; letter-spacing:.3px; }
+.prod-table { width:100%; border-collapse:collapse; }
+.prod-table th, .prod-table td { padding:4px 5px; border-bottom:1px solid #ecf0f1; font-size:10px; }
+.prod-table th { background:#f7f9fb; color:#1b4f72; text-transform:uppercase; letter-spacing:.4px; }
+.prod-table td.num { text-align:right; font-variant-numeric:tabular-nums; }
+.delta-badge { font-size:9px; padding:1px 4px; border-radius:4px; margin-left:4px; }
+.delta-pos.delta-badge { background:#e4f8ef; color:#0b8552; }
+.delta-neg.delta-badge { background:#fdecea; color:#c0392b; }
+@media print { .component-card { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="watermark">CONQUERS</div>
+<div class="header">
+  <div class="brand">
+    {% if logo_base64 %}
+      <img src="data:image/jpeg;base64,{{ logo_base64 }}" alt="Logo" />
+    {% else %}
+      <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
+    {% endif %}
+    <h1 style="margin-top:2px;">Reporte Mezcla de Crudos</h1>
+    <div class="badge-total" style="margin-top:4px;">TOTAL MEZCLA {{ '%.2f'|format(total_barrels) }} BBL</div>
+    <div style="font-size:10px;color:#4d6575;margin-top:4px;">Generado: {{ fecha_generacion }}</div>
+  </div>
+</div>
+<div class="layout">
+  <div class="grid-metrics">
+    {% for r in mezcla_product_rows %}
+    <div class="metric-box">
+      <span>{{ r.producto }}</span>
+      <b>{{ '%.2f'|format(r.yield_pct) }}% | {{ '%.2f'|format(r.barrels) }} bbl</b>
+      <div style="margin-top:4px;font-size:10px;color:#546e7a;">API {{ '%.2f'|format(r.api) }} | %S {{ '%.4f'|format(r.sulfur) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="overall-box">
+    <div class="ov-item"><span>API Global Mezcla</span><b>{{ '%.2f'|format(mezcla_overall_api) }}</b></div>
+    <div class="ov-item"><span>%S Global Mezcla</span><b>{{ '%.4f'|format(mezcla_overall_sulfur) }}</b></div>
+  </div>
+  <div class="small-note">API mezcla calculado por promedio ponderado de gravedad específica. %S mezcla como promedio ponderado volumétrico. Deltas muestran diferencia componente - mezcla.</div>
+</div>
+<div style="page-break-before:always;"></div>
+<h2 class="component-section-title">Detalle por Componente</h2>
+<div class="component-grid">
+  {% for c in componente_rows %}
+  <div class="component-card">
+    <div class="card-head">
+      <h3>{{ c.name }}</h3>
+      <div class="vol">{{ '%.2f'|format(c.total_volume) }} bbl</div>
+    </div>
+    {% if c.cut_points %}
+    <div class="cuts-row">
+      {% if c.cut_points.nafta is not none %}<div class="cut-pill">NAFTA {{ '%.1f'|format(c.cut_points.nafta) }}°C</div>{% endif %}
+      {% if c.cut_points.kero is not none %}<div class="cut-pill">KERO {{ '%.1f'|format(c.cut_points.kero) }}°C</div>{% endif %}
+      {% if c.cut_points.fo4 is not none %}<div class="cut-pill">FO4 {{ '%.1f'|format(c.cut_points.fo4) }}°C</div>{% endif %}
+    </div>
+    {% endif %}
+    <div class="component-inner">
+    <table class="prod-table">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>%</th>
+          <th>Bbl</th>
+          <th>API</th>
+          <th>%S</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for prod in producto_headers %}
+          {% set pdata = c.productos[loop.index0] %}
+          <tr>
+            <td>{{ prod }}</td>
+            <td class="num {%- if pdata.delta_yield_pct>0 %}delta-pos{% elif pdata.delta_yield_pct<0 %}delta-neg{% endif -%}">{{ '%.2f'|format(pdata.yield_pct) }}</td>
+            <td class="num">{{ '%.2f'|format(pdata.barrels) }}</td>
+            <td class="num {%- if pdata.delta_api>0 %}delta-pos{% elif pdata.delta_api<0 %}delta-neg{% endif -%}">{{ '%.2f'|format(pdata.api) }}</td>
+            <td class="num {%- if pdata.delta_sulfur>0 %}delta-pos{% elif pdata.delta_sulfur<0 %}delta-neg{% endif -%}">{{ '%.4f'|format(pdata.sulfur) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+  </table>
+  </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="footer">Reporte interno de mezcla - Página 1</div>
+</body>
+</html>

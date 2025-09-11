@@ -4,375 +4,187 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inicio | Conquers Trading</title>
-    <!-- Favicon (logo en la pestaña del navegador) -->
     <link rel="icon" href="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" type="image/jpeg">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #0b8552;
-            --primary-hover: #0a7347;
-            --primary-gradient: linear-gradient(135deg, #0b8552 0%, #0a7347 100%);
-            --text-dark: #1a1a1a;
-            --text-medium: #495057;
-            --text-light: #6c757d;
-            --bg-light: #f8f9fa;
-            --white: #ffffff;
-            --shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-            --shadow-hover: 0 25px 80px rgba(0, 0, 0, 0.35);
-            --border-radius: 16px;
-            --glass-bg: rgba(255, 255, 255, 0.95);
-            --glass-border: rgba(255, 255, 255, 0.2);
-        }
-        
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            overflow: hidden;
-            color: var(--text-dark);
-            background: var(--primary-gradient);
-        }
-
-        .video-background-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -2; 
-            background: url("{{ url_for('static', filename='Fondo.png') }}") center/cover no-repeat;
-        }
-
-        #bg-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .video-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, rgba(11, 133, 82, 0.15) 0%, rgba(10, 115, 71, 0.25) 100%);
-            backdrop-filter: blur(2px);
-            z-index: -1; 
-        }
-
-        .login-page-header {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--glass-border);
-            padding: 20px 40px;     
-            z-index: 10;            
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .header-logo {
-            height: 50px; 
-            width: auto;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
-        }
-
-        .header-logo:hover {
-            transform: scale(1.05);
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15));
-        }
-
-        .login-page-container {
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 15px; 
-        }
-
-        .login-box {
-            position: relative; 
-            z-index: 1;         
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            color: var(--text-dark); 
-            max-width: 480px; 
-            width: 100%;
-            padding: 50px 40px; 
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            text-align: center;
-            animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .login-box:hover {
-            box-shadow: var(--shadow-hover);
-            transform: translateY(-5px);
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-box h4 {
-            font-weight: 700; 
-            margin-top: 0;
-            margin-bottom: 40px; 
-            font-size: 1.75rem;
-            color: var(--text-dark);
-            background: var(--primary-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            letter-spacing: -0.5px;
-        }
-
-        .login-box .form-label {
-            color: var(--text-medium); 
-            font-weight: 500;
-            text-align: left;
-            width: 100%;
-            margin-bottom: 0.4rem;
-            font-size: 0.95rem;
-        }
-
-        .login-box .form-control {
-            background: rgba(248, 249, 250, 0.9);
-            border: 2px solid rgba(206, 212, 218, 0.5);
-            color: var(--text-dark);
-            border-radius: 12px;
-            padding: 15px 20px;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
-        }
-
-        .login-box .form-control:focus {
-            background: var(--white);
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1), 0 4px 20px rgba(11, 133, 82, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .login-box .form-control::placeholder {
-            color: var(--text-light); 
-            opacity: 1;
-        }
-
-        .login-box .btn-login {
-            background: var(--primary-gradient);
-            color: var(--white);
-            font-weight: 700;
-            padding: 16px; 
-            border-radius: 12px;
-            border: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 1.1rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 20px;
-            box-shadow: 0 8px 25px rgba(11, 133, 82, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-box .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        .login-box .btn-login:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(11, 133, 82, 0.4);
-        }
-
-        .login-box .btn-login:hover::before {
-            left: 100%;
-        }
-        
-        .login-box .btn-login:active {
-            transform: translateY(0);
-        }
-        
-        .login-box .alert {
-            text-align: left;
-            font-size: 0.85rem;
-            border-radius: 8px;
-            padding: 12px 15px;
-        }
-
-        .login-page-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--glass-border);
-            padding: 20px 40px;     
-            z-index: 10;            
-            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.08);
-            text-align: center;
-            box-sizing: border-box;
-        }
-        
-        .login-page-footer p {
-            margin: 0;
-            font-size: 0.85rem;
-            color: var(--text-medium); 
-        }
-
-        /* Efecto de carga para el video */
-        .video-loading {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1;
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid var(--primary-color);
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 576px) {
-            .login-box {
-                padding: 30px 20px;
-                margin: 0 15px;
-            }
-            
-            .login-page-header {
-                padding: 12px 20px;
-            }
-            
-            .header-logo {
-                height: 38px;
-            }
-        }
+        /* ==========================================================================
+           LOGIN PRO – Conquers Trading (Usa variables del tema principal)
+           ========================================================================== */
+        :root { --login-glass-bg: rgba(255,255,255,0.82); --login-glass-border: rgba(255,255,255,0.35); --login-radius: 22px; --login-shadow: 0 8px 32px rgba(0,0,0,0.25); --login-input-bg: rgba(255,255,255,0.65); }
+        html, body { height:100%; }
+        body { margin:0; font-family:'Inter', 'Poppins', system-ui, -apple-system, sans-serif; overflow:hidden; color:#1f2d35; -webkit-font-smoothing:antialiased; }
+        /* --- Background Video Layer --- */
+        .bg-wrapper { position:fixed; inset:0; z-index:-3; }
+        .bg-wrapper video { width:100%; height:100%; object-fit:cover; filter:brightness(0.85) saturate(1.05); }
+        .bg-overlay { position:absolute; inset:0; background:radial-gradient(circle at 30% 30%, rgba(10,124,93,0.55), rgba(29,45,53,0.8)), linear-gradient(120deg, rgba(10,124,93,0.25), rgba(29,45,53,0.65)); backdrop-filter:blur(4px); }
+        /* Noise texture */
+        .bg-noise { position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E") center/300px 300px repeat; mix-blend-mode:overlay; pointer-events:none; }
+        /* --- Layout Grid --- */
+        .login-layout { position:relative; height:100vh; display:grid; grid-template-columns:repeat(auto-fit,minmax(380px, 480px)); justify-content:center; align-content:center; gap:4rem; padding:clamp(1rem,2.5vw,3rem); }
+        @media (max-width:900px){ .login-layout { gap:2.25rem; grid-template-columns:minmax(0,520px); } }
+        /* --- Brand Panel --- */
+        .brand-panel { color:#fff; max-width:520px; display:flex; flex-direction:column; justify-content:center; padding:1rem 0 1rem 0; animation:fadeSlide .9s .10s both; }
+    /* Logo ajustado para que se vea completo (sin recortes) */
+    .brand-panel h1 { font-size:clamp(2rem,3.2vw,3rem); font-weight:700; line-height:1.05; margin:0 0 .9rem; letter-spacing:-1px; background:linear-gradient(92deg,#fff,#d6ede4,#fff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+        .brand-panel p { font-size:clamp(.95rem,1.15vw,1.05rem); font-weight:500; max-width:46ch; line-height:1.5; opacity:.92; }
+        .highlights { display:flex; gap:1.25rem; flex-wrap:wrap; margin-top:1.75rem; }
+        .highlight-chip { background:rgba(255,255,255,0.14); color:#fff; padding:.55rem .95rem; border-radius:40px; font-size:.7rem; letter-spacing:.08em; text-transform:uppercase; font-weight:600; display:flex; align-items:center; gap:.5rem; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.25); }
+        /* --- Glass Form Card --- */
+        .login-card { position:relative; width:100%; max-width:480px; background:var(--login-glass-bg); border:1px solid var(--login-glass-border); border-radius:var(--login-radius); backdrop-filter:blur(22px) saturate(135%); -webkit-backdrop-filter:blur(22px) saturate(135%); box-shadow:var(--login-shadow); padding:clamp(2.1rem,3vw,3rem) clamp(1.8rem,2.6vw,2.75rem) clamp(2.3rem,3vw,3rem); display:flex; flex-direction:column; animation:cardPop .85s .15s cubic-bezier(.16,.84,.44,1) both; overflow:hidden; }
+        .login-card:before { content:""; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.25),rgba(255,255,255,0.05)); mix-blend-mode:overlay; pointer-events:none; }
+        .login-card:after { content:""; position:absolute; top:-35%; left:-25%; width:70%; height:70%; background:radial-gradient(circle at 35% 45%, rgba(10,124,93,0.35), transparent 70%); filter:blur(40px); opacity:.7; pointer-events:none; }
+        .login-header { text-align:center; margin-bottom:2rem; }
+    .login-header h2 { font-size:1.9rem; font-weight:700; margin:0; letter-spacing:-.5px; background:linear-gradient(90deg,var(--primary-color,#0a7c5d), var(--primary-dark,#076249)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+        .login-header span.sub { display:block; margin-top:.65rem; font-size:.9rem; font-weight:500; color:#4a5a63; letter-spacing:.5px; text-transform:uppercase; }
+        /* --- Form Elements --- */
+        .form-floating > label { font-weight:500; letter-spacing:.4px; }
+        .form-control { background:var(--login-input-bg); border:2px solid rgba(255,255,255,0.55); border-radius:14px; font-weight:500; padding:0.9rem 1.05rem; transition:.35s; box-shadow:0 2px 4px rgba(0,0,0,0.05) inset; }
+        .form-control:focus { background:rgba(255,255,255,0.9); border-color:var(--primary-color,#0a7c5d); box-shadow:0 0 0 4px rgba(10,124,93,.18),0 6px 28px -6px rgba(10,124,93,.35); transform:translateY(-2px); }
+        .input-icon-group { position:relative; }
+        .input-icon-group .bi { position:absolute; top:50%; right:14px; transform:translateY(-50%); font-size:1.1rem; color:#5a6b74; opacity:.75; transition:.3s; }
+        .input-icon-group:focus-within .bi { color:var(--primary-color,#0a7c5d); opacity:1; }
+        /* --- Button --- */
+        .btn-login { --btn-grad:linear-gradient(100deg,var(--primary-color,#0a7c5d), var(--primary-dark,#076249)); background:var(--btn-grad); border:none; position:relative; font-weight:600; letter-spacing:.75px; text-transform:uppercase; padding:0.95rem 1rem; border-radius:16px; box-shadow:0 12px 30px -8px rgba(10,124,93,.55),0 2px 6px rgba(0,0,0,.25); overflow:hidden; transform:translateZ(0); transition:.5s cubic-bezier(.16,.84,.44,1); }
+        .btn-login:before { content:""; position:absolute; inset:0; background:linear-gradient(120deg,rgba(255,255,255,.25), transparent, rgba(255,255,255,.15)); opacity:0; transition:.55s; }
+        .btn-login:after { content:""; position:absolute; top:-120%; left:-45%; width:190%; height:300%; background:conic-gradient(from 180deg at 50% 50%, rgba(255,255,255,.35), transparent 55%, rgba(255,255,255,.15), transparent 85%); opacity:0; transition:1s; }
+        .btn-login:hover { transform:translateY(-4px); box-shadow:0 18px 40px -10px rgba(10,124,93,.65),0 4px 12px rgba(0,0,0,.25); }
+        .btn-login:hover:before { opacity:1; }
+        .btn-login:hover:after { opacity:.55; animation:spin 4s linear infinite; }
+        .btn-login:active { transform:translateY(-1px); }
+        .btn-login[disabled] { filter:grayscale(.35) brightness(.85); pointer-events:none; }
+        /* --- Messages --- */
+        .flash-container .alert { border-radius:14px; font-size:.85rem; padding:.85rem 1rem; border:1px solid rgba(0,0,0,0.05); backdrop-filter:blur(8px); }
+        .flash-container .alert-success { background:linear-gradient(135deg,#e6f9f1,#d4f6e9); border-left:4px solid var(--primary-color,#0a7c5d); }
+        .flash-container .alert-danger { background:linear-gradient(135deg,#fde7e9,#fbd5da); border-left:4px solid #dc3545; }
+        /* --- Footer --- */
+        .login-footer { position:fixed; left:0; bottom:0; width:100%; text-align:center; padding:.9rem 1rem; font-size:.75rem; letter-spacing:.3px; color:#d9e6e1; font-weight:500; z-index:10; mix-blend-mode:plus-lighter; pointer-events:none; }
+        /* --- Accessibility & Micro-interactions --- */
+        .form-control::placeholder { color:#6c7b83; opacity:.55; }
+        .password-toggle { position:absolute; top:50%; right:44px; transform:translateY(-50%); cursor:pointer; color:#5a6b74; font-size:1.05rem; opacity:.75; transition:.3s; }
+        .password-toggle:hover { opacity:1; color:var(--primary-color,#0a7c5d); }
+        /* --- Animations --- */
+        @keyframes cardPop { 0% { opacity:0; transform:translateY(30px) scale(.96);} 60%{transform:translateY(-4px) scale(1.01);} 100% { opacity:1; transform:translateY(0) scale(1);} }
+        @keyframes fadeSlide { from { opacity:0; transform:translateY(30px);} to { opacity:1; transform:translateY(0);} }
+        @keyframes spin { to { transform:rotate(360deg);} }
+        /* --- Dark Mode Adaptation --- */
+        html.dark-mode body { color:#e0e6eb; }
+        html.dark-mode .bg-overlay { background:radial-gradient(circle at 30% 30%, rgba(10,124,93,0.5), rgba(17,27,33,0.92)), linear-gradient(120deg, rgba(10,124,93,0.25), rgba(17,27,33,0.85)); }
+        html.dark-mode .login-card { background:rgba(23,34,40,0.78); border-color:rgba(255,255,255,0.08); }
+        html.dark-mode .login-card:before { background:linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02)); }
+        html.dark-mode .form-control { background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.15); color:#e9f2ef; }
+        html.dark-mode .form-control:focus { background:rgba(255,255,255,0.14); }
+        html.dark-mode .input-icon-group .bi, html.dark-mode .password-toggle { color:#95a7b0; }
+        html.dark-mode .login-header span.sub { color:#90a4ae; }
+        html.dark-mode .flash-container .alert { background:rgba(255,255,255,0.07); color:#e2ece9; }
+        html.dark-mode .login-footer { color:#6f848d; }
+        /* --- Small Screens --- */
+        @media (max-width:560px){ .brand-panel { display:none; } body { overflow:auto; } .login-layout { padding:1.4rem 1.1rem 4.5rem; height:auto; min-height:100vh; } .login-footer { position:static; margin-top:1.25rem; mix-blend-mode:normal; pointer-events:auto; } }
     </style>
 </head>
 <body>
-    <div class="video-background-container">
-        <div class="video-loading" id="videoLoading">
-            <div class="spinner"></div>
-        </div>
-        <video autoplay muted loop id="bg-video" playsinline poster="{{ url_for('static', filename='Fondo.png') }}" oncanplay="hideLoading()">
-            <source src="{{ url_for('static', filename='fondo_login.mp4') }}" type="video/mp4">
-            Tu navegador no soporta videos HTML5.
+    <!-- Background Layers -->
+    <div class="bg-wrapper">
+        <video id="bg-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='Fondo.png') }}" oncanplay="window.hideVideoLoader?.()">
+            <source src="{{ url_for('static', filename='fondo_login.mp4') }}" type="video/mp4" />
+            Tu navegador no soporta la reproducción de video.
         </video>
-        <div class="video-overlay"></div>
+        <div class="bg-overlay"></div>
+        <div class="bg-noise"></div>
     </div>
 
-    <header class="login-page-header">
-        <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Logo Conquers Trading" class="header-logo">
-        <span style="color: var(--primary-color); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;">Sistema de Gestión</span>
-    </header>
+    <!-- Layout -->
+    <div class="login-layout">
+        <!-- Brand Panel -->
+    <section class="brand-panel">
+            <h1>Plataforma Integral de Gestión</h1>
+            <p>Accede a las herramientas de control operativo, inventarios, logística, reportes estratégicos y analítica de rendimiento en un solo ecosistema seguro.</p>
+            <div class="highlights">
+                <div class="highlight-chip"><i class="bi bi-shield-lock-fill"></i> Seguridad</div>
+                <div class="highlight-chip"><i class="bi bi-speedometer2"></i> Rendimiento</div>
+                <div class="highlight-chip"><i class="bi bi-cloud-arrow-up-fill"></i> Trazabilidad</div>
+                <div class="highlight-chip"><i class="bi bi-bar-chart-line-fill"></i> Analítica</div>
+            </div>
+        </section>
 
-    <div class="login-page-container">
-        <div class="login-box">
-            <h4>Sistema de Gestión de Almacenamiento</h4>
+        <!-- Login Card -->
+        <div class="login-card">
+            <div class="login-header">
+                <h2>Bienvenido</h2>
+                <span class="sub">Autenticación segura</span>
+            </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
-                {% for category, message in messages %}
-                  <div class="alert alert-{{ category }} alert-dismissible fade show mt-3 mb-3" role="alert">
-                    <i class="bi {% if category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                  </div>
-                {% endfor %}
-              {% endif %}
-            {% endwith %}
+            <div class="flash-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }} alert-dismissible fade show mb-3" role="alert">
+                        <i class="bi {% if category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'success' %}bi-check-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+                        <span>{{ message }}</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+            </div>
 
-            <form method="POST" action="{{ url_for('login', next=request.args.get('next', '')) }}">
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email corporativo</label>
-                    <input type="email" name="email" id="email" class="form-control" placeholder="ejemplo@conquerstrading.com" required autofocus>
+            <form method="POST" action="{{ url_for('login', next=request.args.get('next', '')) }}" novalidate id="loginForm">
+                <div class="mb-3 input-icon-group">
+                    <label for="email" class="form-label small text-uppercase fw-semibold ms-1">Email Corporativo</label>
+                    <input type="email" name="email" id="email" class="form-control" placeholder="usuario@conquerstrading.com" required autofocus autocomplete="username">
+                    <i class="bi bi-envelope-at-fill" aria-hidden="true"></i>
                 </div>
-                <div class="mb-3"> 
-                    <label for="password" class="form-label">Contraseña</label>
-                    <input type="password" name="password" id="password" class="form-control" placeholder="Tu contraseña" required>
+                <div class="mb-2 input-icon-group position-relative">
+                    <label for="password" class="form-label small text-uppercase fw-semibold ms-1">Contraseña</label>
+                    <input type="password" name="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
+                    <span class="password-toggle" id="togglePassword" role="button" tabindex="0" aria-label="Mostrar/Ocultar contraseña"><i class="bi bi-eye-slash-fill"></i></span>
+                    <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
                 </div>
-                <button type="submit" class="btn btn-login w-100 mt-4">
-                    <span id="loginText">Iniciar Sesión</span>
-                    <span id="loginSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                </button> 
+                <div class="mb-4">
+                    <div class="form-check m-0 small">
+                        <input class="form-check-input" type="checkbox" value="1" id="remember" name="remember">
+                        <label class="form-check-label" for="remember">Recordar</label>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-login w-100 text-white" id="loginBtn">
+                    <span class="me-2" id="btnText">Iniciar sesión</span>
+                    <span class="spinner-border spinner-border-sm align-middle d-none" id="btnSpinner" role="status" aria-hidden="true"></span>
+                </button>
+                <div class="text-center mt-4 small opacity-75">© <span id="year"></span> Conquers Trading</div>
             </form>
         </div>
     </div>
 
-    <footer class="login-page-footer">
-        <p>&copy; <span id="currentYear"></span> Conquers Trading. Todos los derechos reservados.</p>
-    </footer>
+    <div class="login-footer">Desarrollado para la excelencia operacional • Conquers Trading</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Año actual en el footer
-        document.getElementById('currentYear').textContent = new Date().getFullYear();
-        
-        // Ocultar spinner de carga cuando el video esté listo
-        function hideLoading() {
-            const loadingElement = document.getElementById('videoLoading');
-            if (loadingElement) {
-                loadingElement.style.opacity = '0';
-                setTimeout(() => {
-                    loadingElement.style.display = 'none';
-                }, 500);
-            }
+        // Año dinámico
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Password toggle
+        const toggle = document.getElementById('togglePassword');
+        const pwd = document.getElementById('password');
+        function togglePwd(){
+            const isText = pwd.type === 'text';
+            pwd.type = isText ? 'password' : 'text';
+            toggle.innerHTML = isText ? '<i class="bi bi-eye-slash-fill"></i>' : '<i class="bi bi-eye-fill"></i>';
         }
-        
-        // Mostrar spinner al enviar el formulario
-        const loginForm = document.querySelector('form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', function() {
-                document.getElementById('loginText').classList.add('d-none');
-                document.getElementById('loginSpinner').classList.remove('d-none');
-                document.querySelector('.btn-login').disabled = true;
-            });
-        }
-        
-        // Forzar la carga del video si el evento canplay no se dispara
-        setTimeout(hideLoading, 3000);
+        toggle?.addEventListener('click', togglePwd);
+        toggle?.addEventListener('keydown', e => { if(e.key==='Enter' || e.key===' '){ e.preventDefault(); togglePwd(); }});
+
+        // Submit state
+        const form = document.getElementById('loginForm');
+        form?.addEventListener('submit', () => {
+            document.getElementById('btnText').classList.add('d-none');
+            document.getElementById('btnSpinner').classList.remove('d-none');
+            document.getElementById('loginBtn').disabled = true;
+        });
+
+        // Video loader fallback (exposed earlier in legacy code pattern)
+        window.hideVideoLoader = function(){};
     </script>
 </body>
 </html>

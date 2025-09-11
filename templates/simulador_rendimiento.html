@@ -2,7 +2,7 @@
 
 {% block title %}Simulador de Rendimiento de Crudo{% endblock %}
 
-{% block head %}
+{% block extra_css %}
 {{ super() }}
 <style>
     /* ----- Paleta de Colores y Estilos Globales ----- */
@@ -43,30 +43,15 @@
     /* ----- Estilo de la Tabla de Resultados Profesional ----- */
     .results-table {
         border-collapse: separate;
-        border-spacing: 0;
-        border: 1px solid var(--border-color);
-        border-radius: 0.375rem;
-        overflow: hidden;
+    overflow: hidden;
     }
 
     .results-table thead th {
         background-color: #343a40;
         color: white;
-        text-align: center;
         vertical-align: middle;
         font-weight: 600;
         border-bottom: 2px solid var(--primary-color);
-    }
-
-    .results-table tbody tr.crude-header-row td {
-        font-weight: bold;
-        font-size: 1.1rem;
-        padding: 0.75rem;
-        border-top: 2px solid var(--border-color);
-    }
-
-    .results-table tbody tr:not(.crude-header-row):nth-child(odd) {
-        background-color: #f8f9fa;
     }
    
     .results-table td, .results-table th {
@@ -111,9 +96,42 @@
     .assay-data-table td, .assay-data-table th {
         padding: 0.3rem 0.5rem;
     }
+
+    /* ====== MIXTURE REPORT STYLES ====== */
+    .mixture-summary-box {
+        background: linear-gradient(135deg,#0d6efd15,#19875415);
+        border: 1px solid var(--border-color);
+        border-left: 4px solid #0d6efd;
+        padding: .75rem 1rem;
+        border-radius: .5rem;
+        font-size: .9rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .mixture-summary-box .metric { min-width:140px; }
+    .mixture-summary-box .metric span { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; color:#6c757d; }
+    .mixture-summary-box .metric b { font-size:1rem; }
+    .mixture-table { font-size:.78rem; }
+    .mixture-table thead tr:first-child th { background:#212529; color:#fff; font-weight:600; position:sticky; top:0; z-index:3; }
+    .mixture-table thead tr.prod-sub th { background:#343a40; color:#e9ecef; position:sticky; top:34px; z-index:2; }
+    .mixture-table th.prod-group { font-size:.75rem; letter-spacing:.5px; }
+    .mixture-table tbody tr td:first-child { font-weight:500; }
+    .mixture-table tbody tr.table-primary td { font-weight:700; background:linear-gradient(90deg,#0d6efd1a,#0d6efd05); backdrop-filter:saturate(140%); }
+    .mixture-table tbody tr:hover td { background:#0d6efd08; }
+    .cell-yield { font-weight:600; }
+    .cell-api { font-family:monospace; }
+    .cell-sulfur { font-family:monospace; }
+    .api-delta { display:block; font-size:.55rem; font-weight:500; letter-spacing:.3px; }
+    .api-delta.pos { color:#0d6efd; }
+    .api-delta.neg { color:#dc3545; }
+    .api-delta.zero { color:#6c757d; }
+    .badge-prod { font-size:.55rem; letter-spacing:.5px; padding:.3rem .45rem; border-radius:.4rem; }
+    .mixture-note { font-size:.65rem; color:#6c757d; }
+    .mixture-color-chip { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; box-shadow:0 0 0 1px #fff,0 0 0 2px rgba(0,0,0,.15); }
+    @media (max-width:1200px){ .mixture-table { font-size:.68rem; } }
 </style>
 {% endblock %}
-
 {% block content %}
 <div class="container-fluid my-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -202,6 +220,7 @@
                         <div class="col-sm-4"><label for="crude-api" class="form-label"><b>API Crudo</b></label><input type="number" id="crude-api" class="form-control" value="32.0" step="0.1"></div>
                         <div class="col-sm-4"><label for="crude-sulfur" class="form-label"><b>% Azufre</b></label><input type="number" id="crude-sulfur" class="form-control" value="1.2" step="0.01"></div>
                         <div class="col-sm-4"><label for="crude-viscosity" class="form-label"><b>Viscosidad</b></label><input type="number" id="crude-viscosity" class="form-control" value="6.0" step="0.1" title="cSt @ 40°C"></div>
+                        <div class="col-sm-4"><label for="total-barrels" class="form-label"><b>Barriles a procesar (bbl)</b></label><input type="number" id="total-barrels" class="form-control" value="10000" step="1" min="1"></div>
                         <div class="col-12"><hr class="my-2"></div>
                         <div class="col-4"><label for="cut-nafta" class="form-label"><b>NAFTA</b></label><input type="number" id="cut-nafta" class="form-control" value="150"></div>
                         <div class="col-4"><label for="cut-kero" class="form-label"><b>KERO</b></label><input type="number" id="cut-kero" class="form-control" value="240"></div>
@@ -263,12 +282,97 @@
                     <button id="btn-clear-comparison" class="btn btn-outline-warning">
                         <i class="fas fa-eraser me-2"></i>Limpiar Comparación
                     </button>
+                    <button id="btn-mixture-report" class="btn btn-outline-primary">
+                        <i class="fas fa-beaker me-2"></i>Reporte Mezcla
+                    </button>
+                    <button id="btn-kero-comparison" class="btn btn-outline-secondary">
+                        <i class="fas fa-balance-scale me-2"></i>Comparativo KERO
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Modal Reporte Mezcla -->
+<div class="modal fade" id="mixtureModal" tabindex="-1" aria-labelledby="mixtureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="mixtureModalLabel"><i class="fas fa-beaker me-2"></i>Definir Mezcla de Crudos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">Seleccione los crudos simulados que desea mezclar y ajuste (si aplica) los barriles que aporta cada uno.</p>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered align-middle" id="mixture-selection-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Incluir</th>
+                                <th>Crudo</th>
+                                <th>Barriles Original</th>
+                                <th>Barriles Mezcla</th>
+                                <th>% en Mezcla</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr class="table-secondary">
+                                <th colspan="3" class="text-end">Total Mezcla</th>
+                                <th id="mix-total-bbl">0</th>
+                                <th id="mix-total-pct">100%</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-equalize-volumes">Igualar Volúmenes</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-volumes">Restaurar Originales</button>
+                </div>
+                <hr>
+                <div id="mixture-report-container" style="display:none;">
+                    <h6 class="fw-bold">Resultado de la Mezcla</h6>
+                    <div class="table-responsive" id="mixture-report-wrapper"></div>
+                    <div class="mt-2 d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-primary" id="btn-open-print"><i class="fas fa-print me-1"></i>Imprimir</button>
+                        <button class="btn btn-sm btn-outline-danger" id="btn-export-pdf"><i class="fas fa-file-pdf me-1"></i>PDF</button>
+                        <button class="btn btn-sm btn-outline-success" id="btn-export-json"><i class="fas fa-file-export me-1"></i>JSON</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" id="btn-generate-mixture"><i class="fas fa-flask me-2"></i>Generar Mezcla</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Comparativo KERO -->
+<div class="modal fade" id="keroCompareModal" tabindex="-1" aria-labelledby="keroCompareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title" id="keroCompareModalLabel"><i class="fas fa-balance-scale me-2"></i>Comparativo Con / Sin KERO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2 small text-muted">Genera dos corridas del mismo crudo: una con el interruptor "Incluir KERO" activado y otra desactivado. Luego abre este comparativo para ver las diferencias de rendimientos (%).</div>
+                <div id="kero-comparison-container"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-kero-auto-generate"><i class="fas fa-magic me-1"></i>Generar Faltantes</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btn-kero-print"><i class="fas fa-print me-1"></i>Imprimir</button>
+                <button type="button" class="btn btn-danger" id="btn-kero-comparison-pdf"><i class="fas fa-file-pdf me-1"></i>PDF</button>
+                <button type="button" class="btn btn-success" id="btn-kero-comparison-xlsx"><i class="fas fa-file-excel me-1"></i>Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    {% endblock %}
+    {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const CrudeSimulator = {
@@ -290,6 +394,210 @@ const CrudeSimulator = {
         this.handleLoadSavedCrudes();
         this._addDefaultAssayRows();
     },
+    // ================== COMPARATIVO KERO ==================
+    openKeroComparison: function(){
+        const modal = new bootstrap.Modal(this.dom.keroCompareModal);
+        this.renderKeroComparison();
+        modal.show();
+    },
+
+    getKeroPairs: function(){
+        // Agrupar por base_crude y tener dos variantes (true/false include_kero)
+        const groups = {};
+        for(const r of this.state.comparisonResults){
+            const key = r.base_crude || r.run_name || 'Crudo';
+            if(!groups[key]) groups[key] = {with: null, without: null};
+            if(r.include_kero) groups[key].with = r; else groups[key].without = r;
+        }
+        // KERO comparison modal elements
+        this.dom.keroComparisonContainer = document.getElementById('kero-comparison-container');
+        this.dom.keroCompareModal = document.getElementById('keroCompareModal');
+        this.dom.btnKeroComparison = document.getElementById('btn-kero-comparison');
+        this.dom.btnKeroAutoGenerate = document.getElementById('btn-kero-auto-generate');
+        this.dom.btnKeroPrint = document.getElementById('btn-kero-print');
+        return groups;
+    },
+
+    renderKeroComparison: function(){
+        const groups = this.getKeroPairs();
+        const container = this.dom.keroComparisonContainer;
+        container.innerHTML='';
+        const productOrderSet = new Set();
+        // Build union of product keys across runs
+        this.state.comparisonResults.forEach(r=> r.order.forEach(p=> productOrderSet.add(p)));
+        const products = Array.from(productOrderSet);
+        if(Object.keys(groups).length===0){
+            container.innerHTML = '<div class="alert alert-info">No hay corridas almacenadas todavía.</div>';
+            return;
+        }
+        for(const [base, pair] of Object.entries(groups)){
+            if(!pair.with && !pair.without) continue;
+            const tbl = document.createElement('div');
+            tbl.className='mb-4';
+            let html = `<h6 class="fw-bold">${base}</h6>`;
+            html += '<div class="table-responsive"><table class="table table-sm table-bordered align-middle">';
+            html += '<thead class="table-secondary"><tr><th>Producto</th><th>Sin KERO %</th><th>Con KERO %</th><th>Diferencia (Con - Sin)</th></tr></thead><tbody>';
+            products.forEach(prod=>{
+                const valWithout = pair.without ? (pair.without.yields[prod] ?? null) : null;
+                const valWith = pair.with ? (pair.with.yields[prod] ?? null) : null;
+                if(valWithout==null && valWith==null) return; // skip absent in both
+                const diff = (valWith!=null && valWithout!=null) ? (valWith - valWithout) : null;
+                const diffClass = diff==null ? '' : (diff>0 ? 'text-success fw-bold' : (diff<0 ? 'text-danger fw-bold':'text-muted')); 
+                html += `<tr><td>${prod}</td>`+
+                    `<td>${valWithout!=null? valWithout.toFixed(2):'-'}</td>`+
+                    `<td>${valWith!=null? valWith.toFixed(2):'-'}</td>`+
+                    `<td class="${diffClass}">${diff!=null? diff.toFixed(2):'-'}</td></tr>`;
+            });
+            // Totals
+            const sumWithout = pair.without ? pair.without.order.reduce((a,p)=> a + (pair.without.yields[p]||0),0) : null;
+            const sumWith = pair.with ? pair.with.order.reduce((a,p)=> a + (pair.with.yields[p]||0),0) : null;
+            const diffTotal = (sumWith!=null && sumWithout!=null) ? (sumWith - sumWithout) : null;
+            html += `<tr class="table-light fw-bold"><td>Total</td>`+
+                `<td>${sumWithout!=null? sumWithout.toFixed(2):'-'}</td>`+
+                `<td>${sumWith!=null? sumWith.toFixed(2):'-'}</td>`+
+                `<td>${diffTotal!=null? diffTotal.toFixed(2):'-'}</td></tr>`;
+            html += '</tbody></table></div>';
+            // Observaciones
+            if(pair.with && pair.without){
+                // Cambio en API global reconstruida (si existe en meta future) - por ahora usando promedio simple de API productos ponderado por %
+                const apiW = this.weightedAPI(pair.with);
+                const apiWo = this.weightedAPI(pair.without);
+                const deltaApi = (apiW!=null && apiWo!=null) ? (apiW - apiWo) : null;
+                html += `<div class="small text-muted">ΔAPI mezcla (con - sin): <span class="${deltaApi>0?'text-success':(deltaApi<0?'text-danger':'')} fw-bold">${deltaApi!=null? deltaApi.toFixed(2):'-'}</span></div>`;
+            }
+            tbl.innerHTML = html;
+            container.appendChild(tbl);
+        }
+    },
+
+    weightedAPI: function(run){
+        if(!run || !run.api_by_product) return null;
+        const total = run.order.reduce((a,p)=> a + (run.yields[p]||0),0);
+        if(total<=0) return null;
+        // Use SG-based weighting for correctness
+        let sgSum=0;
+        run.order.forEach(p=>{
+            const api = run.api_by_product[p];
+            const y = run.yields[p]||0;
+            if(api!=null){
+                const sg = 141.5/(api+131.5);
+                sgSum += sg * (y/100);
+            }
+        });
+        if(sgSum===0) return null;
+        const apiMix = (141.5/sgSum)-131.5;
+        return apiMix;
+    },
+
+    autoGenerateMissingKeroVariants: async function(){
+        // Si solo tenemos una variante (con o sin) intentar generar la otra automáticamente
+        const currentCurve = this.collectFormData();
+        const baseName = (currentCurve.nombre || 'Crudo').trim();
+        const groups = this.getKeroPairs();
+        const key = baseName.replace(/\s*\((sin|con)\s*KERO\)$/i,'');
+        const pair = groups[key] || {with:null, without:null};
+        const needWith = !pair.with;
+        const needWithout = !pair.without;
+        if(!needWith && !needWithout){
+            alert('Ya existen ambas variantes para este crudo.');
+            return;
+        }
+        const originalToggle = this.dom.toggleKero.checked;
+        const tasks=[];
+        if(needWith){
+            this.dom.toggleKero.checked = true;
+            tasks.push(this.calculateSilently(baseName + ' (Con KERO)'));
+        }
+        if(needWithout){
+            this.dom.toggleKero.checked = false;
+            tasks.push(this.calculateSilently(baseName + ' (Sin KERO)'));
+        }
+        await Promise.all(tasks);
+        this.dom.toggleKero.checked = originalToggle;
+        this.renderKeroComparison();
+    },
+
+    calculateSilently: async function(runName){
+        const formData = this.collectFormData();
+        const payload = {
+            distillationCurve: formData.curva,
+            cutPoints: {
+                nafta: parseFloat(this.dom.cutNaftaInput.value),
+                kero: parseFloat(this.dom.cutKeroInput.value),
+                fo4: parseFloat(this.dom.cutFo4Input.value)
+            },
+            apiCrude: formData.api,
+            sulfurCrude: formData.sulfur,
+            viscosityCrude: formData.viscosity,
+            includeKero: this.dom.toggleKero.checked
+        };
+        try{
+            const res = await fetch('/api/calcular_rendimiento', {
+                method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if(res.ok && data && data.yields){
+                data.run_name = runName;
+                data.include_kero = payload.includeKero;
+                data.base_crude = runName.replace(/\s*\((sin|con)\s*KERO\)$/i,'');
+                this.state.comparisonResults.push(data);
+                return data;
+            }
+        }catch(e){
+            console.error('Error auto cálculo KERO', e);
+        }
+        return null;
+    },
+
+    printKeroComparison: function(){
+        const w = window.open('', 'printWin');
+        w.document.write('<html><head><title>Comparativo KERO</title>');
+        w.document.write('<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">');
+        w.document.write('</head><body class="p-3">');
+        w.document.write('<h4>Comparativo Con / Sin KERO</h4>');
+        w.document.write(this.dom.keroComparisonContainer.innerHTML);
+        w.document.write('</body></html>');
+        w.document.close();
+        w.focus();
+        w.print();
+    },
+
+    _collectKeroComparisonPayload: function(){
+        const resultados = this.state.comparisonResults.map(r => ({
+            base_crude: r.base_crude || r.run_name || 'CRUDO',
+            include_kero: !!r.include_kero,
+            order: r.order || [],
+            yields: r.yields || {},
+            api_by_product: r.api_by_product || {},
+            sulfur_by_product: r.sulfur_by_product || {}
+        }));
+        if(!resultados.length){ alert('No hay resultados para exportar. Genera primero corridas con y sin KERO.'); return null; }
+        return { resultados };
+    },
+
+    downloadKeroComparisonPdf: async function(){
+        const payload = this._collectKeroComparisonPayload();
+        if(!payload) return;
+        try {
+            const resp = await fetch('/descargar_comparativo_kero_pdf', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if(!resp.ok) throw new Error('Error al generar PDF comparativo');
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download='comparativo_kero.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1500);
+        } catch(e){ console.error(e); alert(e.message||'No se pudo descargar el PDF comparativo.'); }
+    },
+
+    downloadKeroComparisonExcel: async function(){
+        const payload = this._collectKeroComparisonPayload();
+        if(!payload) return;
+        try {
+            const resp = await fetch('/descargar_comparativo_kero_excel', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+            if(!resp.ok) throw new Error('Error al generar Excel comparativo');
+            const blob = await resp.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href=url; a.download='comparativo_kero.xlsx'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url),1500);
+        } catch(e){ console.error(e); alert(e.message||'No se pudo descargar el Excel comparativo.'); }
+    },
 
     _cacheDom() {
         this.dom.curveBody = document.getElementById('distillation-curve-body');
@@ -308,6 +616,27 @@ const CrudeSimulator = {
         this.dom.btnClearComparison = document.getElementById('btn-clear-comparison');
         this.dom.btnAddAssayRow = document.getElementById('btn-add-assay-row');
         this.dom.btnImportAssay = document.getElementById('btn-import-assay');
+    this.dom.btnMixtureReport = document.getElementById('btn-mixture-report');
+    this.dom.mixtureModal = document.getElementById('mixtureModal');
+    this.dom.mixtureSelectionTableBody = document.querySelector('#mixture-selection-table tbody');
+    this.dom.mixTotalBbl = document.getElementById('mix-total-bbl');
+    this.dom.mixTotalPct = document.getElementById('mix-total-pct');
+    this.dom.btnGenerateMixture = document.getElementById('btn-generate-mixture');
+    this.dom.mixtureReportContainer = document.getElementById('mixture-report-container');
+    this.dom.mixtureReportWrapper = document.getElementById('mixture-report-wrapper');
+    this.dom.btnEqualizeVolumes = document.getElementById('btn-equalize-volumes');
+    this.dom.btnResetVolumes = document.getElementById('btn-reset-volumes');
+    this.dom.btnOpenPrint = document.getElementById('btn-open-print');
+    this.dom.btnExportJson = document.getElementById('btn-export-json');
+    this.dom.btnExportPdf = document.getElementById('btn-export-pdf');
+    // KERO comparison modal elements
+    this.dom.keroComparisonContainer = document.getElementById('kero-comparison-container');
+    this.dom.keroCompareModal = document.getElementById('keroCompareModal');
+    this.dom.btnKeroComparison = document.getElementById('btn-kero-comparison');
+    this.dom.btnKeroAutoGenerate = document.getElementById('btn-kero-auto-generate');
+    this.dom.btnKeroPrint = document.getElementById('btn-kero-print');
+    this.dom.btnKeroComparisonPdf = document.getElementById('btn-kero-comparison-pdf');
+    this.dom.btnKeroComparisonXlsx = document.getElementById('btn-kero-comparison-xlsx');
 
         // Inputs
         this.dom.savedCrudesSelect = document.getElementById('saved-crudes-select');
@@ -333,6 +662,28 @@ const CrudeSimulator = {
         this.dom.btnDeleteCrude.addEventListener('click', () => this.handleDeleteCrude());
         this.dom.btnAddAssayRow.addEventListener('click', () => this._addAssayRow());
         this.dom.btnImportAssay.addEventListener('click', () => this.handleImportAssay());
+        if(this.dom.btnKeroComparison){
+            this.dom.btnKeroComparison.addEventListener('click', () => this.openKeroComparison());
+        }
+        if(this.dom.btnKeroAutoGenerate){
+            this.dom.btnKeroAutoGenerate.addEventListener('click', ()=> this.autoGenerateMissingKeroVariants());
+        }
+        if(this.dom.btnKeroPrint){
+            this.dom.btnKeroPrint.addEventListener('click', ()=> this.printKeroComparison());
+        }
+        if(this.dom.btnKeroComparisonPdf){
+            this.dom.btnKeroComparisonPdf.addEventListener('click', ()=> this.downloadKeroComparisonPdf());
+        }
+        if(this.dom.btnKeroComparisonXlsx){
+            this.dom.btnKeroComparisonXlsx.addEventListener('click', ()=> this.downloadKeroComparisonExcel());
+        }
+    this.dom.btnMixtureReport.addEventListener('click', () => this.openMixtureModal());
+    this.dom.btnGenerateMixture.addEventListener('click', () => this.generateMixtureReport());
+    this.dom.btnEqualizeVolumes.addEventListener('click', () => this.equalizeVolumes());
+    this.dom.btnResetVolumes.addEventListener('click', () => this.resetVolumes());
+    this.dom.btnOpenPrint.addEventListener('click', () => this.printMixtureReport());
+    this.dom.btnExportJson.addEventListener('click', () => this.exportMixtureJson());
+    this.dom.btnExportPdf.addEventListener('click', () => this.downloadMixturePdf());
         
         this.dom.curveBody.addEventListener('click', (e) => {
             if (e.target.closest('.btn-remove-point')) {
@@ -343,6 +694,14 @@ const CrudeSimulator = {
         // Listeners para conversión de temperatura en AMBAS tablas
         this.dom.curveBody.addEventListener('input', (e) => this._handleTempConversion(e));
         this.dom.assayDataBody.addEventListener('input', (e) => this._handleTempConversion(e));
+        // Delegación para eliminar corrida individual
+        this.dom.resultsTableBody.addEventListener('click', (e)=>{
+            const btn = e.target.closest('.btn-delete-run');
+            if(btn){
+                const idx = parseInt(btn.dataset.index);
+                if(!isNaN(idx)) this.deleteRun(idx);
+            }
+        });
     },
     
     displayComparison() {
@@ -388,25 +747,45 @@ const CrudeSimulator = {
     },
 
     _renderTable() {
-        const productLabels = this.state.comparisonResults[0].order;
-        
-        let headerHtml = `<tr><th>Crudo / Propiedad</th>${productLabels.map(p => `<th>${p}</th>`).join('')}</tr>`;
-        this.dom.resultsTableHead.innerHTML = headerHtml;
+            const productLabels = this.state.comparisonResults[0].order;
+            // Cabecera simplificada: solo una columna por producto
+            const headerHtml = `<tr><th>Crudo / Propiedad</th>${productLabels.map(p => `<th class=\"text-center\">${p}</th>`).join('')}</tr>`;
+            this.dom.resultsTableHead.innerHTML = headerHtml;
 
-        let bodyHtml = '';
-        this.state.comparisonResults.forEach((result, index) => {
-            const color = this.config.CHART_COLORS[index % this.config.CHART_COLORS.length];
-            bodyHtml += `<tr class="crude-header-row" style="background-color: ${color}20;">
-                            <td colspan="${productLabels.length + 1}">
-                                <strong style="color: ${color};"><i class="fas fa-vial me-2"></i>${result.name.toUpperCase()}</strong>
-                            </td>
-                         </tr>`;
-            bodyHtml += `<tr><td><b>Rendimiento (%)</b></td>${productLabels.map(p => `<td>${result.yields[p]}</td>`).join('')}</tr>`;
-            bodyHtml += `<tr><td><b>API</b></td>${productLabels.map(p => `<td>${result.api_by_product[p]}</td>`).join('')}</tr>`;
-            bodyHtml += `<tr><td><b>Azufre (%S)</b></td>${productLabels.map(p => `<td>${result.sulfur_by_product[p]}</td>`).join('')}</tr>`;
-            bodyHtml += `<tr><td><b>Viscosidad (cSt)</b></td>${productLabels.map(p => `<td>${result.viscosity_by_product[p]}</td>`).join('')}</tr>`;
-        });
-        this.dom.resultsTableBody.innerHTML = bodyHtml;
+            let bodyHtml = '';
+            this.state.comparisonResults.forEach((result, index) => {
+                const color = this.config.CHART_COLORS[index % this.config.CHART_COLORS.length];
+                bodyHtml += `<tr class=\"crude-header-row\" style=\"background-color: ${color}20;\">`+
+                            `<td colspan=\"${productLabels.length + 1}\">`+
+                            `<strong style=\"color:${color};\"><i class=\"fas fa-vial me-2\"></i>${result.name.toUpperCase()}</strong>`+
+                            `<button type=\"button\" class=\"btn btn-sm btn-outline-danger float-end btn-delete-run\" data-index=\"${index}\" title=\"Eliminar este cálculo\"><i class=\"fas fa-times\"></i></button>`+
+                            `</td></tr>`;
+                // Fila de porcentajes
+                bodyHtml += `<tr><td><b>Rendimiento (%)</b></td>${productLabels.map(p => `<td>${result.yields[p]}</td>`).join('')}</tr>`;
+                // Fila de barriles por producto
+                const totalBbl = Object.values(result.barrels_by_product || {}).reduce((a,b)=>a+b,0).toFixed(2);
+                bodyHtml += `<tr><td><b>Barriles (bbl)</b></td>${productLabels.map(p => {
+                    const bbl = result.barrels_by_product ? (result.barrels_by_product[p] || 0) : 0;
+                    return `<td>${bbl}</td>`;
+                }).join('')}</tr>`;
+                // Propiedades
+                bodyHtml += `<tr><td><b>API</b></td>${productLabels.map(p => `<td>${result.api_by_product[p]}</td>`).join('')}</tr>`;
+                bodyHtml += `<tr><td><b>Azufre (%S)</b></td>${productLabels.map(p => `<td>${result.sulfur_by_product[p]}</td>`).join('')}</tr>`;
+                bodyHtml += `<tr><td><b>Viscosidad (cSt)</b></td>${productLabels.map(p => `<td>${result.viscosity_by_product[p]}</td>`).join('')}</tr>`;
+                // Fila total barriles al final
+                bodyHtml += `<tr><td><b>Total Barriles</b></td><td colspan=\"${productLabels.length}\" class=\"text-end\"><b>${totalBbl} bbl</b></td></tr>`;
+            });
+            this.dom.resultsTableBody.innerHTML = bodyHtml;
+    },
+
+    deleteRun(index){
+        if(index<0 || index>=this.state.comparisonResults.length) return;
+        this.state.comparisonResults.splice(index,1);
+        if(this.state.comparisonResults.length===0){
+            this.displayComparison();
+            return;
+        }
+        this.displayComparison();
     },
 
     _addCurvePoint(p = '', tC = '') {
@@ -663,10 +1042,10 @@ const CrudeSimulator = {
 
     async handleCalculate() {
         const formData = this._getFormData();
-        if (formData.curva.length < 2) {
-            alert('Se necesitan al menos dos puntos válidos en la curva.');
-            return;
-        }
+        if (formData.curva.length < 2) { alert('Se necesitan al menos dos puntos válidos en la curva.'); return; }
+        const totalBarrels = parseFloat(document.getElementById('total-barrels').value) || 0;
+        if (totalBarrels <= 0) { alert('Ingresa un número válido de barriles a procesar.'); return; }
+
         const defaultName = this.dom.savedCrudesSelect.value.startsWith("Selecciona")
             ? `Corrida ${this.state.comparisonResults.length + 1}`
             : this.dom.savedCrudesSelect.value;
@@ -685,15 +1064,46 @@ const CrudeSimulator = {
             viscosityCrude: formData.viscosity,
             includeKero: this.dom.toggleKero.checked
         };
-        
+
         const data = await this._handleApiRequest(
             '{{ url_for("api_calcular_rendimiento") }}',
             { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
             this.dom.btnCalculate
         );
-        
+
         if (data && data.success) {
             data.name = runName;
+            // Guardar temperaturas de corte usadas en esta corrida para mostrarlas luego en reportes
+            if (payload.cutPoints) {
+                data.cut_points = {
+                    nafta: payload.cutPoints.nafta,
+                    kero: payload.cutPoints.kero,
+                    fo4: payload.cutPoints.fo4
+                };
+            }
+            // Ya viene normalizado desde backend. Solo calculamos barriles directamente.
+            const order = data.order || Object.keys(data.yields);
+            const barrels_by_product = {};
+            order.forEach(k => {
+                const b = (data.yields[k] * totalBarrels) / 100;
+                barrels_by_product[k] = +b.toFixed(2);
+            });
+            // Ajuste para compensar redondeo: que la suma coincida con totalBarrels
+            const diff = +(totalBarrels - Object.values(barrels_by_product).reduce((a,b)=>a+b,0)).toFixed(2);
+            if (Math.abs(diff) >= 0.01) {
+                // Corrige en el último producto
+                const last = order[order.length - 1];
+                barrels_by_product[last] = +(barrels_by_product[last] + diff).toFixed(2);
+            }
+            data.barrels_by_product = barrels_by_product;
+            data.total_barrels_input = totalBarrels;
+            data.total_barrels_calc = Object.values(barrels_by_product).reduce((a,b)=>a+b,0);
+
+            // Guardar flags para comparativo KERO
+            data.include_kero = payload.includeKero;
+            // Base crude name para agrupar (intentamos quitar sufijos con/sin KERO si el usuario ya los puso)
+            const baseName = runName.replace(/\s*\((sin|con)\s*KERO\)$/i,'');
+            data.base_crude = baseName;
             this.state.comparisonResults.push(data);
             this.displayComparison();
         } else if (data) {
@@ -766,11 +1176,95 @@ const CrudeSimulator = {
             alert('Error al generar la curva desde el ensayo: ' + error.message);
         }
     }
-};
+    ,openMixtureModal() {
+        if (this.state.comparisonResults.length === 0) { alert('No hay simulaciones para mezclar.'); return; }
+        this.dom.mixtureSelectionTableBody.innerHTML = '';
+        this.state.comparisonResults.forEach((res, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td class="text-center"><input type="checkbox" class="form-check-input mix-include" data-index="${idx}" checked></td>
+              <td><span class="badge bg-primary me-1">${idx+1}</span>${res.name}</td>
+              <td>${res.total_barrels_input}</td>
+              <td><input type="number" class="form-control form-control-sm mix-bbl" data-index="${idx}" value="${res.total_barrels_input}" min="0"></td>
+              <td class="mix-percent" data-index="${idx}">0%</td>`;
+            this.dom.mixtureSelectionTableBody.appendChild(tr);
+        });
+        this._updateMixtureTotals();
+        const modal = new bootstrap.Modal(this.dom.mixtureModal);
+        modal.show();
+    }
+    ,_updateMixtureTotals() {
+        const rows = this.dom.mixtureSelectionTableBody.querySelectorAll('tr');
+        let total = 0; const data = [];
+        rows.forEach(r => {
+            const cb = r.querySelector('.mix-include');
+            const volInput = r.querySelector('.mix-bbl');
+            if (cb && cb.checked) {
+                const vol = parseFloat(volInput.value) || 0;
+                total += vol; data.push({row: r, vol});
+            } else {
+                r.querySelector('.mix-percent').textContent = '-';
+            }
+        });
+        data.forEach(d => {
+            const pct = total > 0 ? (d.vol / total * 100) : 0;
+            d.row.querySelector('.mix-percent').textContent = pct.toFixed(2) + '%';
+        });
+        this.dom.mixTotalBbl.textContent = total.toFixed(2);
+        this.dom.mixTotalPct.textContent = '100%';
+    }
+    ,generateMixtureReport() {
+        const selected = [];
+        this.dom.mixtureSelectionTableBody.querySelectorAll('tr').forEach(r => {
+            const cb = r.querySelector('.mix-include');
+            if (!cb.checked) return;
+            const idx = parseInt(cb.dataset.index);
+            const vol = parseFloat(r.querySelector('.mix-bbl').value) || 0;
+            if (vol <= 0) return;
+            const res = JSON.parse(JSON.stringify(this.state.comparisonResults[idx]));
+            res.mixture_volume = vol; selected.push(res);
+        });
+        if (!selected.length) { alert('Seleccione al menos un crudo con volumen > 0.'); return; }
+        const products = selected[0].order;
+        const totalMixVol = selected.reduce((a,r)=>a + r.mixture_volume,0);
+        const mixture = { name: 'MEZCLA', total_barrels: totalMixVol, products: {}, meta: { per_product: {} } };
+        products.forEach(p => {
+            let totalProductBbl = 0; const contrib = [];
+            selected.forEach(cr => {
+                const scale = cr.mixture_volume / cr.total_barrels_input;
+                const baseBbl = cr.barrels_by_product && cr.barrels_by_product[p] ? cr.barrels_by_product[p] : 0;
+                const bbl = baseBbl * scale; totalProductBbl += bbl;
+                contrib.push({ api: cr.api_by_product[p] || 0, sulfur: cr.sulfur_by_product[p] || 0, bbl });
+            });
+            let apiMixDisplay = 0, apiMixRaw=0, sgWeighted=0, totalb=0;
+            contrib.forEach(c => { if (c.bbl>0){ const sg=141.5/(c.api+131.5); sgWeighted+=sg*c.bbl; totalb+=c.bbl; }});
+            if (totalb>0){ const sgMix=sgWeighted/totalb; apiMixRaw=(141.5/sgMix)-131.5; apiMixDisplay = +apiMixRaw.toFixed(2); }
+            let sulfurMix=0, sulfurVol=0; contrib.forEach(c=>{ sulfurMix+=c.sulfur*c.bbl; sulfurVol+=c.bbl; }); sulfurMix = sulfurVol>0? sulfurMix/sulfurVol:0;
+            mixture.products[p] = { barrels:+totalProductBbl.toFixed(2), yield_pct: totalMixVol>0? +(totalProductBbl/totalMixVol*100).toFixed(2):0, api:apiMixDisplay, sulfur:+sulfurMix.toFixed(4), api_raw: +apiMixRaw.toFixed(6) };
+            mixture.meta.per_product[p] = { api_mix: apiMixDisplay, api_mix_raw: +apiMixRaw.toFixed(6), total_bbl: +totalProductBbl.toFixed(6), contributions: contrib.map(c=>({ api:c.api, bbl:+c.bbl.toFixed(6) })) };
+        });
+        selected.forEach(cr => { cr._api_deltas = {}; products.forEach(p => { const compApi = cr.api_by_product[p] || 0; const mixApi = mixture.meta.per_product[p].api_mix_raw || mixture.meta.per_product[p].api_mix; cr._api_deltas[p] = +(compApi - mixApi).toFixed(2); }); });
+        const summaryHtml = `<div class="mixture-summary-box mb-2"><div class="metric"><span>Total Mezcla</span><b>${mixture.total_barrels.toFixed(2)} bbl</b></div>${products.map(p=>`<div class=\"metric\"><span>${p} (% / bbl)</span><b>${mixture.products[p].yield_pct}% / ${mixture.products[p].barrels}</b></div>`).join('')}</div>`;
+        let html = summaryHtml;
+        html += '<div class="table-responsive"><table class="table table-bordered mixture-table">';
+        html += '<thead><tr><th rowspan="2" class="align-middle">Crudo</th><th rowspan="2" class="align-middle">Barriles</th>' + products.map(p=>`<th colspan="4" class="text-center prod-group">${p}</th>`).join('') + '</tr>';
+        html += '<tr class="prod-sub">' + products.map(()=>'<th class="text-center">%</th><th class="text-center">bbl</th><th class="text-center">API</th><th class="text-center">%S</th>').join('') + '</tr></thead><tbody>';
+        html += `<tr class="table-primary"><td><span class="mixture-color-chip" style="background:#0d6efd"></span>MEZCLA</td><td class="fw-bold">${mixture.total_barrels.toFixed(2)}</td>` + products.map(p=>{ const mp = mixture.products[p]; return `<td class=\"cell-yield text-primary\">${mp.yield_pct}</td><td class=\"fw-semibold\">${mp.barrels}</td><td class=\"cell-api\">${mp.api}</td><td class=\"cell-sulfur\">${mp.sulfur}</td>`; }).join('') + '</tr>';
+        selected.forEach((res,i)=>{ html += '<tr>' + `<td><span class="mixture-color-chip" style="background:${this.config.CHART_COLORS[i % this.config.CHART_COLORS.length]}"></span>${res.name}</td><td>${res.mixture_volume.toFixed(2)}</td>` + products.map(p=>{ const scale=res.mixture_volume/res.total_barrels_input; const bbl=(res.barrels_by_product[p]||0)*scale; const yieldPct=res.mixture_volume>0? +(bbl/res.mixture_volume*100).toFixed(2):0; const apiVal = res.api_by_product[p]; const delta = res._api_deltas[p]; const deltaClass = delta>0? 'pos': delta<0? 'neg':'zero'; const deltaStr = (delta>0? '+' : (delta<0? '' : '')) + delta.toFixed(2); return `<td>${yieldPct}</td><td>${bbl.toFixed(2)}</td><td class=\"cell-api\">${apiVal}<span class=\"api-delta ${deltaClass}\">${deltaStr}</span></td><td class=\"cell-sulfur\">${res.sulfur_by_product[p]}</td>`; }).join('') + '</tr>'; });
+        html += '</tbody></table></div><div class="mixture-note mt-1">API mezcla calculado por promedio ponderado de gravedad específica (precisión interna 6 dec). %S mezcla como promedio ponderado volumétrico. Los ΔAPI muestran componente - API mezcla del producto.</div>';
+        this.dom.mixtureReportWrapper.innerHTML = html;
+        this.dom.mixtureReportContainer.style.display = 'block';
+        this.state.lastMixture = { products: mixture.products, total_barrels: mixture.total_barrels, components: selected, meta: mixture.meta };
+    }
+    ,equalizeVolumes(){ const checked = Array.from(this.dom.mixtureSelectionTableBody.querySelectorAll('.mix-include:checked')); if (!checked.length) return; checked.forEach(cb=>{ cb.closest('tr').querySelector('.mix-bbl').value = 100; }); this._updateMixtureTotals(); }
+    ,resetVolumes(){ this.dom.mixtureSelectionTableBody.querySelectorAll('tr').forEach(r=>{ const idx=r.querySelector('.mix-include').dataset.index; r.querySelector('.mix-bbl').value = this.state.comparisonResults[idx].total_barrels_input; }); this._updateMixtureTotals(); }
+    ,printMixtureReport(){ if(!this.state.lastMixture){ alert('Genera primero la mezcla.'); return; } const w = window.open('', '_blank'); w.document.write('<html><head><title>Reporte Mezcla</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head><body class="p-3">'); w.document.write('<h4>Reporte de Mezcla de Crudos</h4>'); w.document.write(this.dom.mixtureReportWrapper.innerHTML); w.document.write('<small class="text-muted">Generado: '+ new Date().toLocaleString() +'</small>'); w.document.write('<script>window.print();<\/script></body></html>'); w.document.close(); }
+    ,exportMixtureJson(){ if(!this.state.lastMixture){ alert('Genera primero la mezcla.'); return; } const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.state.lastMixture, null, 2)); const a = document.createElement('a'); a.href = dataStr; a.download='reporte_mezcla.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
+    ,downloadMixturePdf: async function(){ if(!this.state.lastMixture){ alert('Genera primero la mezcla.'); return; } try { const resp = await fetch('/descargar_reporte_mezcla_pdf', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(this.state.lastMixture) }); if(!resp.ok){ let msg = 'Error al generar PDF'; try { const txt = await resp.text(); if (txt) msg += `: ${txt.substring(0,180)}`; } catch(e){} throw new Error(msg); } const blob = await resp.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'reporte_mezcla_crudos.pdf'; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(()=>URL.revokeObjectURL(url), 2000); } catch(err){ console.error(err); alert(err.message || 'No se pudo descargar el PDF de la mezcla.'); } }
+}; // Cierre objeto CrudeSimulator (refactor con funciones de mezcla integradas)
 
-// Iniciar la aplicación cuando el DOM esté listo.
-document.addEventListener('DOMContentLoaded', () => {
-    CrudeSimulator.init();
-});
+document.addEventListener('input', e => { if (e.target.classList.contains('mix-bbl')) CrudeSimulator._updateMixtureTotals(); });
+document.addEventListener('change', e => { if (e.target.classList.contains('mix-include')) CrudeSimulator._updateMixtureTotals(); });
+document.addEventListener('DOMContentLoaded', () => CrudeSimulator.init());
 </script>
 {% endblock %}
