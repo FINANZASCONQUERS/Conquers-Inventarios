@@ -402,14 +402,34 @@
 
   // --- Autocompletado de ciudades para Observaciones ---
   let ciudadesColombia = [];
+  let ciudadesColombiaNormalizadas = [];
+  const LIMITE_SUGERENCIAS_CIUDADES = 15;
   // Cargar ciudades una sola vez
   fetch('/static/ciudades_colombia.json')
     .then(res => res.json())
     .then(data => {
       ciudadesColombia = data.filter(c => c.nombre).map(c => c.nombre);
+      ciudadesColombiaNormalizadas = ciudadesColombia.map(n => normalizarTexto(n));
       // Si la tabla ya está dibujada, redibujar para aplicar datalist
       if (typeof redibujarTabla === 'function') redibujarTabla();
     });
+
+  function normalizarTexto(txt) {
+    return txt.normalize('NFD').replace(/\p{Diacritic}/gu,'').toUpperCase();
+  }
+
+  function filtrarCiudades(query) {
+    if (!query) return [];
+    const q = normalizarTexto(query);
+    const resultados = [];
+    for (let i=0; i<ciudadesColombia.length; i++) {
+      if (ciudadesColombiaNormalizadas[i].includes(q)) {
+        resultados.push(ciudadesColombia[i]);
+        if (resultados.length >= LIMITE_SUGERENCIAS_CIUDADES) break;
+      }
+    }
+    return resultados;
+  }
   function aplicarFiltros() {  
     const tableBody = document.getElementById('tablaTransitoBody');  
     const filterInputs = document.querySelectorAll('.excel-filter');  
@@ -644,48 +664,134 @@
         ciudadActual = partes[0] || "";
         sugerenciaActual = partes[1] || "";
       }
-      // Contenedor flex
-      const div = document.createElement("div");
-      div.style.display = "flex";
-      div.style.gap = "4px";
+      // Contenedor
+      const wrapper = document.createElement('div');
+      wrapper.className = 'wrapper-ciudades-sugerencias';
+      wrapper.style.display = 'flex';
+      wrapper.style.gap = '4px';
+      wrapper.style.position = 'relative';
 
-      // Select de ciudades
-      const select = document.createElement("select");
-      select.className = "form-select form-select-sm";
-      select.style.maxWidth = "180px";
-      select.disabled = !edicionTransitoPermitida;
-      select.innerHTML = '<option value="">Ciudad...</option>';
-      ciudadesColombia.forEach(ciudad => {
-        const option = document.createElement("option");
-        option.value = ciudad;
-        option.textContent = ciudad;
-        select.appendChild(option);
+      // Input de ciudad (autocomplete)
+      const inputCiudad = document.createElement('input');
+      inputCiudad.type = 'text';
+      inputCiudad.className = 'form-control form-control-sm input-ciudad-autocomplete';
+      inputCiudad.placeholder = 'Ciudad...';
+      inputCiudad.style.maxWidth = '180px';
+      inputCiudad.autocomplete = 'off';
+      inputCiudad.value = ciudadActual;
+      inputCiudad.disabled = !edicionTransitoPermitida;
+
+      // Caja de sugerencias
+      const lista = document.createElement('div');
+      lista.className = 'lista-sugerencias-ciudades shadow-sm';
+      lista.style.position = 'absolute';
+      lista.style.top = '34px';
+      lista.style.left = '0';
+      lista.style.zIndex = '50';
+      lista.style.background = '#ffffff';
+      lista.style.border = '1px solid #ced4da';
+      lista.style.borderRadius = '4px';
+      lista.style.width = '180px';
+      lista.style.maxHeight = '220px';
+      lista.style.overflowY = 'auto';
+      lista.style.display = 'none';
+      lista.style.fontSize = '0.75rem';
+
+      let indiceActivo = -1;
+
+      function cerrarLista() {
+        lista.style.display = 'none';
+        indiceActivo = -1;
+      }
+
+      function renderSugerencias(items) {
+        lista.innerHTML = '';
+        if (!items.length) { cerrarLista(); return; }
+        items.forEach((nombre, idx) => {
+          const item = document.createElement('div');
+          item.textContent = nombre;
+            item.style.padding = '4px 6px';
+            item.style.cursor = 'pointer';
+            item.addEventListener('mouseenter', () => {
+              Array.from(lista.children).forEach(c=>c.classList.remove('active'));
+              item.classList.add('active');
+              indiceActivo = idx;
+            });
+            item.addEventListener('mousedown', (e) => { // usar mousedown para antes de blur
+              e.preventDefault();
+              seleccionarCiudad(nombre);
+            });
+            lista.appendChild(item);
+        });
+        lista.style.display = 'block';
+      }
+
+      function seleccionarCiudad(nombre) {
+        inputCiudad.value = nombre;
+        guardarObservaciones();
+        cerrarLista();
+        inputSugerencia.focus();
+      }
+
+      inputCiudad.addEventListener('input', () => {
+        const val = inputCiudad.value.trim();
+        if (val.length < 2) { cerrarLista(); return; }
+        const resultados = filtrarCiudades(val);
+        renderSugerencias(resultados);
       });
-      select.value = ciudadActual;
+
+      inputCiudad.addEventListener('keydown', (e) => {
+        const total = lista.children.length;
+        if (['ArrowDown','ArrowUp','Enter','Escape','Tab'].includes(e.key)) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (total) { indiceActivo = (indiceActivo + 1) % total; }
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (total) { indiceActivo = (indiceActivo - 1 + total) % total; }
+          } else if (e.key === 'Enter') {
+            if (indiceActivo >= 0 && indiceActivo < total) {
+              e.preventDefault();
+              seleccionarCiudad(lista.children[indiceActivo].textContent);
+            } else {
+              cerrarLista();
+            }
+          } else if (e.key === 'Escape') {
+            cerrarLista();
+            return;
+          }
+          Array.from(lista.children).forEach((c,i)=> c.classList.toggle('active', i===indiceActivo));
+        }
+      });
+
+      document.addEventListener('click', (ev) => {
+        if (!wrapper.contains(ev.target)) cerrarLista();
+      });
 
       // Input para sugerencia
-      const inputSugerencia = document.createElement("input");
-      inputSugerencia.type = "text";
-      inputSugerencia.className = "form-control form-control-sm";
-      inputSugerencia.placeholder = "Sugerencia...";
-      inputSugerencia.style.maxWidth = "180px";
+      const inputSugerencia = document.createElement('input');
+      inputSugerencia.type = 'text';
+      inputSugerencia.className = 'form-control form-control-sm';
+      inputSugerencia.placeholder = 'Sugerencia...';
+      inputSugerencia.style.maxWidth = '180px';
       inputSugerencia.value = sugerenciaActual;
       inputSugerencia.disabled = !edicionTransitoPermitida;
 
-      // Guardar ambos valores juntos en OBSERVACIONES
       function guardarObservaciones() {
         const index = parseInt(tr.dataset.index, 10);
-        const ciudad = select.value;
+        const ciudad = inputCiudad.value.trim();
         const sugerencia = inputSugerencia.value.trim();
-        currentData[index][campoKey] = ciudad + (sugerencia ? " | " + sugerencia : "");
+        currentData[index][campoKey] = (ciudad ? ciudad : '') + (sugerencia ? (ciudad ? ' | ' : '') + sugerencia : '');
         guardarEstadoEnSesion();
       }
-      select.addEventListener("change", guardarObservaciones);
-      inputSugerencia.addEventListener("change", guardarObservaciones);
 
-      div.appendChild(select);
-      div.appendChild(inputSugerencia);
-      td.appendChild(div);
+      inputCiudad.addEventListener('change', guardarObservaciones);
+      inputSugerencia.addEventListener('change', guardarObservaciones);
+
+      wrapper.appendChild(inputCiudad);
+      wrapper.appendChild(inputSugerencia);
+      wrapper.appendChild(lista);
+      td.appendChild(wrapper);
     } else {
       // Mantén el textarea normal para otros campos
       const textarea = document.createElement("textarea");
