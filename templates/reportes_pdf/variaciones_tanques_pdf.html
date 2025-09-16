@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte de Variaciones por Tanque</title>
+  <style>
+    :root{ --primary:#4e73df; --primary-dark:#224abe; --success:#198754; --danger:#dc3545; --muted:#6c757d; --ink:#2c3e50; --border:#e0e5ec; }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 24px; color: var(--ink); }
+    h1 { font-size: 20px; margin: 0 0 4px 0; }
+  .header { padding: 12px 16px; border-left: 6px solid var(--primary); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-radius: 6px; display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand img{ height:38px; }
+    .sub { color: var(--muted); font-size: 12px; }
+    .badges { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { display:inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; border:1px solid var(--border); background:#f8fafc }
+    .badge-total { background: #eef2ff; border-color:#dbe2ff; color:#293b8f; }
+    .badge-suma { background: #eaf7f0; border-color:#d3efdf; color: var(--success); }
+    .badge-descarga { background: #fdecef; border-color:#f6d5db; color: var(--danger); }
+    .badge-cap { background:#eef7f2; color: var(--success); }
+    .section { page-break-inside: avoid; margin-top: 16px; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .section-head { display:flex; justify-content: space-between; align-items:center; background: linear-gradient(90deg, #fff 0%, #f7f9ff 100%); padding:10px 14px; border-bottom:1px solid var(--border); }
+    .section-title { font-size: 14px; color: var(--primary-dark); margin:0; }
+    .section-meta { font-size: 11px; color: var(--muted); }
+    .chart { width:100%; display:block; }
+    table{ width: 100%; border-collapse: collapse; }
+    th, td{ border-top: 1px solid var(--border); padding: 6px 8px; font-size: 12px; }
+    thead th{ background: #f5f7fa; text-align: left; }
+    .right{ text-align: right; }
+    .chip{ display:inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; }
+    .chip.sum{ background: #eaf7f0; color: var(--success); }
+    .chip.des{ background: #fdecef; color: var(--danger); }
+    .chip.neu{ background: #eceff3; color: var(--muted); }
+  </style>
+  </head>
+<body>
+  <div class="header">
+    <div class="brand">
+      {% if logo_base64 %}
+        <img src="data:{{ logo_mime }};base64,{{ logo_base64 }}" alt="Logo" />
+      {% endif %}
+      <div>
+        <h1>Reporte de Variaciones por Tanque</h1>
+        <div class="sub">Periodo {{ periodo_str }} — Generado: {{ fecha_generacion }}</div>
+      </div>
+    </div>
+  </div>
+
+  {% for tk in tanques_ordenados %}
+    {% set lista = por_tanque[tk] %}
+    {% set stats = stats_por_tanque.get(tk) if stats_por_tanque else None %}
+    {% set cap = (stats.max_cap if stats else 0) or 0 %}
+    {% set producto = (stats.producto if stats else '') %}
+    <div class="section">
+      <div class="section-head">
+        <h2 class="section-title">{{ tk }}</h2>
+        <div class="section-meta">Producto: {{ producto }} {% if cap>0 %}<span class="badge badge-cap">Capacidad: {{ '%.0f' % cap }} bls</span>{% endif %}</div>
+      </div>
+      {% if charts_map and charts_map.get(tk) %}
+        <img class="chart" src="data:image/png;base64,{{ charts_map.get(tk) }}" alt="{{ tk }} chart" />
+      {% endif %}
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th class="right">BLS @60</th>
+            <th class="right">Variación</th>
+            <th>Tipo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in lista %}
+            <tr>
+              <td>{{ r.fecha }}</td>
+              <td class="right">{{ '%.0f' % (r.bls_60 or 0) }}</td>
+              <td class="right">{% if r.variacion is not none %}{{ '%.2f' % r.variacion }}{% else %}—{% endif %}</td>
+              <td>
+                {% if r.variacion is none %}
+                  <span class="chip neu">—</span>
+                {% elif r.variacion > 0 %}
+                  <span class="chip sum">Suma</span>
+                {% elif r.variacion < 0 %}
+                  <span class="chip des">Descarga</span>
+                {% else %}
+                  <span class="chip neu">Sin cambio</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+</body>
+</html>

@@ -28,9 +28,18 @@
                     <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
                         <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
                     </a>
+                    <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-outline-primary d-flex align-items-center">
+                        <i class="bi bi-graph-up-arrow me-1"></i> Variación por Tanque
+                    </a>
                     <button id="btnGuardarRegistro" onclick="guardarRegistro()" class="btn btn-success d-flex align-items-center">
                         <i class="bi bi-save2-fill me-1"></i> Guardar Registro
                     </button>
+                </div>
+            </div>
+            <div class="col-12">
+                <div class="d-flex align-items-center gap-3 small text-muted mt-1">
+                    <span class="legend-dot" style="--dot-color:#198754"></span> Días con registro
+                    <span class="legend-dot" style="--dot-color:#adb5bd"></span> Días sin registro
                 </div>
             </div>
         </div>
@@ -40,7 +49,7 @@
         <div class="row g-3 align-items-end bg-white border rounded-3 shadow-sm p-3 mx-0">
             <div class="col-12 col-md-5">
                 <label for="fecha_filtro" class="form-label fw-bold text-muted">Ver inventario del día:</label>
-                <input type="date" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+                <input type="text" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
             </div>
             <div class="col-12 col-md-auto d-flex gap-2">
                 <button type="submit" class="btn btn-primary d-flex align-items-center">
@@ -50,7 +59,7 @@
                     <i class="bi bi-arrow-clockwise me-1"></i> Ver Estado Actual
                 </a>
             </div>
-            {% if fecha_seleccionada and fecha_seleccionada != today_iso %}
+            {% if fecha_seleccionada and today_iso and fecha_seleccionada != today_iso %}
             <div class="col-12 col-md-auto ms-auto">
                 <div class="badge bg-primary bg-opacity-10 text-primary p-2">
                     <i class="bi bi-calendar-check me-1"></i> Mostrando datos del: {{ fecha_seleccionada }}
@@ -260,6 +269,38 @@
 </style>
 
 <script>
+    // --- Inicialización del selector de fecha con colores por registro ---
+    document.addEventListener('DOMContentLoaded', function() {
+        const input = document.getElementById('fecha_filtro');
+        const fechasConRegistro = input ? JSON.parse(input.getAttribute('data-fechas') || '[]') : [];
+        const setFechas = new Set(fechasConRegistro);
+        if (input) {
+            // Cargar Flatpickr desde CDN (ligero y sin dependencias)
+            const addCss = (href) => { const l = document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); };
+            const addJs = (src, cb) => { const s = document.createElement('script'); s.src=src; s.onload=cb; document.body.appendChild(s); };
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
+            addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
+                flatpickr(input, {
+                    dateFormat: 'Y-m-d',
+                    defaultDate: input.value || '{{ today_iso }}',
+                    allowInput: true,
+                    onDayCreate: function(dObj, dStr, fp, dayElem) {
+                        const dateStr = dayElem.dateObj.toISOString().slice(0,10);
+                        dayElem.classList.add('fp-hint-day');
+                        if (setFechas.has(dateStr)) {
+                            dayElem.classList.add('fp-day-con-registro');
+                            dayElem.setAttribute('title','Con registro');
+                        } else {
+                            dayElem.classList.add('fp-day-sin-registro');
+                            dayElem.setAttribute('title','Sin registro');
+                        }
+                    }
+                });
+            });
+        }
+    });
+
     // --- FUNCIÓN DE ALERTA MEJORADA ---
     function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
         const alertContainer = document.getElementById('alert-container');
@@ -412,4 +453,14 @@
         });
     }
 </script>
+
+<style>
+/* Indicadores visuales en el calendario */
+.flatpickr-calendar .flatpickr-day.fp-hint-day { position: relative; }
+.flatpickr-calendar .flatpickr-day.fp-day-con-registro { background: rgba(25, 135, 84, 0.2); color: #198754; border-color: rgba(25,135,84,0.45); }
+.flatpickr-calendar .flatpickr-day.fp-day-sin-registro { background: rgba(173,181,189,0.25); color: #6c757d; }
+.flatpickr-calendar .flatpickr-day.selected { background: #0b8552; border-color: #0b8552; color: #fff; }
+.flatpickr-calendar .flatpickr-day.today { border-color: #0b8552; }
+.legend-dot { width:10px; height:10px; border-radius:50%; background: var(--dot-color); display:inline-block; }
+</style>
 {% endblock %}

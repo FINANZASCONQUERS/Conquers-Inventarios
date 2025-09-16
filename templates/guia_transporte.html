@@ -29,7 +29,15 @@
             opacity: 0.50;
             z-index: -1;
         }
+        /* Contenedor de acciones (id histórico) */
         #acciones { 
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        /* Contenedor de acciones que actualmente usa class="acciones" */
+        .acciones {
             position: fixed;
             top: 10px;
             left: 10px;
@@ -46,9 +54,21 @@
             cursor: pointer;
             font-size: 12px;
         }
+        .acciones button { /* mismo estilo para la clase */
+            padding: 8px 15px;
+            margin-right: 8px;
+            background: #004080;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
         #acciones button:hover {
             background: #0066cc;
         }
+        .acciones button:hover { background: #0066cc; }
         
         /* Estilo para el botón de Cerrar Sesión */
         #boton-logout {
@@ -107,6 +127,25 @@
              body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
             #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         }
+
+        /* Solo pantalla: ordenar visualmente sin tocar la impresión */
+        @media screen {
+            /* Separación uniforme entre campos por fila */
+            .fila { gap: 0.25cm; }
+            /* Quitar desplazamientos negativos solo en pantalla */
+            .lugar-fecha,
+            .planta-productor,
+            .factura-remision,
+            .observaciones { left: 0 !important; }
+            /* Evitar desbordes horizontales en pantalla */
+            .observaciones { width: 100% !important; }
+            /* El margen superior negativo de dirección hace saltos; anúlalo en pantalla */
+            .direccion { margin-top: 0 !important; }
+            /* Ajuste opcional para que acciones no tape el formulario en pantallas pequeñas */
+            #contenedor-guia { margin-top: 3.0cm; }
+            /* La caja de volumen no tenía ancho válido; define uno solo para pantalla */
+            .volumen { width: 8.6cm; }
+        }
         #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 2.2cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
         .fila { display: flex; margin-bottom: 0.4cm; }
@@ -126,8 +165,9 @@
         .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
         .descripcion-producto, .volumen { font-weight: bold; }
         .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
-        .lugar-fecha {position: relative;left: -55px; width: 9.5cm; height: 1.1cm; font-size: 14pt }
-        .planta-productor { position: relative;left: -50px; width: 8.8cm; height: 1cm;font-size: 14pt }
+        .lugar-fecha {position: relative;left: -75px; width: 10.5cm; height: 1.1cm; font-size: 14pt }
+        .planta-productor { position: relative;left: -75px; width: 8.8cm; height: 1cm;font-size: 14pt }
+        .planta-productor input { text-align: left; padding-left: 0px; padding-right: 0px; }
         .factura-remision {position: relative;left: -40px; width: 3.5cm; height: 1cm;font-size: 16pt  }
         .despacho { width: 15cm; height: 1cm; font-size: 14pt }
         .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
@@ -628,7 +668,8 @@ if (Object.keys(datosGuia).length > 1) {
         const cli = clientes.find(c=>c.NOMBRE_CLIENTE===nom);
         document.getElementById('direccionCliente').value = cli ? cli.DIRECCION : '';
         document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
-        document.getElementById('destinoDireccion').value = cli ? cli.DIRECCION : '';
+        // Ahora el destino muestra la misma información que CIUDAD
+        document.getElementById('destinoDireccion').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
     }
 
     function mostrarProducto(){

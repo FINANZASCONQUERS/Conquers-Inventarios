@@ -1324,11 +1324,125 @@ def planta():
         key=lambda fila: orden_map.get(fila["TK"], 99)
     )
 
-    # 4. Enviamos los datos y la fecha seleccionada de vuelta al HTML
+    # 4. Construimos listado de días con registros para colorear el calendario
+    try:
+        dias_rows = (db.session
+            .query(func.date(RegistroPlanta.timestamp).label('dia'))
+            .group_by(func.date(RegistroPlanta.timestamp))
+            .all())
+        fechas_con_registro = []
+        for (dia,) in dias_rows:
+            try:
+                fechas_con_registro.append(dia.isoformat())
+            except AttributeError:
+                fechas_con_registro.append(str(dia))
+    except Exception:
+        fechas_con_registro = []
+
+    # 5. Enviamos los datos y la fecha seleccionada de vuelta al HTML
     return render_template("planta.html", 
                            planilla=datos_para_plantilla, 
                            nombre=session.get("nombre", "Usuario"),
-                           fecha_seleccionada=fecha_seleccionada.isoformat())
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat(),
+                           fechas_con_registro=fechas_con_registro)
+
+@login_required
+@permiso_requerido('planta')
+@app.route('/reporte_variaciones_tanques')
+def reporte_variaciones_tanques():
+    try:
+        end_str = request.args.get('hasta')
+        start_str = request.args.get('desde')
+        hasta = date.fromisoformat(end_str) if end_str else None
+        desde = date.fromisoformat(start_str) if start_str else None
+
+        # Subconsulta: último registro por día y tanque (con rango opcional)
+        fecha_dia = func.date(RegistroPlanta.timestamp)
+        subq_query = db.session.query(func.max(RegistroPlanta.id).label('max_id'))
+        if desde is not None:
+            subq_query = subq_query.filter(RegistroPlanta.timestamp >= datetime.combine(desde, time.min))
+        if hasta is not None:
+            subq_query = subq_query.filter(RegistroPlanta.timestamp <= datetime.combine(hasta, time.max))
+        subq = subq_query.group_by(RegistroPlanta.tk, fecha_dia).subquery()
+
+        registros = (db.session.query(RegistroPlanta)
+                     .filter(RegistroPlanta.id.in_(subq))
+                     .order_by(RegistroPlanta.tk.asc(), RegistroPlanta.timestamp.asc())
+                     .all())
+
+        # Organizar por tanque y día
+        por_tanque = {}
+        for r in registros:
+            if not r.tk:
+                continue
+            tk = r.tk
+            dia = r.timestamp.date()
+            bls = float(r.bls_60 or 0)
+            por_tanque.setdefault(tk, {})[dia] = {
+                'bls_60': bls,
+                'max_cap': float(r.max_cap or 0),
+                'producto': r.producto or ''
+            }
+
+        # Construir series por tanque: fechas, valores y variaciones
+        series = {}
+        for tk, mapa in por_tanque.items():
+            fechas_ord = sorted(mapa.keys())
+            valores = [mapa[f]['bls_60'] for f in fechas_ord]
+            diffs = []
+            prev = None
+            for v in valores:
+                if prev is None:
+                    diffs.append(None)
+                else:
+                    diffs.append(round(v - prev, 2))
+                prev = v
+            # Convertir fechas a strings ISO para JS
+            etiquetas = [f.isoformat() for f in fechas_ord]
+            max_cap = next((mapa[f]['max_cap'] for f in fechas_ord if mapa[f]['max_cap'] > 0), 0)
+            producto = next((mapa[f]['producto'] for f in fechas_ord if (mapa[f]['producto'] or '').strip()), '')
+            series[tk] = {
+                'labels': etiquetas,
+                'bls_60': valores,
+                'variacion': diffs,
+                'max_cap': max_cap,
+                'producto': producto
+            }
+
+        # Fechas con registro para colorear
+        try:
+            dias_rows = (db.session
+                .query(func.date(RegistroPlanta.timestamp).label('dia'))
+                .group_by(func.date(RegistroPlanta.timestamp))
+                .all())
+            fechas_con_registro = []
+            for (dia,) in dias_rows:
+                try:
+                    fechas_con_registro.append(dia.isoformat())
+                except AttributeError:
+                    fechas_con_registro.append(str(dia))
+        except Exception:
+            fechas_con_registro = []
+
+        return render_template('reporte_variaciones_tanques.html',
+                               nombre=session.get('nombre'),
+                               desde=desde.isoformat() if desde else '',
+                               hasta=hasta.isoformat() if hasta else '',
+                               series_por_tanque=series,
+                               today_iso=date.today().isoformat(),
+                               fechas_con_registro=fechas_con_registro)
+    except Exception as e:
+        app.logger.error(f"Error en reporte_variaciones_tanques: {e}")
+        flash(f"Ocurrió un error al generar el reporte: {e}", 'danger')
+        # Fallback a rango por defecto
+    return render_template('reporte_variaciones_tanques.html',
+                   nombre=session.get('nombre'),
+                   desde='',
+                   hasta='',
+                   series_por_tanque={},
+                   today_iso=date.today().isoformat(),
+                   fechas_con_registro=[])
 @login_required
 @app.route('/reporte_planta')
 def reporte_planta():
@@ -1399,11 +1513,27 @@ def reporte_planta():
         )
 
     # 4. Renderizamos la plantilla con los datos ya ordenados
+    # Fechas con registro para colorear
+    try:
+        dias_rows = (db.session
+            .query(func.date(RegistroPlanta.timestamp).label('dia'))
+            .group_by(func.date(RegistroPlanta.timestamp))
+            .all())
+        fechas_con_registro = []
+        for (dia,) in dias_rows:
+            try:
+                fechas_con_registro.append(dia.isoformat())
+            except AttributeError:
+                fechas_con_registro.append(str(dia))
+    except Exception:
+        fechas_con_registro = []
+
     return render_template("reporte_planta.html", 
                            datos_planta_para_js=datos_planta_js,
                            fecha_actualizacion_info=fecha_actualizacion_info,
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
-                           today_iso=date.today().isoformat())
+                           today_iso=date.today().isoformat(),
+                           fechas_con_registro=fechas_con_registro)
 
 
 @login_required
@@ -3074,6 +3204,90 @@ def exportar_excel(nombre_reporte):
             registros_db = db.session.query(RegistroBarcazaBita).join(subquery, (RegistroBarcazaBita.tk == subquery.c.tk) & (RegistroBarcazaBita.timestamp == subquery.c.max_timestamp)).all()
             columnas = ["tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
 
+    # --- Lógica para Variaciones de Tanques (serie diaria) ---
+    elif nombre_reporte == 'variaciones':
+        start_dt = None
+        end_dt = None
+        try:
+            if filtro_tipo == 'dia' and valor:
+                d = date.fromisoformat(valor)
+                start_dt = datetime.combine(d, time.min)
+                end_dt = datetime.combine(d, time.max)
+            elif filtro_tipo == 'mes' and valor:
+                ano, mes = map(int, valor.split('-'))
+                ini = date(ano, mes, 1)
+                fin = (ini + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(ini, time.min)
+                end_dt = datetime.combine(fin, time.max)
+            elif filtro_tipo == 'trimestre' and valor:
+                ano_str, q_str = valor.split('-Q')
+                ano, trimestre = int(ano_str), int(q_str)
+                mes_ini = (trimestre - 1) * 3 + 1
+                mes_fin = trimestre * 3
+                ini = date(ano, mes_ini, 1)
+                fin = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(ini, time.min)
+                end_dt = datetime.combine(fin, time.max)
+            elif filtro_tipo == 'anual' and valor:
+                ano = int(valor)
+                ini = date(ano, 1, 1)
+                fin = date(ano, 12, 31)
+                start_dt = datetime.combine(ini, time.min)
+                end_dt = datetime.combine(fin, time.max)
+        except Exception:
+            start_dt = None
+            end_dt = None
+
+        fecha_dia = func.date(RegistroPlanta.timestamp)
+        subq = db.session.query(func.max(RegistroPlanta.id).label('max_id'))
+        if start_dt:
+            subq = subq.filter(RegistroPlanta.timestamp >= start_dt)
+        if end_dt:
+            subq = subq.filter(RegistroPlanta.timestamp <= end_dt)
+        subq = subq.group_by(RegistroPlanta.tk, fecha_dia).subquery()
+
+        registros_series = (db.session.query(RegistroPlanta)
+                            .filter(RegistroPlanta.id.in_(subq))
+                            .order_by(RegistroPlanta.tk.asc(), RegistroPlanta.timestamp.asc())
+                            .all())
+
+        # Organizar por tanque y fecha y calcular variaciones
+        por_tanque = {}
+        for r in registros_series:
+            if not r.tk:
+                continue
+            dia = r.timestamp.date()
+            por_tanque.setdefault(r.tk, []).append({
+                'fecha': dia.isoformat(),
+                'producto': r.producto or '',
+                'max_cap': float(r.max_cap or 0),
+                'bls_60': float(r.bls_60 or 0)
+            })
+
+        filas = []
+        for tk, lista in por_tanque.items():
+            lista.sort(key=lambda x: x['fecha'])
+            prev = None
+            for item in lista:
+                bls = item['bls_60']
+                delta = None if prev is None else round(bls - prev, 2)
+                filas.append({
+                    'fecha': item['fecha'],
+                    'tk': tk,
+                    'producto': item['producto'],
+                    'max_cap': item['max_cap'],
+                    'bls_60': bls,
+                    'variacion': delta
+                })
+                prev = bls
+
+        if not filas:
+            flash("No hay datos para exportar con el filtro seleccionado.", "warning")
+            return redirect(request.referrer or url_for('reporte_variaciones_tanques'))
+
+        registros = filas
+        columnas = ["fecha", "tk", "producto", "max_cap", "bls_60", "variacion"]
+
     # --- Lógica de filtrado para Tránsito (usa la columna `fecha` que es texto) ---
     elif nombre_reporte == 'transito':
         query = db.session.query(RegistroTransito)
@@ -3121,6 +3335,222 @@ def exportar_excel(nombre_reporte):
         as_attachment=True,
         download_name=filename
     )
+
+@login_required
+@app.route('/descargar-reporte-variaciones-pdf')
+def descargar_reporte_variaciones_pdf():
+    filtro_tipo = request.args.get('filtro_tipo', 'mes')
+    valor = request.args.get('valor')
+
+    # Determinar rango
+    start_dt = None
+    end_dt = None
+    periodo_str = "General"
+    try:
+        if filtro_tipo == 'dia' and valor:
+            d = date.fromisoformat(valor)
+            start_dt = datetime.combine(d, time.min)
+            end_dt = datetime.combine(d, time.max)
+            periodo_str = f"del día {d.strftime('%d/%m/%Y')}"
+        elif filtro_tipo == 'mes' and valor:
+            ano, mes = map(int, valor.split('-'))
+            ini = date(ano, mes, 1)
+            fin = (ini + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            start_dt = datetime.combine(ini, time.min)
+            end_dt = datetime.combine(fin, time.max)
+            periodo_str = f"del mes de {ini.strftime('%B de %Y')}"
+        elif filtro_tipo == 'trimestre' and valor:
+            ano_str, q_str = valor.split('-Q')
+            ano, trimestre = int(ano_str), int(q_str)
+            mes_ini = (trimestre - 1) * 3 + 1
+            mes_fin = trimestre * 3
+            ini = date(ano, mes_ini, 1)
+            fin = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            start_dt = datetime.combine(ini, time.min)
+            end_dt = datetime.combine(fin, time.max)
+            periodo_str = f"del Trimestre {trimestre} de {ano}"
+        elif filtro_tipo == 'anual' and valor:
+            ano = int(valor)
+            ini = date(ano, 1, 1)
+            fin = date(ano, 12, 31)
+            start_dt = datetime.combine(ini, time.min)
+            end_dt = datetime.combine(fin, time.max)
+            periodo_str = f"del Año {ano}"
+    except Exception:
+        start_dt = None
+        end_dt = None
+
+    # Query: último registro por día y tanque dentro del rango
+    fecha_dia = func.date(RegistroPlanta.timestamp)
+    subq = db.session.query(func.max(RegistroPlanta.id).label('max_id'))
+    if start_dt:
+        subq = subq.filter(RegistroPlanta.timestamp >= start_dt)
+    if end_dt:
+        subq = subq.filter(RegistroPlanta.timestamp <= end_dt)
+    subq = subq.group_by(RegistroPlanta.tk, fecha_dia).subquery()
+
+    registros_series = (db.session.query(RegistroPlanta)
+                        .filter(RegistroPlanta.id.in_(subq))
+                        .order_by(RegistroPlanta.tk.asc(), RegistroPlanta.timestamp.asc())
+                        .all())
+
+    if not registros_series:
+        flash("No hay datos para generar el PDF con el filtro seleccionado.", "warning")
+        return redirect(url_for('reporte_variaciones_tanques'))
+
+    # Organizar por tanque y calcular deltas
+    por_tanque = {}
+    for r in registros_series:
+        tk = r.tk
+        if not tk:
+            continue
+        dia = r.timestamp.date().isoformat()
+        por_tanque.setdefault(tk, []).append({
+            'fecha': dia,
+            'producto': r.producto or '',
+            'max_cap': float(r.max_cap or 0),
+            'bls_60': float(r.bls_60 or 0)
+        })
+
+    for tk in list(por_tanque.keys()):
+        por_tanque[tk].sort(key=lambda x: x['fecha'])
+        prev = None
+        for item in por_tanque[tk]:
+            bls = item['bls_60']
+            item['variacion'] = None if prev is None else round(bls - prev, 2)
+            if item['variacion'] is None:
+                item['tipo'] = '—'
+            elif item['variacion'] > 0:
+                item['tipo'] = 'Suma'
+            elif item['variacion'] < 0:
+                item['tipo'] = 'Descarga'
+            else:
+                item['tipo'] = 'Sin cambio'
+            prev = bls
+
+    # Orden sugerido
+    orden = ['TK-109','TK-110','TK-102','TK-01','TK-02']
+    tanques_ordenados = sorted(por_tanque.keys(), key=lambda k: (orden.index(k) if k in orden else 999, k))
+
+    # Calcular estadísticas por tanque y globales
+    stats_por_tanque = {}
+    total_bls = 0.0
+    total_suma = 0.0
+    total_descarga = 0.0
+    for tk in tanques_ordenados:
+        lista = por_tanque.get(tk, [])
+        if not lista:
+            continue
+        last_bls = float(lista[-1].get('bls_60') or 0)
+        producto = next((it.get('producto') for it in lista if (it.get('producto') or '').strip()), '')
+        cap = next((float(it.get('max_cap') or 0) for it in lista if float(it.get('max_cap') or 0) > 0), 0.0)
+        suma = 0.0
+        descarga = 0.0
+        for it in lista:
+            v = it.get('variacion')
+            if isinstance(v, (int, float)):
+                if v > 0: suma += v
+                elif v < 0: descarga += abs(v)
+        stats_por_tanque[tk] = {
+            'producto': producto,
+            'max_cap': cap,
+            'last_bls': last_bls,
+            'suma': round(suma, 2),
+            'descarga': round(descarga, 2)
+        }
+        total_bls += last_bls
+        total_suma += suma
+        total_descarga += descarga
+
+    resumen_global = {
+        'total_tanques': len(tanques_ordenados),
+        'total_bls': round(total_bls, 2),
+        'total_suma': round(total_suma, 2),
+        'total_descarga': round(total_descarga, 2)
+    }
+
+    # Generar gráficos (Matplotlib) para cada tanque con estilo y etiquetas de volumen
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    import io, base64
+    charts_map = {}
+    for tk in tanques_ordenados:
+        lista = por_tanque.get(tk, [])
+        if not lista:
+            continue
+        fechas = [it['fecha'] for it in lista]
+        bls = [float(it['bls_60'] or 0) for it in lista]
+        cap = next((float(it.get('max_cap') or 0) for it in lista if float(it.get('max_cap') or 0) > 0), 0.0)
+        # Usar eje categórico controlado para poder anotar fácilmente
+        xs = list(range(len(fechas)))
+        fig, ax = plt.subplots(figsize=(8.5, 3.3))
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('#f8fafc')
+        # Línea principal estilo "despachos"
+        ax.plot(xs, bls, color='#4e73df', linewidth=2, marker='o', markersize=3.5,
+                markerfacecolor='#4e73df', markeredgecolor='white', markeredgewidth=0.8)
+        if cap and cap > 0:
+            ax.plot(xs, [cap]*len(xs), color='#6c757d', linestyle='--', linewidth=1)
+        # Ejes y grid
+        ax.set_xlabel('Fecha', color='#6c757d', fontsize=9)
+        ax.set_ylabel('BLS @60', color='#6c757d', fontsize=9)
+        ax.grid(True, axis='y', linestyle=':', color='#bfc7d1', alpha=0.6)
+        for spine in ax.spines.values():
+            spine.set_color('#e0e5ec')
+        ax.tick_params(axis='x', colors='#6c757d', labelsize=8)
+        ax.tick_params(axis='y', colors='#6c757d', labelsize=8)
+        ax.set_xticks(xs)
+        ax.set_xticklabels(fechas, rotation=45, ha='right')
+        # Etiquetas de volumen sobre cada punto
+        for i, y in enumerate(bls):
+            try:
+                label = f"{int(round(y)):,}".replace(',', '.')
+            except Exception:
+                label = f"{y:.0f}"
+            ax.annotate(label, (xs[i], y), textcoords='offset points', xytext=(0, 6),
+                        ha='center', va='bottom', fontsize=7.5, color='#224abe',
+                        bbox=dict(boxstyle='round,pad=0.18', fc='white', ec='none', alpha=0.85))
+        plt.tight_layout()
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        charts_map[tk] = base64.b64encode(buf.read()).decode('utf-8')
+
+    # Cargar logo corporativo (opcional)
+    logo_base64 = None
+    logo_mime = 'image/jpeg'
+    try:
+        logo_candidates = ['Logo_de_empresa.jpeg', 'Conquers_4_Logo.png', 'logo.jpeg']
+        for fname in logo_candidates:
+            logo_path = os.path.join(current_app.root_path, 'static', fname)
+            if os.path.exists(logo_path):
+                import base64 as _b64
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = _b64.b64encode(f.read()).decode('utf-8')
+                if fname.lower().endswith('.png'):
+                    logo_mime = 'image/png'
+                break
+    except Exception:
+        logo_base64 = None
+
+    # Renderizar plantilla PDF con estilo tipo despachos
+    html_para_pdf = render_template('reportes_pdf/variaciones_tanques_pdf.html',
+                                    por_tanque=por_tanque,
+                                    tanques_ordenados=tanques_ordenados,
+                                    charts_map=charts_map,
+                                    stats_por_tanque=stats_por_tanque,
+                                    resumen_global=resumen_global,
+                                    logo_base64=logo_base64,
+                                    logo_mime=logo_mime,
+                                    periodo_str=periodo_str,
+                                    fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'))
+
+    pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
+    return Response(pdf,
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment;filename=reporte_variaciones_tanques.pdf'})
 
 @login_required
 @app.route('/descargar-reporte-planta-pdf')

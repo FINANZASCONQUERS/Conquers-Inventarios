@@ -453,7 +453,7 @@
                     <div class="col-md-4">
                         <form method="GET" action="{{ url_for('reporte_planta') }}" class="h-100">
                             <div class="form-floating h-100">
-                                <input type="date" class="form-control border-0 bg-light h-100" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}">
+                                <input type="text" class="form-control border-0 bg-light h-100" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
                                 <label for="fecha_filtro">Fecha del reporte</label>
                             </div>
                             <div class="d-flex gap-2 mt-2">
@@ -465,6 +465,12 @@
                                 </a>
                             </div>
                         </form>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col d-flex align-items-center gap-3 small text-muted">
+                        <span class="legend-dot" style="--dot-color:#198754"></span> Días con registro
+                        <span class="legend-dot" style="--dot-color:#adb5bd"></span> Días sin registro
                     </div>
                 </div>
             </div>
@@ -481,8 +487,9 @@
         </div>
     </div>
 
+    <script id="datos-planta" type="application/json">{{ datos_planta_para_js | default('[]') | tojson }}</script>
     <script>
-        const datosPlanta = {{ datos_planta_para_js | default('[]') | tojson }};
+        const datosPlanta = JSON.parse(document.getElementById('datos-planta').textContent || '[]');
 
         // Elementos del DOM
         const contenedorTanques = document.getElementById("contenedor-tanques");
@@ -763,8 +770,45 @@
 
         // Inicializar
         document.addEventListener("DOMContentLoaded", () => {
+            // Calendario con colores (Flatpickr)
+            const input = document.getElementById('fecha_filtro');
+            if (input) {
+                const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
+                const setFechas = new Set(fechasConRegistro);
+                const addCss = (href) => { const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); };
+                const addJs = (src, cb) => { const s=document.createElement('script'); s.src=src; s.onload=cb; document.body.appendChild(s); };
+                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
+                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
+                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/monthSelect/style.css');
+                addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
+                    flatpickr(input, {
+                        dateFormat: 'Y-m-d',
+                        defaultDate: input.value || '{{ today_iso }}',
+                        allowInput: true,
+                        onDayCreate: function(dObj, dStr, fp, dayElem) {
+                            const dateStr = dayElem.dateObj.toISOString().slice(0,10);
+                            dayElem.classList.add('fp-hint-day');
+                            if (setFechas.has(dateStr)) {
+                                dayElem.classList.add('fp-day-con-registro');
+                                dayElem.setAttribute('title','Con registro');
+                            } else {
+                                dayElem.classList.add('fp-day-sin-registro');
+                                dayElem.setAttribute('title','Sin registro');
+                            }
+                        }
+                    });
+                });
+            }
             cargarFiltros();
             filtrar();
         });
     </script>
+    <style>
+    .flatpickr-calendar .flatpickr-day.fp-hint-day { position: relative; }
+    .flatpickr-calendar .flatpickr-day.fp-day-con-registro { background: rgba(25, 135, 84, 0.2); color: #198754; border-color: rgba(25,135,84,0.45); }
+    .flatpickr-calendar .flatpickr-day.fp-day-sin-registro { background: rgba(173,181,189,0.25); color: #6c757d; }
+    .flatpickr-calendar .flatpickr-day.selected { background: #0b8552; border-color: #0b8552; color: #fff; }
+    .flatpickr-calendar .flatpickr-day.today { border-color: #0b8552; }
+    .legend-dot { width:10px; height:10px; border-radius:50%; background: var(--dot-color); display:inline-block; }
+    </style>
     {% endblock %}
