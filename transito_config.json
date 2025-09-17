@@ -6,7 +6,10 @@
       "Dorotea": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
       "Tulipan": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
       "Acites": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
-      "Alberta": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"}
+      "Alberta": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "RCE - TAPIR": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Opon": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"},
+      "Araguaney": {"productos": ["Crudo Refinable"], "auto_select_product": "Crudo Refinable"}
     }
   },
   "EDSM": {
