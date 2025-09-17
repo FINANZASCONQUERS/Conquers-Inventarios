@@ -6364,6 +6364,10 @@ def upload_programacion_excel():
                         val = None
                     datos[campo] = val
             # Defaults
+            # Si no viene fecha_programacion pero sí fecha_despacho, usar esa (registros históricos)
+            if not datos.get('fecha_programacion') and datos.get('fecha_despacho'):
+                datos['fecha_programacion'] = datos['fecha_despacho']
+            # Si aún no tenemos fecha_programacion, último recurso: hoy
             if not datos.get('fecha_programacion'):
                 datos['fecha_programacion'] = hoy
             if datos.get('galones') and not datos.get('barriles'):
