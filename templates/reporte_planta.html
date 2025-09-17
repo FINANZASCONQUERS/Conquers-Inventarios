@@ -363,12 +363,8 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if session.rol == 'admin' or 'planta' in session.area %}
                     <div class="col-12 col-lg-5">
                         <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                            <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
-                            </a>
                             <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-outline-primary d-flex align-items-center">
                                 <i class="bi bi-graph-up-arrow me-2"></i>Variación por Tanque
                             </a>
@@ -383,9 +379,13 @@
                                     <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
                                 </ul>
                             </div>
+                            {% if session.rol == 'admin' or 'planta' in session.area %}
+                            <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
+                                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
 
