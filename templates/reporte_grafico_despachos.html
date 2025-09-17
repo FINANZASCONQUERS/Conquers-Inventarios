@@ -136,13 +136,23 @@
                             <a class="btn btn-outline-primary {% if tipo!='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='bar') }}">Barras</a>
                             <a class="btn btn-outline-primary {% if tipo=='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='pie') }}">Donut</a>
                         </div>
+                        <div class="d-flex align-items-center gap-1 ms-1" id="zoomControls">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
+                                <button type="button" class="btn btn-outline-secondary" id="zoomOutBtn" title="Alejar">-</button>
+                                <span class="btn btn-light disabled px-2" id="zoomPct" style="min-width:64px;">100%</span>
+                                <button type="button" class="btn btn-outline-secondary" id="zoomInBtn" title="Acercar">+</button>
+                                <button type="button" class="btn btn-outline-secondary" id="zoomResetBtn" title="Restablecer"><i class="fas fa-undo"></i></button>
+                                <button type="button" class="btn btn-outline-secondary" id="zoomFsBtn" title="Pantalla completa"><i class="fas fa-expand"></i></button>
+                            </div>
+                            <input type="range" class="form-range ms-2" id="zoomRange" min="50" max="300" step="10" value="100" style="width:160px;" />
+                        </div>
                         <button class="btn btn-success btn-sm" onclick="downloadChart()"><i class="fas fa-image me-1"></i>PNG</button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12">
-                            <div class="chart-area mb-3 border rounded bg-light p-3 position-relative">
+                            <div class="chart-area mb-3 border rounded bg-light p-3 position-relative" id="chartArea" title="Usa Ctrl + rueda del mouse para hacer zoom">
                                 {% set altura_bar = (datos_tabla|length * 55 + 240) if datos_tabla|length>8 else 820 %}
                                 <img src="data:image/png;base64,{{ grafico_base64 }}" class="w-100 grafico-img {% if tipo=='pie' %}grafico-pie{% else %}grafico-bar{% endif %}" alt="Gráfico de Despachos" id="chartImage" data-altura-bar="{{ altura_bar }}" />
                                 <div class="position-absolute top-0 end-0 m-2">
@@ -198,6 +208,75 @@ document.addEventListener('DOMContentLoaded', () => {
     const mesInput = document.getElementById('mes');
     const fi = document.getElementById('fecha_inicio');
     const ff = document.getElementById('fecha_fin');
+    const img = document.getElementById('chartImage');
+    const chartArea = document.getElementById('chartArea');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const zoomResetBtn = document.getElementById('zoomResetBtn');
+    const zoomFsBtn = document.getElementById('zoomFsBtn');
+    const zoomRange = document.getElementById('zoomRange');
+    const zoomPct = document.getElementById('zoomPct');
+    let scale = 1;
+    let naturalWidth = null;
+    function updateZoomUI(){
+        zoomPct && (zoomPct.textContent = Math.round(scale*100) + '%');
+        zoomRange && (zoomRange.value = Math.round(scale*100));
+    }
+    function applyScale(){
+        if(!img) return;
+        if(naturalWidth == null){ naturalWidth = img.naturalWidth || img.width; }
+        if(scale === 1){
+            img.classList.remove('zoom-mode');
+            img.style.removeProperty('max-width');
+            img.style.removeProperty('width');
+            img.style.removeProperty('height');
+        } else {
+            img.classList.add('zoom-mode');
+            img.style.maxWidth = 'none';
+            img.style.width = (naturalWidth * scale) + 'px';
+            img.style.height = 'auto';
+        }
+        updateZoomUI();
+    }
+    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+    if (chartArea) { chartArea.style.overflow = 'auto'; }
+    if (img) {
+        if (img.complete) { applyScale(); }
+        else { img.addEventListener('load', applyScale); }
+    }
+    // Ctrl + rueda del mouse para zoom con enfoque bajo el cursor
+    if (chartArea && img) {
+        chartArea.addEventListener('wheel', (e) => {
+            if (!(e.ctrlKey || e.metaKey)) return; // solo si mantiene Ctrl/Cmd
+            e.preventDefault();
+            const factor = e.deltaY < 0 ? 1.1 : 0.9;
+            const areaRect = chartArea.getBoundingClientRect();
+            const imgRect = img.getBoundingClientRect();
+            const relX = (e.clientX - imgRect.left + chartArea.scrollLeft) / imgRect.width;
+            const relY = (e.clientY - imgRect.top + chartArea.scrollTop) / imgRect.height;
+            scale = clamp(scale * factor, 0.5, 3);
+            applyScale();
+            const newW = (img.naturalWidth || img.width) * scale;
+            const newH = (img.naturalHeight || img.height) * scale;
+            chartArea.scrollLeft = relX * newW - (e.clientX - areaRect.left);
+            chartArea.scrollTop  = relY * newH - (e.clientY - areaRect.top);
+        }, { passive: false });
+    }
+    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { scale = clamp(scale - 0.1, 0.5, 3); applyScale(); });
+    if (zoomInBtn) zoomInBtn.addEventListener('click', () => { scale = clamp(scale + 0.1, 0.5, 3); applyScale(); });
+    if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => { scale = 1; applyScale(); });
+    if (zoomRange) zoomRange.addEventListener('input', (e) => { scale = clamp(e.target.value/100, 0.5, 3); applyScale(); });
+    if (zoomFsBtn && chartArea) {
+        zoomFsBtn.addEventListener('click', async () => {
+            try {
+                if (!document.fullscreenElement) {
+                    await chartArea.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch(err) { /* noop */ }
+        });
+    }
     if(mesInput){
         mesInput.addEventListener('input', () => {
             if(mesInput.value){
@@ -252,6 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
 {% block extra_css %}
 <style>
     img.grafico-img { object-fit: contain; width:100%; }
+    /* Cuando se activa el zoom, permitimos que la imagen crezca y se desplace */
+    img.grafico-img.zoom-mode { width:auto !important; max-width:none !important; }
+    .chart-area { overflow:auto; }
     img.grafico-bar { max-height: 820px; }
     img.grafico-pie { max-height: 1100px; }
     @media (min-width:1400px){
