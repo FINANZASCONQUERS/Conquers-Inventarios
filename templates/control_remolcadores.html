@@ -193,11 +193,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const totalHorasHtml = esUltimoEvento ? `<td class="total-horas">${r.total_horas || ''}</td>` : '<td></td>';
 
-    let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class="evento-actual"' : ''}>
+    let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class=\"evento-actual\"' : ''}>
         ${eventoAnteriorDropdown}
-        <td><input type="datetime-local" data-field="hora_inicio" class="form-control form-control-sm" value="${r.hora_inicio || ''}" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
+        <td><input type="text" data-field="hora_inicio" class="form-control form-control-sm input-hora-militar" value="${r.hora_inicio ? formatear24h(r.hora_inicio) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
         ${eventoActualDropdown}
-        <td><input type="datetime-local" data-field="hora_fin" class="form-control form-control-sm" value="${r.hora_fin || ''}" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
+        <td><input type="text" data-field="hora_fin" class="form-control form-control-sm input-hora-militar" value="${r.hora_fin ? formatear24h(r.hora_fin) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
         <td class="text-muted">${r.duracion || ''}</td>
         ${totalHorasHtml}
         ${cargaHtml}
@@ -206,8 +206,37 @@ document.addEventListener('DOMContentLoaded', function() {
             <button class="btn btn-sm btn-outline-danger btn-remove-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-times"></i></button>
         </td>
     </tr>`;
-    
     return filaHtml;
+// Formatea string tipo ISO a "YYYY-MM-DD HH:MM" en 24h
+function formatear24h(isoString) {
+    if (!isoString) return '';
+    // Si ya está en formato texto, solo retorna
+    if (/\d{4}-\d{2}-\d{2} [0-2]\d:[0-5]\d/.test(isoString)) return isoString;
+    // Si viene como "YYYY-MM-DDTHH:MM"
+    const match = isoString.match(/(\d{4}-\d{2}-\d{2})[T ]([0-2]\d):([0-5]\d)/);
+    if (!match) return isoString;
+    return `${match[1]} ${match[2]}:${match[3]}`;
+}
+
+// Validación para solo minutos múltiplos de 6 y formato correcto
+document.addEventListener('input', function(e) {
+    if (e.target.classList.contains('input-hora-militar')) {
+        const val = e.target.value;
+        // Validar formato general
+        const regex = /^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):([0-5][0-9])$/;
+        if (!regex.test(val)) {
+            e.target.setCustomValidity('Formato: YYYY-MM-DD HH:MM (24h)');
+            return;
+        }
+        // Validar minutos múltiplos de 6
+        const minutos = parseInt(val.slice(-2));
+        if (minutos % 6 !== 0) {
+            e.target.setCustomValidity('Los minutos deben ser múltiplo de 6 (00, 06, 12, ..., 54)');
+        } else {
+            e.target.setCustomValidity('');
+        }
+    }
+});
 }
 
     function renderizarGrupos(data) {
