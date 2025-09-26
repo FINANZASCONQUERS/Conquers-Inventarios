@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Reporte Trasiegos{% endblock %}
+{% block navbar_brand_text %}Reporte Trasiego TK → Barcaza{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0"><i class="bi bi-table"></i> Reporte de {{ fecha_seleccionada }}</h2>
+    <form class="d-flex gap-2" method="get">
+      <input class="form-control form-control-sm" type="date" name="fecha" value="{{ fecha_seleccionada }}">
+      <button class="btn btn-sm btn-outline-primary">Ver</button>
+      <a class="btn btn-sm btn-secondary" href="{{ url_for('trasiegos_page') }}">Registrar</a>
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm align-middle" style="background:#ffcc00;border-color:#b88c00">
+      <thead>
+        <tr class="text-center" style="background:#ffc107;font-weight:700">
+          <th style="min-width:150px">FECHA: {{ fecha_seleccionada }}</th>
+          {% for tk in columnas_tk %}
+            <th colspan="3">{{ tk }}</th>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <th colspan="3">{{ cb }}</th>
+          {% endfor %}
+        </tr>
+        <tr class="text-center" style="background:#ffcf33">
+          <th></th>
+          {% for tk in columnas_tk %}
+            <th>CM</th><th>MM</th><th>BBL NETO</th>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <th>CM</th><th>MM</th><th>BBL NETO</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:700">MEDIDA INICIAL</td>
+          {% for tk in columnas_tk %}
+            <td class="text-end">{{ datos_tk[tk].ini.cm or '' }}</td>
+            <td class="text-end">{{ datos_tk[tk].ini.mm or '' }}</td>
+            <td class="text-end">{{ datos_tk[tk].ini.bbl or '' }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td class="text-end">{{ datos_bar[cb].ini.cm or '' }}</td>
+            <td class="text-end">{{ datos_bar[cb].ini.mm or '' }}</td>
+            <td class="text-end">{{ datos_bar[cb].ini.bbl or '' }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">MEDIDA FINAL</td>
+          {% for tk in columnas_tk %}
+            <td class="text-end">{{ datos_tk[tk].fin.cm or '' }}</td>
+            <td class="text-end">{{ datos_tk[tk].fin.mm or '' }}</td>
+            <td class="text-end">{{ datos_tk[tk].fin.bbl or '' }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td class="text-end">{{ datos_bar[cb].fin.cm or '' }}</td>
+            <td class="text-end">{{ datos_bar[cb].fin.mm or '' }}</td>
+            <td class="text-end">{{ datos_bar[cb].fin.bbl or '' }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">TEMP</td>
+          {% for tk in columnas_tk %}
+            <td colspan="3" class="text-end">{{ datos_tk[tk].temp or '' }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td colspan="3" class="text-end">{{ datos_bar[cb].temp or '' }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">API</td>
+          {% for tk in columnas_tk %}
+            <td colspan="3" class="text-end">{{ datos_tk[tk].api or '' }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td colspan="3" class="text-end">{{ datos_bar[cb].api or '' }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">TRASIEGO SEGÚN TANQUE</td>
+          {% for tk in columnas_tk %}
+            <td colspan="3" class="text-end">{{ datos_tk[tk].trasiego }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td colspan="3" class="text-end">{{ datos_bar[cb].trasiego }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">TRASIEGO SEGÚN BARCAZA</td>
+          {% for tk in columnas_tk %}
+            <td colspan="3"></td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td colspan="3" class="text-end">{{ datos_bar[cb].trasiego }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <td style="font-weight:700">DIFERENCIA</td>
+          {% for tk in columnas_tk %}
+            <td colspan="3" class="text-end">{{ datos_tk[tk].trasiego and (-datos_tk[tk].trasiego) or '' }}</td>
+          {% endfor %}
+          {% for cb in columnas_bar %}
+            <td colspan="3" class="text-end">{{ datos_bar[cb].trasiego }}</td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="alert alert-info">Diferencia total (barcaza - tanque): <strong>{{ '%.2f'|format(diferencia_total) }}</strong></div>
+</div>
+{% endblock %}

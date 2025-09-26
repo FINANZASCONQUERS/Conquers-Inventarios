@@ -30,15 +30,19 @@
     <div class="card shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <label for="filtro_mes" class="form-label fw-semibold">Mes:</label>
+        <input type="month" class="form-control form-control-sm" id="filtro_mes">
+    </div>
+    <div class="col-md-3">
         <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
         <input type="date" class="form-control form-control-sm" id="fecha_inicio">
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
         <input type="date" class="form-control form-control-sm" id="fecha_fin">
     </div>
-    <div class="col-md-4 d-flex gap-2">
+    <div class="col-md-3 d-flex gap-2">
         <button id="btn-filtrar" class="btn btn-primary btn-sm w-100">
             <i class="fas fa-filter me-2"></i>Filtrar
         </button>
@@ -46,6 +50,22 @@
             <i class="fas fa-times me-2"></i>Limpiar
         </button>
     </div>
+<script>
+// Si el usuario selecciona un mes, limpia los campos de fecha
+document.addEventListener('DOMContentLoaded', function() {
+    const mesInput = document.getElementById('filtro_mes');
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_fin');
+    if (mesInput) {
+        mesInput.addEventListener('input', function() {
+            if (mesInput.value) {
+                fechaInicio.value = '';
+                fechaFin.value = '';
+            }
+        });
+    }
+});
+</script>
     </div>
         </div>
     </div>
@@ -144,13 +164,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function fetchAndRenderRemolcadores() {
         const fechaInicio = fechaInicioInput.value;
         const fechaFin = fechaFinInput.value;
+        const filtroMes = document.getElementById('filtro_mes').value;
 
         const params = new URLSearchParams();
-        if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-        if (fechaFin) params.append('fecha_fin', fechaFin);
-        
+        if (filtroMes) {
+            params.append('filtro_mes', filtroMes);
+        } else {
+            if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+            if (fechaFin) params.append('fecha_fin', fechaFin);
+        }
+
         const apiUrl = `/api/registros_remolcadores?${params.toString()}`;
-        
+
         contenedor.innerHTML = '<p class="text-center text-muted py-5">Cargando registros...</p>';
 
         fetch(apiUrl)
@@ -167,20 +192,15 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderizarFila(r, esUltimoEvento = false) {
     const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
     
-    const selectAnteriorHTML = eventoAnteriorOptions.map(opt => `<option value="${opt}" ${r.evento_anterior === opt ? 'selected' : ''}>${opt}</option>`).join('');
+    const datalistAnteriorId = 'eventoAnteriorList';
+    const datalistActualId = 'eventoActualList';
+    const datalistAnteriorHTML = `<datalist id="${datalistAnteriorId}">${eventoAnteriorOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
+    const datalistActualHTML = `<datalist id="${datalistActualId}">${eventoActualOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
     const eventoAnteriorDropdown = `<td>
-        <select class="form-select form-select-sm" data-field="evento_anterior" ${!esEditable('evento_anterior') ? 'disabled' : ''}>
-            <option value="">--</option>
-            ${selectAnteriorHTML}
-        </select>
+        <input type="text" class="form-control form-control-sm" data-field="evento_anterior" list="${datalistAnteriorId}" value="${r.evento_anterior || ''}" ${!esEditable('evento_anterior') ? 'readonly' : ''} autocomplete="off">${datalistAnteriorHTML}
     </td>`;
-
-    const selectActualHTML = eventoActualOptions.map(opt => `<option value="${opt}" ${r.evento_actual === opt ? 'selected' : ''}>${opt}</option>`).join('');
     const eventoActualDropdown = `<td>
-        <select class="form-select form-select-sm" data-field="evento_actual" ${!esEditable('evento_actual') ? 'disabled' : ''}>
-            <option value="">--</option>
-            ${selectActualHTML}
-        </select>
+        <input type="text" class="form-control form-control-sm" data-field="evento_actual" list="${datalistActualId}" value="${r.evento_actual || ''}" ${!esEditable('evento_actual') ? 'readonly' : ''} autocomplete="off">${datalistActualHTML}
     </td>`;
 
     const cargaSeleccionada = r.carga_estado || 'N/A';

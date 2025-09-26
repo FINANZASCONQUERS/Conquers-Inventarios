@@ -42,6 +42,9 @@
                     <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
                         <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                     </span>
+                    <button id="toggle-historial-btn" class="btn btn-outline-secondary btn-sm ms-2" type="button">
+                        <i class="fas fa-history me-1"></i> Ver historial completo
+                    </button>
                 </div>
             </div>
         </div>
@@ -148,6 +151,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const thead = document.querySelector('table thead');
     const btnAddRow = document.getElementById('btn-add-row');
 
+    // --- NUEVO: Botón para alternar historial ---
+    const toggleHistorialBtn = document.getElementById('toggle-historial-btn');
+    let mostrandoHistorialCompleto = false;
+
     const permissions = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -229,8 +236,12 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     let originalData = [];
 
     // --- FUNCIONES DE RENDERIZADO Y FILTRADO ---
-    function fetchAndRender() {
-        fetch("{{ url_for('handle_programacion') }}")
+    function fetchAndRender(historialCompleto = false) {
+        let url = "{{ url_for('handle_programacion') }}";
+        if (historialCompleto) {
+            url += '?all=1';
+        }
+        fetch(url)
             .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
             .then(data => {
                 originalData = data;
@@ -279,7 +290,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
         const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho'].includes(col);
         const finalEditable = isEditable && !refineriaBlocked;
-                const lockBadge = '<div class="lock-indicator position-absolute top-0 start-0 px-1 bg-warning text-dark small" contenteditable="false" style="font-size:0.6rem; display:none; z-index:5; border-bottom-right-radius:4px; pointer-events:none; user-select:none; line-height:1; white-space:nowrap;"></div>';
+                const lockBadge = '';
         if (config.type === 'datalist' && finalEditable) {
                     rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
                                     ${lockBadge}
@@ -289,9 +300,9 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 } else {
                     // Usar un contenedor interno editable para que el badge quede fuera del rango editable
                     if(finalEditable){
-                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${lockBadge}<span class="cell-editor" contenteditable="true">${formatCellValue(value, config)}</span></td>`;
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true">${formatCellValue(value, config)}</span></td>`;
                     } else {
-                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${lockBadge}${formatCellValue(value, config)}</td>`;
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
                     }
                 }
             });
@@ -372,23 +383,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             const barrilesValue = galonesValue / 42;
             barrilesCell.textContent = barrilesValue.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
-        // Toggle propio badge según contenido (no modifica el texto de la celda)
-        const badge = cell.querySelector('.lock-indicator');
-        if(badge){
-            const input = cell.querySelector('input.editable-input');
-            const span = cell.querySelector('.cell-editor');
-            const val = input ? input.value : (span ? span.textContent : cell.textContent);
-            if(val.trim().length===0){
-                if(badge.textContent===userName){
-                    badge.style.display='none';
-                    badge.textContent='';
-                }
-            } else if(badge.textContent===userName){
-                badge.style.display='block';
-            }
-        }
-    // Enviar edición en vivo con debounce
-    debouncedLiveEdit(cell);
+        // ...existing code...
     });
     
     tbody.addEventListener('blur', function(e) {
@@ -461,73 +456,9 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     if (badge){ setTimeout(()=>{ if(!td.contains(document.activeElement)) badge.style.display='none'; },600); }
     }
 
-    // Colaboración en tiempo real: locks + live edits
-    function refreshCollab(){
-        // Locks
-        fetch('/api/programacion/locks').then(r=>r.json()).then(lista=>{
-            tbody.querySelectorAll('.lock-indicator').forEach(b=>{ b.style.display='none'; });
-            lista.forEach(l=>{
-                const td = tbody.querySelector(`tr[data-id="${l.registro_id}"] td[data-field="${l.campo}"]`);
-                if(!td) return;
-                const badge = td.querySelector('.lock-indicator');
-                if(!badge) return;
-                // Si es mi propio lock y la celda está vacía, no mostrar
-                if(l.usuario === userName){
-                    const input = td.querySelector('input.editable-input');
-                    const val = input ? input.value : td.textContent;
-                    if(!val.trim()) return;
-                }
-                badge.style.display='block';
-                badge.textContent = l.usuario;
-            });
-        }).catch(()=>{});
-        // Live edits
-        fetch('/api/programacion/live_edits').then(r=>r.json()).then(resp=>{
-            if(!resp.edits) return;
-            resp.edits.forEach(e=>{
-                const td = tbody.querySelector(`tr[data-id="${e.registro_id}"] td[data-field="${e.campo}"]`);
-                if(!td) return;
-                const active = document.activeElement;
-                if(td.contains(active)) return; // evitar sobrescribir mientras edita local
-                const input = td.querySelector('input.editable-input');
-                const span = td.querySelector('.cell-editor');
-                if(input){ input.value = e.valor; }
-                else if(span){ span.textContent = e.valor; }
-                // Mostrar badge con usuario si llega live edit y no hay lock visible
-                const badge = td.querySelector('.lock-indicator');
-                if(badge && e.valor && !td.contains(document.activeElement)){
-                    badge.style.display='block';
-                    if(!badge.textContent) badge.textContent = e.usuario || 'Editando';
-                }
-            });
-        }).catch(()=>{});
-    }
-    setInterval(refreshCollab, 2500);
+    // ...eliminada colaboración en tiempo real...
 
-    function sendLiveEdit(td){
-        if(!td) return;
-        const row = td.closest('tr');
-        const registroId = row.dataset.id;
-        const field = td.dataset.field;
-        if(!field) return;
-        const input = td.querySelector('input.editable-input');
-        const valor = input ? input.value : td.textContent;
-        fetch('/api/programacion/live_edit', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ registro_id: registroId, campo: field, valor })
-        }).catch(()=>{});
-    }
-
-    // Debounce para reducir llamadas por tecleo rápido
-    const liveEditTimers = new Map();
-    function debouncedLiveEdit(td){
-        const row = td.closest('tr');
-        if(!row) return;
-        const key = row.dataset.id + ':' + td.dataset.field;
-        if(liveEditTimers.has(key)) clearTimeout(liveEditTimers.get(key));
-        liveEditTimers.set(key, setTimeout(()=>{ sendLiveEdit(td); liveEditTimers.delete(key); }, 350));
-    }
+    // ...eliminada funcionalidad de live edit...
 
     tbody.addEventListener('click', function(e) {
         const printButton = e.target.closest('.btn-print-guide');
@@ -700,6 +631,17 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
 
     // --- CARGA INICIAL ---
     fetchAndRender();
+
+    // --- Botón para alternar historial ---
+    toggleHistorialBtn.addEventListener('click', function() {
+        mostrandoHistorialCompleto = !mostrandoHistorialCompleto;
+        fetchAndRender(mostrandoHistorialCompleto);
+        if (mostrandoHistorialCompleto) {
+            toggleHistorialBtn.innerHTML = '<i class="fas fa-list-ol me-1"></i> Ver solo recientes';
+        } else {
+            toggleHistorialBtn.innerHTML = '<i class="fas fa-history me-1"></i> Ver historial completo';
+        }
+    });
 
         // --- SUBIDA EXCEL ---
         const btnUploadExcel = document.getElementById('btn-upload-excel');

@@ -295,10 +295,12 @@
     </div>
     <div class="fila" style="position: relative;">
       <div class="campo observaciones">
-        <textarea class="sin-borde" style="height: 70%;"></textarea>
-        <div style="text-align: left; margin-top: 5px; height: 1.6cm;">
-          <strong>SELLOS:</strong> 
-          <input id="selloInput" type="text" style="width:22cm; height:1.6cm; text-align:left; -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield;">
+        <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+            <textarea class="sin-borde" style="height: 70%; padding-top: 18px;"></textarea>
+            <div style="margin-top:12px; display:flex; align-items:center; width:100%;">
+                <strong style="margin-right:8px;">SELLOS:</strong>
+                <input id="selloInput" type="text" style="flex:1; min-width:0; border:none; background:white; font-weight:bold; font-size:1.1em; text-align:left; outline:none; box-shadow:none; overflow:hidden; resize:none; -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield;">
+            </div>
         </div>
       </div>
     </div>

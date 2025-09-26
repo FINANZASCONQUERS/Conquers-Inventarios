@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Tablas de Aforo{% endblock %}
+{% block navbar_brand_text %}Tablas de Aforo{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-section-header shadow-sm mb-3">
+    <h2 class="h4 mb-0"><i class="bi bi-list-columns"></i> Administración de Tablas de Aforo</h2>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <form id="formUpload" class="row g-3" method="post" enctype="multipart/form-data" action="{{ url_for('aforos_upload') }}">
+        <div class="col-12 col-md-3">
+          <label class="form-label">Tipo</label>
+          <select name="tipo" class="form-select" required>
+            <option value="TK">TK (Planta)</option>
+            <option value="BARCAZA">Barcaza</option>
+            <option value="VCF">VCF (Tabla API6A)</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label">Nombre (opcional)</label>
+          <input class="form-control" name="nombre" placeholder="Si subes 1 hoja, puedes renombrarla aquí">
+          <div class="form-text">Si el archivo tiene varias hojas, se usará el nombre de cada hoja como identificador.</div>
+        </div>
+        <div class="col-12 col-md-4">
+          <label class="form-label">Archivo Excel (.xlsx)</label>
+          <input class="form-control" type="file" name="archivo_excel" accept=".xlsx" required>
+        </div>
+        <div class="col-12 col-md-6" id="parsearColsWrap" style="display:none">
+          <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" value="1" id="parsear_columnas" name="parsear_columnas">
+            <label class="form-check-label" for="parsear_columnas">
+              Dividir por columnas (varios tanques en una hoja)
+            </label>
+            <div class="form-text">Si una hoja trae LÁMINA y varias columnas de tanques, marca esta opción.</div>
+          </div>
+        </div>
+        <div class="col-12 col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" type="submit"><i class="bi bi-upload"></i> Subir</button>
+        </div>
+      </form>
+  <div id="uploadMsg" class="small mt-2"></div>
+  <ul id="uploadDetails" class="small mt-2"></ul>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Tablas cargadas</strong>
+      <div class="small text-muted">Haz clic en "Ver" para revisar filas</div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr><th>Tipo</th><th>Nombre</th><th>Actualizado</th><th>Usuario</th><th></th></tr>
+        </thead>
+        <tbody>
+          {% for t in tablas %}
+          <tr>
+            <td>{{ t.tipo }}</td>
+            <td>{{ t.nombre }}</td>
+            <td>{{ t.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>{{ t.usuario }}</td>
+            <td class="text-end">
+              <button class="btn btn-sm btn-outline-primary btn-preview" data-id="{{ t.id }}"><i class="bi bi-eye"></i> Ver</button>
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('aforos_download') }}?id={{ t.id }}"><i class="bi bi-download"></i></a>
+              <button class="btn btn-sm btn-outline-danger btn-delete" data-id="{{ t.id }}" data-nombre="{{ t.nombre }}" data-tipo="{{ t.tipo }}"><i class="bi bi-trash"></i></button>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted">Sin tablas cargadas</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Preview -->
+  <div class="modal fade" id="aforoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="aforoTitle">Vista previa de Aforo</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="small text-muted mb-2" id="aforoMeta"></div>
+          <div class="table-responsive" style="max-height:55vh">
+            <table class="table table-sm table-striped" id="aforoTable">
+              <thead><tr><th>CM</th><th>MM</th><th>BBL</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <a id="aforoDownload" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-download"></i> Descargar CSV</a>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById('formUpload');
+  const msg = document.getElementById('uploadMsg');
+  const selTipo = form?.querySelector('select[name="tipo"]');
+  const parsearWrap = document.getElementById('parsearColsWrap');
+  const toggleParsear = ()=>{
+    if(!selTipo) return;
+    parsearWrap.style.display = selTipo.value === 'BARCAZA' ? '' : 'none';
+  };
+  selTipo?.addEventListener('change', toggleParsear);
+  toggleParsear();
+  form?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    msg.textContent = '';
+    document.getElementById('uploadDetails').innerHTML = '';
+    const fd = new FormData(form);
+    try{
+      const res = await fetch(form.action, { method:'POST', body: fd });
+      const data = await res.json();
+      if(data.success){
+        msg.className = 'text-success small';
+        msg.textContent = data.message;
+        if(Array.isArray(data.detalles)){
+          const ul = document.getElementById('uploadDetails');
+          data.detalles.forEach(d=>{
+            const li=document.createElement('li'); li.textContent=d; ul.appendChild(li);
+          });
+        }
+        setTimeout(()=>window.location.reload(), 800);
+      } else {
+        msg.className = 'text-danger small';
+        msg.textContent = data.message || 'Error al subir';
+      }
+    }catch(err){
+      msg.className = 'text-danger small';
+      msg.textContent = 'Error de red: ' + err;
+    }
+  });
+
+  async function previewAforo(id){
+    try{
+      const url = `{{ url_for('aforos_get') }}?id=${encodeURIComponent(id)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if(!data.success) throw new Error(data.message||'Error');
+      const t = data.tabla;
+      document.getElementById('aforoTitle').textContent = `${t.tipo} · ${t.nombre}`;
+      document.getElementById('aforoMeta').textContent = `Modo: ${t.mode} · Filas estimadas: ${t.total_rows_est}`;
+      const tbody = document.querySelector('#aforoTable tbody');
+      const thead = document.querySelector('#aforoTable thead');
+      tbody.innerHTML = '';
+      // Si es VCF, mostrar columnas API, TEMP, VCF
+      if (t.tipo === 'VCF') {
+        thead.innerHTML = '<tr><th>API</th><th>TEMP</th><th>VCF</th></tr>';
+        (data.preview||[]).forEach(r=>{
+          const tr = document.createElement('tr');
+          let apiVal = '';
+          if (r.api !== undefined && r.api !== null) {
+            apiVal = r.api;
+          }
+          const tempVal = (r.temp !== undefined && r.temp !== null) ? r.temp : '';
+          const vcfVal = (r.vcf !== undefined && r.vcf !== null) ? r.vcf : '';
+          tr.innerHTML = `<td>${apiVal}</td><td>${tempVal}</td><td>${vcfVal}</td>`;
+          tbody.appendChild(tr);
+        });
+      } else {
+        thead.innerHTML = '<tr><th>CM</th><th>MM</th><th>BBL</th></tr>';
+        (data.preview||[]).forEach(r=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.cm}</td><td>${r.mm}</td><td>${Number(r.bbl).toFixed(2)}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+      const dl = document.getElementById('aforoDownload');
+      dl.href = `{{ url_for('aforos_download') }}?id=${encodeURIComponent(t.id)}`;
+      const modal = new bootstrap.Modal(document.getElementById('aforoModal'));
+      modal.show();
+    }catch(err){
+      alert('No fue posible cargar la vista previa: ' + err);
+    }
+  }
+
+  // Delegar eventos para botones de vista previa
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.btn-preview');
+    if(btn){
+      const id = btn.getAttribute('data-id');
+      if(id) previewAforo(id);
+    }
+    const del = e.target.closest('.btn-delete');
+    if(del){
+      const id = del.getAttribute('data-id');
+      const nombre = del.getAttribute('data-nombre');
+      const tipo = del.getAttribute('data-tipo');
+      if(!id) return;
+      if(confirm(`¿Eliminar la tabla ${tipo} · ${nombre}?`)){
+        fetch(`{{ url_for('aforos_delete') }}`,{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id: Number(id) })
+        }).then(r=>r.json()).then(d=>{
+          if(d.success){
+            window.location.reload();
+          }else{
+            alert(d.message||'No se pudo eliminar');
+          }
+        }).catch(err=>alert('Error: '+err));
+      }
+    }
+  });
+</script>
+{% endblock %}

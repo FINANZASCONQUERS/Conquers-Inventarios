@@ -47,6 +47,7 @@
                     <th>Talla/Medida</th>
                     <th class="text-center">Cantidad</th>
                     <th>Observaciones</th>
+                <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody id="historyTableBody">
@@ -110,11 +111,92 @@
                     <td>${a.item_talla || '-'}</td>
                     <td class="text-center">${a.cantidad_entregada}</td>
                     <td>${a.observaciones || '-'}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-warning me-1" onclick="openEditModal(${a.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDelete(${a.id})"><i class="fas fa-trash-alt"></i></button>
+                    </td>
                 </tr>
             `;
             tableBody.innerHTML += row;
         });
     }
+
+// Modal de edición (estructura básica)
+function openEditModal(id) {
+    const registro = allAssignments.find(a => a.id === id);
+    if (!registro) return;
+    // Aquí puedes abrir un modal y llenar los campos con los datos de 'registro'
+    Swal.fire({
+        title: 'Editar Entrega',
+        html: `
+            <input id="swal-input-fecha" class="swal2-input" type="date" value="${registro.fecha_entrega}">
+            <input id="swal-input-empleado" class="swal2-input" value="${registro.empleado_nombre}">
+            <input id="swal-input-item" class="swal2-input" value="${registro.item_nombre}">
+            <input id="swal-input-referencia" class="swal2-input" value="${registro.item_referencia || ''}">
+            <input id="swal-input-talla" class="swal2-input" value="${registro.item_talla || ''}">
+            <input id="swal-input-cantidad" class="swal2-input" type="number" value="${registro.cantidad_entregada}">
+            <input id="swal-input-observaciones" class="swal2-input" value="${registro.observaciones || ''}">
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            return {
+                fecha_entrega: document.getElementById('swal-input-fecha').value,
+                empleado_nombre: document.getElementById('swal-input-empleado').value,
+                item_nombre: document.getElementById('swal-input-item').value,
+                item_referencia: document.getElementById('swal-input-referencia').value,
+                item_talla: document.getElementById('swal-input-talla').value,
+                cantidad_entregada: document.getElementById('swal-input-cantidad').value,
+                observaciones: document.getElementById('swal-input-observaciones').value
+            };
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            // Llamar a la API para actualizar
+            fetch(`/api/epp/asignaciones/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(result.value)
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Error al actualizar');
+                return r.json();
+            })
+            .then(() => {
+                Swal.fire('Actualizado', 'El registro fue actualizado', 'success');
+                loadHistory();
+            })
+            .catch(e => Swal.fire('Error', e.message, 'error'));
+        }
+    });
+}
+
+function confirmDelete(id) {
+    Swal.fire({
+        title: '¿Eliminar entrega?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then(result => {
+        if (result.isConfirmed) {
+            fetch(`/api/epp/asignaciones/${id}`, {
+                method: 'DELETE'
+            })
+            .then(r => {
+                if (!r.ok) throw new Error('Error al eliminar');
+                return r.json();
+            })
+            .then(() => {
+                Swal.fire('Eliminado', 'El registro fue eliminado', 'success');
+                loadHistory();
+            })
+            .catch(e => Swal.fire('Error', e.message, 'error'));
+        }
+    });
+}
 
     function downloadHistory(format) {
         const empleado = document.getElementById('filtroEmpleado').value;

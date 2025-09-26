@@ -1,0 +1,939 @@
+{% extends "base.html" %}
+{% block title %}Trasiegos TK → Barcaza{% endblock %}
+{% block navbar_brand_text %}Trasiegos TK → Barcaza{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-section-header shadow-sm mb-3">
+    <h2 class="h4 mb-0"><i class="bi bi-arrow-left-right"></i> Registrar Trasiego</h2>
+  </div>
+
+  <form id="form-meta" class="card shadow-sm p-3 mb-4" method="post" onsubmit="return false;">
+    <div class="row g-3">
+      <div class="col-6 col-md-3">
+        <label class="form-label">Fecha</label>
+        <input type="date" name="fecha" id="selFecha" class="form-control" required>
+        <div class="form-text" id="fechaHelp" style="display:none">Fecha bloqueada por registro previo del TK.</div>
+      </div>
+      <div class="col-6 col-md-3 d-flex align-items-end gap-2">
+        <a href="#historial" class="btn btn-sm btn-outline-secondary">Ver Historial</a>
+        <a href="{{ url_for('reporte_trasiegos') }}" class="btn btn-sm btn-info">Ver Reporte</a>
+      </div>
+    </div>
+  </form>
+
+  <div class="row g-3">
+    <div class="col-12">
+      <form method="post" class="card shadow-sm p-3 mb-4" id="form-tk" data-allowed="{{ '1' if allowed_tk else '0' }}">
+        <input type="hidden" name="seccion" value="tk">
+        <input type="hidden" name="fecha" id="tkFecha">
+        <input type="hidden" name="origen_tk" id="tkOrigen">
+        <input type="hidden" name="destino_barcaza" id="tkBarcaza">
+        <input type="hidden" name="destino_compartimento" id="tkComp">
+        <div class="alert alert-secondary py-2 mb-3">Medidas del Tanque Origen</div>
+        <div class="row g-3 mb-3">
+          <div class="col-12">
+            <label class="form-label">TK Origen</label>
+            <select id="selTk" class="form-select" required></select>
+          </div>
+        </div>
+        <div class="row g-3">
+          <!-- Inicial: CM, MM, BBL Bruto, BBL Neto -->
+          <div class="col-6 col-md-3"><label class="form-label">CM Inicial</label><input name="tk_cm_inicial" id="tk_cm_ini" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">MM Inicial</label><input name="tk_mm_inicial" id="tk_mm_ini" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Bruto Inicial</label><input name="tk_bbl_bruto_inicial" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Neto Inicial</label><input name="tk_bbl_inicial" id="tk_bbl_ini" class="form-control" type="number" step="0.01"></div>
+          <!-- Final: CM, MM, BBL Bruto, BBL Neto -->
+          <div class="col-6 col-md-3"><label class="form-label">CM Final</label><input name="tk_cm_final" id="tk_cm_fin" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">MM Final</label><input name="tk_mm_final" id="tk_mm_fin" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Bruto Final</label><input name="tk_bbl_bruto_final" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Neto Final</label><input name="tk_bbl_final" id="tk_bbl_fin" class="form-control" type="number" step="0.01"></div>
+          <!-- Luego API/Temp y Notas -->
+          <div class="col-6 col-md-4"><label class="form-label">API</label><input name="tk_api" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-4">
+            <label class="form-label">Temperatura</label>
+            <div class="input-group">
+              <input name="tk_temp" id="tk_temp" class="form-control" type="number" step="0.1" placeholder="Temperatura">
+              <select id="tk_temp_unit" class="form-select" style="max-width:80px">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+              </select>
+            </div>
+            <div id="tk_temp_conv" class="form-text text-secondary" style="background:#eee; padding:2px 6px; border-radius:4px; margin-top:2px;"></div>
+          </div>
+          <div class="col-12"><label class="form-label">Notas TK</label><textarea name="tk_notas" class="form-control" rows="2"></textarea></div>
+          <div class="col-12"><hr class="my-2"></div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Caudal (BBL/h)</label>
+            <input name="tk_caudal_bbl_min" id="tk_caudal" class="form-control" type="number" step="0.01">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">Minutos de Ingreso</label>
+            <input name="tk_minutos_ingreso" id="tk_minutos" class="form-control" type="number" step="0.1">
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="form-label">BBL Ingreso (calc.)</label>
+            <input name="tk_bbl_ingreso" id="tk_bbling" class="form-control" type="number" step="0.01" readonly>
+          </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-success btn-submit-tk"><i class="bi bi-check2-square"></i> Guardar Tanque</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="col-12">
+      <form method="post" class="card shadow-sm p-3 mb-4" id="form-bar" data-allowed="{{ '1' if allowed_bar else '0' }}">
+        <input type="hidden" name="seccion" value="bar">
+        <input type="hidden" name="fecha" id="barFecha">
+        <input type="hidden" name="origen_tk" id="barOrigen">
+        <input type="hidden" name="destino_barcaza" id="barBarcaza">
+        <input type="hidden" name="destino_compartimento" id="barComp">
+        <div class="alert alert-secondary py-2 mb-3">Medidas de la Barcaza Destino</div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Barcaza Destino</label>
+            <select id="selBarcaza" class="form-select" required></select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Compartimento/TK Barcaza</label>
+            <select id="selComp" class="form-select"></select>
+          </div>
+        </div>
+        <div class="row g-3">
+          <!-- Inicial: CM, MM, BBL Bruto, BBL Neto -->
+          <div class="col-6 col-md-3"><label class="form-label">CM Inicial</label><input name="bar_cm_inicial" id="bar_cm_ini" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">MM Inicial</label><input name="bar_mm_inicial" id="bar_mm_ini" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Bruto Inicial</label><input name="bar_bbl_bruto_inicial" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Neto Inicial</label><input name="bar_bbl_inicial" id="bar_bbl_ini" class="form-control" type="number" step="0.01"></div>
+          <!-- Final: CM, MM, BBL Bruto, BBL Neto -->
+          <div class="col-6 col-md-3"><label class="form-label">CM Final</label><input name="bar_cm_final" id="bar_cm_fin" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">MM Final</label><input name="bar_mm_final" id="bar_mm_fin" class="form-control" type="number"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Bruto Final</label><input name="bar_bbl_bruto_final" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-3"><label class="form-label">BBL Neto Final</label><input name="bar_bbl_final" id="bar_bbl_fin" class="form-control" type="number" step="0.01"></div>
+          <!-- Luego API/Temp y Notas -->
+          <div class="col-6 col-md-4"><label class="form-label">API</label><input name="bar_api" class="form-control" type="number" step="0.01"></div>
+          <div class="col-6 col-md-4">
+            <label class="form-label">Temperatura</label>
+            <div class="input-group">
+              <input name="bar_temp" id="bar_temp" class="form-control" type="number" step="0.1" placeholder="Temperatura">
+              <select id="bar_temp_unit" class="form-select" style="max-width:80px">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+              </select>
+            </div>
+            <div id="bar_temp_conv" class="form-text text-secondary" style="background:#eee; padding:2px 6px; border-radius:4px; margin-top:2px;"></div>
+          </div>
+          <div class="col-12"><label class="form-label">Notas</label><textarea name="notas" class="form-control" rows="2"></textarea></div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-warning btn-submit-bar" id="btn-guardar-barcaza"><i class="bi bi-check2-square"></i> Guardar Barcaza</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 d-flex justify-content-center gap-3">
+      <button type="button" class="btn btn-primary btn-add-tk"><i class="bi bi-plus-circle"></i> Añadir Tanque</button>
+      <button type="button" class="btn btn-info btn-add-bar"><i class="bi bi-plus-circle"></i> Añadir Barcaza</button>
+      <button id="btn-guardar-todos" class="btn btn-success" style="display:none"><i class="bi bi-save"></i> Guardar todos</button>
+    </div>
+  </div>
+
+  <div class="card shadow-sm" id="historial">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Historial</strong>
+      <div class="d-flex gap-2 align-items-center">
+        <form class="d-flex gap-2" method="get">
+          <input class="form-control form-control-sm" type="date" name="desde" value="{{ desde }}">
+          <input class="form-control form-control-sm" type="date" name="hasta" value="{{ hasta }}">
+          <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        </form>
+        <a href="{{ url_for('reporte_trasiegos') }}" class="btn btn-sm btn-info ms-2"><i class="bi bi-file-earmark-bar-graph"></i> Ver reporte trasiegos</a>
+      </div>
+  <!-- El botón Guardar todos se mueve al bloque de formularios y se gestiona dinámicamente -->
+<script>
+function updateGuardarButton() {
+  // Contar todos los formularios de trasiego (TK y Barcaza)
+  const allForms = document.querySelectorAll('form.card');
+  const btnGuardarBarcaza = document.getElementById('btn-guardar-barcaza');
+  const btnGuardarTodos = document.getElementById('btn-guardar-todos');
+  if (!btnGuardarBarcaza || !btnGuardarTodos) return;
+  if (allForms.length > 1) {
+    // Ocultar botones individuales y mostrar "Guardar todos"
+    document.querySelectorAll('.btn-submit-tk, #btn-guardar-barcaza').forEach(btn => btn.style.display = 'none');
+    btnGuardarTodos.style.display = '';
+  } else {
+    // Mostrar botones individuales y ocultar "Guardar todos"
+    document.querySelectorAll('.btn-submit-tk').forEach(btn => btn.style.display = '');
+    btnGuardarBarcaza.style.display = '';
+    btnGuardarTodos.style.display = 'none';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  updateGuardarButton();
+  document.body.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-add-bar') || e.target.closest('.btn-add-bar') || e.target.classList.contains('btn-add-tk') || e.target.closest('.btn-add-tk')) {
+      setTimeout(updateGuardarButton, 100); // Esperar a que el DOM se actualice
+    }
+    if (e.target.classList.contains('btn-submit-bar') || e.target.closest('.btn-submit-bar')) {
+      setTimeout(updateGuardarButton, 100);
+    }
+  });
+});
+</script>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th><th>Origen TK</th><th>Barcaza</th><th>Comp.</th>
+            <th>TK API</th><th>BAR API</th>
+            <th>TK BBL Δ</th><th>Bar BBL Δ</th><th>Diferencia</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in trasiegos %}
+          {% set has_tk = ((r.tk_bbl_bruto_inicial is not none) and (r.tk_bbl_bruto_final is not none)) or ((r.tk_bbl_inicial is not none) and (r.tk_bbl_final is not none)) %}
+          {% set has_bar = (r.bar_bbl_inicial is not none) and (r.bar_bbl_final is not none) %}
+          <tr>
+            <td>{{ r.fecha }}</td>
+            <td>{{ r.origen_tk }}</td>
+            <td>{{ r.destino_barcaza }}</td>
+            <td>{{ r.destino_compartimento or '-' }}</td>
+            <td>{{ r.tk_api or '' }}</td>
+            <td>{{ r.bar_api or '' }}</td>
+            <td>{% if has_tk %}{{ '%.2f'|format(r.trasiego_segun_tanque or 0) }}{% else %}{% endif %}</td>
+            <td>{% if has_bar %}{{ '%.2f'|format(r.trasiego_segun_barcaza or 0) }}{% else %}{% endif %}</td>
+            <td class="fw-semibold">{% if has_tk and has_bar %}{{ '%.2f'|format(r.diferencia or 0) }}{% else %}Pendiente{% endif %}</td>
+            <td>
+              <form method="post" action="{{ url_for('eliminar_trasiego', id=r.id) }}" onsubmit="return confirm('¿Eliminar?')">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="10" class="text-center text-muted">Sin registros</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const selFecha = document.getElementById('selFecha');
+  const selTk = document.getElementById('selTk');
+  const selBarcaza = document.getElementById('selBarcaza');
+  const selComp = document.getElementById('selComp');
+  const tkForm = document.getElementById('form-tk');
+  const barForm = document.getElementById('form-bar');
+  const selFechaHelp = document.getElementById('fechaHelp');
+  const allowedTk = tkForm && tkForm.dataset.allowed === '1';
+  const allowedBar = barForm && barForm.dataset.allowed === '1';
+  let aforosTK = [];
+  let aforosBAR = [];
+
+  // Utility functions
+  function setToday() {
+    const today = new Date().toISOString().split('T')[0];
+    selFecha.value = today;
+  }
+
+  async function loadOptions() {
+    try {
+      const res = await fetch('{{ url_for("api_trasiegos_opciones") }}');
+      const data = await res.json();
+      if (data.success) {
+        // Load TK options
+        selTk.innerHTML = '<option value="">Seleccionar TK</option>';
+        data.tks.forEach(tk => {
+          const op = document.createElement('option');
+          op.value = tk;
+          op.textContent = tk;
+          selTk.appendChild(op);
+        });
+        // Load Barcaza options
+        selBarcaza.innerHTML = '<option value="">Seleccionar Barcaza</option>';
+        Object.keys(data.barcazas).forEach(bar => {
+          const op = document.createElement('option');
+          op.value = bar;
+          op.textContent = bar;
+          selBarcaza.appendChild(op);
+        });
+        // Store aforos
+        aforosTK = data.aforosTK || [];
+        aforosBAR = data.aforosBAR || [];
+        console.log('Aforos cargados - TK:', aforosTK, 'BAR:', aforosBAR);
+        // Fill compartimentos initially
+        fillCompartimentos(data);
+      }
+    } catch (err) {
+      console.error('Error loading options:', err);
+    }
+  }
+
+  // Sincroniza los campos ocultos SOLO para el formulario dado
+  function syncHiddenForForm(form) {
+    if (!form) return;
+    const fecha = form.querySelector('input[type="date"], select[name="fecha"]')?.value || selFecha.value;
+    const tk = form.querySelector('select[id^="selTk"]')?.value || selTk.value;
+    const bar = form.querySelector('select[id^="selBarcaza"]')?.value || selBarcaza.value;
+    const comp = form.querySelector('select[id^="selComp"]')?.value || selComp.value;
+    form.querySelectorAll('input[id*="Fecha"]').forEach(el => el.value = fecha);
+    form.querySelectorAll('input[id*="Origen"]').forEach(el => el.value = tk);
+    form.querySelectorAll('input[id*="Barcaza"]').forEach(el => el.value = bar);
+    form.querySelectorAll('input[id*="Comp"]').forEach(el => el.value = comp);
+  }
+
+  // Sincroniza todos los formularios (solo para compatibilidad, pero cada uno debe tener sus propios listeners)
+  function syncHidden() {
+    document.querySelectorAll('form.card').forEach(form => syncHiddenForForm(form));
+  }
+
+  async function checkFechaLockAndPrefill() {
+    const fecha = selFecha.value;
+    if (!fecha) return;
+    try {
+      const res = await fetch(`{{ url_for('api_trasiegos_verificar_fecha') }}?fecha=${encodeURIComponent(fecha)}`);
+      const data = await res.json();
+      if (data.locked) {
+        selFechaHelp.style.display = 'block';
+        selFecha.disabled = true;
+      } else {
+        selFechaHelp.style.display = 'none';
+        selFecha.disabled = false;
+      }
+      if (data.prefill) {
+        // Prefill TK data if exists
+        if (data.prefill.tk) {
+          const tkData = data.prefill.tk;
+          document.getElementById('tk_cm_ini').value = tkData.cm_inicial || '';
+          document.getElementById('tk_mm_ini').value = tkData.mm_inicial || '';
+          document.getElementById('tk_bbl_ini').value = tkData.bbl_inicial || '';
+          document.getElementById('tk_cm_fin').value = tkData.cm_final || '';
+          document.getElementById('tk_mm_fin').value = tkData.mm_final || '';
+          document.getElementById('tk_bbl_fin').value = tkData.bbl_final || '';
+          document.getElementById('tk_api').value = tkData.api || '';
+          document.getElementById('tk_temp').value = tkData.temp || '';
+          document.getElementById('tk_temp_unit').value = tkData.temp_unit || 'C';
+          document.getElementById('tk_caudal').value = tkData.caudal || '';
+          document.getElementById('tk_minutos').value = tkData.minutos || '';
+          document.getElementById('tk_bbling').value = tkData.bbl_ingreso || '';
+        }
+        // Prefill Bar data if exists
+        if (data.prefill.bar) {
+          const barData = data.prefill.bar;
+          document.getElementById('bar_cm_ini').value = barData.cm_inicial || '';
+          document.getElementById('bar_mm_ini').value = barData.mm_inicial || '';
+          document.getElementById('bar_bbl_ini').value = barData.bbl_inicial || '';
+          document.getElementById('bar_cm_fin').value = barData.cm_final || '';
+          document.getElementById('bar_mm_fin').value = barData.mm_final || '';
+          document.getElementById('bar_bbl_fin').value = barData.bbl_final || '';
+          document.getElementById('bar_api').value = barData.api || '';
+          document.getElementById('bar_temp').value = barData.temp || '';
+          document.getElementById('bar_temp_unit').value = barData.temp_unit || 'C';
+        }
+      }
+    } catch (err) {
+      console.error('Error checking fecha:', err);
+    }
+  }
+
+  function toggleReadOnly(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    const allowed = form.dataset.allowed === '1';
+    form.querySelectorAll('input, textarea, select').forEach(el => {
+      if (el.type !== 'hidden') el.readOnly = !allowed;
+    });
+    form.querySelectorAll('button').forEach(btn => {
+      btn.style.display = allowed ? '' : 'none';
+    });
+  }
+
+  // Aforo calculation functions
+  async function calcAforo(tipo, nombre, cm, mm) {
+    console.log('Calculando aforo:', tipo, nombre, cm, mm);
+    if (!nombre) return null;
+    try {
+      const url = `{{ url_for("aforos_calcular") }}?tipo=${encodeURIComponent(tipo)}&nombre=${encodeURIComponent(nombre)}&cm=${encodeURIComponent(cm || 0)}&mm=${encodeURIComponent(mm || 0)}`;
+      console.log('URL de aforo:', url);
+      const res = await fetch(url);
+      const data = await res.json();
+      console.log('Respuesta de aforo:', data);
+      if (data.success) {
+        return data.bbl;
+      }
+    } catch (err) {
+      console.error('Error calculando aforo:', err);
+    }
+    return null;
+  }
+
+  // Mapeo de alias: nombre mostrado de barcaza/grupo -> nombre base en tablas de aforo
+  function mapBarAlias(name) {
+    const n = (name || '').toUpperCase();
+    const map = {
+      'MANZANILLO': 'MAN',
+      'BITA-MARINSE': 'MAN',
+      'MARGOTH': 'MG6',
+      'ODISEA': 'OD',
+      'BITA-OIDECH': 'OILTECH'
+    };
+    return map[n] || n;
+  }
+
+  // Transformar nombre de compartimento a formato de tabla de aforo según alias
+  function transformCompForAlias(comp, alias) {
+    const c = (comp || '').toUpperCase().trim();
+    const a = (alias || '').toUpperCase().trim();
+    if (!c) return '';
+    // MANZANILLO (MAN): "MARI TK-1C" -> "MAN TK-1"
+    if (a === 'MAN') {
+      // Caso "MARI TK-1C" -> "MAN TK-1"
+      const m = c.match(/^MARI\s+TK-([0-9]+)C$/);
+      if (m) {
+        return `MAN TK-${m[1]}`;
+      }
+      // Caso simple: comp = "1"|"2"|"3" -> "MAN TK-<n>"
+      if (/^[0-9]+$/.test(c)) {
+        return `MAN TK-${c}`;
+      }
+    }
+    // OILTECH (OIDECH): "OID TK-1C" -> "OILTECH TK-1C"
+    if (a === 'OILTECH') {
+      const m = c.match(/^OID\s+TK-([0-9]+[A-Z])$/);
+      if (m) {
+        return `OILTECH-${m[1]}`;
+      }
+      if (/^OID\s+/.test(c)) return c.replace(/^OID\s+/, 'OILTECH ');
+    }
+    // MG6 / OD: normalmente comp es 1P,2P,3S, etc. Se prueban combinaciones más abajo
+    return c;
+  }
+
+  function normalizeId(s) {
+    if (!s) return '';
+    s = s.toUpperCase().replace(/[-_\s]/g, ''); // quitar separadores
+    // Separar prefijo letras y sufijo alfanumérico para quitar ceros a la izquierda solo en número continuo final
+    const m = s.match(/^([A-Z]+)([0-9]+.*)?$/);
+    if (!m) return s;
+    const pre = m[1] || '';
+    const suf = m[2] || '';
+    // si el sufijo comienza por dígitos puros (p.ej. 01, 109, 1P) quita ceros a la izquierda solo en el bloque inicial de dígitos
+    const m2 = suf.match(/^([0-9]+)(.*)$/);
+    if (m2) {
+      const nrm = String(parseInt(m2[1], 10));
+      return pre + nrm + (m2[2] || '');
+    }
+    return pre + suf;
+  }
+
+  function bestMatch(cand, lista) {
+    if (!cand) return null;
+    const c = cand.toUpperCase();
+    if (lista.includes(c)) return c;
+    const nCand = normalizeId(c);
+    for (const x of lista) {
+      if (normalizeId(x) === nCand) return x; // devolver el nombre real almacenado
+    }
+    return null;
+  }
+
+  // --- TEMP CONVERSION LOGIC ---
+  function updateTempConv(tempInput, unitSel, convDiv) {
+    if (!tempInput || !unitSel || !convDiv) return;
+    const val = parseFloat(tempInput.value);
+    const unit = unitSel.value;
+    if (!Number.isFinite(val)) {
+      convDiv.textContent = '';
+      return;
+    }
+    let conv, txt;
+    if (unit === 'C') {
+      conv = (val * 9/5) + 32;
+      txt = `${val.toFixed(1)} °C = ${conv.toFixed(1)} °F`;
+    } else {
+      conv = (val - 32) * 5/9;
+      txt = `${val.toFixed(1)} °F = ${conv.toFixed(1)} °C`;
+    }
+    convDiv.textContent = txt;
+  }
+
+  function syncHiddenForForm(form) {
+    const selFecha = document.getElementById('selFecha');
+    const tkFecha = form.querySelector('input[name="fecha"]');
+    const tkOrigen = form.querySelector('input[name="origen_tk"]');
+    const tkBarcaza = form.querySelector('input[name="destino_barcaza"]');
+    const tkComp = form.querySelector('input[name="destino_compartimento"]');
+    const selTk = document.getElementById('selTk');
+    const selBarcaza = document.getElementById('selBarcaza');
+    const selComp = document.getElementById('selComp');
+    if (tkFecha) tkFecha.value = selFecha.value;
+    if (tkOrigen) tkOrigen.value = selTk.value;
+    if (tkBarcaza) tkBarcaza.value = selBarcaza.value;
+    if (tkComp) tkComp.value = selComp.value;
+  }
+
+  function fillCompartimentos(data, form = null) {
+    const mapa = data ? data.barcazas : window.__barMapa;
+    if (data) { window.__barMapa = data.barcazas; }
+    const selBarcaza = form ? form.querySelector('select[required]') : document.getElementById('selBarcaza');
+    const selComp = form ? form.querySelector('select:not([required])') : document.getElementById('selComp');
+    const b = selBarcaza?.value;
+    let comps = (mapa && mapa[b]) || [];
+    // Si la barcaza es MARGOTH, usar los nombres MG6-1P, MG6-1S, MG6-2P, MG6-2S, MG6-3P, MG6-3S, MG6-4P, MG6-4S
+    if (b && b.toUpperCase() === 'MARGOTH') {
+      comps = [
+        'MG6-1P', 'MG6-1S',
+        'MG6-2P', 'MG6-2S',
+        'MG6-3P', 'MG6-3S',
+        'MG6-4P', 'MG6-4S'
+      ];
+    }
+    // Si la barcaza es CR, usar los nombres CR 1S, CR 1P, ..., CR 5S, CR 5P
+    if (b && b.toUpperCase() === 'CR') {
+      comps = [
+        'CR 1S', 'CR 1P',
+        'CR 2S', 'CR 2P',
+        'CR 3S', 'CR 3P',
+        'CR 4S', 'CR 4P',
+        'CR 5S', 'CR 5P'
+      ];
+    }
+    if (selComp) {
+      selComp.innerHTML = '';
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '(Sin especificar)';
+      selComp.appendChild(empty);
+      comps.forEach(c => {
+        const op = document.createElement('option');
+        op.value = c;
+        op.textContent = c;
+        selComp.appendChild(op);
+      });
+    }
+  }
+
+  function pickNombreTK(form) {
+    const selTk = form.querySelector('select[required]');
+    const cand = selTk?.value?.toUpperCase();
+    console.log('Candidato TK:', cand, 'Lista aforosTK:', aforosTK);
+    return bestMatch(cand, aforosTK);
+  }
+
+  function pickNombreBAR(form) {
+    const selBarcaza = form.querySelector('select[required]');
+    const selComp = form.querySelector('select:not([required])');
+    const comp = selComp?.value?.toUpperCase();
+    const bar = selBarcaza?.value?.toUpperCase();
+    const alias = mapBarAlias(bar);
+    // 1) Buscar tabla exacta igual al compartimento (p.ej. 'TK-101' o '1P')
+    const m1 = bestMatch(comp, aforosBAR);
+    if (m1) return m1;
+    // 1b) Probar transformación por alias (p.ej. 'MARI TK-1C' -> 'MAN TK-1')
+    const compX = transformCompForAlias(comp, alias);
+    const m1b = bestMatch(compX, aforosBAR);
+    if (m1b) return m1b;
+    // 2) Intentar combinación '<BARCAZA>-<COMP>' (ej. 'CR-1P', 'ODISEA-3S', 'MANZANILLO-2')
+    if (alias && comp) {
+      const combined = `${alias}-${comp}`;
+      const m2 = bestMatch(combined, aforosBAR);
+      if (m2) return m2;
+      // Probar también sin guion por si la tabla está sin separador
+      const combined2 = `${alias}${comp}`;
+      const m3 = bestMatch(combined2, aforosBAR);
+      if (m3) return m3;
+      // Probar combinaciones con comp transformado
+      if (compX && compX !== comp) {
+        const combinedX = `${alias}-${compX}`;
+        const m4 = bestMatch(combinedX, aforosBAR);
+        if (m4) return m4;
+        const combinedX2 = `${alias}${compX}`;
+        const m5 = bestMatch(combinedX2, aforosBAR);
+        if (m5) return m5;
+      }
+    }
+    // 3) Solo el grupo/barcaza por si existe una tabla general (menos común)
+    return bestMatch(alias, aforosBAR);
+  }
+
+  async function onTKNivelChange(form) {
+    const nombre = pickNombreTK(form);
+    console.log('Nombre TK seleccionado:', nombre);
+    if (!nombre) {
+      console.log('No se encontró nombre para TK, no se calcula aforo');
+      return;
+    }
+    const cmIni = parseInt(form.querySelector('input[name="tk_cm_inicial"]').value || '');
+    const mmIni = parseInt(form.querySelector('input[name="tk_mm_inicial"]').value || '');
+    const cmFin = parseInt(form.querySelector('input[name="tk_cm_final"]').value || '');
+    const mmFin = parseInt(form.querySelector('input[name="tk_mm_final"]').value || '');
+    console.log('Valores: cmIni=', cmIni, 'mmIni=', mmIni, 'cmFin=', cmFin, 'mmFin=', mmFin);
+
+    // Calcular BBL para todos los tanques usando cm y mm
+    if (Number.isFinite(cmIni)) {
+      const b = await calcAforo('TK', nombre, cmIni, Number.isFinite(mmIni) ? mmIni : 0);
+      console.log('BBL inicial calculado:', b);
+      if (b != null) {
+        const el = form.querySelector('input[name="tk_bbl_bruto_inicial"]');
+        if (el) {
+          el.value = b.toFixed(2);
+          console.log('Asignado BBL inicial a:', el.value);
+        }
+      }
+    }
+    if (Number.isFinite(cmFin)) {
+      const b2 = await calcAforo('TK', nombre, cmFin, Number.isFinite(mmFin) ? mmFin : 0);
+      console.log('BBL final calculado:', b2);
+      if (b2 != null) {
+        const el2 = form.querySelector('input[name="tk_bbl_bruto_final"]');
+        if (el2) {
+          el2.value = b2.toFixed(2);
+          console.log('Asignado BBL final a:', el2.value);
+        }
+      }
+    }
+  }
+
+  async function onBARNivelChange(form) {
+    const nombre = pickNombreBAR(form);
+    if (!nombre) return;
+    const cmIni = parseInt(form.querySelector('input[name="bar_cm_inicial"]').value || '');
+    const mmIni = parseInt(form.querySelector('input[name="bar_mm_inicial"]').value || '');
+    const cmFin = parseInt(form.querySelector('input[name="bar_cm_final"]').value || '');
+    const mmFin = parseInt(form.querySelector('input[name="bar_mm_final"]').value || '');
+    if (Number.isFinite(cmIni)) {
+      const b = await calcAforo('BARCAZA', nombre, cmIni, Number.isFinite(mmIni) ? mmIni : 0);
+      if (b != null) {
+        const el = form.querySelector('input[name="bar_bbl_bruto_inicial"]');
+        if (el) el.value = b.toFixed(2);
+      }
+    }
+    if (Number.isFinite(cmFin)) {
+      const b2 = await calcAforo('BARCAZA', nombre, cmFin, Number.isFinite(mmFin) ? mmFin : 0);
+      if (b2 != null) {
+        const el2 = form.querySelector('input[name="bar_bbl_bruto_final"]');
+        if (el2) el2.value = b2.toFixed(2);
+      }
+    }
+  }
+
+  function attachTkListeners(form) {
+    // temp conversion
+    const tempGroup = form.querySelector('.input-group');
+    const tkTemp = tempGroup ? tempGroup.querySelector('input') : null;
+    const tkTempUnit = tempGroup ? tempGroup.querySelector('select') : null;
+    const tkTempConv = form.querySelector('.form-text.text-secondary');
+    if (tkTemp && tkTempUnit) {
+      const update = () => updateTempConv(tkTemp, tkTempUnit, tkTempConv);
+      tkTemp.addEventListener('input', update);
+      tkTempUnit.addEventListener('change', update);
+    }
+    updateTempConv(tkTemp, tkTempUnit, tkTempConv);
+
+    // aforo listeners
+    ['tk_cm_inicial', 'tk_mm_inicial', 'tk_cm_final', 'tk_mm_final'].forEach(name => {
+      const el = form.querySelector('input[name="' + name + '"]');
+      if (el) {
+        el.addEventListener('change', () => onTKNivelChange(form));
+        el.addEventListener('input', () => onTKNivelChange(form));
+      }
+    });
+
+    // selTk change
+    const selTk = form.querySelector('select[required]');
+    if (selTk) {
+      selTk.addEventListener('change', () => { onTKNivelChange(form); syncHiddenForForm(form); });
+    }
+
+    // calc ingreso
+    const tkCaudal = form.querySelector('input[name="tk_caudal_bbl_min"]');
+    const tkMinutos = form.querySelector('input[name="tk_minutos_ingreso"]');
+    const tkBbling = form.querySelector('input[name="tk_bbl_ingreso"]');
+    if (tkCaudal && tkMinutos) {
+      const calc = () => {
+        const c = parseFloat(tkCaudal.value || '');
+        const m = parseFloat(tkMinutos.value || '');
+        if (tkBbling) {
+          if (Number.isFinite(c) && Number.isFinite(m)) {
+            tkBbling.value = (c * (m / 60)).toFixed(2);
+          } else {
+            tkBbling.value = '';
+          }
+        }
+      };
+      tkCaudal.addEventListener('input', calc);
+      tkCaudal.addEventListener('change', calc);
+      tkMinutos.addEventListener('input', calc);
+      tkMinutos.addEventListener('change', calc);
+    }
+
+    // VCF and BBL Neto calculation for TK
+    const tkBblBrutoIni = form.querySelector('input[name="tk_bbl_bruto_inicial"]');
+    const tkBblBrutoFin = form.querySelector('input[name="tk_bbl_bruto_final"]');
+    const tkApi = form.querySelector('input[name="tk_api"]');
+    const tkTempInput = form.querySelector('input[name="tk_temp"]');
+    const tkTempUnitSelect = form.querySelector('select[name="tk_temp_unit"]');
+    const tkBblIni = form.querySelector('input[name="tk_bbl_inicial"]');
+    const tkBblFin = form.querySelector('input[name="tk_bbl_final"]');
+
+    async function fetchVCF(api, temp, unit) {
+      if (!api || !temp) return 1;
+      try {
+        const url = `/api/vcf_api6a?api=${encodeURIComponent(api)}&temp=${encodeURIComponent(temp)}&unidad=${encodeURIComponent(unit)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success && data.vcf) return data.vcf;
+      } catch (err) { console.error('Error obteniendo VCF API6A:', err); }
+      return 1;
+    }
+
+    async function calculateBBLNeto(bblBruto, api, temp, unit) {
+      if (!bblBruto || !api || !temp) return '';
+      const vcf = await fetchVCF(parseFloat(api), parseFloat(temp), unit);
+      return (parseFloat(bblBruto) * vcf).toFixed(2);
+    }
+
+    async function updateTkBblIni() {
+      if (tkBblIni) {
+        tkBblIni.value = await calculateBBLNeto(tkBblBrutoIni ? tkBblBrutoIni.value : '', tkApi ? tkApi.value : '', tkTempInput ? tkTempInput.value : '', tkTempUnitSelect ? tkTempUnitSelect.value : 'C');
+      }
+    }
+
+    async function updateTkBblFin() {
+      if (tkBblFin) {
+        tkBblFin.value = await calculateBBLNeto(tkBblBrutoFin ? tkBblBrutoFin.value : '', tkApi ? tkApi.value : '', tkTempInput ? tkTempInput.value : '', tkTempUnitSelect ? tkTempUnitSelect.value : 'C');
+      }
+    }
+
+    if (tkBblBrutoIni) tkBblBrutoIni.addEventListener('input', updateTkBblIni);
+    if (tkBblBrutoFin) tkBblBrutoFin.addEventListener('input', updateTkBblFin);
+    if (tkApi) {
+      tkApi.addEventListener('input', updateTkBblIni);
+      tkApi.addEventListener('input', updateTkBblFin);
+    }
+    if (tkTempInput) {
+      tkTempInput.addEventListener('input', updateTkBblIni);
+      tkTempInput.addEventListener('input', updateTkBblFin);
+    }
+    if (tkTempUnitSelect) {
+      tkTempUnitSelect.addEventListener('change', updateTkBblIni);
+      tkTempUnitSelect.addEventListener('change', updateTkBblFin);
+    }
+  }
+
+  function attachBarListeners(form) {
+    // temp conversion
+    const tempGroup = form.querySelector('.input-group');
+    const barTemp = tempGroup ? tempGroup.querySelector('input') : null;
+    const barTempUnit = tempGroup ? tempGroup.querySelector('select') : null;
+    const barTempConv = form.querySelector('.form-text.text-secondary');
+    if (barTemp && barTempUnit) {
+      const update = () => updateTempConv(barTemp, barTempUnit, barTempConv);
+      barTemp.addEventListener('input', update);
+      barTempUnit.addEventListener('change', update);
+    }
+    updateTempConv(barTemp, barTempUnit, barTempConv);
+
+    // aforo listeners
+    ['bar_cm_inicial', 'bar_mm_inicial', 'bar_cm_final', 'bar_mm_final'].forEach(name => {
+      const el = form.querySelector('input[name="' + name + '"]');
+      if (el) {
+        el.addEventListener('change', () => onBARNivelChange(form));
+        el.addEventListener('input', () => onBARNivelChange(form));
+      }
+    });
+
+    // selComp and selBarcaza
+    const selBarcaza = form.querySelector('select[required]');
+    const selComp = form.querySelector('select:not([required])');
+    if (selComp) {
+      selComp.addEventListener('change', () => { onBARNivelChange(form); syncHiddenForForm(form); });
+    }
+    if (selBarcaza) {
+      selBarcaza.addEventListener('change', () => { fillCompartimentos(null, form); onBARNivelChange(form); syncHiddenForForm(form); });
+    }
+
+    // VCF and BBL Neto calculation for BAR
+    const barBblBrutoIni = form.querySelector('input[name="bar_bbl_bruto_inicial"]');
+    const barBblBrutoFin = form.querySelector('input[name="bar_bbl_bruto_final"]');
+    const barApi = form.querySelector('input[name="bar_api"]');
+    const barTempInput = form.querySelector('input[name="bar_temp"]');
+    const barTempUnitSelect = form.querySelector('select[name="bar_temp_unit"]');
+    const barBblIni = form.querySelector('input[name="bar_bbl_inicial"]');
+    const barBblFin = form.querySelector('input[name="bar_bbl_final"]');
+
+    async function fetchVCF(api, temp, unit) {
+      if (!api || !temp) return 1;
+      try {
+        const url = `/api/vcf_api6a?api=${encodeURIComponent(api)}&temp=${encodeURIComponent(temp)}&unidad=${encodeURIComponent(unit)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success && data.vcf) return data.vcf;
+      } catch (err) { console.error('Error obteniendo VCF API6A:', err); }
+      return 1;
+    }
+
+    async function calculateBBLNeto(bblBruto, api, temp, unit) {
+      if (!bblBruto || !api || !temp) return '';
+      const vcf = await fetchVCF(parseFloat(api), parseFloat(temp), unit);
+      return (parseFloat(bblBruto) * vcf).toFixed(2);
+    }
+
+    async function updateBarBblIni() {
+      if (barBblIni) {
+        barBblIni.value = await calculateBBLNeto(barBblBrutoIni ? barBblBrutoIni.value : '', barApi ? barApi.value : '', barTempInput ? barTempInput.value : '', barTempUnitSelect ? barTempUnitSelect.value : 'C');
+      }
+    }
+
+    async function updateBarBblFin() {
+      if (barBblFin) {
+        barBblFin.value = await calculateBBLNeto(barBblBrutoFin ? barBblBrutoFin.value : '', barApi ? barApi.value : '', barTempInput ? barTempInput.value : '', barTempUnitSelect ? barTempUnitSelect.value : 'C');
+      }
+    }
+
+    if (barBblBrutoIni) barBblBrutoIni.addEventListener('input', updateBarBblIni);
+    if (barBblBrutoFin) barBblBrutoFin.addEventListener('input', updateBarBblFin);
+    if (barApi) {
+      barApi.addEventListener('input', updateBarBblIni);
+      barApi.addEventListener('input', updateBarBblFin);
+    }
+    if (barTempInput) {
+      barTempInput.addEventListener('input', updateBarBblIni);
+      barTempInput.addEventListener('input', updateBarBblFin);
+    }
+    if (barTempUnitSelect) {
+      barTempUnitSelect.addEventListener('change', updateBarBblIni);
+      barTempUnitSelect.addEventListener('change', updateBarBblFin);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    setToday();
+    await loadOptions();
+    syncHidden();
+
+    // En ambos casos, si solo TK: bloquear Barcaza y Comp; si solo Bar: bloquear TK
+    if(allowedTk && !allowedBar){ selBarcaza.disabled = true; selComp.disabled = true; }
+    if(!allowedTk && allowedBar){ selTk.disabled = true; }
+
+  selBarcaza.addEventListener('change', ()=>{ fillCompartimentos(); syncHiddenForForm(barForm); });
+  [selFecha, selTk, selComp].forEach(el=> el.addEventListener('change', ()=>syncHiddenForForm(barForm)));
+
+    await checkFechaLockAndPrefill();
+
+    toggleReadOnly('form-tk');
+    toggleReadOnly('form-bar');
+
+    // Attach listeners to original forms
+    attachTkListeners(tkForm);
+    attachBarListeners(barForm);
+  });
+
+  // Add event listeners for add buttons
+  document.addEventListener('click', (e) => {
+    const rowBotones = document.querySelector('.btn-add-tk').closest('.row.g-3');
+    if(e.target.classList.contains('btn-add-tk') || e.target.closest('.btn-add-tk')){
+      const tkCol = document.querySelector('#form-tk').closest('.col-12').cloneNode(true);
+      tkCol.querySelectorAll('[id]').forEach(el => {
+        el.id += '_clone_' + Date.now();
+      });
+      tkCol.className = 'col-12';
+      tkCol.querySelector('.mt-3')?.remove();
+      tkCol.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => {
+        el.value = '';
+      });
+      const clonedForm = tkCol.querySelector('form');
+      if (clonedForm) {
+        attachTkListeners(clonedForm);
+      }
+      const newRow = document.createElement('div');
+      newRow.className = 'row g-3';
+      newRow.appendChild(tkCol);
+      rowBotones.parentNode.insertBefore(newRow, rowBotones);
+    }
+    if(e.target.classList.contains('btn-add-bar') || e.target.closest('.btn-add-bar')){
+      const barCol = document.querySelector('#form-bar').closest('.col-12').cloneNode(true);
+      // Generar IDs únicos para selects y campos ocultos
+      const uniqueId = '_clone_' + Date.now();
+      // Eliminar los IDs para evitar duplicados y que los selects sean independientes
+      // Eliminar los IDs y asegurar que los selects tengan el atributo 'name' correcto
+      barCol.querySelectorAll('[id]').forEach(el => {
+        el.removeAttribute('id');
+      });
+      // Forzar el atributo name en los selects de barcaza y compartimento
+      const barcazaSelect = barCol.querySelector('select');
+      if (barcazaSelect) barcazaSelect.setAttribute('name', 'destino_barcaza');
+      const compSelect = barCol.querySelectorAll('select')[1];
+      if (compSelect) compSelect.setAttribute('name', 'destino_compartimento');
+      barCol.className = 'col-12';
+      barCol.querySelector('.mt-3')?.remove();
+      barCol.querySelectorAll('input:not([type="hidden"]), textarea, select').forEach(el => {
+        el.value = '';
+      });
+      const clonedForm = barCol.querySelector('form');
+      if (clonedForm) {
+        // Cambiar los selectores para selects únicos
+        const selBarcazaClone = clonedForm.querySelector('select[id^="selBarcaza"]');
+        const selCompClone = clonedForm.querySelector('select[id^="selComp"]');
+        const selFechaClone = clonedForm.querySelector('input[type="date"]');
+        attachBarListeners(clonedForm);
+        // Listeners para sincronizar campos ocultos y aforo en el formulario clonado
+        if (selBarcazaClone) selBarcazaClone.addEventListener('change', ()=>{ fillCompartimentos(null, clonedForm); onBARNivelChange(clonedForm); syncHiddenForForm(clonedForm); });
+        if (selCompClone) selCompClone.addEventListener('change', ()=>{ onBARNivelChange(clonedForm); syncHiddenForForm(clonedForm); });
+        if (selFechaClone) selFechaClone.addEventListener('change', ()=>syncHiddenForForm(clonedForm));
+      }
+      const newRow = document.createElement('div');
+      newRow.className = 'row g-3';
+      newRow.appendChild(barCol);
+      rowBotones.parentNode.insertBefore(newRow, rowBotones);
+    }
+  });
+
+  // Guardar todos los trasiegos
+  document.getElementById('btn-guardar-todos').addEventListener('click', async () => {
+    // Recolectar todos los formularios de trasiego (tanque y barcaza)
+    const forms = document.querySelectorAll('form.card');
+    const trasiegos = [];
+    forms.forEach(form => {
+      const datos = {};
+      form.querySelectorAll('input, textarea, select').forEach(el => {
+        if (el.name && el.value !== undefined && el.type !== 'button') {
+          datos[el.name] = el.value;
+        }
+      });
+      // Solo agregar si tiene datos relevantes (por ejemplo, origen_tk o destino_barcaza)
+      if (datos.origen_tk || datos.destino_barcaza) {
+        trasiegos.push(datos);
+      }
+    });
+    if (trasiegos.length === 0) {
+      alert('No hay trasiegos para guardar.');
+      return;
+    }
+    // Enviar al backend
+    try {
+      const res = await fetch('/guardar_trasiegos_masivo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trasiegos })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Trasiegos guardados correctamente.');
+        window.location.reload();
+      } else {
+        alert('Error al guardar trasiegos: ' + (data.message || '')); 
+      }
+    } catch (err) {
+      alert('Error de red al guardar trasiegos.');
+    }
+  });
+</script>
+{% endblock %}

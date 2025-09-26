@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 import json
 import hashlib
 from datetime import datetime, time, date, timedelta
@@ -35,6 +36,16 @@ import base64
 
 # --- Módulo modelo optimización (nuevo) ---
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
+
+# Utilidad simple de permiso admin
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('rol') != 'admin':
+            flash('Solo administradores pueden acceder a esta sección.', 'danger')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
+    return decorated
 
 def formatear_info_actualizacion(fecha_dt_utc, usuario_str):
     """
@@ -645,6 +656,133 @@ class RegistroCompra(db.Model):
     def __repr__(self):
         return f'<RegistroCompra {self.id} - {self.numero_factura}>'
 
+# ================== DESPACHOS TK -> BARCAZA ==================
+class TrasiegoTKBarcaza(db.Model):
+    __tablename__ = 'trasiegos_tk_barcaza'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    usuario = db.Column(db.String(120), nullable=False)
+
+    origen_tk = db.Column(db.String(50), nullable=False)
+    destino_barcaza = db.Column(db.String(120), nullable=False)  # Nombre barcaza (p.ej. Manzanillo)
+    destino_compartimento = db.Column(db.String(50), nullable=True)  # p.ej. TK1, TK2
+
+    tk_cm_inicial = db.Column(db.Integer, nullable=True)
+    tk_mm_inicial = db.Column(db.Integer, nullable=True)
+    tk_bbl_bruto_inicial = db.Column(db.Float, nullable=True)
+    tk_bbl_inicial = db.Column(db.Float, nullable=True)
+    tk_api = db.Column(db.Float, nullable=True)
+    tk_temp = db.Column(db.Float, nullable=True)
+    tk_cm_final = db.Column(db.Integer, nullable=True)
+    tk_mm_final = db.Column(db.Integer, nullable=True)
+    tk_bbl_bruto_final = db.Column(db.Float, nullable=True)
+    tk_bbl_final = db.Column(db.Float, nullable=True)
+
+    # Ingreso simultáneo al tanque (opcional)
+    tk_caudal_bbl_min = db.Column(db.Float, nullable=True)
+    tk_minutos_ingreso = db.Column(db.Float, nullable=True)
+    tk_bbl_ingreso = db.Column(db.Float, nullable=True)
+
+    bar_cm_inicial = db.Column(db.Integer, nullable=True)
+    bar_mm_inicial = db.Column(db.Integer, nullable=True)
+    bar_bbl_bruto_inicial = db.Column(db.Float, nullable=True)
+    bar_bbl_inicial = db.Column(db.Float, nullable=True)
+    bar_api = db.Column(db.Float, nullable=True)
+    bar_temp = db.Column(db.Float, nullable=True)
+    bar_cm_final = db.Column(db.Integer, nullable=True)
+    bar_mm_final = db.Column(db.Integer, nullable=True)
+    bar_bbl_bruto_final = db.Column(db.Float, nullable=True)
+    bar_bbl_final = db.Column(db.Float, nullable=True)
+
+    notas = db.Column(db.Text, nullable=True)
+    tk_notas = db.Column(db.Text, nullable=True)
+
+    @property
+    def trasiego_segun_tanque(self):
+            try:
+                if self.tk_bbl_inicial is not None and self.tk_bbl_final is not None:
+                    ini = float(self.tk_bbl_inicial)
+                    fin = float(self.tk_bbl_final)
+                    return round(ini - fin, 2)
+                return None
+            except Exception:
+                return None
+
+    @property
+    def trasiego_segun_barcaza(self):
+        try:
+            ini = float(self.bar_bbl_inicial or 0)
+            fin = float(self.bar_bbl_final or 0)
+            return round(fin - ini, 2)
+        except Exception:
+            return None
+
+    @property
+    def diferencia(self):
+        try:
+            t = float(self.trasiego_segun_tanque or 0)
+            b = float(self.trasiego_segun_barcaza or 0)
+            return round(b - t, 2)
+        except Exception:
+            return None
+
+    def __repr__(self):
+        return f'<Trasiego {self.fecha} {self.origen_tk} -> {self.destino_barcaza}/{self.destino_compartimento or ""}>'
+
+def _ensure_trasiegos_table():
+    from sqlalchemy import inspect
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'trasiegos_tk_barcaza' not in insp.get_table_names():
+            try:
+                TrasiegoTKBarcaza.__table__.create(db.engine)
+                print('[INIT] Tabla trasiegos_tk_barcaza creada')
+            except Exception as e:
+                print('[INIT] No fue posible crear tabla trasiegos_tk_barcaza:', e)
+
+_ensure_trasiegos_table()
+
+def _ensure_trasiegos_columns():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'trasiegos_tk_barcaza' not in insp.get_table_names():
+            return
+        cols = [c['name'] for c in insp.get_columns('trasiegos_tk_barcaza')]
+        to_add = []
+        if 'tk_api' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_api FLOAT')
+        if 'bar_api' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN bar_api FLOAT')
+        if 'tk_notas' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_notas TEXT')
+        # Nuevas columnas de BBL Bruto
+        if 'tk_bbl_bruto_inicial' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_bbl_bruto_inicial FLOAT')
+        if 'tk_bbl_bruto_final' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_bbl_bruto_final FLOAT')
+        if 'bar_bbl_bruto_inicial' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN bar_bbl_bruto_inicial FLOAT')
+        if 'bar_bbl_bruto_final' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN bar_bbl_bruto_final FLOAT')
+        # Nuevas columnas para ingreso simultáneo al TK
+        if 'tk_caudal_bbl_min' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_caudal_bbl_min FLOAT')
+        if 'tk_minutos_ingreso' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_minutos_ingreso FLOAT')
+        if 'tk_bbl_ingreso' not in cols:
+            to_add.append('ALTER TABLE trasiegos_tk_barcaza ADD COLUMN tk_bbl_ingreso FLOAT')
+        for ddl in to_add:
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text(ddl))
+            except Exception as e:
+                print('[INIT] No fue posible añadir columna en trasiegos_tk_barcaza:', e)
+
+_ensure_trasiegos_columns()
+
 # ================== NUEVOS MODELOS PARA FLUJO DE EFECTIVO (PERSISTENCIA) ==================
 class FlujoUploadBatch(db.Model):
     __tablename__ = 'flujo_upload_batches'
@@ -687,6 +825,39 @@ class FlujoOdooMovimiento(db.Model):
     unique_hash = db.Column(db.String(64), unique=True, index=True)
     creado_en = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
+# ================== TABLAS DE AFORO ==================
+class AforoTabla(db.Model):
+    __tablename__ = 'aforos_tablas'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    usuario = db.Column(db.String(120), nullable=False)
+    # tipo: 'TK' para tanques de planta; 'BARCAZA' para compartimentos/tanques de barcazas
+    tipo = db.Column(db.String(20), nullable=False, index=True)
+    # nombre: identificador lógico, ej. 'TK-109' o '1P' o 'MARI TK-1C'
+    nombre = db.Column(db.String(120), nullable=False, index=True)
+    # datos: JSON con lista de filas [{"cm":int, "mm":int, "bbl":float}] (mm usualmente 0..9)
+    datos_json = db.Column(db.Text, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('tipo', 'nombre', name='uq_aforo_tipo_nombre'),
+    )
+
+    def __repr__(self):
+        return f"<AforoTabla {self.tipo}:{self.nombre} ({self.id})>"
+
+def _ensure_aforos_table():
+    from sqlalchemy import inspect
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'aforos_tablas' not in insp.get_table_names():
+            try:
+                AforoTabla.__table__.create(db.engine)
+                print('[INIT] Tabla aforos_tablas creada')
+            except Exception as e:
+                print('[INIT] No fue posible crear tabla aforos_tablas:', e)
+
+_ensure_aforos_table()
+
 def _hash_row(values: list) -> str:
     base = '|'.join('' if v is None else str(v).strip() for v in values)
     return hashlib.sha256(base.encode('utf-8')).hexdigest()
@@ -696,6 +867,586 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 @app.context_processor
 def inject_current_year():
     return {'current_year': datetime.now().year}
+
+# --- Utilidades de aforos ---
+def _parse_aforo_excel_to_json(ws):
+    """
+    Convierte una hoja de Excel a un JSON usable por el cálculo de aforo.
+
+    Dos modos de salida (detectados automáticamente):
+    - Modo 'step': Estructura por decímetro con 'base' (cada 10 cm),
+      incrementos por centímetro 'inc_cm' (1..9) y por milímetro 'inc_mm' (1..9).
+      Este modo replica el método de Excel: base(10 cm) + inc_cm + inc_mm.
+    - Modo 'flat': Lista de registros {cm, mm, bbl} para hojas simples.
+
+    Soporta hojas con pares horizontales 'NIVEL/VOLUMEN', 'NIVEL 2/VOLUMEN 2',
+    'NIVEL 3/VOLUMEN 3' y también hojas simples con columnas 'cm', 'mm', 'bbl'.
+    """
+    # Construir texto de cabecera por columna combinando fila 1 y 2
+    def _cell_text(cell):
+        v = cell.value
+        return str(v).strip().lower() if v is not None else ''
+
+    max_cols = ws.max_column or 0
+    row1 = [ _cell_text(c) for c in ws[1][:max_cols] ] if ws.max_row >= 1 else []
+    row2 = [ _cell_text(c) for c in ws[2][:max_cols] ] if ws.max_row >= 2 else []
+    headers = []
+    for i in range(max_cols):
+        h1 = row1[i] if i < len(row1) else ''
+        h2 = row2[i] if i < len(row2) else ''
+        headers.append((h1 + ' ' + h2).strip())
+
+    # Heurísticas para identificar columnas de nivel y volumen
+    def is_lvl(h: str) -> bool:
+        return any(k in h for k in ['nivel', 'cm', 'mm'])
+
+    def lvl_unit(h: str) -> str:
+        if 'mm' in h and 'cm' not in h:
+            return 'mm'
+        return 'cm'
+
+    def is_vol(h: str) -> bool:
+        return any(k in h for k in ['bbl', 'bls', 'volumen'])
+
+    # Determinar fila inicial de datos: si segunda fila parece cabecera también, empezamos en 3
+    header_has_words = any(any(ch.isalpha() for ch in h) for h in row2)
+    start_row = 3 if header_has_words else 2
+
+    # Detectar pares (nivel, volumen) adyacentes
+    pairs = []  # lista de tuplas (idx_level, idx_volume, unit)
+    i = 0
+    while i < len(headers) - 1:
+        h_lvl = headers[i]
+        h_vol = headers[i+1]
+        if is_lvl(h_lvl) and is_vol(h_vol):
+            pairs.append((i, i+1, lvl_unit(h_lvl)))
+            i += 2
+            continue
+        i += 1
+
+    # Intentar detectar estructura por decímetro (step). Heurística: hay al menos
+    # dos pares en 'cm' (base + cm) y opcionalmente un par en 'mm'.
+    cm_pairs = [p for p in pairs if p[2] == 'cm']
+    mm_pairs = [p for p in pairs if p[2] == 'mm']
+
+    if cm_pairs:
+        # Elegimos el primer par 'cm' como BASE y el segundo (si existe) como CM.
+        base_lvl_idx, base_vol_idx, _ = cm_pairs[0]
+        cm_inc_idx = cm_pairs[1] if len(cm_pairs) > 1 else None
+        mm_inc_idx = mm_pairs[0] if mm_pairs else None
+
+        base_map = {}
+        inc_cm_map = {}
+        inc_mm_map = {}
+        # Algunas hojas listan incrementos globales (no por decímetro)
+        inc_cm_global = {}
+        inc_mm_global = {}
+        current_dec = None
+
+        for row in ws.iter_rows(min_row=start_row, values_only=True):
+            try:
+                nivel_base = row[base_lvl_idx] if base_lvl_idx < len(row) else None
+                vol_base = row[base_vol_idx] if base_vol_idx < len(row) else None
+            except Exception:
+                nivel_base = None
+                vol_base = None
+
+            # Si hay nivel base en esta fila, actualizamos decímetro actual
+            if nivel_base not in (None, '') and vol_base not in (None, ''):
+                try:
+                    nb = float(str(nivel_base).replace(',', '.'))
+                    vb = float(str(vol_base).replace(',', '.'))
+                    dec = int(round(nb))
+                    current_dec = dec
+                    base_map[current_dec] = vb
+                    if current_dec not in inc_cm_map:
+                        inc_cm_map[current_dec] = {}
+                    if current_dec not in inc_mm_map:
+                        inc_mm_map[current_dec] = {}
+                except Exception:
+                    pass
+
+            # Incrementos por centímetro (si existe el par y hay decímetro vigente)
+            if cm_inc_idx:
+                lvl_idx, vol_idx, _ = cm_inc_idx
+                try:
+                    n2 = row[lvl_idx] if lvl_idx < len(row) else None
+                    v2 = row[vol_idx] if vol_idx < len(row) else None
+                    if n2 not in (None, '') and v2 not in (None, ''):
+                        n2i = int(round(float(str(n2).replace(',', '.'))))
+                        v2f = float(str(v2).replace(',', '.'))
+                        if 1 <= n2i <= 9:
+                            inc_cm_global[n2i] = v2f
+                            if current_dec is not None:
+                                inc_cm_map.setdefault(current_dec, {})[n2i] = v2f
+                except Exception:
+                    pass
+
+            # Incrementos por milímetro (si existe el par y hay decímetro vigente)
+            if mm_inc_idx:
+                lvl_idx, vol_idx, _ = mm_inc_idx
+                try:
+                    n3 = row[lvl_idx] if lvl_idx < len(row) else None
+                    v3 = row[vol_idx] if vol_idx < len(row) else None
+                    if n3 not in (None, '') and v3 not in (None, ''):
+                        n3i = int(round(float(str(n3).replace(',', '.'))))
+                        v3f = float(str(v3).replace(',', '.'))
+                        if 1 <= n3i <= 9:
+                            inc_mm_global[n3i] = v3f
+                            if current_dec is not None:
+                                inc_mm_map.setdefault(current_dec, {})[n3i] = v3f
+                except Exception:
+                    pass
+
+        # Si logramos leer algún base, devolvemos modo step
+        if base_map:
+            # Normalizar claves a strings para JSON compacto
+            def _norm(d):
+                return {str(k): v for k, v in d.items()}
+            def _norm_nest(d):
+                return {str(k): {str(kk): vv for kk, vv in v.items()} for k, v in d.items() if v}
+            return {
+                'mode': 'step',
+                'base': _norm(base_map),
+                'inc_cm': _norm_nest(inc_cm_map),
+                'inc_mm': _norm_nest(inc_mm_map),
+                'inc_cm_global': {str(k): v for k, v in (inc_cm_global or {}).items()},
+                'inc_mm_global': {str(k): v for k, v in (inc_mm_global or {}).items()},
+            }
+
+    # Si no hay pares 'cm' o no se pudo construir modo step, intentar modo 'flat'
+    data = []
+    if not pairs:
+        try:
+            idx_cm = next((i for i,h in enumerate(headers) if 'cm' in h), None)
+            idx_mm = next((i for i,h in enumerate(headers) if 'mm' in h), None)
+            idx_bbl = next((i for i,h in enumerate(headers) if any(k in h for k in ['bbl','bls','volumen'])), None)
+            if idx_cm is None or idx_bbl is None:
+                raise ValueError
+            for row in ws.iter_rows(min_row=start_row, values_only=True):
+                cm = row[idx_cm] if idx_cm is not None and idx_cm < len(row) else None
+                mm = row[idx_mm] if idx_mm is not None and idx_mm < len(row) else 0
+                bbl = row[idx_bbl] if idx_bbl is not None and idx_bbl < len(row) else None
+                try:
+                    cm_i = int(float(str(cm).replace(',', '.')))
+                    mm_i = int(float(str(mm or 0).replace(',', '.')))
+                    bbl_f = float(str(bbl).replace(',', '.'))
+                    data.append({'cm': cm_i, 'mm': mm_i, 'bbl': bbl_f})
+                except Exception:
+                    continue
+        except Exception:
+            raise ValueError('No se identificaron columnas de NIVEL/CM/MM y VOLUMEN (BBL/BLS).')
+    else:
+        # Procesar pares detectados como lista plana (mejor que nada)
+        for lvl_idx, vol_idx, unit in pairs:
+            for row in ws.iter_rows(min_row=start_row, values_only=True):
+                try:
+                    nivel_v = row[lvl_idx] if lvl_idx < len(row) else None
+                    vol_v = row[vol_idx] if vol_idx < len(row) else None
+                except Exception:
+                    continue
+                if nivel_v in (None, '') or vol_v in (None, ''):
+                    continue
+                try:
+                    nivel_f = float(str(nivel_v).replace(',', '.'))
+                    bbl_f = float(str(vol_v).replace(',', '.'))
+                except Exception:
+                    continue
+                if unit == 'cm':
+                    cm_i = int(round(nivel_f))
+                    mm_i = 0
+                else:
+                    total_mm = int(round(nivel_f))
+                    if total_mm < 0:
+                        continue
+                    cm_i = total_mm // 10
+                    mm_i = total_mm % 10
+                data.append({'cm': cm_i, 'mm': mm_i, 'bbl': bbl_f})
+
+    if not data:
+        raise ValueError('No se leyeron filas válidas de aforo.')
+
+    # Deduplicar por (cm,mm) manteniendo el último valor encontrado
+    dedup = {}
+    for r in data:
+        key = (int(r['cm']), int(r['mm']))
+        try:
+            dedup[key] = float(r['bbl'])
+        except Exception:
+            continue
+    out = [ {'cm': k[0], 'mm': k[1], 'bbl': v} for k,v in dedup.items() ]
+    out.sort(key=lambda r: (r['cm'], r['mm']))
+    return {'mode': 'flat', 'data': out}
+
+def _parse_barge_columns_sheet(ws, prefer_tipo: str = 'BARCAZA', default_name: str | None = None):
+    """
+    Parser especializado para hojas con formato "TEMP LAMINA 60" donde:
+    - Una columna contiene la lámina/altura (cm)
+    - Varias columnas (una por tanque/compartimento) contienen volúmenes
+
+    Devuelve un dict mapping nombre_tabla -> payload_json_dict (modo 'flat').
+
+    Los encabezados se esperan tipo: "MAN TK 1", "MG6 1P", "CR 2S", "OD 3P", "OILTECH 1C", etc.
+    Se normalizan a nombres compatibles con la UI de Trasiegos: "<GRUPO>-<COMP>"
+    p.ej. CR-1P, MARGOTH-1S, MANZANILLO-1, ODISEA-3S, OILTECH-1C.
+    """
+    try:
+        max_cols = ws.max_column or 0
+        # Construir encabezados combinando fila 1 y 2 (por si hay títulos en dos filas)
+        def _txt(cell):
+            v = cell.value
+            return str(v).strip() if v is not None else ''
+
+        row1 = [_txt(c) for c in (ws[1][:max_cols] if ws.max_row >= 1 else [])]
+        row2 = [_txt(c) for c in (ws[2][:max_cols] if ws.max_row >= 2 else [])]
+        headers = []
+        for i in range(max_cols):
+            h1 = (row1[i] if i < len(row1) else '')
+            h2 = (row2[i] if i < len(row2) else '')
+            h = (h1 + ' ' + h2).strip().upper()
+            headers.append(h)
+
+        # Detectar columna de lámina
+        lam_idx = None
+        for i, h in enumerate(headers):
+            if any(k in h for k in ['LAMINA', 'LÁMINA', 'ALTURA', 'NIVEL']):
+                lam_idx = i
+                break
+        if lam_idx is None:
+            return {}
+
+        # Función de mapeo de prefijo a grupo
+        def map_group(pref: str) -> str:
+            p = pref.upper().replace('.', '').replace('_', '').strip()
+            if p.startswith('MAN'):
+                return 'MANZANILLO'
+            if p.startswith('MG6') or p.startswith('MARG'):
+                return 'MARGOTH'
+            if p.startswith('CR'):
+                return 'CR'
+            if p.startswith('OD') or p.startswith('ODI'):
+                return 'ODISEA'
+            if 'OIL' in p:
+                return 'OILTECH'
+            return p
+
+        # Extraer definiciones de columnas objetivo (todas menos lámina) con su nombre lógico
+        targets = []  # (col_idx, nombre)
+        import re as _re
+        for i, h in enumerate(headers):
+            if i == lam_idx:
+                continue
+            if not h:
+                continue
+            # Intentar patrones comunes
+            # 1) PREF TK <num/opcional letra>, 2) PREF <num>[P|S|C], 3) simplemente etiqueta de tanque
+            m = _re.search(r"^(MAN|MG6|CR|OD|ODISEA|OILTECH)[\s\-_/]*T?K?\s*([0-9]+[A-Z]?)$", h, _re.IGNORECASE)
+            if not m:
+                m = _re.search(r"^(MAN|MG6|CR|OD|ODISEA|OILTECH)[\s\-_/]*([0-9]+[A-Z]?)$", h, _re.IGNORECASE)
+            if m:
+                pref = m.group(1).upper()
+                comp = m.group(2).upper()
+                grupo = map_group(pref)
+                nombre = f"{grupo}-{comp}"
+                targets.append((i, nombre))
+                continue
+            # Si no matchea, ignorar columnas no numéricas
+            # Si el encabezado es numérico o poco descriptivo, usar default_name si está disponible
+            header_clean = h.strip().upper()
+            if default_name:
+                if not header_clean or _re.fullmatch(r"[0-9\s\.,°%-]+", header_clean):
+                    targets.append((i, default_name.strip().upper()))
+                    continue
+            targets.append((i, header_clean))  # última opción: usar header completo
+
+        if not targets:
+            return {}
+
+        # Si solo hay una columna objetivo y tenemos default_name, usarlo como nombre
+        if len(targets) == 1 and default_name:
+            targets = [(targets[0][0], default_name.strip().upper())]
+
+        # Detectar desde qué fila empiezan los datos (si fila 2 parece cabecera, empezar en 3)
+        start_row = 3 if any(any(ch.isalpha() for ch in (row2[i] if i < len(row2) else '')) for i in range(max_cols)) else 2
+
+        tablas = {}  # nombre -> lista data
+        for row in ws.iter_rows(min_row=start_row, values_only=True):
+            lam = row[lam_idx] if lam_idx < len(row) else None
+            if lam in (None, ''):
+                continue
+            try:
+                lam_cm = int(round(float(str(lam).replace(',', '.'))))
+            except Exception:
+                continue
+            for col_idx, nombre in targets:
+                if col_idx >= len(row):
+                    continue
+                val = row[col_idx]
+                if val in (None, ''):
+                    continue
+                try:
+                    bbl = float(str(val).replace(',', '.'))
+                except Exception:
+                    continue
+                tablas.setdefault(nombre.upper().strip(), []).append({'cm': lam_cm, 'mm': 0, 'bbl': bbl})
+
+        # Post-proceso: ordenar y empaquetar
+        out = {}
+        for nombre, data in tablas.items():
+            if not data:
+                continue
+            data.sort(key=lambda r: (r['cm'], r.get('mm', 0)))
+            out[nombre] = {'mode': 'flat', 'data': data}
+        return out
+    except Exception:
+        return {}
+
+def _parse_simple_lamina_single_volume(ws):
+    """
+    Parser simple para hojas con columnas:
+    - "LÁMINA" (o ALTURA/NIVEL) y
+    - una única columna de volúmenes (encabezado puede ser numérico como "60").
+
+    Devuelve dict {'mode':'flat','data':[{'cm':int,'mm':0,'bbl':float}, ...]}
+    o {} si no logra identificar las columnas.
+    """
+    try:
+        max_cols = ws.max_column or 0
+        def _txt(cell):
+            v = cell.value
+            return str(v).strip() if v is not None else ''
+
+        row1 = [_txt(c) for c in (ws[1][:max_cols] if ws.max_row >= 1 else [])]
+        row2 = [_txt(c) for c in (ws[2][:max_cols] if ws.max_row >= 2 else [])]
+        headers = []
+        for i in range(max_cols):
+            h1 = (row1[i] if i < len(row1) else '')
+            h2 = (row2[i] if i < len(row2) else '')
+            headers.append((h1 + ' ' + h2).strip().upper())
+
+        # Buscar lamina
+        lam_idx = None
+        for i, h in enumerate(headers):
+            if any(k in h for k in ['LAMINA', 'LÁMINA', 'ALTURA', 'NIVEL']):
+                lam_idx = i
+                break
+        if lam_idx is None:
+            return {}
+
+        # Detectar fila inicial (si fila 2 tiene letras, empezar en 3)
+        start_row = 3 if any(any(ch.isalpha() for ch in (row2[i] if i < len(row2) else '')) for i in range(max_cols)) else 2
+
+        # Elegir la mejor columna de volumen por cantidad de valores numéricos
+        def _is_num(x):
+            try:
+                float(str(x).replace(',', '.'))
+                return True
+            except Exception:
+                return False
+
+        best_idx = None
+        best_count = -1
+        sample_rows = list(ws.iter_rows(min_row=start_row, max_row=min(start_row + 50, ws.max_row), values_only=True))
+        for j in range(max_cols):
+            if j == lam_idx:
+                continue
+            cnt = 0
+            for r in sample_rows:
+                if j < len(r) and _is_num(r[j]):
+                    cnt += 1
+            if cnt > best_count:
+                best_count = cnt
+                best_idx = j
+        if best_idx is None or best_count <= 0:
+            return {}
+
+        data = []
+        for row in ws.iter_rows(min_row=start_row, values_only=True):
+            lam = row[lam_idx] if lam_idx < len(row) else None
+            vol = row[best_idx] if best_idx < len(row) else None
+            if lam in (None, '') or vol in (None, ''):
+                continue
+            try:
+                cm = int(round(float(str(lam).replace(',', '.'))))
+                bbl = float(str(vol).replace(',', '.'))
+            except Exception:
+                continue
+            data.append({'cm': cm, 'mm': 0, 'bbl': bbl})
+        if not data:
+            return {}
+        data.sort(key=lambda r: (r['cm'], r['mm']))
+        return {'mode': 'flat', 'data': data}
+    except Exception:
+        return {}
+
+def _interp_bbl(datos, cm, mm):
+    """
+    Calcula BBL según datos de aforo. Soporta:
+    - Modo 'step': base(10 cm) + inc_cm + inc_mm
+    - Modo 'flat': lineal con mejoras: usa valores absolutos si existen para
+      (cm,0) y (cm,mm); si no, interpola.
+    """
+    # Helper: lineal a partir de lista plana
+    def _linear_from_flat(lista, cm_i, mm_i):
+        nivel = cm_i + (mm_i or 0)/10.0
+        niveles = [d['cm'] + d['mm']/10.0 for d in lista]
+        bbllist = [d['bbl'] for d in lista]
+        if not niveles:
+            return 0.0
+        if nivel <= niveles[0]:
+            return bbllist[0]
+        if nivel >= niveles[-1]:
+            return bbllist[-1]
+        for i in range(1, len(niveles)):
+            if niveles[i] >= nivel:
+                x0, x1 = niveles[i-1], niveles[i]
+                y0, y1 = bbllist[i-1], bbllist[i]
+                t = (nivel - x0) / (x1 - x0) if (x1 - x0) != 0 else 0
+                return y0 + t * (y1 - y0)
+        return bbllist[-1]
+
+    # Modo STEP
+    if isinstance(datos, dict) and datos.get('mode') == 'step':
+        base_map = {int(k): float(v) for k, v in (datos.get('base') or {}).items()}
+        inc_cm = {int(k): {int(kk): float(vv) for kk, vv in (sub or {}).items()} for k, sub in (datos.get('inc_cm') or {}).items()}
+        inc_mm = {int(k): {int(kk): float(vv) for kk, vv in (sub or {}).items()} for k, sub in (datos.get('inc_mm') or {}).items()}
+        inc_cm_global = {int(k): float(v) for k, v in (datos.get('inc_cm_global') or {}).items()}
+        inc_mm_global = {int(k): float(v) for k, v in (datos.get('inc_mm_global') or {}).items()}
+
+        if not base_map:
+            return 0.0
+
+        dec = (cm // 10) * 10
+        # Buscar el decímetro igual o menor existente
+        if dec not in base_map:
+            menores = [k for k in base_map.keys() if k <= cm]
+            if not menores:
+                dec = min(base_map.keys())
+            else:
+                dec = max(menores)
+
+        base = base_map.get(dec, 0.0)
+        cm_intra = cm - dec
+        total = base
+
+        # Incremento por centímetro
+        if cm_intra > 0:
+            cm_table = inc_cm.get(dec, {})
+            if cm_intra in cm_table:
+                total += cm_table[cm_intra]
+            elif cm_intra in inc_cm_global:
+                total += inc_cm_global[cm_intra]
+            else:
+                # Aproximación lineal entre bases de decímetro
+                nxt = base_map.get(dec + 10)
+                if nxt is not None:
+                    total += (nxt - base) * (cm_intra / 10.0)
+
+        # Incremento por milímetro
+        mm = int(mm or 0)
+        if mm > 0:
+            mm_table = inc_mm.get(dec, {})
+            if mm in mm_table:
+                total += mm_table[mm]
+            elif mm in inc_mm_global:
+                total += inc_mm_global[mm]
+            else:
+                # Aproximación dentro del centímetro con bases de (cm,0) y (cm+1,0) si están
+                cm_table = inc_cm.get(dec, {})
+                v_cm = cm_table.get(cm_intra, None) if cm_intra > 0 else 0.0
+                v_cm_next = cm_table.get(cm_intra + 1, None)
+                if v_cm is not None and v_cm_next is not None:
+                    total += (v_cm_next - v_cm) * (mm / 10.0)
+                else:
+                    # Último recurso: usar salto entre base dec y próximo dec
+                    nxt = base_map.get(dec + 10)
+                    if nxt is not None:
+                        total = base + (nxt - base) * ((cm_intra + mm/10.0) / 10.0)
+        return total
+
+    # Modo FLAT u otros
+    lista = datos.get('data') if isinstance(datos, dict) and 'data' in datos else datos
+    if not isinstance(lista, list) or not lista:
+        return 0.0
+
+    # Intentar método escalonado a partir de valores absolutos si existen
+    # Mapa rápido
+    M = {(int(d['cm']), int(d['mm'])): float(d['bbl']) for d in lista if 'cm' in d and 'mm' in d and 'bbl' in d}
+    dec = (cm // 10) * 10
+    base = M.get((dec, 0), None)
+    total = None
+    # Fallback estilo Excel: si el flat contiene incrementos globales de cm como (1..9,0)
+    # y de mm como (0,1..9), usar: base(dec) + inc_cm(cm_intra) + inc_mm(mm)
+    if base is not None:
+        cm_intra = cm - dec
+        inc_cm_glob = M.get((cm_intra, 0), None) if (1 <= cm_intra <= 9) else 0.0
+        inc_mm_glob = M.get((0, int(mm)), None) if int(mm or 0) > 0 else 0.0
+        if (inc_cm_glob is not None) or (inc_mm_glob is not None and int(mm or 0) > 0):
+            # Si existen incrementos globales, aplicarlos como en Excel
+            total = float(base) + float(inc_cm_glob or 0.0) + float(inc_mm_glob or 0.0)
+            return total
+    if base is not None:
+        total = base
+        # cm exacto disponible
+        v_cm0 = M.get((cm, 0), None)
+        if v_cm0 is not None:
+            total = v_cm0
+        else:
+            # Interpolar entre (dec,0) y (dec+10,0)
+            v_dec_next = M.get((dec + 10, 0), None)
+            if v_dec_next is not None:
+                total = base + (v_dec_next - base) * ((cm - dec) / 10.0)
+        # mm incremento
+        if mm and total is not None:
+            v_cmmm = M.get((cm, int(mm)))
+            if v_cmmm is not None and v_cm0 is not None:
+                total = v_cmmm
+            else:
+                # Aproximación dentro del centímetro con (cm,0) y (cm+1,0)
+                v_cm1 = M.get((cm + 1, 0), None)
+                if v_cm0 is not None and v_cm1 is not None:
+                    total = (v_cm0 + (v_cm1 - v_cm0) * (mm / 10.0))
+
+    if total is not None:
+        return total
+    # Fallback: completamente lineal
+    return _linear_from_flat(lista, cm, mm)
+
+def _expand_preview_rows(datos, max_rows=200):
+    """
+    Genera una lista plana de filas {cm, mm, bbl} para vista previa.
+    - Para modo 'flat': devuelve hasta max_rows primeras filas ordenadas.
+    - Para modo 'step': muestrea mm=0 para cada centímetro entre el mínimo y máximo decímetro disponible.
+    """
+    try:
+        # Vista previa especial para VCF/API6A
+        if isinstance(datos, dict) and 'data' in datos and len(datos['data']) > 0:
+            sample = datos['data'][0]
+            if all(k in sample for k in ('api', 'temp', 'vcf')):
+                lista = list(datos.get('data') or [])
+                lista.sort(key=lambda r: (float(r.get('api', 0)), float(r.get('temp', 0))))
+                return lista[:max_rows]
+        if isinstance(datos, dict) and datos.get('mode') == 'flat':
+            lista = list(datos.get('data') or [])
+            lista.sort(key=lambda r: (int(r.get('cm', 0)), int(r.get('mm', 0))))
+            return lista[:max_rows]
+        if isinstance(datos, dict) and datos.get('mode') == 'step':
+            base_map = {int(k): float(v) for k, v in (datos.get('base') or {}).items()}
+            if not base_map:
+                return []
+            decs = sorted(base_map.keys())
+            cm_min = decs[0]
+            cm_max = decs[-1] + 9
+            out = []
+            for cm in range(cm_min, cm_max + 1):
+                b = _interp_bbl(datos, cm, 0)
+                out.append({'cm': int(cm), 'mm': 0, 'bbl': float(b)})
+                if len(out) >= max_rows:
+                    break
+            return out
+    except Exception:
+        pass
+    return []
 
 # Decorador para verificar login (mejorado para AJAX)
 def login_required(f):
@@ -1077,6 +1828,336 @@ def permiso_requerido(area_requerida):
             return redirect(url_for('home'))
         return decorated_function
     return decorator
+
+# ---------------- Gestión de Aforos (Admin) -----------------
+@login_required
+@admin_required
+@app.route('/aforos')
+def aforos_page():
+    tablas = db.session.query(AforoTabla).order_by(AforoTabla.tipo.asc(), AforoTabla.nombre.asc()).all()
+    # Cargar una lista mínima para mostrar en tabla (sin los datos)
+    return render_template('aforos.html', nombre=session.get('nombre'), tablas=tablas)
+
+@login_required
+@admin_required
+@app.route('/api/aforos/get')
+def aforos_get():
+    try:
+        tid = request.args.get('id')
+        tipo = (request.args.get('tipo') or '').upper() or None
+        nombre = (request.args.get('nombre') or '').upper() or None
+        q = db.session.query(AforoTabla)
+        if tid:
+            q = q.filter(AforoTabla.id == int(tid))
+        elif tipo and nombre:
+            q = q.filter(AforoTabla.tipo == tipo, AforoTabla.nombre == nombre)
+        else:
+            return jsonify(success=False, message='Parámetros inválidos'), 400
+        r = q.first()
+        if not r:
+            return jsonify(success=False, message='No encontrado'), 404
+        datos = json.loads(r.datos_json)
+        preview = _expand_preview_rows(datos, max_rows=200)
+        mode = datos.get('mode') if isinstance(datos, dict) else 'flat'
+        total_rows = 0
+        if isinstance(datos, dict) and mode == 'flat':
+            total_rows = len(datos.get('data') or [])
+        elif isinstance(datos, dict) and mode == 'step':
+            total_rows = len((datos.get('base') or {})) * 10
+        return jsonify(success=True, tabla={
+            'id': r.id, 'tipo': r.tipo, 'nombre': r.nombre,
+            'timestamp': r.timestamp.isoformat(), 'usuario': r.usuario,
+            'mode': mode, 'total_rows_est': total_rows
+        }, preview=preview)
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@admin_required
+@app.route('/api/aforos/download')
+def aforos_download():
+    try:
+        tid = request.args.get('id')
+        if not tid:
+            return jsonify(success=False, message='id requerido'), 400
+        r = db.session.query(AforoTabla).filter(AforoTabla.id == int(tid)).first()
+        if not r:
+            return jsonify(success=False, message='No encontrado'), 404
+        datos = json.loads(r.datos_json)
+        rows = []
+        if isinstance(datos, dict) and datos.get('mode') == 'flat':
+            rows = list(datos.get('data') or [])
+        else:
+            rows = _expand_preview_rows(datos, max_rows=100000)
+        # Generar CSV en memoria
+        import csv
+        from io import StringIO
+        sio = StringIO()
+        writer = csv.writer(sio)
+        writer.writerow(['cm', 'mm', 'bbl'])
+        for it in rows:
+            writer.writerow([it.get('cm'), it.get('mm'), it.get('bbl')])
+        sio.seek(0)
+        resp = Response(sio.getvalue(), mimetype='text/csv')
+        fname = f"aforo_{r.tipo}_{r.nombre}.csv".replace(' ', '_')
+        resp.headers['Content-Disposition'] = f'attachment; filename="{fname}"'
+        return resp
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@admin_required
+@app.route('/api/aforos/upload', methods=['POST'])
+def aforos_upload():
+    if 'archivo_excel' not in request.files:
+        return jsonify(success=False, message='Archivo no recibido'), 400
+    archivo = request.files['archivo_excel']
+    tipo = (request.form.get('tipo') or '').upper()
+    # Nuevo: permitir optar por el parser de múltiples columnas solo si se solicita explícitamente
+    # Por defecto, para BARCAZA se usará el nombre de la hoja como "nombre" de la tabla
+    parsear_columnas = (request.form.get('parsear_columnas') == '1')
+    # nombre manual es opcional; si el archivo tiene una sola hoja, puede usarse como override
+    nombre_override = (request.form.get('nombre') or '').upper().strip()
+    if not archivo or not archivo.filename.lower().endswith('.xlsx'):
+        return jsonify(success=False, message='Suba un archivo .xlsx'), 400
+    if tipo not in ('TK','BARCAZA','VCF'):
+        return jsonify(success=False, message='Tipo inválido (TK, BARCAZA o VCF)'), 400
+    try:
+        wb = openpyxl.load_workbook(archivo)
+        hojas = wb.sheetnames
+        total_ok = 0
+        total_err = 0
+        detalles = []
+        for idx, sheet_name in enumerate(hojas):
+            ws = wb[sheet_name]
+            nombre_final = (nombre_override if (len(hojas) == 1 and nombre_override) else sheet_name).upper().strip()
+            try:
+                filas_count = 0
+                datos = None
+                # Si es VCF (API6A), procesar como tabla especial: matriz o vertical
+                if tipo == 'VCF':
+                    max_cols = ws.max_column or 0
+                    row1 = [str(c.value).strip().lower() if c.value is not None else '' for c in ws[1][:max_cols]]
+                    def is_temp_header(h):
+                        h = h.lower().replace('.', '').replace(' ', '')
+                        return any(x in h for x in ['temp', 'deg', 'degre', 't'])
+                    is_matrix = row1[0] and is_temp_header(row1[0])
+                    apis = []
+                    data = []
+                    if is_matrix:
+                        # Formato matriz: encabezados API en la primera fila
+                        for i in range(1, max_cols):
+                            h = row1[i]
+                            try:
+                                apis.append(float(str(h).replace(',', '.')))
+                            except Exception:
+                                apis.append(None)
+                        for row in ws.iter_rows(min_row=2, values_only=True):
+                            try:
+                                temp_v = row[0]
+                                for j, api_v in enumerate(apis):
+                                    vcf_v = row[j+1] if j+1 < len(row) else None
+                                    if api_v is None or temp_v is None or vcf_v is None:
+                                        continue
+                                    api_f = float(api_v)
+                                    temp_f = float(str(temp_v).replace(',', '.'))
+                                    vcf_f = float(str(vcf_v).replace(',', '.'))
+                                    data.append({'api': api_f, 'temp': temp_f, 'vcf': vcf_f})
+                            except Exception:
+                                continue
+                    else:
+                        # Formato vertical: columnas API, TEMP, VCF
+                        idx_api = next((i for i, h in enumerate(row1) if 'api' in h), None)
+                        idx_temp = next((i for i, h in enumerate(row1) if 'temp' in h or 't' in h), None)
+                        idx_vcf = next((i for i, h in enumerate(row1) if 'vcf' in h or 'factor' in h), None)
+                        for row in ws.iter_rows(min_row=2, values_only=True):
+                            try:
+                                api_v = row[idx_api] if idx_api is not None else None
+                                temp_v = row[idx_temp] if idx_temp is not None else None
+                                vcf_v = row[idx_vcf] if idx_vcf is not None else None
+                                if api_v is None or temp_v is None or vcf_v is None:
+                                    continue
+                                api_f = float(str(api_v).replace(',', '.'))
+                                temp_f = float(str(temp_v).replace(',', '.'))
+                                vcf_f = float(str(vcf_v).replace(',', '.'))
+                                data.append({'api': api_f, 'temp': temp_f, 'vcf': vcf_f})
+                            except Exception:
+                                continue
+                    if data:
+                        filas_count = len(data)
+                        datos = {'data': data, 'mode': 'flat'}
+                        payload = json.dumps(datos, ensure_ascii=False)
+                        existente = db.session.query(AforoTabla).filter_by(tipo=tipo, nombre=nombre_final).first()
+                        if existente:
+                            existente.datos_json = payload
+                            existente.usuario = session.get('nombre','No identificado')
+                            existente.timestamp = datetime.utcnow()
+                        else:
+                            db.session.add(AforoTabla(
+                                usuario=session.get('nombre','No identificado'),
+                                tipo=tipo,
+                                nombre=nombre_final,
+                                datos_json=payload
+                            ))
+                        total_ok += 1
+                        detalles.append(f"{sheet_name} -> {nombre_final}: OK ({filas_count} filas)")
+                        continue
+                # ...existing code for TK/BARCAZA...
+
+                # 2) Si BARCAZA sin filas, intentar parser simple LÁMINA + 1 volumen
+                if tipo == 'BARCAZA' and filas_count == 0 and not parsear_columnas:
+                    datos_simple = _parse_simple_lamina_single_volume(ws)
+                    if datos_simple and len(datos_simple.get('data') or []) > 0:
+                        payload = json.dumps(datos_simple, ensure_ascii=False)
+                        existente = db.session.query(AforoTabla).filter_by(tipo=tipo, nombre=nombre_final).first()
+                        if existente:
+                            existente.datos_json = payload
+                            existente.usuario = session.get('nombre','No identificado')
+                            existente.timestamp = datetime.utcnow()
+                        else:
+                            db.session.add(AforoTabla(
+                                usuario=session.get('nombre','No identificado'),
+                                tipo=tipo,
+                                nombre=nombre_final,
+                                datos_json=payload
+                            ))
+                        total_ok += 1
+                        filas_s = len(datos_simple.get('data') or [])
+                        detalles.append(f"{sheet_name} -> {nombre_final}: OK ({filas_s} filas)")
+                        continue
+
+                # 3) Fallback final: parser de múltiples columnas cuando corresponda
+                if tipo == 'BARCAZA' and (parsear_columnas or filas_count == 0):
+                    multi = _parse_barge_columns_sheet(ws, prefer_tipo='BARCAZA', default_name=nombre_final)
+                    if multi:
+                        for nom, datos_m in multi.items():
+                            payload = json.dumps(datos_m, ensure_ascii=False)
+                            existente = db.session.query(AforoTabla).filter_by(tipo=tipo, nombre=nom).first()
+                            if existente:
+                                existente.datos_json = payload
+                                existente.usuario = session.get('nombre','No identificado')
+                                existente.timestamp = datetime.utcnow()
+                            else:
+                                db.session.add(AforoTabla(
+                                    usuario=session.get('nombre','No identificado'),
+                                    tipo=tipo,
+                                    nombre=nom,
+                                    datos_json=payload
+                                ))
+                            total_ok += 1
+                            filas_m = len(datos_m.get('data') or []) if isinstance(datos_m, dict) else 0
+                            detalles.append(f"{sheet_name} -> {nom}: OK ({filas_m} filas)")
+                        continue
+
+                # Si llegó aquí, no se pudo interpretar la hoja
+                raise ValueError('No se pudo interpretar columnas de nivel/volumen')
+            except Exception as e:
+                total_err += 1
+                detalles.append(f"{sheet_name}: ERROR {e}")
+        db.session.commit()
+        msg = f"Procesado: {total_ok} hojas OK, {total_err} con error."
+        return jsonify(success=True, message=msg, detalles=detalles)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/api/aforos/list')
+def aforos_list():
+    # acceso general para poder consultarlo desde Trasiegos
+    tipo = (request.args.get('tipo') or '').upper() or None
+    q = db.session.query(AforoTabla)
+    if tipo in ('TK','BARCAZA'):
+        q = q.filter(AforoTabla.tipo == tipo)
+    filas = q.order_by(AforoTabla.tipo.asc(), AforoTabla.nombre.asc()).all()
+    res = []
+    for r in filas:
+        res.append({
+            'id': r.id,
+            'tipo': r.tipo,
+            'nombre': r.nombre,
+            'timestamp': r.timestamp.isoformat(),
+            'usuario': r.usuario
+        })
+    return jsonify(success=True, tablas=res)
+
+@login_required
+@app.route('/api/aforos/calcular')
+def aforos_calcular():
+    try:
+        nombre = (request.args.get('nombre') or '').upper()
+        tipo = (request.args.get('tipo') or '').upper()
+        cm = int(request.args.get('cm') or 0)
+        mm = int(request.args.get('mm') or 0)
+        if not nombre or tipo not in ('TK','BARCAZA'):
+            return jsonify(success=False, message='Parámetros inválidos'), 400
+        tabla = db.session.query(AforoTabla).filter_by(tipo=tipo, nombre=nombre).first()
+        if not tabla:
+            return jsonify(success=False, message='Tabla de aforo no encontrada'), 404
+        datos = json.loads(tabla.datos_json)
+        # Para TK-01, TK-02 y barcaza MANZANILLO, buscar valor exacto
+        nombres_exactos = ["TK-01", "TK-02"]
+        # Barcaza MANZANILLO compartimentos
+        nombres_exactos += ["1", "2", "3"]
+        # Barcaza ODISEA compartimentos
+        nombres_exactos += ["1P", "1S", "2P", "2S", "3P", "3S"]
+        # Barcaza MARGOTH compartimentos SOLO con prefijo MG6-
+        nombres_exactos += [
+            "MG6-1P", "MG6-1S", "MG6-2P", "MG6-2S", "MG6-3P", "MG6-3S", "MG6-4P", "MG6-4S", "MG6-5P", "MG6-5S"
+        ]
+        # Barcaza CR compartimentos SOLO con prefijo CR
+        nombres_exactos += ["CR 1S", "CR 1P", "CR 2S", "CR 2P", "CR 3S", "CR 3P", "CR 4S", "CR 4P", "CR 5S", "CR 5P"]
+        if nombre in nombres_exactos:
+            lista = datos.get('data') if isinstance(datos, dict) and 'data' in datos else datos
+            if isinstance(lista, list):
+                match = next((d for d in lista if int(d.get('cm', -1)) == cm and int(d.get('mm', 0)) == mm), None)
+                if match:
+                    bbl = match.get('bbl', 0.0)
+                    return jsonify(success=True, bbl=round(float(bbl), 2))
+        # Para otros tanques, usar interpolación
+        bbl = _interp_bbl(datos, cm, mm)
+        return jsonify(success=True, bbl=round(float(bbl), 2))
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@admin_required
+@app.route('/api/aforos/delete', methods=['POST'])
+def aforos_delete():
+    try:
+        payload = request.get_json(silent=True) or {}
+        tid = payload.get('id')
+        tipo = (payload.get('tipo') or '').upper() or None
+        nombre = (payload.get('nombre') or '').upper() or None
+        prefix = (payload.get('prefix') or '').upper().strip() or None
+        nombre_like = (payload.get('nombre_like') or '').upper().strip() or None
+
+        if not (tid or (tipo and (nombre or prefix or nombre_like))):
+            return jsonify(success=False, message='Parámetros requeridos: id OR (tipo + nombre|prefix|nombre_like)'), 400
+
+        q = db.session.query(AforoTabla)
+        if tid:
+            q = q.filter(AforoTabla.id == int(tid))
+        else:
+            q = q.filter(AforoTabla.tipo == tipo)
+            if nombre:
+                q = q.filter(AforoTabla.nombre == nombre)
+            elif prefix:
+                q = q.filter(AforoTabla.nombre.like(f"{prefix}%"))
+            elif nombre_like:
+                q = q.filter(AforoTabla.nombre.like(f"%{nombre_like}%"))
+
+        filas = q.all()
+        if not filas:
+            return jsonify(success=False, message='No se encontraron tablas a eliminar'), 404
+        count = len(filas)
+        for r in filas:
+            db.session.delete(r)
+        db.session.commit()
+        return jsonify(success=True, deleted=count)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
 def calcular_estadisticas(lista_tanques):
     """
     Calcula totales y promedios PONDERADOS para una lista de tanques.
@@ -1134,6 +2215,456 @@ def permiso_exclusivo(email_requerido):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+def _to_float(value):
+    if value in (None, ''):
+        return None
+    try:
+        return float(str(value).replace(',', '.'))
+    except Exception:
+        return None
+
+def _to_int(value):
+    if value in (None, ''):
+        return None
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return None
+
+@login_required
+@app.route('/trasiegos', methods=['GET', 'POST'])
+def trasiegos_page():
+    nombre_usr = session.get('nombre', '')
+    ALLOWED_TK = { 'Ignacio Quimbayo', 'Control Refineria' }
+    ALLOWED_BAR = { 'Juan Diego Cuadros', 'Ricardo Congo' }
+    can_tk = nombre_usr in ALLOWED_TK
+    can_bar = nombre_usr in ALLOWED_BAR
+    def _get_or_create(fecha_dt, origen_tk, destino_barcaza, destino_comp):
+        q = (db.session.query(TrasiegoTKBarcaza)
+             .filter(TrasiegoTKBarcaza.fecha == fecha_dt,
+                     TrasiegoTKBarcaza.origen_tk == origen_tk,
+                     TrasiegoTKBarcaza.destino_barcaza == destino_barcaza,
+                     (TrasiegoTKBarcaza.destino_compartimento == (destino_comp or None))) )
+        inst = q.first()
+        if inst:
+            return inst, False
+        inst = TrasiegoTKBarcaza(
+            fecha=fecha_dt,
+            usuario=session.get('nombre','No identificado'),
+            origen_tk=origen_tk,
+            destino_barcaza=destino_barcaza,
+            destino_compartimento=destino_comp or None
+        )
+        db.session.add(inst)
+        return inst, True
+
+    if request.method == 'POST':
+        try:
+            fecha = request.form.get('fecha') or date.today().isoformat()
+            fecha_dt = date.fromisoformat(fecha)
+            origen_tk = (request.form.get('origen_tk','') or '').upper()
+            destino_barcaza = (request.form.get('destino_barcaza','') or '').upper()
+            destino_compartimento = (request.form.get('destino_compartimento') or '').upper() or None
+            seccion = request.form.get('seccion')  # 'tk' o 'bar'
+
+            # Permisos por sección
+            if seccion == 'tk' and not can_tk:
+                flash('No tiene permiso para registrar datos del Tanque.', 'danger')
+                return redirect(url_for('trasiegos_page'))
+            if seccion == 'bar' and not can_bar:
+                flash('No tiene permiso para registrar datos de la Barcaza.', 'danger')
+                return redirect(url_for('trasiegos_page'))
+
+            # TK: forzar clave sin barcaza/comp para que el bar vincule luego
+            if seccion == 'tk':
+                destino_barcaza = ''
+                destino_compartimento = None
+
+            # Si ya existe registro para esta clave, bloquear cambio de fecha al del primer registro
+            clave_barcaza = destino_barcaza or ''
+            existente = (db.session.query(TrasiegoTKBarcaza)
+                         .filter(TrasiegoTKBarcaza.origen_tk == origen_tk,
+                                 TrasiegoTKBarcaza.destino_barcaza == clave_barcaza,
+                                 (TrasiegoTKBarcaza.destino_compartimento == (destino_compartimento or None)))
+                         .order_by(TrasiegoTKBarcaza.id.asc()).first())
+            if existente:
+                fecha_dt = existente.fecha
+
+            inst, created = _get_or_create(fecha_dt, origen_tk, destino_barcaza, destino_compartimento)
+            inst.usuario = session.get('nombre','No identificado')
+
+            if seccion == 'tk':
+                inst.tk_cm_inicial = _to_int(request.form.get('tk_cm_inicial'))
+                inst.tk_mm_inicial = _to_int(request.form.get('tk_mm_inicial'))
+                inst.tk_bbl_bruto_inicial = _to_float(request.form.get('tk_bbl_bruto_inicial'))
+                inst.tk_bbl_inicial = _to_float(request.form.get('tk_bbl_inicial'))
+                inst.tk_api = _to_float(request.form.get('tk_api'))
+                inst.tk_temp = _to_float(request.form.get('tk_temp'))
+                inst.tk_cm_final = _to_int(request.form.get('tk_cm_final'))
+                inst.tk_mm_final = _to_int(request.form.get('tk_mm_final'))
+                inst.tk_bbl_bruto_final = _to_float(request.form.get('tk_bbl_bruto_final'))
+                inst.tk_bbl_final = _to_float(request.form.get('tk_bbl_final'))
+                inst.tk_notas = request.form.get('tk_notas')
+                # Ingreso simultáneo al TK: caudal (BBL/h), minutos y total bbl
+                caudal = _to_float(request.form.get('tk_caudal_bbl_min'))
+                minutos = _to_float(request.form.get('tk_minutos_ingreso'))
+                bbling = _to_float(request.form.get('tk_bbl_ingreso'))
+                inst.tk_caudal_bbl_min = caudal
+                inst.tk_minutos_ingreso = minutos
+                # Si no se envía tk_bbl_ingreso explícito, calcularlo
+                if bbling is None and caudal is not None and minutos is not None:
+                    bbling = round(caudal * (minutos/60.0), 2)
+                inst.tk_bbl_ingreso = bbling
+                # Si no tiene barcaza definida, se almacena como cadena vacía (columna NOT NULL en SQLite)
+                if inst.destino_barcaza is None:
+                    inst.destino_barcaza = ''
+            elif seccion == 'bar':
+                # Intentar vincular con un registro TK previo (barcaza en blanco) si no encontramos uno exacto
+                if created and destino_barcaza and origen_tk:
+                    # Buscar registro con misma fecha y TK, barcaza en blanco/NULL
+                    prev = (db.session.query(TrasiegoTKBarcaza)
+                            .filter(TrasiegoTKBarcaza.origen_tk == origen_tk,
+                                    TrasiegoTKBarcaza.fecha == fecha_dt,
+                                    (TrasiegoTKBarcaza.destino_barcaza == '') )
+                            .order_by(TrasiegoTKBarcaza.id.asc()).first())
+                    if prev:
+                        # Reutilizar registro y bloquear fecha del previo
+                        db.session.expunge(inst)
+                        inst = prev
+                        created = False
+                        inst.destino_barcaza = destino_barcaza
+                        inst.destino_compartimento = destino_compartimento or None
+                    else:
+                        # Si existe uno para ese TK con barcaza en blanco pero con OTRA fecha, bloquea cambio de fecha
+                        prev_any = (db.session.query(TrasiegoTKBarcaza)
+                                    .filter(TrasiegoTKBarcaza.origen_tk == origen_tk,
+                                            (TrasiegoTKBarcaza.destino_barcaza == ''))
+                                    .order_by(TrasiegoTKBarcaza.id.desc()).first())
+                        if prev_any and prev_any.fecha != fecha_dt:
+                            flash(f'La fecha está bloqueada para este trasiego (use {prev_any.fecha}).', 'warning')
+                            return redirect(url_for('trasiegos_page'))
+                inst.bar_cm_inicial = _to_int(request.form.get('bar_cm_inicial'))
+                inst.bar_mm_inicial = _to_int(request.form.get('bar_mm_inicial'))
+                inst.bar_bbl_bruto_inicial = _to_float(request.form.get('bar_bbl_bruto_inicial'))
+                inst.bar_bbl_inicial = _to_float(request.form.get('bar_bbl_inicial'))
+                inst.bar_api = _to_float(request.form.get('bar_api'))
+                inst.bar_temp = _to_float(request.form.get('bar_temp'))
+                inst.bar_cm_final = _to_int(request.form.get('bar_cm_final'))
+                inst.bar_mm_final = _to_int(request.form.get('bar_mm_final'))
+                inst.bar_bbl_bruto_final = _to_float(request.form.get('bar_bbl_bruto_final'))
+                inst.bar_bbl_final = _to_float(request.form.get('bar_bbl_final'))
+            else:
+                # compat: si no viene seccion, guardamos todo lo que venga
+                inst.tk_cm_inicial = _to_int(request.form.get('tk_cm_inicial'))
+                inst.tk_mm_inicial = _to_int(request.form.get('tk_mm_inicial'))
+                inst.tk_bbl_bruto_inicial = _to_float(request.form.get('tk_bbl_bruto_inicial'))
+                inst.tk_bbl_inicial = _to_float(request.form.get('tk_bbl_inicial'))
+                inst.tk_api = _to_float(request.form.get('tk_api'))
+                inst.tk_temp = _to_float(request.form.get('tk_temp'))
+                inst.tk_cm_final = _to_int(request.form.get('tk_cm_final'))
+                inst.tk_mm_final = _to_int(request.form.get('tk_mm_final'))
+                inst.tk_bbl_bruto_final = _to_float(request.form.get('tk_bbl_bruto_final'))
+                inst.tk_bbl_final = _to_float(request.form.get('tk_bbl_final'))
+                # Ingreso simultáneo (modo compat)
+                caudal = _to_float(request.form.get('tk_caudal_bbl_min'))
+                minutos = _to_float(request.form.get('tk_minutos_ingreso'))
+                bbling = _to_float(request.form.get('tk_bbl_ingreso'))
+                inst.tk_caudal_bbl_min = caudal
+                inst.tk_minutos_ingreso = minutos
+                if bbling is None and caudal is not None and minutos is not None:
+                    bbling = round(caudal * (minutos/60.0), 2)
+                inst.tk_bbl_ingreso = bbling
+                inst.bar_cm_inicial = _to_int(request.form.get('bar_cm_inicial'))
+                inst.bar_mm_inicial = _to_int(request.form.get('bar_mm_inicial'))
+                inst.bar_bbl_bruto_inicial = _to_float(request.form.get('bar_bbl_bruto_inicial'))
+                inst.bar_bbl_inicial = _to_float(request.form.get('bar_bbl_inicial'))
+                inst.bar_api = _to_float(request.form.get('bar_api'))
+                inst.bar_temp = _to_float(request.form.get('bar_temp'))
+                inst.bar_cm_final = _to_int(request.form.get('bar_cm_final'))
+                inst.bar_mm_final = _to_int(request.form.get('bar_mm_final'))
+                inst.bar_bbl_bruto_final = _to_float(request.form.get('bar_bbl_bruto_final'))
+                inst.bar_bbl_final = _to_float(request.form.get('bar_bbl_final'))
+
+            inst.notas = request.form.get('notas')
+            db.session.commit()
+            if seccion == 'tk':
+                flash('Datos del Tanque guardados','success')
+            elif seccion == 'bar':
+                flash('Datos de la Barcaza guardados','success')
+            else:
+                flash('Trasiego guardado exitosamente','success')
+            return redirect(url_for('trasiegos_page'))
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error guardando trasiego: {e}")
+            flash(f'Error guardando: {e}','danger')
+    # GET
+    desde = request.args.get('desde')
+    hasta = request.args.get('hasta')
+    q = db.session.query(TrasiegoTKBarcaza)
+    if desde:
+        try:
+            q = q.filter(TrasiegoTKBarcaza.fecha >= date.fromisoformat(desde))
+        except Exception:
+            pass
+    if hasta:
+        try:
+            q = q.filter(TrasiegoTKBarcaza.fecha <= date.fromisoformat(hasta))
+        except Exception:
+            pass
+    trasiegos = q.order_by(TrasiegoTKBarcaza.fecha.desc(), TrasiegoTKBarcaza.id.desc()).all()
+    return render_template('trasiegos.html', nombre=session.get('nombre'), trasiegos=trasiegos, desde=desde or '', hasta=hasta or '', allowed_tk=can_tk, allowed_bar=can_bar)
+
+@login_required
+@app.route('/guardar_trasiegos_masivo', methods=['POST'])
+def guardar_trasiegos_masivo():
+    def to_float(v):
+        if v is None:
+            return None
+        s = str(v).strip().replace(',', '.')
+        if s == '':
+            return None
+        try:
+            return float(s)
+        except Exception:
+            return None
+    def to_int(v):
+        if v is None:
+            return None
+        s = str(v).strip()
+        if s == '':
+            return None
+        try:
+            return int(float(s))
+        except Exception:
+            return None
+    try:
+        data = request.get_json()
+        trasiegos = data.get('trasiegos', [])
+        if not trasiegos or not isinstance(trasiegos, list):
+            return jsonify(success=False, message='No se recibieron trasiegos válidos'), 400
+        guardados = 0
+        errores = []
+        for t in trasiegos:
+            try:
+                fecha = t.get('fecha') or date.today().isoformat()
+                fecha_dt = date.fromisoformat(fecha)
+                origen_tk = (t.get('origen_tk','') or '').upper()
+                destino_barcaza = (t.get('destino_barcaza','') or '').upper()
+                destino_compartimento = (t.get('destino_compartimento') or '').upper() or None
+                usuario = session.get('nombre','No identificado')
+                # Crear registro
+                reg = TrasiegoTKBarcaza(
+                    fecha=fecha_dt,
+                    usuario=usuario,
+                    origen_tk=origen_tk,
+                    destino_barcaza=destino_barcaza,
+                    destino_compartimento=destino_compartimento,
+                    tk_cm_inicial=to_int(t.get('tk_cm_inicial')),
+                    tk_mm_inicial=to_int(t.get('tk_mm_inicial')),
+                    tk_bbl_bruto_inicial=to_float(t.get('tk_bbl_bruto_inicial')),
+                    tk_bbl_inicial=to_float(t.get('tk_bbl_inicial')),
+                    tk_api=to_float(t.get('tk_api')),
+                    tk_temp=to_float(t.get('tk_temp')),
+                    tk_cm_final=to_int(t.get('tk_cm_final')),
+                    tk_mm_final=to_int(t.get('tk_mm_final')),
+                    tk_bbl_bruto_final=to_float(t.get('tk_bbl_bruto_final')),
+                    tk_bbl_final=to_float(t.get('tk_bbl_final')),
+                    tk_caudal_bbl_min=to_float(t.get('tk_caudal_bbl_min')),
+                    tk_minutos_ingreso=to_float(t.get('tk_minutos_ingreso')),
+                    tk_bbl_ingreso=to_float(t.get('tk_bbl_ingreso')),
+                    bar_cm_inicial=to_int(t.get('bar_cm_inicial')),
+                    bar_mm_inicial=to_int(t.get('bar_mm_inicial')),
+                    bar_bbl_bruto_inicial=to_float(t.get('bar_bbl_bruto_inicial')),
+                    bar_bbl_inicial=to_float(t.get('bar_bbl_inicial')),
+                    bar_api=to_float(t.get('bar_api')),
+                    bar_temp=to_float(t.get('bar_temp')),
+                    bar_cm_final=to_int(t.get('bar_cm_final')),
+                    bar_mm_final=to_int(t.get('bar_mm_final')),
+                    bar_bbl_bruto_final=to_float(t.get('bar_bbl_bruto_final')),
+                    bar_bbl_final=to_float(t.get('bar_bbl_final')),
+                    notas=t.get('notas'),
+                    tk_notas=t.get('tk_notas')
+                )
+                db.session.add(reg)
+                guardados += 1
+            except Exception as e:
+                errores.append(str(e))
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            return jsonify(success=False, message=f'Error al guardar: {e}', errores=errores), 500
+        return jsonify(success=True, guardados=guardados, errores=errores)
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+def _build_opciones_trasiegos():
+    # Origen TK desde planilla de planta
+    tks = [str(p.get('TK')) for p in PLANILLA_PLANTA if p.get('TK')]
+    # Barcazas y compartimentos
+    barcazas = {}
+    # Orion por grupos
+    try:
+        from collections import defaultdict
+        grp = defaultdict(list)
+        for p in PLANILLA_BARCAZA_ORION:
+            g = str(p.get('grupo') or 'ORION').upper()
+            grp[g].append(str(p.get('TK')))
+        for g, lst in grp.items():
+            barcazas[g] = lst
+    except Exception:
+        pass
+    # BITA: separar por prefijo
+    try:
+        marinse = [p['TK'] for p in PLANILLA_BARCAZA_BITA if str(p.get('TK','')).startswith('MARI ')]
+        oidech = [p['TK'] for p in PLANILLA_BARCAZA_BITA if str(p.get('TK','')).startswith('OID ')]
+        if marinse:
+            barcazas['BITA-MARINSE'] = marinse
+        if oidech:
+            barcazas['BITA-OIDECH'] = oidech
+    except Exception:
+        pass
+    # Aforos TK y Barcaza
+    aforosTK = [r.nombre for r in db.session.query(AforoTabla).filter(AforoTabla.tipo == 'TK').order_by(AforoTabla.nombre.asc()).all()]
+    aforosBAR = [r.nombre for r in db.session.query(AforoTabla).filter(AforoTabla.tipo == 'BARCAZA').order_by(AforoTabla.nombre.asc()).all()]
+    return { 'tks': tks, 'barcazas': barcazas, 'aforosTK': aforosTK, 'aforosBAR': aforosBAR }
+
+@login_required
+@app.route('/api/trasiegos/opciones')
+def api_trasiegos_opciones():
+    try:
+        return jsonify(success=True, **_build_opciones_trasiegos())
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/api/trasiegos/verificar_fecha')
+def api_trasiegos_verificar_fecha():
+    try:
+        tk = (request.args.get('tk') or '').upper().strip()
+        if not tk:
+            return jsonify(success=True, fecha_bloqueada=False)
+        reg = (db.session.query(TrasiegoTKBarcaza)
+               .filter(TrasiegoTKBarcaza.origen_tk == tk,
+                       or_(TrasiegoTKBarcaza.destino_barcaza == '', TrasiegoTKBarcaza.destino_barcaza.is_(None)))
+               .order_by(TrasiegoTKBarcaza.id.desc())
+               .first())
+        if reg:
+            return jsonify(success=True, fecha_bloqueada=True, fecha=reg.fecha.isoformat(), tk=reg.origen_tk or '')
+        return jsonify(success=True, fecha_bloqueada=False)
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+# Endpoint para buscar VCF en la tabla API6A
+@login_required
+@app.route('/api/vcf_api6a')
+def api_vcf_api6a():
+    try:
+        api = request.args.get('api', type=float)
+        temp = request.args.get('temp', type=float)
+        unidad = request.args.get('unidad', default='C').upper()
+        nombre = request.args.get('nombre')
+        if api is None or temp is None:
+            return jsonify(success=False, message='API y temperatura requeridos'), 400
+        if nombre:
+            tabla = db.session.query(AforoTabla).filter_by(tipo='VCF', nombre=nombre.upper()).first()
+        else:
+            tabla = db.session.query(AforoTabla).filter_by(tipo='VCF').order_by(AforoTabla.timestamp.desc()).first()
+        if not tabla:
+            return jsonify(success=False, message='Tabla VCF/API6A no encontrada'), 404
+        datos = json.loads(tabla.datos_json)
+        lista = datos.get('data') if isinstance(datos, dict) and 'data' in datos else datos
+        if not isinstance(lista, list):
+            return jsonify(success=False, message='Datos VCF inválidos'), 500
+        # Buscar coincidencia exacta primero
+        match = next((d for d in lista if abs(d.get('api',-1)-api)<0.01 and abs(d.get('temp',-1)-temp)<0.01), None)
+        if match:
+            return jsonify(success=True, vcf=match.get('vcf', 1))
+        # Si no hay coincidencia exacta, buscar la más cercana (interpolación simple)
+        # Ordenar por distancia
+        lista_ordenada = sorted(lista, key=lambda d: ((d.get('api',0)-api)**2 + (d.get('temp',0)-temp)**2))
+        if lista_ordenada:
+            return jsonify(success=True, vcf=lista_ordenada[0].get('vcf', 1))
+        return jsonify(success=False, message='No se encontró VCF para esos valores'), 404
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/trasiegos/eliminar/<int:id>', methods=['POST'])
+def eliminar_trasiego(id):
+    try:
+        reg = TrasiegoTKBarcaza.query.get_or_404(id)
+        db.session.delete(reg)
+        db.session.commit()
+        flash('Registro eliminado','success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'No se pudo eliminar: {e}','danger')
+    return redirect(url_for('trasiegos_page'))
+
+@login_required
+@app.route('/reporte_trasiegos')
+def reporte_trasiegos():
+    # Reporte tipo tabla como la imagen, por fecha
+    fecha_str = request.args.get('fecha')
+    try:
+        fecha_sel = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except Exception:
+        fecha_sel = date.today()
+
+    registros = (db.session.query(TrasiegoTKBarcaza)
+                 .filter(TrasiegoTKBarcaza.fecha == fecha_sel)
+                 .order_by(TrasiegoTKBarcaza.origen_tk.asc())
+                 .all())
+
+    # Columnas dinámicas: Tks origen y compartimentos destino
+    columnas_tk = []
+    columnas_bar = []
+    for r in registros:
+        if r.origen_tk and r.origen_tk not in columnas_tk:
+            columnas_tk.append(r.origen_tk)
+        comp = (r.destino_compartimento or r.destino_barcaza)
+        if comp and comp not in columnas_bar:
+            columnas_bar.append(comp)
+
+    # Construir estructura para la plantilla
+    def build_map(keys):
+        return {k: { 'ini': {'cm':None,'mm':None,'bbl':None, 'bbl_bruto': None}, 'fin': {'cm':None,'mm':None,'bbl':None, 'bbl_bruto': None}, 'temp': None, 'api': None, 'trasiego': None } for k in keys}
+
+    datos_tk = build_map(columnas_tk)
+    datos_bar = build_map(columnas_bar)
+
+    for r in registros:
+        tkd = datos_tk.get(r.origen_tk)
+        if tkd is not None:
+            tkd['ini'] = {'cm': r.tk_cm_inicial, 'mm': r.tk_mm_inicial, 'bbl': r.tk_bbl_inicial, 'bbl_bruto': r.tk_bbl_bruto_inicial}
+            tkd['fin'] = {'cm': r.tk_cm_final, 'mm': r.tk_mm_final, 'bbl': r.tk_bbl_final, 'bbl_bruto': r.tk_bbl_bruto_final}
+            tkd['temp'] = r.tk_temp
+            tkd['api'] = r.tk_api
+            tkd['trasiego'] = r.trasiego_segun_tanque
+        comp = (r.destino_compartimento or r.destino_barcaza)
+        bd = datos_bar.get(comp)
+        if bd is not None:
+            bd['ini'] = {'cm': r.bar_cm_inicial, 'mm': r.bar_mm_inicial, 'bbl': r.bar_bbl_inicial, 'bbl_bruto': r.bar_bbl_bruto_inicial}
+            bd['fin'] = {'cm': r.bar_cm_final, 'mm': r.bar_mm_final, 'bbl': r.bar_bbl_final, 'bbl_bruto': r.bar_bbl_bruto_final}
+            bd['temp'] = r.bar_temp
+            bd['api'] = r.bar_api
+            bd['trasiego'] = r.trasiego_segun_barcaza
+
+    diferencia_total = round(
+        sum([d.get('trasiego') or 0 for d in datos_bar.values()]) - sum([d.get('trasiego') or 0 for d in datos_tk.values()])
+        , 2)
+
+    return render_template('reporte_trasiegos.html',
+                           nombre=session.get('nombre'),
+                           fecha_seleccionada=fecha_sel.isoformat(),
+                           columnas_tk=columnas_tk,
+                           columnas_bar=columnas_bar,
+                           datos_tk=datos_tk,
+                           datos_bar=datos_bar,
+                           diferencia_total=diferencia_total)
 
 @login_required
 @permiso_requerido('transito')
@@ -4831,19 +6362,34 @@ def eliminar_maniobra(maniobra_id):
 def get_registros_remolcadores():
     try:
         # Tu lógica de filtrado por fecha está bien
+
         fecha_inicio_str = request.args.get('fecha_inicio')
         fecha_fin_str = request.args.get('fecha_fin')
+        filtro_mes = request.args.get('filtro_mes')  # formato YYYY-MM
 
         query = RegistroRemolcador.query
 
-        if fecha_inicio_str:
-            fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
-            query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
-
-        if fecha_fin_str:
-            fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
-            fecha_fin_obj_end_of_day = datetime.combine(fecha_fin_obj, time.max)
-            query = query.filter(RegistroRemolcador.hora_inicio <= fecha_fin_obj_end_of_day)
+        # Si hay filtro de mes, priorizarlo
+        if filtro_mes:
+            try:
+                anio, mes = map(int, filtro_mes.split('-'))
+                fecha_inicio_obj = date(anio, mes, 1)
+                if mes == 12:
+                    fecha_fin_obj = date(anio + 1, 1, 1) - timedelta(days=1)
+                else:
+                    fecha_fin_obj = date(anio, mes + 1, 1) - timedelta(days=1)
+                query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+                query = query.filter(RegistroRemolcador.hora_inicio <= datetime.combine(fecha_fin_obj, time.max))
+            except Exception:
+                pass
+        else:
+            if fecha_inicio_str:
+                fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+            if fecha_fin_str:
+                fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
+                fecha_fin_obj_end_of_day = datetime.combine(fecha_fin_obj, time.max)
+                query = query.filter(RegistroRemolcador.hora_inicio <= fecha_fin_obj_end_of_day)
 
         registros = query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
         
@@ -5036,25 +6582,42 @@ def update_registro_remolcador(id):
 @app.route('/reporte_analisis_remolcadores')
 def reporte_analisis_remolcadores():
     try:
-        # 1. Leer las fechas desde la URL
+        # 1. Leer los filtros desde la URL
         fecha_inicio_str = request.args.get('fecha_inicio')
         fecha_fin_str = request.args.get('fecha_fin')
+        filtro_mes = request.args.get('filtro_mes')  # formato YYYY-MM
 
         query = RegistroRemolcador.query
 
-        # 2. Aplicar filtros a la consulta si las fechas existen
-        if fecha_inicio_str:
-            fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
-            query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+        # 2. Prioridad: si hay filtro de mes, usarlo y limpiar fechas
+        if filtro_mes:
+            # Calcular primer y último día del mes
+            try:
+                anio, mes = map(int, filtro_mes.split('-'))
+                fecha_inicio_obj = date(anio, mes, 1)
+                if mes == 12:
+                    fecha_fin_obj = date(anio + 1, 1, 1) - timedelta(days=1)
+                else:
+                    fecha_fin_obj = date(anio, mes + 1, 1) - timedelta(days=1)
+                query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+                query = query.filter(RegistroRemolcador.hora_inicio <= datetime.combine(fecha_fin_obj, time.max))
+                fecha_inicio_str = fecha_inicio_obj.strftime('%Y-%m-%d')
+                fecha_fin_str = fecha_fin_obj.strftime('%Y-%m-%d')
+            except Exception:
+                pass
+        else:
+            # 3. Si no hay filtro de mes, usar fechas normales
+            if fecha_inicio_str:
+                fecha_inicio_obj = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date()
+                query = query.filter(RegistroRemolcador.hora_inicio >= fecha_inicio_obj)
+            if fecha_fin_str:
+                fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
+                query = query.filter(RegistroRemolcador.hora_inicio <= datetime.combine(fecha_fin_obj, time.max))
 
-        if fecha_fin_str:
-            fecha_fin_obj = datetime.strptime(fecha_fin_str, '%Y-%m-%d')
-            query = query.filter(RegistroRemolcador.hora_inicio <= datetime.combine(fecha_fin_obj, time.max))
-
-        # 3. Obtener solo los registros filtrados
+        # 4. Obtener solo los registros filtrados
         registros_filtrados = query.all()
         
-        # 4. Procesar ÚNICAMENTE los datos filtrados
+        # 5. Procesar ÚNICAMENTE los datos filtrados
         resultados = procesar_analisis_remolcadores(registros_filtrados)
         
         if not resultados:
@@ -5063,7 +6626,8 @@ def reporte_analisis_remolcadores():
         # Guardamos los filtros para pasarlos de vuelta a la plantilla
         filtros_activos = {
             'fecha_inicio': fecha_inicio_str,
-            'fecha_fin': fecha_fin_str
+            'fecha_fin': fecha_fin_str,
+            'filtro_mes': filtro_mes
         }
 
         return render_template(
@@ -5283,7 +6847,12 @@ def handle_programacion():
         return jsonify(success=True, message="Nueva fila creada.", id=nuevo.id)
     
     # Lógica GET
-    registros = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc()).all()
+    mostrar_todas = request.args.get('all', '0') == '1'
+    query = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc())
+    if not mostrar_todas:
+        registros = query.limit(10).all()
+    else:
+        registros = query.all()
     # Convierte los datos a un formato JSON friendly
     data = []
     ahora = datetime.utcnow()
@@ -6265,6 +7834,56 @@ def get_epp_assignments():
     } for a in asignaciones]
     
     return jsonify(data)
+
+# --- API para editar y eliminar asignaciones de EPP ---
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/asignaciones/<int:id>', methods=['PUT'])
+def update_epp_assignment(id):
+    """API para actualizar una asignación de EPP."""
+    asignacion = EPPAssignment.query.get_or_404(id)
+    data = request.get_json()
+    try:
+        if 'fecha_entrega' in data:
+            asignacion.fecha_entrega = date.fromisoformat(data['fecha_entrega']) if data['fecha_entrega'] else asignacion.fecha_entrega
+        if 'empleado_nombre' in data:
+            asignacion.empleado_nombre = data['empleado_nombre']
+        if 'item_nombre' in data:
+            # Cambia el item solo si existe un item con ese nombre
+            item = EPPItem.query.filter_by(nombre=data['item_nombre']).first()
+            if item:
+                asignacion.item_id = item.id
+        if 'item_referencia' in data:
+            item = EPPItem.query.get(asignacion.item_id)
+            if item:
+                item.referencia = data['item_referencia']
+        if 'item_talla' in data:
+            item = EPPItem.query.get(asignacion.item_id)
+            if item:
+                item.talla = data['item_talla']
+        if 'cantidad_entregada' in data:
+            asignacion.cantidad_entregada = int(data['cantidad_entregada'])
+        if 'observaciones' in data:
+            asignacion.observaciones = data['observaciones']
+        db.session.commit()
+        return jsonify(success=True, message="Asignación actualizada.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('inventario_epp')
+@app.route('/api/epp/asignaciones/<int:id>', methods=['DELETE'])
+def delete_epp_assignment(id):
+    """API para eliminar una asignación de EPP."""
+    asignacion = EPPAssignment.query.get_or_404(id)
+    try:
+        db.session.delete(asignacion)
+        db.session.commit()
+        return jsonify(success=True, message="Asignación eliminada.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al eliminar: {str(e)}"), 500
 
 @login_required
 @permiso_requerido('programacion_cargue')

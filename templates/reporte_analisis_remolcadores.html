@@ -13,15 +13,19 @@
     <div class="card-body">
         <form method="GET" action="{{ url_for('reporte_analisis_remolcadores') }}">
             <div class="row g-3 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label for="filtro_mes" class="form-label fw-semibold">Mes:</label>
+                    <input type="month" class="form-control form-control-sm" id="filtro_mes" name="filtro_mes" value="{{ filtros.filtro_mes or '' }}">
+                </div>
+                <div class="col-md-3">
                     <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
                     <input type="date" class="form-control form-control-sm" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.fecha_inicio or '' }}">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
                     <input type="date" class="form-control form-control-sm" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin or '' }}">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <button type="submit" class="btn btn-primary btn-sm w-100">
                         <i class="fas fa-filter me-2"></i>Filtrar Reporte
                     </button>
@@ -32,6 +36,22 @@
                     </a>
                 </div>
             </div>
+<script>
+// Si el usuario selecciona un mes, limpia los campos de fecha
+document.addEventListener('DOMContentLoaded', function() {
+    const mesInput = document.getElementById('filtro_mes');
+    const fechaInicio = document.getElementById('fecha_inicio');
+    const fechaFin = document.getElementById('fecha_fin');
+    if (mesInput) {
+        mesInput.addEventListener('input', function() {
+            if (mesInput.value) {
+                fechaInicio.value = '';
+                fechaFin.value = '';
+            }
+        });
+    }
+});
+</script>
         </form>
     </div>
 </div>

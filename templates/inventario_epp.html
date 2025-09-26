@@ -48,9 +48,13 @@
             </select>
         </div>
         <div class="col-md-3 d-flex align-items-center">
-            <div class="form-check form-switch">
+            <div class="form-check form-switch me-3">
                 <input class="form-check-input" type="checkbox" role="switch" id="filtroAlertas">
                 <label class="form-check-label" for="filtroAlertas">Mostrar solo alertas</label>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" role="switch" id="filtroStockDisponible">
+                <label class="form-check-label" for="filtroStockDisponible">Mostrar solo con stock disponible</label>
             </div>
         </div>
     </div>
@@ -107,10 +111,24 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label for="itemStock" class="form-label">Stock Actual</label>
                             <input type="number" class="form-control" id="itemStock" min="0" required>
                         </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="itemUnidad" class="form-label">Unidad de Medida</label>
+                            <select class="form-select" id="itemUnidad" onchange="toggleUnidadExtra()" required>
+                                <option value="unidad">Unidad</option>
+                                <option value="par">Par</option>
+                                <option value="caja">Caja</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="divUnidadesPorCaja" style="display:none;">
+                            <label for="itemUnidadesPorCaja" class="form-label">Unidades por Caja</label>
+                            <input type="number" class="form-control" id="itemUnidadesPorCaja" min="1">
+                        </div>
+                    </div>
+                    <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="itemVencimiento" class="form-label">Fecha de Vencimiento</label>
                             <input type="date" class="form-control" id="itemVencimiento">
@@ -223,10 +241,11 @@
     const assignModal = new bootstrap.Modal(document.getElementById('assignModal'));
 
     document.addEventListener('DOMContentLoaded', function() {
-        loadInventory();
-        document.getElementById('filtroNombre').addEventListener('input', renderTable);
-        document.getElementById('filtroCategoria').addEventListener('change', renderTable);
-        document.getElementById('filtroAlertas').addEventListener('change', renderTable);
+    loadInventory();
+    document.getElementById('filtroNombre').addEventListener('input', renderTable);
+    document.getElementById('filtroCategoria').addEventListener('change', renderTable);
+    document.getElementById('filtroAlertas').addEventListener('change', renderTable);
+    document.getElementById('filtroStockDisponible').addEventListener('change', renderTable);
     });
 
     async function loadInventory() {
@@ -246,12 +265,14 @@
         const filtroNombre = document.getElementById('filtroNombre').value.toLowerCase();
         const filtroCategoria = document.getElementById('filtroCategoria').value;
         const filtroAlertas = document.getElementById('filtroAlertas').checked;
+        const filtroStockDisponible = document.getElementById('filtroStockDisponible').checked;
 
         const filteredItems = allItems.filter(item => {
             const matchesNombre = item.nombre.toLowerCase().includes(filtroNombre) || (item.referencia && item.referencia.toLowerCase().includes(filtroNombre));
             const matchesCategoria = !filtroCategoria || item.categoria === filtroCategoria;
             const matchesAlertas = !filtroAlertas || item.stock_bajo || (item.dias_para_vencer !== null && item.dias_para_vencer <= 30);
-            return matchesNombre && matchesCategoria && matchesAlertas;
+            const matchesStock = !filtroStockDisponible || item.stock_actual > 0;
+            return matchesNombre && matchesCategoria && matchesAlertas && matchesStock;
         });
 
         tableBody.innerHTML = '';
@@ -272,14 +293,20 @@
                 }
                 vencimientoHtml = `<span class="${vencimientoClass}">${item.fecha_vencimiento} (${item.dias_para_vencer} días)</span>`;
             }
-            
+            // Mostrar stock según unidad
+            let stockHtml = item.stock_actual;
+            if (item.unidad === 'par') {
+                stockHtml = `${item.stock_actual} (${Math.floor(item.stock_actual/2)} pares)`;
+            } else if (item.unidad === 'caja' && item.unidades_por_caja) {
+                stockHtml = `${item.stock_actual} (${Math.floor(item.stock_actual/item.unidades_por_caja)} cajas)`;
+            }
             const row = `
                 <tr class="${stockClass}">
                     <td>${item.categoria}</td>
                     <td>${item.nombre}</td>
                     <td>${item.referencia || '-'}</td>
                     <td>${item.talla || '-'}</td>
-                    <td class="text-center">${item.stock_actual}</td>
+                    <td class="text-center">${stockHtml}</td>
                     <td>${vencimientoHtml}</td>
                     <td class="text-center">
                         <button class="btn btn-success btn-sm" title="Asignar" onclick='openAssignModal(${JSON.stringify(item)})'><i class="fas fa-user-plus"></i></button>
@@ -290,6 +317,17 @@
             `;
             tableBody.innerHTML += row;
         });
+    // Mostrar/ocultar campo unidades por caja según unidad seleccionada
+    function toggleUnidadExtra() {
+        const unidad = document.getElementById('itemUnidad').value;
+        const divCaja = document.getElementById('divUnidadesPorCaja');
+        if (unidad === 'caja') {
+            divCaja.style.display = '';
+        } else {
+            divCaja.style.display = 'none';
+            document.getElementById('itemUnidadesPorCaja').value = '';
+        }
+    }
     }
     
     // --- Lógica de Modales ---
@@ -331,11 +369,21 @@
     const row = document.createElement('div');
     row.className = 'row g-2 mb-2 align-items-center variant-row';
     row.innerHTML = `
-        <div class="col-5">
+        <div class="col-3">
             <input type="text" class="form-control variant-input" placeholder="Variante (Talla, Color, Tipo)">
         </div>
-        <div class="col-5">
+        <div class="col-2">
             <input type="number" class="form-control stock-input" placeholder="Stock" min="0">
+        </div>
+        <div class="col-3">
+            <select class="form-select unidad-input" onchange="toggleUnidadPorCaja(this)">
+                <option value="unidad">Unidad</option>
+                <option value="par">Par</option>
+                <option value="caja">Caja</option>
+            </select>
+        </div>
+        <div class="col-2">
+            <input type="number" class="form-control unidades-por-caja-input" placeholder="Unidades por Caja" min="1" style="display:none;">
         </div>
         <div class="col-2">
             <button class="btn btn-outline-danger btn-sm" onclick="this.parentElement.parentElement.remove()">
@@ -344,6 +392,17 @@
         </div>
     `;
     container.appendChild(row);
+    // Mostrar/ocultar input de unidades por caja en cada variante
+    function toggleUnidadPorCaja(select) {
+        const row = select.closest('.variant-row');
+        const input = row.querySelector('.unidades-por-caja-input');
+        if (select.value === 'caja') {
+            input.style.display = '';
+        } else {
+            input.style.display = 'none';
+            input.value = '';
+        }
+    }
 }
 
 function downloadReport(format) {
@@ -469,6 +528,8 @@ function downloadReport(format) {
     variantRows.forEach(row => {
         const talla = row.querySelector('.variant-input').value;
         const stock = row.querySelector('.stock-input').value;
+        const unidad = row.querySelector('.unidad-input').value;
+        const unidadesPorCaja = unidad === 'caja' ? parseInt(row.querySelector('.unidades-por-caja-input').value, 10) || null : null;
 
         if (talla && stock) {
             items.push({
@@ -476,7 +537,9 @@ function downloadReport(format) {
                 referencia: referencia,
                 categoria: categoria,
                 talla: talla,
-                stock_actual: parseInt(stock, 10)
+                stock_actual: parseInt(stock, 10),
+                unidad: unidad,
+                unidades_por_caja: unidadesPorCaja
             });
         }
     });
