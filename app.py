@@ -343,7 +343,7 @@ def procesar_analisis_remolcadores(registros):
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_para_produccion_cambiar'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///local_test.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Sara_121128@localhost:5432/inventario_dev'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
@@ -3650,9 +3650,14 @@ def barcaza_orion():
         print("DEBUG: No se encontraron registros, se usará la planilla por defecto.")
         datos_para_plantilla = PLANILLA_BARCAZA_ORION
 
+    # Ordenar los tanques CR según el orden de PLANILLA_BARCAZA_ORION
+    def ordenar_por_planilla(lista, grupo, planilla):
+        orden = [t["TK"] for t in planilla if t["grupo"] == grupo]
+        return sorted([t for t in lista if t["grupo"] == grupo], key=lambda x: orden.index(x["TK"]) if x["TK"] in orden else 999)
+
     tanques_principales = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'PRINCIPAL']
     tanques_man = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MANZANILLO']
-    tanques_cr = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'CR']
+    tanques_cr = ordenar_por_planilla(datos_para_plantilla, 'CR', PLANILLA_BARCAZA_ORION)
     tanques_margoth = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MARGOTH']
     tanques_odisea = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'ODISEA']
 
@@ -3850,18 +3855,19 @@ def reporte_barcaza():
         "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
         "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
     }
+    def ordenar_por_planilla(lista, grupo, planilla):
+        orden = [t["TK"] for t in planilla if t["grupo"] == grupo]
+        return sorted([t for t in lista if t["grupo"] == grupo], key=lambda x: orden.index(x["TK"]) if x["TK"] in orden else 999)
+
     if todos_los_tanques_lista:
-        for tanque in todos_los_tanques_lista:
-            grupo_key = tanque.get("grupo")
-            if grupo_key in nombres_display:
-                nombre_barcaza = nombres_display[grupo_key]
-                if nombre_barcaza not in datos_para_template:
-                    datos_para_template[nombre_barcaza] = {"tanques": [], "totales": {}}
-                datos_para_template[nombre_barcaza]["tanques"].append(tanque)
-        
-        # Calcular las estadísticas para cada grupo
-        for nombre, data in datos_para_template.items():
-            data["totales"] = calcular_estadisticas(data["tanques"])
+        for grupo_key, nombre_barcaza in nombres_display.items():
+            if grupo_key == "CR":
+                tanques_ordenados = ordenar_por_planilla(todos_los_tanques_lista, "CR", PLANILLA_BARCAZA_ORION)
+            else:
+                tanques_ordenados = [t for t in todos_los_tanques_lista if t.get("grupo") == grupo_key]
+            if tanques_ordenados:
+                datos_para_template[nombre_barcaza] = {"tanques": tanques_ordenados, "totales": {}}
+                datos_para_template[nombre_barcaza]["totales"] = calcular_estadisticas(tanques_ordenados)
 
     # 6. Formatear el mensaje de "Última actualización"
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
@@ -8704,17 +8710,19 @@ def procesar_flujo_efectivo_api():
         # Insertar SIEMPRE todas las filas (sin deduplicación). Se genera unique_hash aleatorio.
         bancos_count = 0
         for _, r in df_bancos_mov.iterrows():
+            monto_val = float(r.get('COP$', 0) or 0)
+            if monto_val == 0:
+                continue  # Ignorar filas donde COP$ es vacío o cero
             mov_txt = str(r.get('Movimiento') or '')
-            # Ya no excluimos GMF: se persiste para poder sumar en resumen y endpoint cached
             banco_val = str(r.get('Banco') or '')
             db.session.add(FlujoBancoMovimiento(
                 batch_id=batch.id,
                 fecha=pd.to_datetime(r.get('__fecha_date')).date(),
                 empresa=r.get('Empresa'),
                 movimiento=mov_txt,
-                monto=float(r.get('COP$',0) or 0),
+                monto=monto_val,
                 banco=banco_val,
-                tipo_banco=banco_val,  # rellenamos también tipo_banco para compatibilidad
+                tipo_banco=banco_val,
                 unique_hash=uuid.uuid4().hex
             ))
             bancos_count += 1
@@ -8935,9 +8943,10 @@ def procesar_flujo_efectivo_api():
 
         return jsonify(sanitize(response_data))
 
-    except Exception:
-        app.logger.exception('Error procesando flujo de efectivo')
-        return jsonify(success=False, message='Error interno procesando el archivo. Revisa los logs.'), 500
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        return jsonify(success=False, message=f'Error interno: {str(e)}', details=tb), 500
 
 @login_required
 @permiso_requerido('flujo_efectivo')
