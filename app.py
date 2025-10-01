@@ -343,7 +343,8 @@ def procesar_analisis_remolcadores(registros):
 app = Flask(__name__)
 app.secret_key = 'clave_secreta_para_produccion_cambiar'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Sara_121128@localhost:5432/inventario_dev'
+import os
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:Sara_121128@localhost:5432/inventario_dev')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
