@@ -1604,6 +1604,7 @@ USUARIOS = {
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-108", "PRODUCTO": "VLSFO",    "MAX_CAP": 28000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-102", "PRODUCTO": "FO6",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""}
@@ -2836,19 +2837,23 @@ def planta():
     ).all()
     
     # 3. Preparar y ORDENAR los datos según el orden deseado
-    orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02"]
+    orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
     orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
 
-    datos_para_plantilla = []
+    # Combinar defaults con últimos registros para asegurar que todos los TK de la planilla existan (por ejemplo, TK-108)
+    datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA}
     if registros_recientes:
         for registro in registros_recientes:
-            datos_para_plantilla.append({
-                "TK": registro.tk, "PRODUCTO": registro.producto, "MAX_CAP": registro.max_cap,
-                "BLS_60": registro.bls_60 or "", "API": registro.api or "", 
-                "BSW": registro.bsw or "", "S": registro.s or ""
-            })
-    else:
-        datos_para_plantilla = PLANILLA_PLANTA
+            datos_por_tk[registro.tk] = {
+                "TK": registro.tk,
+                "PRODUCTO": registro.producto,
+                "MAX_CAP": registro.max_cap,
+                "BLS_60": registro.bls_60 or "",
+                "API": registro.api or "",
+                "BSW": registro.bsw or "",
+                "S": registro.s or ""
+            }
+    datos_para_plantilla = list(datos_por_tk.values())
 
     # Ordenar la lista según el orden deseado
     datos_para_plantilla = sorted(
@@ -3008,7 +3013,7 @@ def reporte_planta():
         # ========================================================
         
         # 1. Definimos el orden exacto que queremos.
-        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02"]
+        orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
         
         # 2. Creamos un mapa para asignar un "peso" a cada TK.
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
@@ -3025,16 +3030,35 @@ def reporte_planta():
         # ========================================================
 
         # Usamos la nueva lista YA ORDENADA para construir los datos para el HTML
-        for registro in registros_ordenados:
-            datos_planta_js.append({
-                "TK": registro.tk,
-                "PRODUCTO": registro.producto,
-                "MAX_CAP": registro.max_cap,
-                "BLS_60": registro.bls_60,
-                "API": registro.api,
-                "BSW": registro.bsw,
-                "S": registro.s
-            })
+        # Construir mapa por TK desde registros
+        mapa_js = {r.tk: {
+            "TK": r.tk,
+            "PRODUCTO": r.producto,
+            "MAX_CAP": r.max_cap,
+            "BLS_60": r.bls_60,
+            "API": r.api,
+            "BSW": r.bsw,
+            "S": r.s
+        } for r in registros_ordenados if r.tk}
+
+        # Asegurar que todos los TK definidos por defecto existan (ej. TK-108)
+        for fila in PLANILLA_PLANTA:
+            tk = fila.get("TK")
+            if tk and tk not in mapa_js:
+                mapa_js[tk] = {
+                    "TK": tk,
+                    "PRODUCTO": fila.get("PRODUCTO"),
+                    "MAX_CAP": fila.get("MAX_CAP"),
+                    "BLS_60": None,
+                    "API": None,
+                    "BSW": None,
+                    "S": None
+                }
+
+        # Ordenar según orden deseado
+        orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
+        orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+        datos_planta_js = sorted(mapa_js.values(), key=lambda d: orden_map.get(d.get("TK"), 99))
         
         # La lógica para la fecha de actualización no cambia
         ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
@@ -3797,7 +3821,10 @@ def guia_transporte():
         'temperatura': request.args.get('temperatura', ''),
         'api_obs': request.args.get('api_obs', ''),
         'api_corregido': request.args.get('api_corregido', ''),
-        'precintos': request.args.get('precintos', '')
+        'precintos': request.args.get('precintos', ''),
+        # Campos adicionales para poblar "PLACA DEL TANQUE" desde Programación
+        'tanque': request.args.get('tanque', ''),
+        'placa_tanque': request.args.get('placa_tanque', '')
     }
     
     # Pasamos el diccionario 'datos_guia' a la plantilla HTML.

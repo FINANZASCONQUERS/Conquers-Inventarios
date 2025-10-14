@@ -80,7 +80,8 @@
 
     {# Pre-capturamos info para cabeceras #}
     {% set _109 = series_por_tanque.get('TK-109') or series_por_tanque.get('Tk-109') or series_por_tanque.get('tk-109') %}
-    {% set _110 = series_por_tanque.get('TK-110') or series_por_tanque.get('Tk-110') or series_por_tanque.get('tk-110') %}
+  {% set _110 = series_por_tanque.get('TK-110') or series_por_tanque.get('Tk-110') or series_por_tanque.get('tk-110') %}
+  {% set _108 = series_por_tanque.get('TK-108') or series_por_tanque.get('Tk-108') or series_por_tanque.get('tk-108') %}
     {% set _102 = series_por_tanque.get('TK-102') or series_por_tanque.get('Tk-102') or series_por_tanque.get('tk-102') %}
     {% set _01  = series_por_tanque.get('TK-01')  or series_por_tanque.get('Tk-01')  or series_por_tanque.get('tk-01')  %}
     {% set _02  = series_por_tanque.get('TK-02')  or series_por_tanque.get('Tk-02')  or series_por_tanque.get('tk-02')  %}
@@ -110,7 +111,32 @@
       </div>
     </div>
 
-    <!-- Fila 2: TK-110 | TK-102 -->
+    <!-- Fila 2: TK-108 -->
+    <div class="row g-4 mb-2">
+      <div class="col-12" id="col-TK-108">
+        <div class="card shadow-sm card-pro">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0">TK-108 <small class="text-muted ms-2">{{ _108.producto if _108 else '' }}</small></h5>
+              {% if _108 and _108.max_cap and _108.max_cap > 0 %}
+                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _108.max_cap|round(0) }} bls</span>
+              {% endif %}
+            </div>
+            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+              <span>Serie de niveles (BLS @60)</span>
+              <span class="mini-legend">
+                <span class="dot dot-green"></span> Suma
+                <span class="dot dot-red ms-2"></span> Descarga
+                <span class="dot dot-gray ms-2"></span> Sin cambio
+              </span>
+            </div>
+            <div class="chart-fixed"><canvas id="chart-var-3"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fila 3: TK-110 | TK-102 -->
     <div class="row g-4 mb-2">
       <div class="col-12 col-xl-6" id="col-TK-110">
         <div class="card shadow-sm card-pro">
@@ -150,43 +176,20 @@
                 <span class="dot dot-gray ms-2"></span> Sin cambio
               </span>
             </div>
-            <div class="chart-fixed"><canvas id="chart-var-3"></canvas></div>
+            <div class="chart-fixed"><canvas id="chart-var-4"></canvas></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Fila 3: TK-01 | TK-02 -->
+    <!-- Fila 4: TK-01 | TK-02 -->
     <div class="row g-4">
       <div class="col-12 col-xl-6" id="col-TK-01">
         <div class="card shadow-sm card-pro">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h5 class="card-title mb-0">TK-01 <small class="text-muted ms-2">{{ _01.producto if _01 else '' }}</small></h5>
-              {% if _01 and _01.max_cap and _01.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _01.max_cap|round(0) }} bls</span>
-              {% endif %}
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-4"></canvas></div>
-          </div>
-        </div>
-      </div>
-      <div class="col-12 col-xl-6" id="col-TK-02">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-02 <small class="text-muted ms-2">{{ _02.producto if _02 else '' }}</small></h5>
-              {% if _02 and _02.max_cap and _02.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _02.max_cap|round(0) }} bls</span>
-              {% endif %}
+              <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
             </div>
             <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
               <span>Serie de niveles (BLS @60)</span>
@@ -197,6 +200,25 @@
               </span>
             </div>
             <div class="chart-fixed"><canvas id="chart-var-5"></canvas></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-xl-6" id="col-TK-02">
+        <div class="card shadow-sm card-pro">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="card-title mb-0">TK-02 <small class="text-muted ms-2">{{ _02.producto if _02 else '' }}</small></h5>
+              <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
+            </div>
+            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+              <span>Serie de niveles (BLS @60)</span>
+              <span class="mini-legend">
+                <span class="dot dot-green"></span> Suma
+                <span class="dot dot-red ms-2"></span> Descarga
+                <span class="dot dot-gray ms-2"></span> Sin cambio
+              </span>
+            </div>
+            <div class="chart-fixed"><canvas id="chart-var-6"></canvas></div>
           </div>
         </div>
       </div>
@@ -269,7 +291,10 @@
   });
   const series = JSON.parse(document.getElementById('series-data').textContent || '{}');
 
-  const orderedTanks = ['TK-109','TK-110','TK-102','TK-01','TK-02'];
+  const orderedTanks = ['TK-109','TK-110','TK-108','TK-102','TK-01','TK-02'];
+
+  // Overrides de capacidad por tanque para el eje Y y línea de capacidad
+  const capacityOverrides = { 'TK-01': 500, 'TK-02': 500 };
 
   function getInfoForTank(tank){
     if(series[tank]) return series[tank];
@@ -297,7 +322,8 @@
         if(idx===0 || d===null) return '#6c757d';
         return d>0 ? '#198754' : (d<0 ? '#dc3545' : '#6c757d');
       });
-      let yMax = Number(info.max_cap || 0);
+  // Aplica override si existe, si no usa max_cap de datos
+  let yMax = capacityOverrides[tank] || Number(info.max_cap || 0);
       if(!yMax || yMax <= 0){
         const maxVal = levelData.reduce((a,b)=> Math.max(a,b||0), 0);
         yMax = Math.ceil(maxVal * 1.1);

@@ -86,6 +86,7 @@
                             <th style="min-width: 150px;">PRODUCTO</th>
                             <th style="min-width: 120px;">MAX. CAP</th>
                             <th style="min-width: 120px;">BLS @60</th>
+                            <th style="min-width: 110px;">TON</th>
                             <th style="min-width: 100px;">API</th>
                             <th style="min-width: 100px;">%BSW</th>
                             <th style="min-width: 100px;">%S</th>
@@ -95,9 +96,10 @@
                         {% for fila in planilla %}
                         <tr data-tk="{{ fila.TK }}">
                             <td class="fw-bold">{{ fila.TK }}</td>
-                            <td>{{ fila.PRODUCTO }}</td>
-                            <td>{{ fila.MAX_CAP }}</td>
-                            <td contenteditable="true" class="editable" data-field="BLS_60" inputmode="decimal">{{ fila.BLS_60 }}</td>
+                            <td data-field="PRODUCTO">{{ fila.PRODUCTO }}</td>
+                            <td data-field="MAX_CAP">{{ fila.MAX_CAP }}</td>
+                            <td contenteditable="true" class="editable" data-field="BLS_60" inputmode="decimal" title="BLS @60; Las toneladas se calculan con API o factores de referencia.">{{ fila.BLS_60 }}</td>
+                            <td class="ton-col text-muted" title="Ton calculadas automáticamente">—</td>
                             <td contenteditable="true" class="editable" data-field="API" inputmode="decimal">{{ fila.API }}</td>
                             <td contenteditable="true" class="editable" data-field="BSW" inputmode="decimal">{{ fila.BSW }}</td>
                             <td contenteditable="true" class="editable" data-field="S" inputmode="decimal">{{ fila.S }}</td>
@@ -368,6 +370,9 @@
                     const field = cell.dataset.field;
                     let value = cell.innerText.trim().replace(',', '.');
 
+                    // Recalcular TON en la fila cuando cambian BLS_60 o API
+                    try { actualizarToneladasFila(row); } catch (e) {}
+
                     fetch("{{ url_for('guardar_datos_planta') }}", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -400,15 +405,18 @@
         document.querySelectorAll("tbody tr").forEach(row => {
             const tk = row.dataset.tk;
             if (!tk) return;
-            const celdas = row.querySelectorAll('td');
+            const getVal = (name) => {
+                const el = row.querySelector(`[data-field="${name}"]`);
+                return el ? el.innerText.trim() : '';
+            };
             datosAEnviar.push({
                 "TK": tk,
-                "PRODUCTO": celdas[1].innerText.trim(),
-                "MAX_CAP": celdas[2].innerText.trim(),
-                "BLS_60": celdas[3].innerText.trim(),
-                "API": celdas[4].innerText.trim(),
-                "BSW": celdas[5].innerText.trim(),
-                "S": celdas[6].innerText.trim()
+                "PRODUCTO": getVal('PRODUCTO'),
+                "MAX_CAP": getVal('MAX_CAP'),
+                "BLS_60": getVal('BLS_60'),
+                "API": getVal('API'),
+                "BSW": getVal('BSW'),
+                "S": getVal('S')
             });
         });
         
@@ -452,6 +460,37 @@
             btn.innerHTML = `<i class="bi bi-save2-fill me-2"></i>Guardar Registro`;
         });
     }
+
+    // --- CÁLCULO DE TONELADAS EN TIEMPO REAL ---
+    function calcularTons(bls60, api, tk, producto){
+        const b = parseFloat((bls60||'').toString().replace(',','.')) || 0;
+        const a = parseFloat((api||'').toString().replace(',','.'));
+        if (b <= 0) return null;
+        if (!isNaN(a)) {
+            // SG = 141.5/(API+131.5); Tons = BLS_60 * SG / 6.2898
+            const sg = 141.5 / (a + 131.5);
+            return b * (sg / 6.2898);
+        }
+        // Fallbacks específicos existentes
+        if ((tk||'').toUpperCase() === 'TK-102') return b / 6.7;
+        if ((tk||'').toUpperCase() === 'TK-110') return b / 7.4;
+        if ((producto||'').toUpperCase() === 'VLSFO') return b / 6.7; // fallback genérico VLSFO
+        return null;
+    }
+
+    function actualizarToneladasFila(row){
+        const tk = row.dataset.tk || '';
+        const bls = row.querySelector('[data-field="BLS_60"]')?.innerText || '';
+        const api = row.querySelector('[data-field="API"]')?.innerText || '';
+        const prod = row.querySelector('[data-field="PRODUCTO"]')?.innerText || '';
+        const tons = calcularTons(bls, api, tk, prod);
+        const tonCell = row.querySelector('.ton-col');
+        if (tonCell){ tonCell.textContent = (tons==null) ? '—' : tons.toFixed(2); }
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        document.querySelectorAll('tbody tr').forEach(actualizarToneladasFila);
+    });
 </script>
 
 <style>

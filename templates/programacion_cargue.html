@@ -480,6 +480,10 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 }
                 if (value && value !== '-') {
                      url.searchParams.append(field, value);
+                     // Enviar también 'placa_tanque' cuando el campo es 'tanque'
+                     if (field === 'tanque') {
+                         url.searchParams.append('placa_tanque', value);
+                     }
                 }
             });
             window.location.href = url.href;

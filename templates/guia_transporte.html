@@ -126,6 +126,45 @@
             @page { size: letter; margin: 0; }
              body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
             #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+
+            /* Empresa transportadora: envolver texto largo en dos líneas dentro del mismo cuadro */
+            .empresa-transportadora input { display: none !important; }
+            .empresa-transportadora .empresa-transportadora-wrap {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                width: 100%;
+                padding: 0 2px;
+                text-align: center;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                text-transform: uppercase;
+                font-weight: bold;
+                /* Afinar para 2 renglones dentro de ~1cm */
+                font-size: 12pt;
+                line-height: 0.42cm;
+            }
+
+            /* Destino: envolver texto largo en dos líneas dentro del mismo cuadro */
+            .lugar-destino input { display: none !important; }
+            .lugar-destino .destino-wrap {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                width: 100%;
+                padding: 0 2px;
+                text-align: center;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                text-transform: uppercase;
+                font-weight: bold;
+                font-size: 12pt;
+                line-height: 0.42cm;
+            }
         }
 
         /* Solo pantalla: ordenar visualmente sin tocar la impresión */
@@ -176,6 +215,10 @@
         .nombre-conductor { width: 16cm; height: 1cm; font-size: 14pt }
         .cedula { width: 9cm; height: 1cm; font-size: 18pt }
         .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
+    /* Capa de texto envuelto (solo visible en impresión) */
+    .empresa-transportadora .empresa-transportadora-wrap { display: none; }
+        /* Capa de texto envuelto para DESTINO (oculta en pantalla) */
+        .lugar-destino .destino-wrap { display: none; }
         .placa-cabezote { width: 9.5cm; height: 1cm; font-size: 16pt }
         .placa-tanque { width: 7.5cm; height: 1cm; font-size: 16pt }
         /* Ajuste para bajar el texto dentro de los cuadros */
@@ -262,10 +305,11 @@
     <div class="fila">
       <div class="campo empresa-transportadora sin-borde">
     <input id="empresaTransportadoraInput" list="listaEmpresas" placeholder="EMPRESA TRANSPORTADORA">
+    <div class="empresa-transportadora-wrap" aria-hidden="true"></div>
     <datalist id="listaEmpresas"></datalist>
 </div>
       <div class="campo placa-cabezote sin-borde"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
-      <div class="campo placa-tanque sin-borde"><input placeholder="PLACA DEL TANQUE"></div>
+    <div class="campo placa-tanque sin-borde"><input id="placaTanque" placeholder="PLACA DEL TANQUE"></div>
     </div>
     <div class="fila">
       <div class="campo lugar-origen sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
@@ -273,7 +317,10 @@
       <div class="campo hora sin-borde"><input id="horaSalida"></div>
     </div>
     <div class="fila">
-      <div class="campo lugar-destino sin-borde"><input id="destinoDireccion" placeholder="DESTINO"></div>
+            <div class="campo lugar-destino sin-borde">
+                <input id="destinoDireccion" placeholder="DESTINO">
+                <div class="destino-wrap" aria-hidden="true"></div>
+            </div>
       <div class="campo horas-vigencia sin-borde"><input placeholder="HORAS DE VIGENCIA"></div>
     </div>
     <div class="fila muy-pequeno">
@@ -475,17 +522,43 @@
     // ▼▼▼ AÑADIR ESTE BLOQUE DE CÓDIGO COMPLETO ▼▼▼
 
     // Pasa los datos de Flask a una variable de JavaScript de forma segura.
-    const datosGuia = {{ datos_guia | tojson }};
+    const datosGuia = {{ (datos_guia | default({})) | tojson | safe }};
+
+    // Sincroniza el texto envuelto para impresión con el valor del input de empresa transportadora
+    function syncEmpresaTransportadoraWrap(){
+        const inp = document.getElementById('empresaTransportadoraInput');
+        const wrap = document.querySelector('.empresa-transportadora .empresa-transportadora-wrap');
+        if (inp && wrap){
+            const txt = (inp.value || 'EMPRESA TRANSPORTADORA').toString();
+            wrap.textContent = txt.toUpperCase();
+        }
+    }
+
+    // Sincroniza el texto envuelto del DESTINO para impresión con el valor del input
+    function syncDestinoWrap(){
+        const inp = document.getElementById('destinoDireccion');
+        const wrap = document.querySelector('.lugar-destino .destino-wrap');
+        if (inp && wrap){
+            const txt = (inp.value || 'DESTINO').toString();
+            wrap.textContent = txt.toUpperCase();
+        }
+    }
 
 if (Object.keys(datosGuia).length > 1) { 
     console.log("Rellenando guía con datos recibidos:", datosGuia);
 
     // --- Rellenar campos de texto y selects ---
     document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
+    syncEmpresaTransportadoraWrap();
     document.getElementById('placaCabezote').value = datosGuia.placa || '';
+    // Mapear columna 'TANQUE' desde programación a 'PLACA DEL TANQUE' (acepta variantes de nombre)
+    document.getElementById('placaTanque').value = (
+        datosGuia.TANQUE || datosGuia.tanque || datosGuia.PLACA_TANQUE || datosGuia.placa_tanque || ''
+    ).toString();
     document.getElementById('conductorSelect').value = datosGuia.conductor || '';
     document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
     document.getElementById('destinoDireccion').value = datosGuia.destino || '';
+    syncDestinoWrap();
     document.getElementById('galones').value = datosGuia.galones || '';
     document.getElementById('selloInput').value = datosGuia.precintos || '';
 
@@ -605,6 +678,7 @@ if (Object.keys(datosGuia).length > 1) {
                 empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
                 actualizarDropdownEmpresas();
                 document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
+                syncEmpresaTransportadoraWrap();
                 modalEmpresa.hide();
                 Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
             } else {
@@ -612,6 +686,23 @@ if (Object.keys(datosGuia).length > 1) {
             }
         } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
     });
+
+    // Actualiza el wrap al editar manualmente el campo
+    const empresaInput = document.getElementById('empresaTransportadoraInput');
+    if (empresaInput){
+        empresaInput.addEventListener('input', syncEmpresaTransportadoraWrap);
+        empresaInput.addEventListener('change', syncEmpresaTransportadoraWrap);
+    }
+
+    // Asegurar sincronización antes de imprimir
+    window.addEventListener('beforeprint', () => { syncEmpresaTransportadoraWrap(); syncDestinoWrap(); });
+
+    // Actualiza el wrap de DESTINO al editar manualmente
+    const destinoInput = document.getElementById('destinoDireccion');
+    if (destinoInput){
+        destinoInput.addEventListener('input', syncDestinoWrap);
+        destinoInput.addEventListener('change', syncDestinoWrap);
+    }
 
      const now = new Date();
     const dOpt = {
@@ -631,28 +722,8 @@ if (Object.keys(datosGuia).length > 1) {
     actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
     setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
 
-    // Lógica del campo de sellos
-    const selloInput = document.getElementById('selloInput');
-    if (selloInput) {
-        selloInput.addEventListener('input', function(e) {
-            let valor = this.value.replace(/[^\d]/g, '');
-            valor = valor.substring(0, 100);
-            let valorFormateado = '';
-            for (let i = 0; i < valor.length; i++) {
-                if (i > 0 && i % 8 === 0) {
-                    valorFormateado += '-';
-                }
-                valorFormateado += valor[i];
-            }
-            this.value = valorFormateado;
-        });
-        selloInput.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text');
-            const numeros = text.replace(/[^\d]/g, '').substring(0, 100);
-            document.execCommand('insertText', false, numeros);
-        });
-    }
+    // Configurar campo Sellos (formato y límite)
+    configurarCampoSellos();
 
 });
     function configurarEventosConductores() {
@@ -683,6 +754,10 @@ if (Object.keys(datosGuia).length > 1) {
         document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
         // Ahora el destino muestra la misma información que CIUDAD
         document.getElementById('destinoDireccion').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
+        // Actualiza la capa impresa del DESTINO cuando proviene del autocompletado
+        if (typeof syncDestinoWrap === 'function') {
+            syncDestinoWrap();
+        }
     }
 
     function mostrarProducto(){
@@ -722,37 +797,33 @@ if (Object.keys(datosGuia).length > 1) {
         document.getElementById('fechaHoraSalida').value = fechaTexto;
         document.getElementById('horaSalida').value = horaTexto;
     }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-         const selloInput = document.getElementById('selloInput');
- if (selloInput) {
-     selloInput.addEventListener('input', function(e) {
-         // Quita cualquier caracter que no sea un número.
-         let valor = this.value.replace(/[^\d]/g, '');
-         
-         // Aplica el nuevo y único límite de 100 dígitos.
-         valor = valor.substring(0, 100); 
-         
-         // Vuelve a formatear el texto con guiones cada 6 dígitos.
-         let valorFormateado = '';
-         for (let i = 0; i < valor.length; i++) {
-             if (i > 0 && i % 6 === 0) {
-                 valorFormateado += '-';
-             }
-             valorFormateado += valor[i];
-         }
-         this.value = valorFormateado;
-     });
 
-     // Lógica para el pegado (paste)
-     selloInput.addEventListener('paste', function(e) {
-         e.preventDefault();
-         const text = (e.clipboardData || window.clipboardData).getData('text');
-         const numeros = text.replace(/[^\d]/g, '').substring(0, 100);
-         document.execCommand('insertText', false, numeros);
-            });
-        }
-    });
+    // Configura el input de sellos: solo dígitos, máximo 100 y guiones cada 6 dígitos
+    function configurarCampoSellos(){
+        const selloInput = document.getElementById('selloInput');
+        if (!selloInput) return;
+
+        const formatear = (raw) => {
+            // Solo dígitos y máximo 100
+            let valor = (raw || '').replace(/[^\d]/g, '').substring(0, 100);
+            // Guión cada 6 dígitos
+            let out = '';
+            for (let i = 0; i < valor.length; i++) {
+                if (i > 0 && i % 6 === 0) out += '-';
+                out += valor[i];
+            }
+            return out;
+        };
+
+        selloInput.addEventListener('input', function(){
+            this.value = formatear(this.value);
+        });
+        selloInput.addEventListener('paste', function(e){
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            document.execCommand('insertText', false, formatear(text));
+        });
+    }
 </script>
 </body>
 </html>

@@ -639,9 +639,19 @@
             const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
             const nivel = determinarNivel(porcentaje);
 
-            // Cálculo de toneladas: TK-102 usa divisor 6.7, TK-110 usa divisor 7.4
+            // Cálculo de toneladas:
+            // 1) Preferir cálculo con API: Ton = BLS_60 * SG / 6.2898, donde SG = 141.5 / (API + 131.5)
+            // 2) Si no hay API, usar reglas específicas existentes: TK-102 => /6.7, TK-110 => /7.4
             let toneladasHTML = '';
-            if (data.TK === 'TK-102') {
+            const apiVal = parseFloat(data.API);
+            if (!isNaN(apiVal) && bls60 > 0) {
+                const sg = 141.5 / (apiVal + 131.5);
+                const tons = bls60 * (sg / 6.2898);
+                toneladasHTML = `
+                    <div class=\"tanque-toneladas\" title=\"Calculado con API (Ton = BLS_60 * SG / 6.2898)\">
+                        <span>Ton: ${tons.toFixed(2)}</span>
+                    </div>`;
+            } else if (data.TK === 'TK-102') {
                 const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
                 toneladasHTML = `
                     <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
@@ -652,6 +662,13 @@
                 toneladasHTML = `
                     <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 7.4\">
                         <span>Ton: ${ton74.toFixed(2)}</span>
+                    </div>`;
+            } else if ((data.PRODUCTO || '').toUpperCase() === 'VLSFO') {
+                // Fallback genérico para VLSFO cuando no hay API
+                const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
+                toneladasHTML = `
+                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7 (VLSFO sin API)\">
+                        <span>Ton: ${ton67.toFixed(2)}</span>
                     </div>`;
             }
             
