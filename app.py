@@ -2837,7 +2837,7 @@ def planta():
     ).all()
     
     # 3. Preparar y ORDENAR los datos según el orden deseado
-    orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
+    orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
     orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
 
     # Combinar defaults con últimos registros para asegurar que todos los TK de la planilla existan (por ejemplo, TK-108)
@@ -3013,7 +3013,7 @@ def reporte_planta():
         # ========================================================
         
         # 1. Definimos el orden exacto que queremos.
-        orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
+        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
         
         # 2. Creamos un mapa para asignar un "peso" a cada TK.
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
@@ -3056,7 +3056,7 @@ def reporte_planta():
                 }
 
         # Ordenar según orden deseado
-        orden_deseado = ["TK-109", "TK-110", "TK-108", "TK-102", "TK-01", "TK-02"]
+        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
         datos_planta_js = sorted(mapa_js.values(), key=lambda d: orden_map.get(d.get("TK"), 99))
         

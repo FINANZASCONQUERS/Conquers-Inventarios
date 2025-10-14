@@ -466,15 +466,20 @@
         const b = parseFloat((bls60||'').toString().replace(',','.')) || 0;
         const a = parseFloat((api||'').toString().replace(',','.'));
         if (b <= 0) return null;
+
+        const tank = (tk||'').toUpperCase();
+        const allowed = new Set(['TK-102','TK-110','TK-108']);
+        if (!allowed.has(tank)) return null; // Solo mostrar TON para 102, 110 y 108
+
         if (!isNaN(a)) {
             // SG = 141.5/(API+131.5); Tons = BLS_60 * SG / 6.2898
             const sg = 141.5 / (a + 131.5);
             return b * (sg / 6.2898);
         }
-        // Fallbacks específicos existentes
-        if ((tk||'').toUpperCase() === 'TK-102') return b / 6.7;
-        if ((tk||'').toUpperCase() === 'TK-110') return b / 7.4;
-        if ((producto||'').toUpperCase() === 'VLSFO') return b / 6.7; // fallback genérico VLSFO
+        // Fallbacks específicos por tanque
+        if (tank === 'TK-102') return b / 6.7;
+        if (tank === 'TK-110') return b / 7.4;
+        if (tank === 'TK-108') return b / 6.7; // VLSFO
         return null;
     }
 

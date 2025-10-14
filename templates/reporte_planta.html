@@ -639,37 +639,40 @@
             const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
             const nivel = determinarNivel(porcentaje);
 
-            // Cálculo de toneladas:
+            // Cálculo de toneladas (solo para TK-102, TK-110 y TK-108):
             // 1) Preferir cálculo con API: Ton = BLS_60 * SG / 6.2898, donde SG = 141.5 / (API + 131.5)
-            // 2) Si no hay API, usar reglas específicas existentes: TK-102 => /6.7, TK-110 => /7.4
+            // 2) Si no hay API, usar reglas específicas: TK-102 => /6.7, TK-110 => /7.4, TK-108 (VLSFO) => /6.7
             let toneladasHTML = '';
-            const apiVal = parseFloat(data.API);
-            if (!isNaN(apiVal) && bls60 > 0) {
-                const sg = 141.5 / (apiVal + 131.5);
-                const tons = bls60 * (sg / 6.2898);
-                toneladasHTML = `
-                    <div class=\"tanque-toneladas\" title=\"Calculado con API (Ton = BLS_60 * SG / 6.2898)\">
-                        <span>Ton: ${tons.toFixed(2)}</span>
-                    </div>`;
-            } else if (data.TK === 'TK-102') {
-                const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
-                toneladasHTML = `
-                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
-                        <span>Ton: ${ton67.toFixed(2)}</span>
-                    </div>`;
-            } else if (data.TK === 'TK-110') {
-                const ton74 = bls60 > 0 ? (bls60 / 7.4) : 0;
-                toneladasHTML = `
-                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 7.4\">
-                        <span>Ton: ${ton74.toFixed(2)}</span>
-                    </div>`;
-            } else if ((data.PRODUCTO || '').toUpperCase() === 'VLSFO') {
-                // Fallback genérico para VLSFO cuando no hay API
-                const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
-                toneladasHTML = `
-                    <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7 (VLSFO sin API)\">
-                        <span>Ton: ${ton67.toFixed(2)}</span>
-                    </div>`;
+            const allowedTonTanks = new Set(['TK-102','TK-110','TK-108']);
+            if (allowedTonTanks.has(data.TK)) {
+                const apiVal = parseFloat(data.API);
+                if (!isNaN(apiVal) && bls60 > 0) {
+                    const sg = 141.5 / (apiVal + 131.5);
+                    const tons = bls60 * (sg / 6.2898);
+                    toneladasHTML = `
+                        <div class=\"tanque-toneladas\" title=\"Calculado con API (Ton = BLS_60 * SG / 6.2898)\">
+                            <span>Ton: ${tons.toFixed(2)}</span>
+                        </div>`;
+                } else if (data.TK === 'TK-102') {
+                    const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
+                    toneladasHTML = `
+                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
+                            <span>Ton: ${ton67.toFixed(2)}</span>
+                        </div>`;
+                } else if (data.TK === 'TK-110') {
+                    const ton74 = bls60 > 0 ? (bls60 / 7.4) : 0;
+                    toneladasHTML = `
+                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 7.4\">
+                            <span>Ton: ${ton74.toFixed(2)}</span>
+                        </div>`;
+                } else if (data.TK === 'TK-108') {
+                    // Fallback para TK-108 (VLSFO) cuando no hay API
+                    const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
+                    toneladasHTML = `
+                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
+                            <span>Ton: ${ton67.toFixed(2)}</span>
+                        </div>`;
+                }
             }
             
             const card = document.createElement("div");
