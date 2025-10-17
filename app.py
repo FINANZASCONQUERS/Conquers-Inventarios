@@ -2837,7 +2837,7 @@ def planta():
     ).all()
     
     # 3. Preparar y ORDENAR los datos según el orden deseado
-    orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
+    orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
     orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
 
     # Combinar defaults con últimos registros para asegurar que todos los TK de la planilla existan (por ejemplo, TK-108)
@@ -2853,7 +2853,9 @@ def planta():
                 "BSW": registro.bsw or "",
                 "S": registro.s or ""
             }
-    datos_para_plantilla = list(datos_por_tk.values())
+    # Filtrar únicamente los TK permitidos (ignorar otros como TK-03)
+    allowed_set = set(orden_deseado)
+    datos_para_plantilla = [v for k, v in datos_por_tk.items() if k in allowed_set]
 
     # Ordenar la lista según el orden deseado
     datos_para_plantilla = sorted(
@@ -3012,8 +3014,8 @@ def reporte_planta():
         #  INICIO: LÓGICA DE ORDENAMIENTO PERSONALIZADO
         # ========================================================
         
-        # 1. Definimos el orden exacto que queremos.
-        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
+    # 1. Definimos el orden exacto que queremos.
+        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
         
         # 2. Creamos un mapa para asignar un "peso" a cada TK.
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
@@ -3055,10 +3057,14 @@ def reporte_planta():
                     "S": None
                 }
 
-        # Ordenar según orden deseado
-        orden_deseado = ["TK-109", "TK-110", "TK-102", "TK-01", "TK-02", "TK-108"]
+        # Ordenar según orden deseado y filtrar únicamente los TK permitidos
+        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
-        datos_planta_js = sorted(mapa_js.values(), key=lambda d: orden_map.get(d.get("TK"), 99))
+        allowed_set = set(orden_deseado)
+        datos_planta_js = sorted(
+            [v for k, v in mapa_js.items() if k in allowed_set],
+            key=lambda d: orden_map.get(d.get("TK"), 99)
+        )
         
         # La lógica para la fecha de actualización no cambia
         ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
