@@ -7355,8 +7355,18 @@ def get_programacion_image(id):
 
         # Compatibilidad: data URI antigua
         if str(registro.imagen_guia).startswith('data:'):
-            mime = registro.imagen_guia.split(';')[0].split(':')[1]
-            return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime, imagen=registro.imagen_guia)
+            # Determinar MIME y corregir si viene como octet-stream pero es PDF (firma %PDF -> base64 'JVBERi0')
+            mime = (registro.imagen_guia.split(';')[0].split(':')[1] if ';' in registro.imagen_guia else '').lower()
+            if mime in ('', 'application/octet-stream'):
+                try:
+                    base64_idx = registro.imagen_guia.find('base64,')
+                    if base64_idx != -1:
+                        head = registro.imagen_guia[base64_idx+7: base64_idx+7+8]
+                        if head.startswith('JVBERi0'):
+                            mime = 'application/pdf'
+                except Exception:
+                    pass
+            return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime or 'application/octet-stream', imagen=registro.imagen_guia)
 
         # Ruta relativa en disco
         rel_path = registro.imagen_guia
