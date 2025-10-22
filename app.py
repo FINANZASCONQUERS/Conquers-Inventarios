@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime, time, date, timedelta
 import os
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app # Añadido send_file y current_app
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory # Añadido send_file, current_app, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl 
 from io import BytesIO # Para Excel
@@ -25,6 +25,7 @@ from flask_migrate import Migrate
 import numpy as np
 import re
 import base64
+import mimetypes
 from io import BytesIO
 import matplotlib
 matplotlib.use('Agg')
@@ -33,6 +34,7 @@ from itertools import groupby
 import io
 from flask import Response
 import base64
+from werkzeug.utils import secure_filename
 
 # --- Módulo modelo optimización (nuevo) ---
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
@@ -346,6 +348,9 @@ app.secret_key = 'clave_secreta_para_produccion_cambiar'
 import os
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:Sara_121128@localhost:5432/inventario_dev')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Directorio de guías (PDF/Imagen) - configurable por entorno
+app.config['GUIDES_DIR'] = os.environ.get('GUIDES_DIR') or ('/var/data/guias' if os.name != 'nt' else os.path.join(app.root_path, 'guias'))
+os.makedirs(app.config['GUIDES_DIR'], exist_ok=True)
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
 
@@ -594,6 +599,33 @@ def _ensure_refineria_completion_column():
 
 _ensure_refineria_completion_column()
 
+# Asegurar que la columna imagen_guia soporte rutas largas (TEXT) y exista
+def _ensure_programacion_imagen_text():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'programacion_cargue' not in insp.get_table_names():
+            return
+        cols = insp.get_columns('programacion_cargue')
+        col = next((c for c in cols if c['name'] == 'imagen_guia'), None)
+        if col is None:
+            try:
+                with db.engine.begin() as con:
+                    con.execute(text("ALTER TABLE programacion_cargue ADD COLUMN imagen_guia TEXT"))
+            except Exception as e:
+                print("[INIT] No se pudo crear columna imagen_guia:", e)
+            return
+        # Convertir a TEXT si es VARCHAR
+        if str(col['type']).lower().startswith('varchar'):
+            try:
+                with db.engine.begin() as con:
+                    con.execute(text("ALTER TABLE programacion_cargue ALTER COLUMN imagen_guia TYPE TEXT"))
+                print("[INIT] Columna imagen_guia convertida a TEXT")
+            except Exception as e:
+                print("[INIT] No se pudo convertir imagen_guia a TEXT:", e)
+
+_ensure_programacion_imagen_text()
+
 # ---------------- EDICIONES EN VIVO (NO PERSISTIDAS) -----------------
 # Estructura en memoria para broadcast simple (clave: (registro_id,campo))
 LIVE_EDITS = {}
@@ -787,6 +819,11 @@ def _ensure_trasiegos_columns():
                 print('[INIT] No fue posible añadir columna en trasiegos_tk_barcaza:', e)
 
 _ensure_trasiegos_columns()
+
+# ===== Servir guías cargadas (PDF/imagenes) =====
+@app.get('/guias/<path:filename>')
+def serve_guia(filename):
+    return send_from_directory(app.config['GUIDES_DIR'], filename, as_attachment=False)
 
 # ================== NUEVOS MODELOS PARA FLUJO DE EFECTIVO (PERSISTENCIA) ==================
 class FlujoUploadBatch(db.Model):
@@ -7257,49 +7294,51 @@ def delete_programacion(id):
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>/upload_image', methods=['POST'])
 def upload_programacion_image(id):
-    """Sube una imagen de guía para un registro de programación de cargue."""
+    """Sube un archivo de guía (PDF/imagen) y lo guarda en disco; BD almacena ruta relativa."""
     try:
         registro = ProgramacionCargue.query.get_or_404(id)
-        
-        # Verificar si ya existe una imagen (para el mensaje)
-        es_reemplazo = bool(registro.imagen_guia)
-        
-        # Verificar si se envió una imagen
+        # Verificar archivo
         if 'imagen' not in request.files:
-            return jsonify(success=False, message='No se recibió ninguna imagen'), 400
-        
+            return jsonify(success=False, message='No se recibió ningún archivo'), 400
         archivo = request.files['imagen']
-        
-        # Verificar que el archivo tenga un nombre
-        if archivo.filename == '':
+        if not archivo or archivo.filename == '':
             return jsonify(success=False, message='Archivo sin nombre'), 400
-        
-        # Verificar extensión (opcional pero recomendado)
+
+        # Validar extensión
         extensiones_permitidas = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
         ext = archivo.filename.rsplit('.', 1)[1].lower() if '.' in archivo.filename else ''
         if ext not in extensiones_permitidas:
             return jsonify(success=False, message=f'Formato no permitido. Use: {", ".join(extensiones_permitidas)}'), 400
-        
-        # Leer el archivo y convertirlo a base64
-        imagen_bytes = archivo.read()
-        imagen_base64 = base64.b64encode(imagen_bytes).decode('utf-8')
-        
-        # Guardar el tipo MIME para poder mostrar correctamente después
-        mime_type = archivo.content_type or 'image/jpeg'
-        
-        # Formato: data:[mime];base64,[datos]
-        imagen_data_uri = f"data:{mime_type};base64,{imagen_base64}"
-        
-        # Actualizar el registro
-        registro.imagen_guia = imagen_data_uri
+
+        # Generar nombre seguro y único
+        base = secure_filename(os.path.splitext(archivo.filename)[0])[:40] or 'guia'
+        unique = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        fname = f"{base}_{unique}.{ext}"
+        # Carpeta por registro
+        folder = os.path.join(current_app.config['GUIDES_DIR'], str(id))
+        os.makedirs(folder, exist_ok=True)
+        abs_path = os.path.join(folder, fname)
+        archivo.save(abs_path)
+
+        # Eliminar archivo anterior si existía (ruta en disco)
+        if registro.imagen_guia and not str(registro.imagen_guia).startswith('data:'):
+            old_abs = os.path.join(current_app.config['GUIDES_DIR'], registro.imagen_guia)
+            try:
+                if os.path.exists(old_abs):
+                    os.remove(old_abs)
+            except Exception:
+                pass
+
+        # Guardar ruta relativa
+        rel_path = f"{id}/{fname}"
+        registro.imagen_guia = rel_path
         registro.ultimo_editor = session.get('nombre', 'No identificado')
         registro.fecha_actualizacion = datetime.utcnow()
-        
         db.session.commit()
-        
-        mensaje = 'Imagen reemplazada correctamente' if es_reemplazo else 'Imagen subida correctamente'
-        return jsonify(success=True, message=mensaje)
-    
+
+        url = url_for('serve_guia', filename=rel_path)
+        mime, _ = mimetypes.guess_type(abs_path)
+        return jsonify(success=True, url=url, mime=mime or 'application/octet-stream')
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
@@ -7308,15 +7347,25 @@ def upload_programacion_image(id):
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>/image', methods=['GET'])
 def get_programacion_image(id):
-    """Obtiene la imagen de guía de un registro de programación de cargue."""
+    """Devuelve información para visualizar la guía (URL si está en disco o dataUri si legado)."""
     try:
         registro = ProgramacionCargue.query.get_or_404(id)
-        
         if not registro.imagen_guia:
-            return jsonify(success=False, message='Este registro no tiene imagen'), 404
-        
-        return jsonify(success=True, imagen=registro.imagen_guia)
-    
+            return jsonify(success=False, message='Este registro no tiene archivo'), 404
+
+        # Compatibilidad: data URI antigua
+        if str(registro.imagen_guia).startswith('data:'):
+            mime = registro.imagen_guia.split(';')[0].split(':')[1]
+            return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime, imagen=registro.imagen_guia)
+
+        # Ruta relativa en disco
+        rel_path = registro.imagen_guia
+        abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path)
+        if not os.path.exists(abs_path):
+            return jsonify(success=False, message='Archivo no encontrado'), 404
+        url = url_for('serve_guia', filename=rel_path)
+        mime, _ = mimetypes.guess_type(abs_path)
+        return jsonify(success=True, url=url, mime=mime or 'application/octet-stream', imagen=url)
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
@@ -7324,22 +7373,24 @@ def get_programacion_image(id):
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>/image', methods=['DELETE'])
 def delete_programacion_image(id):
-    """Elimina la imagen de guía de un registro de programación de cargue."""
+    """Elimina el archivo de guía en disco y limpia la referencia."""
     try:
         registro = ProgramacionCargue.query.get_or_404(id)
-        
         if not registro.imagen_guia:
-            return jsonify(success=False, message='Este registro no tiene imagen para eliminar'), 404
-        
-        # Eliminar la imagen
+            return jsonify(success=True, message='No hay archivo para eliminar')
+        # Si es ruta, intentar borrar del disco
+        if not str(registro.imagen_guia).startswith('data:'):
+            abs_path = os.path.join(current_app.config['GUIDES_DIR'], registro.imagen_guia)
+            try:
+                if os.path.exists(abs_path):
+                    os.remove(abs_path)
+            except Exception:
+                pass
         registro.imagen_guia = None
         registro.ultimo_editor = session.get('nombre', 'No identificado')
         registro.fecha_actualizacion = datetime.utcnow()
-        
         db.session.commit()
-        
-        return jsonify(success=True, message='Imagen eliminada correctamente')
-    
+        return jsonify(success=True, message='Archivo eliminado correctamente')
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500

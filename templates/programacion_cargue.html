@@ -176,7 +176,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img id="modal-image-preview" src="" alt="Imagen de guía" style="max-width: 100%; max-height: 70vh;">
+                <div id="modal-viewer" class="viewer-container"></div>
             </div>
             <div class="modal-footer border-0">
                 <a id="btn-download-image" href="#" download="guia_transporte.png" class="btn btn-success rounded-2 px-4">
@@ -593,38 +593,61 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             hiddenInput.click();
         }
 
-        // Botón ver imagen de guía
+        // Botón ver imagen/PDF de guía
         const viewButton = e.target.closest('.btn-view-image');
         if (viewButton) {
             const row = viewButton.closest('tr');
             const id = row.dataset.id;
             
-            // Obtener la imagen del servidor
+            // Obtener el archivo (imagen o PDF) del servidor
             fetch(`/api/programacion/${id}/image`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        const modalImage = document.getElementById('modal-image-preview');
+                        const viewer = document.getElementById('modal-viewer');
                         const downloadBtn = document.getElementById('btn-download-image');
-                        
-                        modalImage.src = data.imagen;
-                        downloadBtn.href = data.imagen;
-                        
-                        // Determinar extensión del archivo según el tipo MIME
-                        const mimeType = data.imagen.split(';')[0].split(':')[1];
+
+                        // Limpiar el viewer
+                        viewer.innerHTML = '';
+
+                        const dataUri = data.imagen;
+                        const mimeType = (dataUri.split(';')[0].split(':')[1] || '').toLowerCase();
+
+                        // Preparar botón de descarga
                         let extension = 'png';
-                        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+                        if (mimeType.includes('pdf')) extension = 'pdf';
+                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
                         else if (mimeType.includes('gif')) extension = 'gif';
-                        else if (mimeType.includes('pdf')) extension = 'pdf';
+                        else if (mimeType.includes('png')) extension = 'png';
+                        downloadBtn.href = dataUri;
                         downloadBtn.download = `guia_transporte_${id}.${extension}`;
-                        
+
+                        // Render según tipo
+                        if (mimeType.includes('pdf')) {
+                            const embed = document.createElement('embed');
+                            embed.type = 'application/pdf';
+                            embed.src = dataUri + '#toolbar=1&navpanes=0&scrollbar=1';
+                            embed.style.width = '100%';
+                            embed.style.height = '70vh';
+                            embed.style.border = '0';
+                            viewer.appendChild(embed);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = dataUri;
+                            img.alt = 'Imagen de guía';
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '70vh';
+                            img.style.borderRadius = '8px';
+                            viewer.appendChild(img);
+                        }
+
                         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
                         imageModal.show();
                     } else {
-                        showToast('danger', 'No se pudo cargar la imagen: ' + (data.message || ''));
+                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
                     }
                 })
-                .catch(() => showToast('danger', 'Error al cargar la imagen'));
+                .catch(() => showToast('danger', 'Error al cargar el archivo'));
         }
 
         // Botón eliminar imagen de guía
@@ -1517,6 +1540,17 @@ td[data-field="precintos"] {
 /* ========================================
    MEJORAS DE USABILIDAD
    ======================================== */
+
+/* Contenedor para visor de imagen/PDF en modal */
+.viewer-container{
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border-radius: 8px;
+    overflow: hidden;
+}
 
 /* Tooltip mejorado */
 .btn-xs[title]:hover::after {
