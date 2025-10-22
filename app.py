@@ -506,6 +506,7 @@ class ProgramacionCargue(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     
     # Campos de Juliana y Samantha
+    factura = db.Column(db.String(100))
     fecha_programacion = db.Column(db.Date, nullable=False, default=date.today)
     empresa_transportadora = db.Column(db.String(150))
     placa = db.Column(db.String(50))
@@ -532,6 +533,9 @@ class ProgramacionCargue(db.Model):
     # Campo de Samantha
     fecha_despacho = db.Column(db.Date, nullable=True)
     numero_guia = db.Column(db.String(100))
+    
+    # Imagen de la guía (base64)
+    imagen_guia = db.Column(db.Text, nullable=True)
 
     # Auditoría
     ultimo_editor = db.Column(db.String(100))
@@ -3830,7 +3834,9 @@ def guia_transporte():
         'precintos': request.args.get('precintos', ''),
         # Campos adicionales para poblar "PLACA DEL TANQUE" desde Programación
         'tanque': request.args.get('tanque', ''),
-        'placa_tanque': request.args.get('placa_tanque', '')
+        'placa_tanque': request.args.get('placa_tanque', ''),
+        # Campo de factura/remisión desde Programación
+        'factura_remision': request.args.get('factura', '')
     }
     
     # Pasamos el diccionario 'datos_guia' a la plantilla HTML.
@@ -6922,10 +6928,10 @@ def update_programacion(id):
     
     # La lógica de permisos no necesita cambios, está bien.
     permisos = {
-        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
+        'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
@@ -7243,6 +7249,97 @@ def delete_programacion(id):
         db.session.delete(registro)
         db.session.commit()
         return jsonify(success=True, message="Registro eliminado correctamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>/upload_image', methods=['POST'])
+def upload_programacion_image(id):
+    """Sube una imagen de guía para un registro de programación de cargue."""
+    try:
+        registro = ProgramacionCargue.query.get_or_404(id)
+        
+        # Verificar si ya existe una imagen (para el mensaje)
+        es_reemplazo = bool(registro.imagen_guia)
+        
+        # Verificar si se envió una imagen
+        if 'imagen' not in request.files:
+            return jsonify(success=False, message='No se recibió ninguna imagen'), 400
+        
+        archivo = request.files['imagen']
+        
+        # Verificar que el archivo tenga un nombre
+        if archivo.filename == '':
+            return jsonify(success=False, message='Archivo sin nombre'), 400
+        
+        # Verificar extensión (opcional pero recomendado)
+        extensiones_permitidas = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+        ext = archivo.filename.rsplit('.', 1)[1].lower() if '.' in archivo.filename else ''
+        if ext not in extensiones_permitidas:
+            return jsonify(success=False, message=f'Formato no permitido. Use: {", ".join(extensiones_permitidas)}'), 400
+        
+        # Leer el archivo y convertirlo a base64
+        imagen_bytes = archivo.read()
+        imagen_base64 = base64.b64encode(imagen_bytes).decode('utf-8')
+        
+        # Guardar el tipo MIME para poder mostrar correctamente después
+        mime_type = archivo.content_type or 'image/jpeg'
+        
+        # Formato: data:[mime];base64,[datos]
+        imagen_data_uri = f"data:{mime_type};base64,{imagen_base64}"
+        
+        # Actualizar el registro
+        registro.imagen_guia = imagen_data_uri
+        registro.ultimo_editor = session.get('nombre', 'No identificado')
+        registro.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        mensaje = 'Imagen reemplazada correctamente' if es_reemplazo else 'Imagen subida correctamente'
+        return jsonify(success=True, message=mensaje)
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>/image', methods=['GET'])
+def get_programacion_image(id):
+    """Obtiene la imagen de guía de un registro de programación de cargue."""
+    try:
+        registro = ProgramacionCargue.query.get_or_404(id)
+        
+        if not registro.imagen_guia:
+            return jsonify(success=False, message='Este registro no tiene imagen'), 404
+        
+        return jsonify(success=True, imagen=registro.imagen_guia)
+    
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>/image', methods=['DELETE'])
+def delete_programacion_image(id):
+    """Elimina la imagen de guía de un registro de programación de cargue."""
+    try:
+        registro = ProgramacionCargue.query.get_or_404(id)
+        
+        if not registro.imagen_guia:
+            return jsonify(success=False, message='Este registro no tiene imagen para eliminar'), 404
+        
+        # Eliminar la imagen
+        registro.imagen_guia = None
+        registro.ultimo_editor = session.get('nombre', 'No identificado')
+        registro.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify(success=True, message='Imagen eliminada correctamente')
+    
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500

@@ -2,58 +2,85 @@
 {% block title %}Programación de Cargue{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4 px-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 fw-semibold text-gray-800 mb-0">
-            <i class="fas fa-truck-loading me-2 text-primary"></i>Programación de Vehículos para Cargue
-        </h2>    
-        <div class="d-flex align-items-center">
-            <button class="btn btn-outline-primary btn-sm rounded-3 shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
-                <i class="fas fa-file-upload me-1"></i> Importar Excel
-            </button>
-            <div class="btn-group me-3" role="group">
-                <button type="button" class="btn btn-outline-success btn-sm rounded-3 export-btn" 
-                        data-bs-toggle="modal" data-bs-target="#reportModal" data-format="excel">
-                    <i class="fas fa-file-excel me-1"></i> Excel
-                </button>
-                <button type="button" class="btn btn-outline-danger btn-sm rounded-3 export-btn" 
-                        data-bs-toggle="modal" data-bs-target="#reportModal" data-format="pdf">
-                    <i class="fas fa-file-pdf me-1"></i> PDF
-                </button>
+<div class="container-fluid mt-3 px-4 programacion-cargue-page">
+    <!-- Header Mejorado -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-3 mb-lg-0">
+                <div class="page-title-box">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-gradient-primary">
+                            <i class="fas fa-truck-loading"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h2 class="page-title mb-0">Programación de Cargue</h2>
+                            <p class="page-subtitle mb-0">Gestión de Vehículos y Despachos</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <a href="{{ url_for('reporte_grafico_despachos') }}" class="btn btn-warning btn-sm rounded-3 shadow-sm me-2">
-                <i class="fas fa-chart-bar me-1"></i> Ver Reporte Descargue
-            </a>
-            <button id="btn-add-row" class="btn btn-primary btn-sm rounded-3 shadow-sm">
-                <i class="fas fa-plus-circle me-1"></i> Nueva Programación
-            </button>
+            <div class="col-lg-6">
+                <div class="d-flex justify-content-lg-end align-items-center flex-wrap gap-2">
+                    <button class="btn btn-modern btn-outline-primary" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                        <i class="fas fa-file-upload me-2"></i>
+                        <span>Importar</span>
+                    </button>
+                    <div class="btn-group shadow-sm" role="group">
+                        <button type="button" class="btn btn-modern btn-outline-success export-btn" 
+                                data-bs-toggle="modal" data-bs-target="#reportModal" data-format="excel">
+                            <i class="fas fa-file-excel me-1"></i>Excel
+                        </button>
+                        <button type="button" class="btn btn-modern btn-outline-danger export-btn" 
+                                data-bs-toggle="modal" data-bs-target="#reportModal" data-format="pdf">
+                            <i class="fas fa-file-pdf me-1"></i>PDF
+                        </button>
+                    </div>
+                    <a href="{{ url_for('reporte_grafico_despachos') }}" class="btn btn-modern btn-warning">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        <span>Reportes</span>
+                    </a>
+                    
+                </div>
+            </div>
         </div>
     </div>
     
-    <div class="card border-0 shadow-lg rounded-lg overflow-hidden">
-        <div class="card-header bg-white py-3 border-bottom">
+    <!-- Card Principal con Diseño Mejorado -->
+    <div class="card card-modern">
+        <div class="card-header-modern">
             <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h5 class="mb-0 text-gray-800">
-                        <i class="fas fa-calendar-alt me-2 text-primary"></i>Registros de Programación
-                    </h5>
+                    <div class="d-flex align-items-center">
+                        <div class="header-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="card-title-modern mb-0">Registros de Programación</h5>
+                            <small class="text-muted">Gestiona y visualiza todas las programaciones</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 text-end">
-                    <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                        <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
-                    </span>
-                    <button id="toggle-historial-btn" class="btn btn-outline-secondary btn-sm ms-2" type="button">
-                        <i class="fas fa-history me-1"></i> Ver historial completo
-                    </button>
+                <div class="col-md-6 text-end mt-3 mt-md-0">
+                    <div class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                        <span class="badge badge-modern badge-primary">
+                            <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
+                        </span>
+                        <button id="btn-add-row" class="btn btn-sm btn-modern btn-outline-primary" type="button" title="Agregar nueva programación">
+                            <i class="fas fa-plus me-1"></i>Agregar
+                        </button>
+                        <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-secondary" type="button">
+                            <i class="fas fa-history me-1"></i>Ver historial
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive-lg">
-                <table class="table align-middle mb-0">
-                    <thead class="bg-primary text-white">
+            <div class="table-responsive-modern">
+                <table class="table table-modern align-middle mb-0">
+                    <thead class="thead-modern">
                         </thead>
-                    <tbody id="schedule-table-body" class="font-sm">
+                    <tbody id="schedule-table-body" class="tbody-modern">
                         </tbody>
                 </table>
                 <datalist id="productos-lista">
@@ -137,6 +164,35 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para ver imagen de guía -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="imageModalLabel">
+                    <i class="fas fa-image me-2"></i>Imagen de Guía de Transporte
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modal-image-preview" src="" alt="Imagen de guía" style="max-width: 100%; max-height: 70vh;">
+            </div>
+            <div class="modal-footer border-0">
+                <a id="btn-download-image" href="#" download="guia_transporte.png" class="btn btn-success rounded-2 px-4">
+                    <i class="fas fa-download me-1"></i> Descargar
+                </a>
+                <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Input oculto para subir imagen -->
+<input type="file" id="hidden-image-input" accept="image/*,application/pdf" style="display: none;">
+
 {% endblock %}
 {% block scripts %}
 <script>
@@ -156,17 +212,18 @@ document.addEventListener('DOMContentLoaded', function() {
     let mostrandoHistorialCompleto = false;
 
     const permissions = {
-        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
     // Ignacio ahora con todos los campos como Samantha/logistic
-    'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+    'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     };
 
     const columnsConfig = {
+        'factura': { width: '120px' },
         'fecha_programacion': { width: '120px', type: 'date' },
         'empresa_transportadora': { width: '180px' },
         'placa': { width: '100px' },
@@ -267,8 +324,8 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
             filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
-        headerHtml += '<th style="width: 80px" class="text-center sticky-col">Acciones</th></tr>'; // Modificado
-        filterHtml += '<th></th>';
+    headerHtml += '<th style="width: 320px; min-width: 320px;" class="text-center sticky-col">Acciones</th></tr>';
+        filterHtml += '<th class="sticky-col"></th>';
         thead.innerHTML = headerHtml + filterHtml;
         thead.querySelector('#filter-row').addEventListener('input', applyFilters);
     }
@@ -306,14 +363,28 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                     }
                 }
             });
-            // Botones de acciones (imprimir siempre, eliminar solo si permitido)
-            rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}">
-                            <div class="d-flex justify-content-center align-items-center">
-                                <span class="save-indicator me-2" style="width: 16px;"></span>
-                                <button class="btn btn-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
-                                    <i class="fas fa-print"></i>
-                                </button>
-                                ${canDelete ? `<button class=\"btn btn-danger btn-xs btn-delete-row ms-2\" title=\"Eliminar fila\"><i class=\"fas fa-trash-alt\"></i></button>` : ''}
+            // Botones de acciones con diseño profesional y organizado (3 en línea)
+            rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}" style="min-width: 320px;">
+                            <div class="action-buttons-container">
+                                <div class="d-flex justify-content-center align-items-center mb-1">
+                                    <span class="save-indicator me-2" style="width: 16px; height: 16px;"></span>
+                                </div>
+                                <div class="btn-group btn-group-sm flex-wrap" role="group">
+                                    <button class="btn btn-outline-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte">
+                                        <i class="fas fa-print me-1"></i>Guía
+                                    </button>
+                                    ${canDelete ? `<button class=\"btn btn-outline-danger btn-xs btn-delete-row\" title=\"Eliminar registro completo\"><i class=\"fas fa-trash-alt me-1\"></i>Eliminar</button>` : ''}
+                                    <button class="btn ${row.imagen_guia ? 'btn-outline-warning' : 'btn-outline-success'} btn-xs btn-upload-image" title="${row.imagen_guia ? 'Reemplazar imagen de guía' : 'Subir imagen de guía'}">
+                                        <i class="fas ${row.imagen_guia ? 'fa-sync-alt' : 'fa-upload'} me-1"></i>${row.imagen_guia ? 'Cambiar' : 'Subir'}
+                                    </button>
+                                    ${row.imagen_guia ? `
+                                    <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver imagen de guía">
+                                        <i class="fas fa-image me-1"></i>Ver
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-xs btn-delete-image" title="Eliminar imagen de guía">
+                                        <i class="fas fa-times"></i>
+                                    </button>` : ''}
+                                </div>
                             </div>
                         </td></tr>`;
             tbody.innerHTML += rowHtml;
@@ -368,7 +439,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         .catch(error => showToast('danger', 'Error de conexión'))
         .finally(() => {
             this.disabled = false;
-            this.innerHTML = `<i class="fas fa-plus me-2"></i>Nueva Programación`;
+            this.innerHTML = `<i class="fas fa-plus me-1"></i>Agregar`;
         });
     });
 
@@ -510,6 +581,78 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             }
         }
 
+        // Botón subir imagen de guía
+        const uploadButton = e.target.closest('.btn-upload-image');
+        if (uploadButton) {
+            const row = uploadButton.closest('tr');
+            const id = row.dataset.id;
+            
+            // Guardar el ID en el input oculto para usarlo después
+            const hiddenInput = document.getElementById('hidden-image-input');
+            hiddenInput.dataset.registroId = id;
+            hiddenInput.click();
+        }
+
+        // Botón ver imagen de guía
+        const viewButton = e.target.closest('.btn-view-image');
+        if (viewButton) {
+            const row = viewButton.closest('tr');
+            const id = row.dataset.id;
+            
+            // Obtener la imagen del servidor
+            fetch(`/api/programacion/${id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const modalImage = document.getElementById('modal-image-preview');
+                        const downloadBtn = document.getElementById('btn-download-image');
+                        
+                        modalImage.src = data.imagen;
+                        downloadBtn.href = data.imagen;
+                        
+                        // Determinar extensión del archivo según el tipo MIME
+                        const mimeType = data.imagen.split(';')[0].split(':')[1];
+                        let extension = 'png';
+                        if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+                        else if (mimeType.includes('gif')) extension = 'gif';
+                        else if (mimeType.includes('pdf')) extension = 'pdf';
+                        downloadBtn.download = `guia_transporte_${id}.${extension}`;
+                        
+                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                        imageModal.show();
+                    } else {
+                        showToast('danger', 'No se pudo cargar la imagen: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error al cargar la imagen'));
+        }
+
+        // Botón eliminar imagen de guía
+        const deleteImageButton = e.target.closest('.btn-delete-image');
+        if (deleteImageButton) {
+            const row = deleteImageButton.closest('tr');
+            const id = row.dataset.id;
+            
+            // Confirmar antes de eliminar
+            if (confirm('¿Estás seguro de que deseas eliminar esta imagen de guía?')) {
+                // Eliminar la imagen del servidor
+                fetch(`/api/programacion/${id}/image`, {
+                    method: 'DELETE'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Imagen eliminada correctamente');
+                        // Recargar la tabla para actualizar los botones
+                        fetchAndRender();
+                    } else {
+                        showToast('danger', 'Error al eliminar: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error al eliminar la imagen'));
+            }
+        }
+
         const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
         if (estadoCell && !estadoCell.querySelector('select')) {
             const originalValue = estadoCell.textContent.trim();
@@ -591,6 +734,11 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         .then(({ ok, data }) => {
             if (ok) {
                 statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                
+                // Actualizar el color de la fila automáticamente si cambió el estado
+                if (field === 'estado' && value) {
+                    updateRowColors(row, value);
+                }
             } else {
                 statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
                 showToast('danger', `Error en ${field}: ` + (data.message || 'Error'));
@@ -603,6 +751,65 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         .finally(() => {
             setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
         });
+    }
+
+    // Función para actualizar los colores de la fila según el estado
+    function updateRowColors(row, estado) {
+        // Actualizar el atributo data-estado
+        row.setAttribute('data-estado', estado);
+        
+        // Obtener todas las celdas de la fila
+        const cells = row.querySelectorAll('td');
+        const stickyCol = row.querySelector('td.sticky-col');
+        
+        // Limpiar estilos previos
+        cells.forEach(cell => {
+            cell.style.background = '';
+            cell.style.borderLeft = '';
+        });
+        
+        if (stickyCol) {
+            stickyCol.style.background = '';
+        }
+        
+        // Aplicar nuevos estilos según el estado
+        if (estado === 'CARGANDO') {
+            cells.forEach(cell => {
+                cell.style.background = '#fff8e1';
+                if (cell !== stickyCol) {
+                    cell.style.borderLeft = '4px solid #ffc107';
+                }
+            });
+            if (stickyCol) {
+                stickyCol.style.background = '#fffaeb';
+            }
+        } else if (estado === 'DESPACHADO') {
+            cells.forEach(cell => {
+                cell.style.background = '#e8f5e9';
+                if (cell !== stickyCol) {
+                    cell.style.borderLeft = '4px solid #0B8552';
+                }
+            });
+            if (stickyCol) {
+                stickyCol.style.background = '#ecf7ef';
+            }
+        } else {
+            // PROGRAMADO o cualquier otro estado - fondo blanco
+            cells.forEach(cell => {
+                cell.style.background = 'white';
+            });
+            if (stickyCol) {
+                stickyCol.style.background = '#fafbfc';
+            }
+        }
+        
+        // Agregar animación de transición suave
+        row.style.transition = 'all 0.3s ease';
+        
+        // Mostrar toast de confirmación
+        const estadoTexto = estado === 'CARGANDO' ? 'En Cargue' : 
+                           estado === 'DESPACHADO' ? 'Despachado' : 'Programado';
+        showToast('success', `Estado actualizado a: ${estadoTexto}`);
     }
 
     function showToast(type, message) {
@@ -680,128 +887,667 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                         btnUploadExcel.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i>Subir';
                     });
         });
+
+        // --- EVENT LISTENER PARA SUBIR IMAGEN ---
+        const hiddenImageInput = document.getElementById('hidden-image-input');
+        hiddenImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const registroId = this.dataset.registroId;
+            if (!registroId) {
+                showToast('danger', 'Error: No se pudo identificar el registro');
+                return;
+            }
+            
+            // Validar tamaño (máximo 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showToast('danger', 'El archivo es demasiado grande. Máximo 5MB');
+                this.value = ''; // Limpiar el input
+                return;
+            }
+            
+            // Crear FormData para enviar la imagen
+            const formData = new FormData();
+            formData.append('imagen', file);
+            
+            // Mostrar indicador de carga
+            showToast('info', 'Subiendo imagen...');
+            
+            // Enviar al servidor
+            fetch(`/api/programacion/${registroId}/upload_image`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('success', 'Imagen subida correctamente');
+                    // Recargar la tabla para mostrar el botón de ver imagen
+                    fetchAndRender();
+                } else {
+                    showToast('danger', 'Error al subir: ' + (data.message || ''));
+                }
+            })
+            .catch(() => showToast('danger', 'Error de conexión al subir imagen'))
+            .finally(() => {
+                // Limpiar el input para permitir subir la misma imagen de nuevo
+                this.value = '';
+            });
+        });
 });
 </script>
 
 <style>
-    /* ESTILOS AÑADIDOS PARA EL INPUT EN LA TABLA */
-    .editable-input {
-        width: 100%;
-        height: 100%;
-        background-color: transparent !important;
-        padding: 0.375rem 0.75rem; /* Ajusta el padding para que coincida con otras celdas */
-    }
-    .editable-input:focus {
-        background-color: #e9ecef !important;
+/* ========================================
+   DISEÑO PROFESIONAL - PROGRAMACIÓN CARGUE
+   ======================================== */
+
+/* Variables CSS Personalizadas - Colores Corporativos Conquers */
+:root {
+    --primary-color: #0B8552;
+    --primary-dark: #096840;
+    --primary-light: #0ea06a;
+    --primary-gradient: linear-gradient(135deg, #0B8552 0%, #0ea06a 100%);
+    --secondary-gradient: linear-gradient(135deg, #096840 0%, #0B8552 100%);
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #2c3e50;
+    --light-bg: #f8f9fc;
+    --border-color: #e3e6f0;
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --shadow-green: 0 0.5rem 1.5rem rgba(11, 133, 82, 0.35);
+}
+
+/* Contenedor Principal */
+.programacion-cargue-page {
+    background: linear-gradient(180deg, #f4f6f9 0%, #ffffff 100%);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+/* ========================================
+   HEADER DE PÁGINA - DISEÑO LIMPIO Y CLARO
+   ======================================== */
+.page-header {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.75rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.page-title-box {
+    display: flex;
+    align-items: center;
+}
+
+.icon-box {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 12px rgba(11, 133, 82, 0.25);
+}
+
+.bg-gradient-primary {
+    background: var(--primary-gradient);
+}
+
+.page-title {
+    font-size: 1.625rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    line-height: 1.3;
+    margin-bottom: 0.25rem;
+}
+
+.page-subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 400;
+    margin: 0;
+}
+
+/* ========================================
+   BOTONES MODERNOS Y CLAROS
+   ======================================== */
+.btn-modern {
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    text-transform: none;
+    letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-modern i {
+    font-size: 1rem;
+}
+
+.btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-modern:active {
+    transform: translateY(0);
+}
+
+.btn-modern.btn-primary {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.btn-modern.btn-primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    box-shadow: var(--shadow-green);
+}
+
+.btn-modern.btn-outline-primary {
+    background: white;
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-modern.btn-outline-primary:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow-green);
+}
+
+.btn-modern.btn-outline-success {
+    background: white;
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.btn-modern.btn-outline-success:hover {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.btn-modern.btn-outline-danger {
+    background: white;
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.btn-modern.btn-outline-danger:hover {
+    background: var(--danger-color);
+    border-color: var(--danger-color);
+    color: white;
+}
+
+.btn-modern.btn-warning {
+    background: var(--warning-color);
+    border-color: var(--warning-color);
+    color: #1f2937;
+}
+
+.btn-modern.btn-warning:hover {
+    background: #e0a800;
+    border-color: #e0a800;
+}
+
+.btn-modern.btn-outline-secondary {
+    background: white;
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.btn-modern.btn-outline-secondary:hover {
+    background: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+/* ========================================
+   CARD MODERNO - DISEÑO LIMPIO
+   ======================================== */
+.card-modern {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    background: white;
+}
+
+.card-header-modern {
+    background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+    border-bottom: 3px solid var(--primary-color);
+    padding: 1.25rem 1.5rem;
+}
+
+.header-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(11, 133, 82, 0.1) 0%, rgba(11, 133, 82, 0.15) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    font-size: 1.15rem;
+}
+
+.card-title-modern {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+}
+
+/* Badge Moderno */
+.badge-modern {
+    padding: 0.45rem 0.9rem;
+    border-radius: 1.5rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, rgba(11, 133, 82, 0.12) 0%, rgba(11, 133, 82, 0.2) 100%);
+    color: var(--primary-color);
+    border: 1px solid rgba(11, 133, 82, 0.25);
+}
+
+/* ========================================
+   TABLA MODERNA - DISEÑO CLARO Y ORGANIZADO
+   ======================================== */
+.table-responsive-modern {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    overflow-x: auto;
+    border-radius: 0 0 1rem 1rem;
+}
+
+/* Scrollbar personalizada con color corporativo */
+.table-responsive-modern::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-track {
+    background: #f1f3f5;
+    border-radius: 10px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 10px;
+    border: 2px solid #f1f3f5;
+}
+
+.table-responsive-modern::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+.table-modern {
+    margin-bottom: 0;
+    font-size: 0.875rem;
+}
+
+/* Header de Tabla - Diseño Profesional */
+.thead-modern th {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    z-index: 10;
+    font-size: 0.75rem;
+    padding: 1rem 0.875rem;
+    text-align: left;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    border: none;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+}
+
+/* Fila de Filtros - Más Visible */
+#filter-row {
+    position: sticky;
+    top: 53px;
+    z-index: 9;
+    background: white;
+}
+
+#filter-row th {
+    padding: 0.625rem;
+    background: #f8f9fc;
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.filter-input {
+    width: 100%;
+    border: 2px solid #e0e3e8;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    transition: all 0.2s ease;
+    background: white;
+}
+
+.filter-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(11, 133, 82, 0.15);
+    outline: none;
+    background: #fafbfc;
+}
+
+.filter-input::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* Body de Tabla - Diseño Limpio */
+.tbody-modern tr {
+    border-bottom: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.tbody-modern tr:hover {
+    background-color: #f8f9fc !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.tbody-modern td {
+    padding: 0;
+    vertical-align: middle;
+    background-color: white;
+    font-size: 0.875rem;
+    color: #495057;
+    transition: background 0.3s ease, border-left 0.3s ease;
+}
+
+/* Estados de Fila - Colores Claros y Distinguibles */
+.tbody-modern tr[data-estado="PROGRAMADO"] {
+    background-color: #ffffff !important;
+}
+
+.tbody-modern tr[data-estado="CARGANDO"] td {
+    background: #fff8e1 !important;
+    border-left: 4px solid #ffc107;
+}
+
+.tbody-modern tr[data-estado="DESPACHADO"] td {
+    background: #e8f5e9 !important;
+    border-left: 4px solid #0B8552;
+}
+
+/* ========================================
+   CELDAS EDITABLES - FÁCIL DE IDENTIFICAR
+   ======================================== */
+.editable-input {
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    padding: 0.75rem 0.875rem;
+    border: none;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+}
+
+.editable-input:focus {
+    background: rgba(11, 133, 82, 0.08) !important;
+    outline: none;
+}
+
+.editable-cell {
+    background: rgba(11, 133, 82, 0.04);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.editable-cell .cell-editor {
+    display: inline-block;
+    min-width: 100%;
+    padding: 0.75rem 0.875rem;
+    outline: none;
+    white-space: pre-wrap;
+    font-size: 0.875rem;
+}
+
+.editable-cell:hover {
+    background: rgba(11, 133, 82, 0.08);
+}
+
+.editable-cell:focus-within {
+    background: rgba(11, 133, 82, 0.12);
+    box-shadow: inset 0 0 0 2px var(--primary-color);
+    cursor: text;
+}
+
+/* Campo de precintos - Resaltado */
+td[data-field="precintos"] {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+/* ========================================
+   COLUMNA DE ACCIONES STICKY - MÁS VISIBLE
+   ======================================== */
+.sticky-col {
+    position: -webkit-sticky;
+    position: sticky;
+    right: 0;
+    z-index: 3;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+    min-width: 320px !important;
+}
+
+.thead-modern .sticky-col {
+    background: var(--primary-gradient);
+    color: #fff;
+    z-index: 11;
+}
+
+.tbody-modern .sticky-col {
+    background-color: #fafbfc !important;
+    border-left: 3px solid var(--primary-color);
+    transition: background 0.3s ease;
+}
+
+.tbody-modern tr[data-estado="CARGANDO"] .sticky-col {
+    background: #fffaeb !important;
+}
+
+.tbody-modern tr[data-estado="DESPACHADO"] .sticky-col {
+    background: #ecf7ef !important;
+}
+
+.tbody-modern tr:hover .sticky-col {
+    background: #f0f2f5 !important;
+}
+
+/* ========================================
+   BOTONES DE ACCIÓN - CLAROS Y ORGANIZADOS
+   ======================================== */
+.action-buttons-container {
+    padding: 0.75rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.save-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+}
+
+.btn-xs {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.7rem;
+    border-radius: 0.4rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    transition: all 0.2s ease;
+    border-width: 2px;
+}
+
+.btn-group {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.btn-group .btn {
+    border-radius: 0 !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.btn-group .btn:last-child {
+    border-right: none;
+}
+
+.btn-group .btn:first-child {
+    border-top-left-radius: 0.5rem !important;
+    border-bottom-left-radius: 0.5rem !important;
+}
+
+.btn-group .btn:last-child {
+    border-top-right-radius: 0.5rem !important;
+    border-bottom-right-radius: 0.5rem !important;
+}
+
+/* Efectos hover mejorados y claros */
+.btn-outline-info:hover, .btn-outline-primary:hover, 
+.btn-outline-success:hover, .btn-outline-warning:hover, 
+.btn-outline-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.btn-outline-info:active, .btn-outline-primary:active, 
+.btn-outline-success:active, .btn-outline-warning:active, 
+.btn-outline-danger:active {
+    transform: translateY(0);
+}
+
+/* ========================================
+   RESPONSIVE - OPTIMIZADO PARA MÓVILES
+   ======================================== */
+@media (max-width: 768px) {
+    .page-header {
+        padding: 1.25rem;
     }
     
-    /* ESTILOS PARA FILTROS */
-    #filter-row th {
-        padding: 8px;
-        background-color: #f8f9fa;
+    .icon-box {
+        width: 48px;
+        height: 48px;
+        font-size: 1.25rem;
     }
-    .filter-input {
-        width: 100%;
-        border: 1px solid #dee2e6;
+    
+    .page-title {
+        font-size: 1.375rem;
     }
-    .filter-input::placeholder {
-        color: #adb5bd;
-        font-style: italic;
+    
+    .page-subtitle {
+        font-size: 0.8125rem;
     }
-
-    /* ESTILOS PARA LA COLUMNA FIJA DE ESTADO */
+    
+    .btn-modern {
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+    }
+    
     .sticky-col {
-        position: -webkit-sticky;
-        position: sticky;
-        right: 0;
-        z-index: 2;
+        min-width: 150px !important;
     }
-    .table tbody .sticky-col {
-        background-color: #f8f9fa; 
-        border-left: 2px solid #e9ecef;
+    
+    .card-header-modern {
+        padding: 1rem 1.25rem;
     }
-    .table thead .sticky-col {
-        background: linear-gradient(135deg, #2c3e50, #4a6491);
-    }
-    .table tbody tr[data-estado="CARGANDO"] .sticky-col { background-color: #fff3cd !important; }
-    .table tbody tr[data-estado="DESPACHADO"] .sticky-col { background-color: #d4edda !important; }
+}
 
-    /* ESTILOS PARA ESTADOS DE FILA */
-    .table tbody tr[data-estado="PROGRAMADO"] { background-color: #f8f9fa !important; }
-    .table tbody tr[data-estado="CARGANDO"] td { background-color: #fff3cd !important; }
-    .table tbody tr[data-estado="DESPACHADO"] td { background-color: #d4edda !important; }
+/* ========================================
+   ANIMACIONES SUTILES
+   ======================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 
-    /* ESTILO ESPECIAL PARA PRECINTOS */
-    td[data-field="precintos"] {
-        font-family: 'Courier New', monospace;
-    }
+.tbody-modern tr {
+    animation: fadeIn 0.25s ease;
+}
 
-    /* ESTILOS GENERALES DE LA TABLA */
-    .table-responsive-lg {
-        max-height: calc(100vh - 250px);
-        overflow-y: auto;
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
     }
-    .table thead th {
-        position: sticky;
-        top: 0;
-        background: linear-gradient(135deg, #2c3e50, #4a6491);
-        color: white;
-        z-index: 10;
-        font-size: 0.75rem;
-        padding: 12px 15px;
-        text-align: left;
-        text-transform: uppercase;
+    50% {
+        opacity: 0.6;
     }
-    #filter-row {
-        top: 45px;
-        z-index: 10;
-        position: sticky;
-    }
-    .table td {
-        vertical-align: middle;
-        padding: 0; /* Se quita el padding para que los inputs/texto interno lo manejen */
-        font-size: 0.85rem;
-        color: #495057;
-        background-color: white;
-    }
-    .table td[contenteditable="true"] {
-        padding: 12px 15px; /* Se mantiene el padding para celdas editables normales */
-    }
-    .table tbody tr:hover td { background-color: #f8fafc; }
+}
 
-    /* ESTILO PARA CELDAS EDITABLES */
-    .editable-cell {
-        background-color: rgba(13, 110, 253, 0.05);
-        transition: all 0.2s ease;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    .editable-cell .cell-editor {
-        display: inline-block;
-        min-width: 100%;
-        padding: 12px 15px; /* igual que antes */
-        outline: none;
-        white-space: pre-wrap;
-    }
-    .editable-cell .cell-editor:focus {
-        background: transparent;
-    }
-    .editable-cell:focus-within {
-        background-color: rgba(13, 110, 253, 0.1);
-        outline: 2px solid rgba(13, 110, 253, 0.3);
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-        cursor: text;
-    }
-    .editable-cell:focus {
-        background-color: rgba(13, 110, 253, 0.1);
-        outline: 2px solid rgba(13, 110, 253, 0.3);
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
-        cursor: text;
-    }
-    .btn-xs {
-        --bs-btn-padding-y: .1rem;
-        --bs-btn-padding-x: .4rem;
-        --bs-btn-font-size: .75rem;
-    }
+.save-indicator .spinner-border {
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* ========================================
+   MEJORAS DE USABILIDAD
+   ======================================== */
+
+/* Tooltip mejorado */
+.btn-xs[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.5rem;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 0.75rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+/* Indicador visual para celdas requeridas */
+.required-field::before {
+    content: '*';
+    color: var(--danger-color);
+    margin-right: 0.25rem;
+    font-weight: bold;
+}
+
+/* Loader personalizado */
+.spinner-border-sm.text-primary {
+    color: var(--primary-color) !important;
+    border-color: var(--primary-color);
+    border-right-color: transparent;
+}
 </style>
 {% endblock %}

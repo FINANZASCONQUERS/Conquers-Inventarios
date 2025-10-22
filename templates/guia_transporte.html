@@ -278,7 +278,7 @@
     <div class="fila">
       <div class="campo lugar-fecha sin-borde"><input id="fechaExpEDICION" readonly></div>
       <div class="campo planta-productor sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
-      <div class="campo factura-remision sin-borde"><input placeholder="FACTURA O REMISIÓN N°"></div>
+      <div class="campo factura-remision sin-borde"><input id="facturaRemision" placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
     </div>
     <div class="fila">
       <div class="campo despacho sin-borde">
@@ -561,6 +561,8 @@ if (Object.keys(datosGuia).length > 1) {
     syncDestinoWrap();
     document.getElementById('galones').value = datosGuia.galones || '';
     document.getElementById('selloInput').value = datosGuia.precintos || '';
+    // Factura/Remisión desde Programación de Cargue
+    document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
 
     // --- Cliente y Dirección ---
     const clienteSelect = document.getElementById('clienteSelect');
