@@ -324,7 +324,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
             filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
-    headerHtml += '<th style="width: 220px; min-width: 220px;" class="text-center sticky-col">Acciones</th></tr>';
+    headerHtml += '<th style="width: 180px; min-width: 180px;" class="text-center sticky-col">Acciones</th></tr>';
         filterHtml += '<th class="sticky-col"></th>';
         thead.innerHTML = headerHtml + filterHtml;
         thead.querySelector('#filter-row').addEventListener('input', applyFilters);
@@ -364,7 +364,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 }
             });
             // Botones de acciones con diseño profesional y organizado (3 en línea)
-            rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}" style="min-width: 220px;">
+            rowHtml += `<td class="text-center save-status-cell sticky-col" data-id="${row.id}" style="min-width: 180px;">
                             <div class="action-buttons-container">
                                 <div class="d-flex justify-content-center align-items-center mb-1">
                                     <span class="save-indicator me-2" style="width: 16px; height: 16px;"></span>
@@ -374,9 +374,10 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                                         <i class="fas fa-print"></i>
                                     </button>
                                     ${canDelete ? `<button class=\"btn btn-outline-danger btn-xs btn-delete-row\" title=\"Eliminar registro completo\" aria-label=\"Eliminar\"><i class=\"fas fa-trash-alt\"></i></button>` : ''}
-                                    <button class="btn ${row.imagen_guia ? 'btn-outline-warning' : 'btn-outline-success'} btn-xs btn-upload-image" title="${row.imagen_guia ? 'Reemplazar archivo de guía' : 'Subir archivo de guía'}" aria-label="${row.imagen_guia ? 'Cambiar' : 'Subir'}">
-                                        <i class="fas ${row.imagen_guia ? 'fa-sync-alt' : 'fa-upload'}"></i>
-                                    </button>
+                                    ${!row.imagen_guia ? `
+                                    <button class="btn btn-outline-success btn-xs btn-upload-image" title="Subir archivo de guía" aria-label="Subir">
+                                        <i class="fas fa-upload"></i>
+                                    </button>` : ''}
                                     ${row.imagen_guia ? `
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver archivo de guía" aria-label="Ver">
                                         <i class="fas fa-image"></i>
@@ -1386,12 +1387,11 @@ td[data-field="precintos"] {
    COLUMNA DE ACCIONES STICKY - MÁS VISIBLE
    ======================================== */
 .sticky-col {
-    position: -webkit-sticky;
-    position: sticky;
-    right: 0;
-    z-index: 3;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
-    min-width: 320px !important;
+    position: static;            /* quitar comportamiento sticky */
+    right: auto;
+    z-index: auto;
+    box-shadow: none;            /* sin sombra lateral fija */
+    min-width: 180px !important; /* conservamos el ancho compacto */
 }
 
 .thead-modern .sticky-col {
@@ -1422,10 +1422,10 @@ td[data-field="precintos"] {
    BOTONES DE ACCIÓN - CLAROS Y ORGANIZADOS
    ======================================== */
 .action-buttons-container {
-    padding: 0.75rem 0.5rem;
+    padding: 0.4rem 0.25rem; /* más compacto */
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.35rem;
 }
 
 .save-indicator {
@@ -1435,8 +1435,8 @@ td[data-field="precintos"] {
 }
 
 .btn-xs {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.7rem;
+    padding: 0.25rem 0.45rem; /* botones más pequeños */
+    font-size: 0.72rem;
     border-radius: 0.4rem;
     font-weight: 600;
     letter-spacing: 0.2px;
