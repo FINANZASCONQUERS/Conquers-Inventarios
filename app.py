@@ -350,6 +350,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgres
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Directorio de guías (PDF/Imagen) - configurable por entorno
 app.config['GUIDES_DIR'] = os.environ.get('GUIDES_DIR') or ('/var/data/guias' if os.name != 'nt' else os.path.join(app.root_path, 'guias'))
+app.config['MIME_DEBUG'] = os.environ.get('MIME_DEBUG', '0')  # Activa logs de depuración de MIME cuando sea '1'/'true'
 os.makedirs(app.config['GUIDES_DIR'], exist_ok=True)
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
@@ -823,7 +824,54 @@ _ensure_trasiegos_columns()
 # ===== Servir guías cargadas (PDF/imagenes) =====
 @app.get('/guias/<path:filename>')
 def serve_guia(filename):
-    return send_from_directory(app.config['GUIDES_DIR'], filename, as_attachment=False)
+    """Sirve archivos de guía desde GUIDES_DIR con Content-Type correcto e inline.
+
+    - Detecta MIME con mimetypes.guess_type.
+    - Fallback a application/pdf si extensión .pdf o firma %PDF.
+    - Fuerza Content-Disposition: inline y añade X-Content-Type-Options: nosniff.
+    """
+    base_dir = app.config['GUIDES_DIR']
+    # Normalizar y prevenir traversal
+    safe_path = os.path.normpath(os.path.join(base_dir, filename))
+    base_norm = os.path.normpath(base_dir)
+    if not safe_path.startswith(base_norm + os.sep) and safe_path != base_norm:
+        return jsonify(success=False, message='Ruta inválida'), 400
+    if not os.path.exists(safe_path):
+        return jsonify(success=False, message='Archivo no encontrado'), 404
+
+    mime, _ = mimetypes.guess_type(safe_path)
+    if not mime or mime == 'application/octet-stream':
+        try:
+            if safe_path.lower().endswith('.pdf'):
+                mime = 'application/pdf'
+            else:
+                with open(safe_path, 'rb') as f:
+                    head = f.read(8)
+                if head.startswith(b'%PDF'):
+                    mime = 'application/pdf'
+        except Exception:
+            pass
+    mime = mime or 'application/octet-stream'
+
+    resp = send_file(safe_path, mimetype=mime, as_attachment=False, conditional=True)
+    resp.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(safe_path)}"'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers.setdefault('Cache-Control', 'public, max-age=3600')
+    # Log de depuración opcional
+    try:
+        debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
+        if debug:
+            size = -1
+            try:
+                size = os.path.getsize(safe_path)
+            except Exception:
+                pass
+            current_app.logger.info(
+                f"[MIME_DEBUG] /guias -> file={filename} mime={mime} size={size} disposition=inline Accept={request.headers.get('Accept')}"
+            )
+    except Exception:
+        pass
+    return resp
 
 # ================== NUEVOS MODELOS PARA FLUJO DE EFECTIVO (PERSISTENCIA) ==================
 class FlujoUploadBatch(db.Model):
@@ -7366,6 +7414,13 @@ def get_programacion_image(id):
                             mime = 'application/pdf'
                 except Exception:
                     pass
+            # Log opcional
+            try:
+                debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
+                if debug:
+                    current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=datauri mime={mime or 'application/octet-stream'}")
+            except Exception:
+                pass
             return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime or 'application/octet-stream', imagen=registro.imagen_guia)
 
         # Ruta relativa en disco
@@ -7375,6 +7430,13 @@ def get_programacion_image(id):
             return jsonify(success=False, message='Archivo no encontrado'), 404
         url = url_for('serve_guia', filename=rel_path)
         mime, _ = mimetypes.guess_type(abs_path)
+        # Log opcional
+        try:
+            debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
+            if debug:
+                current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=file url={url} mime={mime or 'application/octet-stream'}")
+        except Exception:
+            pass
         return jsonify(success=True, url=url, mime=mime or 'application/octet-stream', imagen=url)
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500

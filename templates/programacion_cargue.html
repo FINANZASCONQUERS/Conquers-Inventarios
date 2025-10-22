@@ -610,8 +610,9 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                         // Limpiar el viewer
                         viewer.innerHTML = '';
 
-                        const dataUri = data.imagen;
-                        const mimeType = (dataUri.split(';')[0].split(':')[1] || '').toLowerCase();
+                        // Usar la fuente y el MIME entregados por el servidor
+                        const src = data.imagen; // puede ser URL o data URI
+                        const mimeType = (data.mime || '').toLowerCase();
 
                         // Preparar botón de descarga
                         let extension = 'png';
@@ -619,21 +620,33 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                         else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
                         else if (mimeType.includes('gif')) extension = 'gif';
                         else if (mimeType.includes('png')) extension = 'png';
-                        downloadBtn.href = dataUri;
+                        else {
+                            // Último recurso: deducir por extensión de la URL si aplica
+                            try {
+                                const u = new URL(src, window.location.href);
+                                const path = u.pathname || '';
+                                const ext = (path.split('.').pop() || '').toLowerCase();
+                                if (['pdf','png','jpg','jpeg','gif','webp'].includes(ext)) {
+                                    extension = ext === 'jpeg' ? 'jpg' : ext;
+                                }
+                            } catch (e) { /* ignore */ }
+                        }
+                        downloadBtn.href = src;
                         downloadBtn.download = `guia_transporte_${id}.${extension}`;
 
                         // Render según tipo
                         if (mimeType.includes('pdf')) {
                             const embed = document.createElement('embed');
                             embed.type = 'application/pdf';
-                            embed.src = dataUri + '#toolbar=1&navpanes=0&scrollbar=1';
+                            // Añadir parámetros para mostrar toolbar del visor PDF del navegador
+                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
                             embed.style.width = '100%';
                             embed.style.height = '70vh';
                             embed.style.border = '0';
                             viewer.appendChild(embed);
                         } else {
                             const img = document.createElement('img');
-                            img.src = dataUri;
+                            img.src = src;
                             img.alt = 'Imagen de guía';
                             img.style.maxWidth = '100%';
                             img.style.maxHeight = '70vh';
