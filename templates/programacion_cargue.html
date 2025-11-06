@@ -212,18 +212,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let mostrandoHistorialCompleto = false;
 
     const permissions = {
-        'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-    // Ignacio ahora con todos los campos como Samantha/logistic
-    'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        // Ignacio ahora con todos los campos como Samantha/logistic
+        'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     };
 
     const columnsConfig = {
-        'factura': { width: '120px' },
         'fecha_programacion': { width: '120px', type: 'date' },
         'empresa_transportadora': { width: '180px' },
         'placa': { width: '100px' },
@@ -338,24 +337,26 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             return;
         }
 
-    data.forEach(row => {
+        data.forEach(row => {
             let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" class="align-middle">`;
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
-        // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
-        const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho'].includes(col);
-        const finalEditable = isEditable && !refineriaBlocked;
+                // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
+                const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho'].includes(col);
+                // Si el registro es viejo y el campo tiene valor, bloquearlo
+                let finalEditable = isEditable && !refineriaBlocked;
+                if (row.id && value !== '' && value !== null && value !== undefined) {
+                    finalEditable = false;
+                }
                 const lockBadge = '';
-        if (config.type === 'datalist' && finalEditable) {
+                if (config.type === 'datalist' && finalEditable) {
                     rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
                                     ${lockBadge}
-                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" 
-                                           value="${value}">
+                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}">
                                 </td>`;
                 } else {
-                    // Usar un contenedor interno editable para que el badge quede fuera del rango editable
                     if(finalEditable){
                         rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true">${formatCellValue(value, config)}</span></td>`;
                     } else {
@@ -373,7 +374,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                                     <button class="btn btn-outline-info btn-xs btn-print-guide" title="Imprimir Guía de Transporte" aria-label="Imprimir guía">
                                         <i class="fas fa-print"></i>
                                     </button>
-                                    ${canDelete ? `<button class=\"btn btn-outline-danger btn-xs btn-delete-row\" title=\"Eliminar registro completo\" aria-label=\"Eliminar\"><i class=\"fas fa-trash-alt\"></i></button>` : ''}
+                                    ${canDelete ? `<button class\="btn btn-outline-danger btn-xs btn-delete-row\" title\="Eliminar registro completo\" aria-label\="Eliminar"><i class\="fas fa-trash-alt"></i></button>` : ''}
                                     ${!row.imagen_guia ? `
                                     <button class="btn btn-outline-success btn-xs btn-upload-image" title="Subir archivo de guía" aria-label="Subir">
                                         <i class="fas fa-upload"></i>
@@ -536,6 +537,47 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         const printButton = e.target.closest('.btn-print-guide');
         if (printButton) {
             const row = printButton.closest('tr');
+            // BLOQUEAR EDICIÓN DE TODOS LOS DATOS DE LA FILA ANTES DE REDIRIGIR
+            // Bloquear todos los campos excepto numero_guia
+            row.querySelectorAll('td[data-field]').forEach(cell => {
+                const field = cell.dataset.field;
+                if (field !== 'numero_guia') {
+                    cell.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.disabled = true;
+                        el.classList.add('blocked-field');
+                    });
+                    cell.querySelectorAll('.cell-editor[contenteditable="true"]').forEach(el => {
+                        el.setAttribute('contenteditable', 'false');
+                        el.classList.add('blocked-field');
+                    });
+                }
+            });
+            row.classList.add('row-blocked');
+
+            // Permitir edición de numero_guia por 30 minutos
+            const numeroGuiaCell = row.querySelector('td[data-field="numero_guia"]');
+            if (numeroGuiaCell) {
+                numeroGuiaCell.querySelectorAll('input, select, textarea').forEach(el => {
+                    el.disabled = false;
+                    el.classList.remove('blocked-field');
+                });
+                numeroGuiaCell.querySelectorAll('.cell-editor').forEach(el => {
+                    el.setAttribute('contenteditable', 'true');
+                    el.classList.remove('blocked-field');
+                });
+                // Bloquear después de 30 minutos
+                setTimeout(() => {
+                    numeroGuiaCell.querySelectorAll('input, select, textarea').forEach(el => {
+                        el.disabled = true;
+                        el.classList.add('blocked-field');
+                    });
+                    numeroGuiaCell.querySelectorAll('.cell-editor').forEach(el => {
+                        el.setAttribute('contenteditable', 'false');
+                        el.classList.add('blocked-field');
+                    });
+                }, 30 * 60 * 1000);
+            }
+
             const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
             row.querySelectorAll('td[data-field]').forEach(cell => {
                 const field = cell.dataset.field;
@@ -546,13 +588,11 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 } else {
                     value = cell.textContent.trim();
                 }
-                
                 if (cell.dataset.type === 'number' && value) {
                     value = value.replace(/\./g, '').replace(',', '.');
                 }
                 if (value && value !== '-') {
                      url.searchParams.append(field, value);
-                     // Enviar también 'placa_tanque' cuando el campo es 'tanque'
                      if (field === 'tanque') {
                          url.searchParams.append('placa_tanque', value);
                      }
@@ -560,6 +600,17 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             });
             window.location.href = url.href;
         }
+
+        // BLOQUEAR EDICIÓN DE TODOS LOS DATOS DE LA FILA
+row.querySelectorAll('input, select, textarea').forEach(el => {
+    el.disabled = true;
+    el.classList.add('blocked-field');
+});
+row.querySelectorAll('.cell-editor[contenteditable="true"]').forEach(el => {
+    el.setAttribute('contenteditable', 'false');
+    el.classList.add('blocked-field');
+});
+row.classList.add('row-blocked');
 
         // Botón eliminar fila (solo si canDelete true en render)
         const deleteButton = e.target.closest('.btn-delete-row');
