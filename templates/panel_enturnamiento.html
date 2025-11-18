@@ -1,0 +1,4602 @@
+{% extends "base.html" %}
+{% block title %}Panel de Enturnamiento{% endblock %}
+{% block content %}
+{% set total_solicitudes = solicitudes|length %}
+{% set con_turno_count = solicitudes|rejectattr('turno', 'equalto', None)|list|length %}
+{% set sin_turno_count = total_solicitudes - con_turno_count %}
+{% set pendiente_inscripcion_count = solicitudes|selectattr('estado', 'equalto', 'pendiente_inscripcion')|list|length %}
+{% set en_revision_count = solicitudes|selectattr('estado', 'equalto', 'en revision')|list|length %}
+{% set asesor_count = solicitudes|selectattr('asesor_pendiente')|list|length %}
+<div class="container-fluid mt-3 px-4 programacion-cargue-page" style="max-width: 1800px; margin: 0 auto;">
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-12">
+                <div class="page-title-box">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-gradient-primary">
+                            <i class="fas fa-truck-loading"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h2 class="page-title mb-1">Panel de Enturnamiento</h2>
+                            <p class="page-subtitle mb-0 text-muted">Gestión de solicitudes y guías de enturnamiento</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="summary-wrapper">
+                    <div class="status-summary-card">
+                        <div class="status-chip status-chip-total">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-layer-group"></i></span>
+                                <span class="status-dot status-dot-neutral"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">Total</span>
+                                <span class="status-value">{{ total_solicitudes }}</span>
+                            </div>
+                        </div>
+                        <div class="status-chip status-chip-neutral" title="Solicitudes sin turno asignado">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-clock"></i></span>
+                                <span class="status-dot status-dot-muted"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">Sin turno</span>
+                                <span class="status-value">{{ sin_turno_count }}</span>
+                            </div>
+                        </div>
+                        <div class="status-chip status-chip-success" title="Solicitudes con turno asignado">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-clipboard-check"></i></span>
+                                <span class="status-dot status-dot-success"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">Con turno</span>
+                                <span class="status-value">{{ con_turno_count }}</span>
+                            </div>
+                        </div>
+                        <div class="status-chip status-chip-info" title="Conductores pendientes de inscripción humana">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-user-clock"></i></span>
+                                <span class="status-dot status-dot-info"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">Pend. inscripción</span>
+                                <span class="status-value">{{ pendiente_inscripcion_count }}</span>
+                            </div>
+                        </div>
+                        <div class="status-chip status-chip-warning" title="Solicitudes en revisión de documentos">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-clipboard-list"></i></span>
+                                <span class="status-dot status-dot-warning"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">En revisión</span>
+                                <span class="status-value">{{ en_revision_count }}</span>
+                            </div>
+                        </div>
+                        <div class="status-chip status-chip-danger" title="Conversaciones escaladas a asesor humano">
+                            <div class="status-chip-header">
+                                <span class="status-icon"><i class="fas fa-headset"></i></span>
+                                <span class="status-dot status-dot-danger"></span>
+                            </div>
+                            <div class="status-metrics">
+                                <span class="status-label">Escalados</span>
+                                <span class="status-value">{{ asesor_count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="quick-filters-card">
+                        <button type="button" id="btnAbrirModalNuevaSolicitud" class="btn btn-primary btn-modern quick-filters-action">
+                            <i class="fas fa-plus-circle me-2"></i>
+                            <span>Nueva Solicitud</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para enviar mensaje al conductor -->
+    <div class="modal fade" id="modalEnviarMensaje" tabindex="-1" aria-labelledby="modalEnviarMensajeLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content chat-modal-shell">
+                <div class="chat-modal-header">
+                    <button type="button" class="chat-header-btn" data-bs-dismiss="modal" aria-label="Cerrar">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <h5 class="chat-modal-title mb-0" id="modalEnviarMensajeLabel">Conductor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <form id="formEnviarMensaje" class="chat-form">
+                    <input type="hidden" id="mensajeSolicitudId" name="solicitudId">
+                    <input type="hidden" id="conductorNombreHidden" value="">
+                    <select id="mensajeTemplate" name="mensaje_template" class="d-none">
+                        <option value="personalizado">Personalizado</option>
+                        <option value="bienvenida_samantha">Saludo humano (Samantha)</option>
+                        <option value="nueva_guia">Solicitar nueva guía</option>
+                        <option value="nuevo_ticket">Solicitar nuevo ticket</option>
+                        <option value="nueva_ubicacion_bosconia">Ubicación Bosconia</option>
+                        <option value="nueva_ubicacion_gambote">Ubicación Gambote</option>
+                        <option value="recordatorio_inteligente">Seguimiento automático</option>
+                        <option value="turno_retrasado">Turno en ajuste operativo</option>
+                        <option value="finalizar_atencion">Finalizar atención humana</option>
+                    </select>
+
+                    <div class="chat-modal-body">
+                        <div class="chat-info-block">
+                            <div class="chat-info-line">
+                                <span class="chat-info-icon" aria-hidden="true"><i class="fas fa-user"></i></span>
+                                <div class="chat-info-content">
+                                    <span class="chat-info-label">Nombre</span>
+                                    <span id="chatConductorNombre" class="chat-info-value">Cargando...</span>
+                                </div>
+                            </div>
+                            <div class="chat-info-line">
+                                <span class="chat-info-icon" aria-hidden="true"><i class="fas fa-truck"></i></span>
+                                <div class="chat-info-content">
+                                    <span class="chat-info-label">Placa vehículo</span>
+                                    <span id="chatConductorPlaca" class="chat-info-value">-</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chat-thread" id="chatPreview">
+                            <div class="chat-history" id="chatHistory">
+                                <div class="chat-history-empty" id="chatHistoryEmpty">
+                                    <i class="fas fa-comments me-2"></i>Selecciona una solicitud para ver la conversación.
+                                </div>
+                            </div>
+                                <div class="chat-bubble outgoing chat-preview-bubble is-empty" aria-hidden="true">
+                                    <span id="chatPreviewText" class="chat-preview-placeholder"></span>
+                                </div>
+                        </div>
+
+                        <div class="chat-quick-section">
+                            <div class="chat-quick-header">
+                                <p class="chat-quick-title">Respuestas rápidas</p>
+                                <button type="button" class="chat-quick-toggle" id="btnToggleQuickReplies" aria-expanded="false">
+                                    <span class="toggle-label">Mostrar</span>
+                                    <i class="fas fa-chevron-down toggle-icon"></i>
+                                </button>
+                            </div>
+                            <div class="chat-quick-groups collapse" id="quickRepliesContainer">
+                                <div class="chat-quick-group">
+                                    <p class="chat-quick-subtitle"><i class="fas fa-handshake me-2"></i>Saludo humano</p>
+                                    <div class="chat-quick-row">
+                                        <button type="button" class="chat-quick-option chat-quick-option--accent" data-template="bienvenida_samantha">
+                                            <i class="fas fa-handshake chat-quick-option-icon"></i>
+                                            <span>Saludo Samantha</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="chat-quick-group">
+                                    <p class="chat-quick-subtitle"><i class="fas fa-star me-2"></i>Acciones principales</p>
+                                    <div class="chat-quick-row">
+                                        <button type="button" class="chat-quick-option chat-quick-option--primary" data-template="nueva_guia">
+                                            <i class="fas fa-file-upload chat-quick-option-icon"></i>
+                                            <span>Nueva guía</span>
+                                        </button>
+                                        <button type="button" class="chat-quick-option chat-quick-option--primary" data-template="nuevo_ticket">
+                                            <i class="fas fa-ticket-alt chat-quick-option-icon"></i>
+                                            <span>Nuevo ticket</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="chat-quick-group">
+                                    <p class="chat-quick-subtitle"><i class="fas fa-map-marked-alt me-2"></i>Validaciones GPS</p>
+                                    <div class="chat-quick-row">
+                                        <button type="button" class="chat-quick-option chat-quick-option--info" data-template="nueva_ubicacion_bosconia">
+                                            <i class="fas fa-map-marker-alt chat-quick-option-icon"></i>
+                                            <span>Ubicación Bosconia</span>
+                                        </button>
+                                        <button type="button" class="chat-quick-option chat-quick-option--info" data-template="nueva_ubicacion_gambote">
+                                            <i class="fas fa-map-marker-alt chat-quick-option-icon"></i>
+                                            <span>Ubicación Gambote</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="chat-quick-group">
+                                    <p class="chat-quick-subtitle"><i class="fas fa-sliders-h me-2"></i>Gestión de caso</p>
+                                    <div class="chat-quick-row">
+                                        <button type="button" class="chat-quick-option chat-quick-option--success" data-template="finalizar_atencion">
+                                            <i class="fas fa-flag-checkered chat-quick-option-icon"></i>
+                                            <span>Finalizar atención</span>
+                                        </button>
+                                        <button type="button" class="chat-quick-option chat-quick-option--warning" data-template="turno_retrasado">
+                                            <i class="fas fa-exclamation-circle chat-quick-option-icon"></i>
+                                            <span>Ajuste de turno</span>
+                                        </button>
+                                        <button type="button" class="chat-quick-option chat-quick-option--warning" data-template="recordatorio_inteligente">
+                                            <i class="fas fa-bell chat-quick-option-icon"></i>
+                                            <span>Seguimiento automático</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chat-attachment-chip" id="adjuntoChip" role="status" aria-live="polite" hidden>
+                            <span class="chat-attachment-chip-icon" aria-hidden="true"><i class="fas fa-file-alt"></i></span>
+                            <span class="chat-attachment-chip-name" id="adjuntoChipName"></span>
+                            <button type="button" class="chat-attachment-chip-remove" id="adjuntoChipRemove" title="Quitar archivo adjunto" aria-label="Quitar archivo adjunto">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div class="chat-input-bar">
+                            <button type="button" class="chat-attach-btn" id="btnAdjuntarArchivo" data-bs-toggle="tooltip" data-bs-placement="top" title="JPG, PNG, GIF, WebP o PDF (máx 10 MB)" aria-label="Adjuntar archivo">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            <textarea class="chat-input" id="mensajePersonalizado" name="mensaje" rows="1" maxlength="1000" placeholder="Escribe un mensaje..."></textarea>
+                            <button type="button" class="chat-clear-btn" id="btnLimpiarMensaje" title="Limpiar mensaje" aria-label="Limpiar mensaje">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
+                            <span class="chat-char-counter" id="charCount">0/1000</span>
+                            <button type="submit" class="chat-send-btn" title="Enviar mensaje" aria-label="Enviar mensaje">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <input type="file" id="mensajeAdjunto" name="adjunto" class="chat-attach-input" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" hidden>
+
+                        <div class="chat-urgent-toggle form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="marcarUrgente" name="urgente">
+                            <label class="form-check-label" for="marcarUrgente">
+                                <i class="fas fa-bolt text-warning me-1"></i>Marcar como urgente
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear solicitud manual -->
+    <div class="modal fade" id="modalNuevaSolicitud" tabindex="-1" aria-labelledby="modalNuevaSolicitudLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalNuevaSolicitudLabel">Registrar solicitud manual</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <form id="formNuevaSolicitud">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="nuevaTelefono" class="form-label">Teléfono del conductor *</label>
+                            <input type="tel" class="form-control" id="nuevaTelefono" name="telefono" required placeholder="Ej: 3001234567">
+                            <div class="form-text">Usa el número con el que chatea por WhatsApp.</div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nuevaNombre" class="form-label">Nombre completo</label>
+                                <input type="text" class="form-control" id="nuevaNombre" name="nombre_completo" placeholder="Nombre del conductor">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevaCedula" class="form-label">Cédula</label>
+                                <input type="text" class="form-control" id="nuevaCedula" name="cedula" placeholder="Identificación">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="nuevaPlaca" class="form-label">Placa camión</label>
+                                <input type="text" class="form-control" id="nuevaPlaca" name="placa" placeholder="ABC123">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevaPlacaRemolque" class="form-label">Placa remolque</label>
+                                <input type="text" class="form-control" id="nuevaPlacaRemolque" name="placa_remolque" placeholder="ABC123">
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="nuevaCelular" class="form-label">Celular alterno</label>
+                                <input type="text" class="form-control" id="nuevaCelular" name="celular" placeholder="Opcional">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nuevaEstado" class="form-label">Estado inicial</label>
+                                <select id="nuevaEstado" name="estado" class="form-select">
+                                    <option value="sin turno" selected>Sin turno</option>
+                                    <option value="preconfirmacion">Preconfirmación</option>
+                                    <option value="en revision">En revisión</option>
+                                    <option value="enturnado">Enturnado</option>
+                                    <option value="error">Error</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="nuevaObservaciones" class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="nuevaObservaciones" name="observaciones" rows="3" placeholder="Notas internas"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btnGuardarSolicitud">Guardar solicitud</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de filtros -->
+    <div class="card filter-card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-sm-6 col-md-3">
+                    <label for="filtro-estado" class="form-label form-label-sm text-uppercase fw-semibold text-muted">Estado</label>
+                    <select id="filtro-estado" class="form-select form-select-sm">
+                        <option value="todos">Todos</option>
+                        <option value="sin_turno">Sin turno</option>
+                        <option value="con_turno">Con turno</option>
+                        <option value="pendiente_inscripcion">Pendiente inscripción</option>
+                        <option value="en_revision">En revisión</option>
+                        <option value="enturnado">Enturnados</option>
+                        <option value="asesor">Escalados a asesor</option>
+                        <option value="error">Errores</option>
+                    </select>
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <label for="filtro-placa" class="form-label form-label-sm text-uppercase fw-semibold text-muted">Placa</label>
+                    <input type="text" id="filtro-placa" class="form-control form-control-sm" placeholder="Buscar por placa">
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <label for="filtro-nombre" class="form-label form-label-sm text-uppercase fw-semibold text-muted">Conductor</label>
+                    <input type="text" id="filtro-nombre" class="form-control form-control-sm" placeholder="Buscar por nombre">
+                </div>
+                <div class="col-sm-6 col-md-3">
+                    <label for="filtro-fecha" class="form-label form-label-sm text-uppercase fw-semibold text-muted">Fecha Descargue</label>
+                    <input type="text" id="filtro-fecha" class="form-control form-control-sm" placeholder="Seleccionar fechas">
+                </div>
+                    <button id="btn-limpiar-filtros" type="button" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-undo me-1"></i>Limpiar
+                    </button>
+                    <button id="btn-aplicar-filtros" type="button" class="btn btn-primary btn-sm">
+                        <i class="fas fa-filter me-1"></i>Aplicar filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestañas para organizar solicitudes -->
+    <div class="card filter-card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <ul class="nav nav-tabs" id="panelTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="activas-tab" data-bs-toggle="tab" data-bs-target="#activas" type="button" role="tab" aria-controls="activas" aria-selected="true">
+                        <i class="fas fa-clock me-2"></i>Activas <span class="badge bg-primary ms-1" id="badge-activas">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="enturnadas-tab" data-bs-toggle="tab" data-bs-target="#enturnadas" type="button" role="tab" aria-controls="enturnadas" aria-selected="false">
+                        <i class="fas fa-check-double me-2"></i>Enturnadas <span class="badge bg-success ms-1" id="badge-enturnadas">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab" aria-controls="pendientes" aria-selected="false">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Pendientes <span class="badge bg-warning ms-1" id="badge-pendientes">0</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Contenido de las pestañas -->
+    <div class="tab-content" id="panelTabsContent">
+        <!-- Pestaña Activas -->
+        <div class="tab-pane fade show active" id="activas" role="tabpanel" aria-labelledby="activas-tab">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center px-4 py-3">
+                    <h5 class="mb-0 fw-semibold"><i class="fas fa-list-ul me-2 text-primary"></i>Solicitudes activas</h5>
+                    <span id="contador-activas" class="text-muted small">Mostrando 0 registros</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-responsive-modern">
+                        <table class="table table-modern align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="px-3">Fecha solicitud</th>
+                                    <th class="px-3 text-start">Conductor</th>
+                                    <th class="px-3">Documento</th>
+                                    <th class="px-3">Placa</th>
+                                    <th class="px-3">Remolque</th>
+                                    <th class="px-3">Contacto</th>
+                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Bosconia</th>
+                                    <th class="px-3">Gambote</th>
+                                    <th class="px-3">Validación GPS</th>
+                                    <th class="px-3">Ticket Gambote</th>
+                                    <th class="px-3">Estado</th>
+                                    <th class="px-3">Turno</th>
+                                    <th class="px-3">Descargue</th>
+                                    <th class="px-3">Lugar</th>
+                                    <th class="px-3">Observaciones</th>
+                                    <th class="px-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-activas">
+                                <!-- Filas se agregarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña Enturnadas -->
+        <div class="tab-pane fade" id="enturnadas" role="tabpanel" aria-labelledby="enturnadas-tab">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center px-4 py-3">
+                    <h5 class="mb-0 fw-semibold"><i class="fas fa-check-double me-2 text-success"></i>Solicitudes enturnadas</h5>
+                    <span id="contador-enturnadas" class="text-muted small">Mostrando 0 registros</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-responsive-modern">
+                        <table class="table table-modern align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="px-3">Fecha solicitud</th>
+                                    <th class="px-3 text-start">Conductor</th>
+                                    <th class="px-3">Documento</th>
+                                    <th class="px-3">Placa</th>
+                                    <th class="px-3">Remolque</th>
+                                    <th class="px-3">Contacto</th>
+                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Bosconia</th>
+                                    <th class="px-3">Gambote</th>
+                                    <th class="px-3">Validación GPS</th>
+                                    <th class="px-3">Ticket Gambote</th>
+                                    <th class="px-3">Estado</th>
+                                    <th class="px-3">Turno</th>
+                                    <th class="px-3">Descargue</th>
+                                    <th class="px-3">Lugar</th>
+                                    <th class="px-3">Observaciones</th>
+                                    <th class="px-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-enturnadas">
+                                <!-- Filas se agregarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña Pendientes -->
+        <div class="tab-pane fade" id="pendientes" role="tabpanel" aria-labelledby="pendientes-tab">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center px-4 py-3">
+                    <h5 class="mb-0 fw-semibold"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Solicitudes pendientes</h5>
+                    <span id="contador-pendientes" class="text-muted small">Mostrando 0 registros</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive table-responsive-modern">
+                        <table class="table table-modern align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="px-3">Fecha solicitud</th>
+                                    <th class="px-3 text-start">Conductor</th>
+                                    <th class="px-3">Documento</th>
+                                    <th class="px-3">Placa</th>
+                                    <th class="px-3">Remolque</th>
+                                    <th class="px-3">Contacto</th>
+                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Bosconia</th>
+                                    <th class="px-3">Gambote</th>
+                                    <th class="px-3">Validación GPS</th>
+                                    <th class="px-3">Ticket Gambote</th>
+                                    <th class="px-3">Estado</th>
+                                    <th class="px-3">Turno</th>
+                                    <th class="px-3">Descargue</th>
+                                    <th class="px-3">Lugar</th>
+                                    <th class="px-3">Observaciones</th>
+                                    <th class="px-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-pendientes">
+                                <!-- Filas se agregarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de solicitudes -->
+    <div class="card shadow-sm border-0" style="display: none;">
+        <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center px-4 py-3">
+            <h5 class="mb-0 fw-semibold"><i class="fas fa-list-ul me-2 text-primary"></i>Solicitudes registradas</h5>
+            <span id="contador-registros" class="text-muted small">Mostrando {{ solicitudes|length }} registros</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive table-responsive-modern">
+                <table class="table table-modern align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="px-3">Fecha solicitud</th>
+                            <th class="px-3 text-start">Conductor</th>
+                            <th class="px-3">Documento</th>
+                            <th class="px-3">Placa</th>
+                            <th class="px-3">Remolque</th>
+                            <th class="px-3">Contacto</th>
+                            <th class="px-3">Guía / Manifiesto</th>
+                            <th class="px-3">Bosconia</th>
+                            <th class="px-3">Gambote</th>
+                            <th class="px-3">Validación GPS</th>
+                            <th class="px-3">Ticket Gambote</th>
+                            <th class="px-3">Estado</th>
+                            <th class="px-3">Turno</th>
+                            <th class="px-3">Descargue</th>
+                            <th class="px-3">Lugar</th>
+                            <th class="px-3">Observaciones</th>
+                            <th class="px-3 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-original">
+                        {% for s in solicitudes %}
+                        {% set estado_actual = s.estado or 'sin turno' %}
+                        {% set estado_visible = 'enturnado' if estado_actual == 'finalizado' else estado_actual %}
+                        {% set estado_slug = (estado_visible | replace(' ', '_') | lower) %}
+                        {% set es_enturnado = (estado_slug == 'enturnado') %}
+                        {% set acciones_bloqueadas = (estado_slug == 'pendiente_inscripcion') %}
+                        {% set fecha_descargue_dt = s.fecha_descargue_local or s.fecha_descargue %}
+                        {% set fecha_descargue_form_date = fecha_descargue_dt.strftime('%Y-%m-%d') if fecha_descargue_dt else '' %}
+                        {% set fecha_descargue_form_time = fecha_descargue_dt.strftime('%H:%M') if fecha_descargue_dt else '' %}
+                        <tr class="solicitud-fila"
+                            data-estado="{{ estado_slug }}"
+                            data-placa="{{ s.placa or '' }}"
+                            data-nombre="{{ (s.nombre_completo or s.nombre_conductor or '')|replace('"', '') }}"
+                            data-fecha="{{ fecha_descargue_form_date }}"
+                            data-pendiente-tipo="{{ s.ubicacion_pendiente_tipo or '' }}"
+                            data-pendiente-lat="{{ s.ubicacion_pendiente_lat or '' }}"
+                            data-pendiente-lng="{{ s.ubicacion_pendiente_lng or '' }}"
+                            data-pendiente-msg="{{ (s.ubicacion_pendiente_mensaje or '')|e }}"
+                            data-has-turno="{{ 'true' if s.turno is not none else 'false' }}"
+                            data-pendiente-inscripcion="{{ 'true' if estado_slug == 'pendiente_inscripcion' else 'false' }}"
+                            data-en-revision="{{ 'true' if estado_slug == 'en_revision' else 'false' }}"
+                            data-asesor="{{ 'true' if s.asesor_pendiente else 'false' }}"
+                            data-enturnado="{{ 'true' if es_enturnado else 'false' }}">
+                            <td class="px-3">
+                                {% set fecha_evento = s.fecha_local or s.fecha %}
+                                {% if fecha_evento %}
+                                <div class="small">{{ fecha_evento.strftime('%d/%m/%Y') }}</div>
+                                <div class="text-muted smaller">{{ fecha_evento.strftime('%H:%M') }}</div>
+                                {% else %}
+                                <span class="text-muted small">Sin registro</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 text-start">{{ s.nombre_completo or s.nombre_conductor or '-' }}</td>
+                            <td class="px-3">{{ s.cedula or s.documento or '-' }}</td>
+                            <td class="px-3">{{ s.placa or '-' }}</td>
+                            <td class="px-3">{{ s.placa_remolque or '-' }}</td>
+                            <td class="px-3">{{ s.celular or '-' }}</td>
+                            <td class="px-3">
+                                {% if s.imagen_guia %}
+                                    {% if s.imagen_guia.lower().endswith('.pdf') %}
+                                        <button class="btn btn-sm btn-outline-primary btn-view-guia" data-url="/guias/{{ s.imagen_guia }}" title="Ver guía PDF">
+                                            <i class="fas fa-file-pdf"></i> Ver PDF
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-primary btn-view-guia" data-url="/guias/{{ s.imagen_guia }}" title="Ver guía">
+                                            <i class="fas fa-eye"></i> Ver
+                                        </button>
+                                    {% endif %}
+                                {% elif s.imagen_manifiesto %}
+                                    {% if s.imagen_manifiesto.lower().endswith('.pdf') %}
+                                        <button class="btn btn-sm btn-outline-info btn-view-guia" data-url="/guias/{{ s.imagen_manifiesto }}" title="Ver manifiesto PDF">
+                                            <i class="fas fa-file-pdf"></i> Ver PDF
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-info btn-view-guia" data-url="/guias/{{ s.imagen_manifiesto }}" title="Ver manifiesto">
+                                            <i class="fas fa-file-alt"></i> Ver
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-warning text-dark" title="Falta foto de la guía o manifiesto">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Falta guía
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.paso_bosconia and s.ubicacion_lat and s.ubicacion_lng %}
+                                    <span class="badge bg-success">Sí</span>
+                                    <button class="btn btn-sm btn-outline-info ms-2 btn-view-location"
+                                            data-lat="{{ s.ubicacion_lat }}"
+                                            data-lng="{{ s.ubicacion_lng }}"
+                                            data-placa="{{ s.placa }}"
+                                            title="Ver ubicación en mapa">
+                                        <i class="fas fa-map-marker-alt"></i> Ver Mapa
+                                    </button>
+                                {% elif s.paso_bosconia %}
+                                    <span class="badge bg-warning text-dark" title="Falta ubicación GPS de Bosconia">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Sin GPS
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No pasó por Bosconia</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.paso_gambote and s.ubicacion_gambote_lat and s.ubicacion_gambote_lng %}
+                                    <span class="badge bg-success">Sí</span>
+                                    <button class="btn btn-sm btn-outline-info ms-2 btn-view-location-gambote"
+                                            data-lat="{{ s.ubicacion_gambote_lat }}"
+                                            data-lng="{{ s.ubicacion_gambote_lng }}"
+                                            data-placa="{{ s.placa }}"
+                                            title="Ver ubicación Gambote en mapa">
+                                        <i class="fas fa-map-marker-alt"></i> Ver Mapa
+                                    </button>
+                                {% elif s.paso_gambote %}
+                                    <span class="badge bg-warning text-dark" title="Falta ubicación GPS de Gambote">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Sin GPS
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">No pasó por Gambote</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.validacion_gps %}
+                                    {% if s.validacion_gps.valido %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Validado
+                                        </span>
+                                        <div class="small text-muted mt-1">
+                                            {{ s.validacion_gps.mensaje.split('\n')[0] }}
+                                        </div>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Inválido
+                                        </span>
+                                        <div class="small text-muted mt-1">
+                                            {{ s.validacion_gps.mensaje.split('\n')[0] }}
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-warning text-dark" title="Falta validación GPS">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Sin validar
+                                    </span>
+                                {% endif %}
+                                {% if s.ubicacion_pendiente_lat %}
+                                    <div class="mt-2 pending-location-controls">
+                                        <div class="btn-group btn-group-sm w-100" role="group">
+                                            <button type="button"
+                                                    class="btn btn-outline-info btn-pendiente-ubicacion"
+                                                    data-id="{{ s.id }}"
+                                                    data-tipo="{{ s.ubicacion_pendiente_tipo or '' }}"
+                                                    data-lat="{{ s.ubicacion_pendiente_lat }}"
+                                                    data-lng="{{ s.ubicacion_pendiente_lng }}"
+                                                    data-mensaje="{{ (s.ubicacion_pendiente_mensaje or '')|e }}"
+                                                    data-placa="{{ s.placa or '' }}"
+                                                    title="Ver en mapa">
+                                                <i class="fas fa-map-marker-alt"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-success btn-aprobar-ubicacion"
+                                                    data-id="{{ s.id }}"
+                                                    data-tipo="{{ s.ubicacion_pendiente_tipo or '' }}"
+                                                    data-nombre="{{ s.nombre_completo or s.nombre_conductor or 'conductor' }}"
+                                                    title="Aprobar ubicación">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-rechazar-ubicacion"
+                                                    data-id="{{ s.id }}"
+                                                    data-tipo="{{ s.ubicacion_pendiente_tipo or '' }}"
+                                                    data-nombre="{{ s.nombre_completo or s.nombre_conductor or 'conductor' }}"
+                                                    title="Solicitar nueva ubicación">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        {% if s.ubicacion_pendiente_mensaje %}
+                                            <div class="text-muted smaller mt-1">
+                                                {{ s.ubicacion_pendiente_mensaje }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.ticket_gambote %}
+                                    {% if s.ticket_gambote.lower().endswith('.pdf') %}
+                                        <button class="btn btn-sm btn-outline-warning btn-view-guia" data-url="/guias/{{ s.ticket_gambote }}" title="Ver ticket PDF">
+                                            <i class="fas fa-file-pdf"></i> Ver PDF
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-warning btn-view-guia" data-url="/guias/{{ s.ticket_gambote }}" title="Ver ticket">
+                                            <i class="fas fa-ticket-alt"></i> Ver
+                                        </button>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-warning text-dark" title="Falta ticket de peaje de Gambote">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Falta ticket
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% set estado_label = 'Sin turno' %}
+                                {% set estado_icon = 'fas fa-clock' %}
+                                {% set estado_chip_class = 'estado-chip-neutral' %}
+                                {% set estado_dot_class = 'estado-dot-muted' %}
+                                {% if estado_slug == 'pendiente_inscripcion' %}
+                                    {% set estado_label = 'Pendiente inscripción' %}
+                                    {% set estado_icon = 'fas fa-user-clock' %}
+                                    {% set estado_chip_class = 'estado-chip-info' %}
+                                    {% set estado_dot_class = 'estado-dot-info' %}
+                                {% elif estado_slug == 'enturnado' %}
+                                    {% set estado_label = 'Enturnado' %}
+                                    {% set estado_icon = 'fas fa-check-double' %}
+                                    {% set estado_chip_class = 'estado-chip-success' %}
+                                    {% set estado_dot_class = 'estado-dot-success' %}
+                                {% elif estado_slug == 'en_revision' %}
+                                    {% set estado_label = 'En revisión' %}
+                                    {% set estado_icon = 'fas fa-clipboard-list' %}
+                                    {% set estado_chip_class = 'estado-chip-warning' %}
+                                    {% set estado_dot_class = 'estado-dot-warning' %}
+                                {% elif estado_slug == 'error' %}
+                                    {% set estado_label = 'Error' %}
+                                    {% set estado_icon = 'fas fa-exclamation-circle' %}
+                                    {% set estado_chip_class = 'estado-chip-danger' %}
+                                    {% set estado_dot_class = 'estado-dot-danger' %}
+                                {% elif estado_slug == 'preconfirmacion' %}
+                                    {% set estado_label = 'Por confirmar' %}
+                                    {% set estado_icon = 'fas fa-hourglass-half' %}
+                                    {% set estado_chip_class = 'estado-chip-neutral' %}
+                                    {% set estado_dot_class = 'estado-dot-neutral' %}
+                                {% elif estado_slug not in ['sin_turno', ''] %}
+                                    {% set estado_label = (estado_actual or 'En proceso')|replace('_', ' ')|title %}
+                                    {% set estado_icon = 'fas fa-info-circle' %}
+                                    {% set estado_chip_class = 'estado-chip-neutral' %}
+                                    {% set estado_dot_class = 'estado-dot-neutral' %}
+                                {% endif %}
+                                {% if estado_slug != 'enturnado' and s.turno is not none and estado_slug != 'pendiente_inscripcion' %}
+                                    {% set estado_label = 'Turno asignado' %}
+                                    {% set estado_icon = 'fas fa-clipboard-check' %}
+                                    {% set estado_chip_class = 'estado-chip-success' %}
+                                    {% set estado_dot_class = 'estado-dot-success' %}
+                                {% endif %}
+                                <div class="estado-chip {{ estado_chip_class }}">
+                                    <span class="estado-dot {{ estado_dot_class }}"></span>
+                                    <i class="estado-chip-icon {{ estado_icon }}"></i>
+                                    <span class="estado-chip-text">{{ estado_label }}</span>
+                                </div>
+                                {% if s.whatsapp_last_activity %}
+                                <div class="estado-meta small text-muted mt-1">
+                                    <i class="fas fa-clock me-1"></i>Últ. actividad {{ s.whatsapp_last_activity.strftime('%d/%m %H:%M') }}
+                                </div>
+                                {% endif %}
+                                {% if s.asesor_pendiente %}
+                                <span class="estado-tag estado-tag-asesor mt-2 d-inline-flex align-items-center">
+                                    <i class="fas fa-headset me-1"></i>
+                                    Escalado a asesor{% if s.asesor_pendiente_desde %} · {{ s.asesor_pendiente_desde.strftime('%d/%m %H:%M') }}{% endif %}
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.turno %}
+                                    <span class="badge bg-primary">{{ s.turno }}</span>
+                                {% else %}
+                                    <span class="text-muted small">Sin turno</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% set fecha_descargue = s.fecha_descargue_local or s.fecha_descargue %}
+                                {% if fecha_descargue %}
+                                    <div class="small">{{ fecha_descargue_dt.strftime('%d/%m/%Y') }}</div>
+                                    <div class="text-muted smaller">{{ fecha_descargue_dt.strftime('%H:%M') }}</div>
+                                {% else %}
+                                    <span class="text-muted small">Pendiente</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 text-start">
+                                {{ s.lugar_descargue or 'Pendiente' }}
+                            </td>
+                            <td class="px-3 text-start">
+                                {% if s.observaciones %}
+                                <div class="observaciones-texto" style="max-width: 200px;">
+                                    {{ s.observaciones }}
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">Sin observaciones</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 text-center">
+                                <div class="btn-group" role="group">
+                                    {% if estado_actual == 'pendiente_inscripcion' %}
+                                    <button type="button" class="btn btn-success btn-sm me-1 btn-aprobar-inscripcion" data-id="{{ s.id }}" data-nombre="{{ s.nombre_completo or s.nombre_conductor or 'Conductor' }}" title="Aprobar inscripción y continuar flujo">
+                                        <i class="fas fa-user-check"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm me-1 btn-rechazar-inscripcion" data-id="{{ s.id }}" data-nombre="{{ s.nombre_completo or s.nombre_conductor or 'Conductor' }}" title="Rechazar inscripción y cancelar enturne">
+                                        <i class="fas fa-user-times"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-success btn-sm me-1 btn-aceptar"
+                                            data-id="{{ s.id }}"
+                                            data-turno="{{ s.turno or '' }}"
+                                            data-fecha-descargue="{{ fecha_descargue_form_date }}"
+                                            data-hora-descargue="{{ fecha_descargue_form_time }}"
+                                            title="Aceptar solicitud"
+                                            {% if acciones_bloqueadas %}disabled{% endif %}>
+                                        <i class="fas fa-check"></i>
+                                    </button>
+                                    <button class="btn btn-warning btn-sm me-1 btn-editar" data-id="{{ s.id }}" title="Editar datos" {% if acciones_bloqueadas %}disabled{% endif %}>
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-info btn-sm me-1 btn-mensaje position-relative" data-id="{{ s.id }}" data-nombre="{{ s.nombre_completo or s.nombre_conductor or 'Conductor' }}" data-placa="{{ s.placa or 'Sin placa' }}" title="Enviar mensaje personalizado" {% if acciones_bloqueadas %}disabled{% endif %}>
+                                        <i class="fas fa-comment"></i>
+                                        {% if s.asesor_pendiente %}
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" title="Solicitud de asesor humano pendiente">
+                                            !
+                                        </span>
+                                        {% endif %}
+                                    </button>
+                                    <button class="btn btn-danger btn-sm btn-rechazar" data-id="{{ s.id }}" title="Marcar como datos incorrectos" {% if es_enturnado or acciones_bloqueadas or s.estado == 'error' %}disabled{% endif %}>
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm btn-eliminar" data-id="{{ s.id }}" data-nombre="{{ s.nombre_completo or s.nombre_conductor or '' }}" title="Eliminar solicitud" {% if es_enturnado or acciones_bloqueadas %}disabled{% endif %}>
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+<!-- Modal para ver guía de enturnamiento -->
+<div class="modal fade" id="guiaModal" tabindex="-1" aria-labelledby="guiaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="guiaModalLabel">
+                    <i class="fas fa-image me-2"></i>Guía de Enturnamiento
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Controles de zoom">
+                        <button type="button" class="btn btn-outline-primary" id="guia-zoom-out" title="Alejar">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="guia-zoom-reset" title="Restablecer zoom">
+                            <i class="fas fa-compress-arrows-alt"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="guia-zoom-in" title="Acercar">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                    </div>
+                    <a class="btn btn-outline-success btn-sm" id="guia-download" href="#" target="_blank" rel="noopener" download>
+                        <i class="fas fa-download me-1"></i>Descargar archivo
+                    </a>
+                </div>
+                <div id="guia-viewer" class="viewer-container"></div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver ubicación en mapa -->
+<div class="modal fade" id="locationModal" tabindex="-1" aria-labelledby="locationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="locationModalLabel">
+                    <i class="fas fa-map-marker-alt me-2"></i>Ubicación del Conductor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="location-info p-3 bg-light rounded">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-truck me-1"></i>Información del Vehículo
+                            </h6>
+                            <p class="mb-2">
+                                <strong>Placa:</strong> <span id="location-placa">-</span>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Punto validado:</strong> <span id="location-status" class="badge bg-secondary">-</span>
+                            </p>
+                            <div class="mb-2">
+                                <strong>Coordenadas GPS:</strong><br>
+                                <small class="text-muted">
+                                    Latitud: <span id="location-lat">-</span><br>
+                                    Longitud: <span id="location-lng">-</span>
+                                </small>
+                            </div>
+                            <div class="mb-0">
+                                <strong>Distancia al punto:</strong><br>
+                                <span id="location-distance" class="badge bg-secondary">-</span>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a id="google-maps-link" href="#" target="_blank" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="fas fa-external-link-alt me-1"></i> Abrir en Google Maps
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="mb-2">
+                            <h6 class="text-info">
+                                <i class="fas fa-map-marked-alt me-1"></i>Ubicación en Tiempo Real
+                            </h6>
+                        </div>
+                        <div id="map-container" style="height: 350px; border-radius: 8px; overflow: hidden; border: 2px solid #e3e6f0;">
+                            <iframe id="location-map" 
+                                    width="100%" 
+                                    height="100%" 
+                                    style="border:0;" 
+                                    allowfullscreen="" 
+                                    loading="lazy">
+                            </iframe>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <small class="text-muted" id="location-footnote">
+                                <i class="fas fa-info-circle me-1"></i>
+                                El mapa muestra la ubicación exacta reportada por el conductor.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Input oculto para subir guía -->
+<input type="file" id="hidden-guia-input" accept="image/*,application/pdf" style="display: none;">
+
+<!-- Modal para asignar turno y fecha/hora de descargue -->
+<div class="modal fade" id="modalTurnoDescargue" tabindex="-1" aria-labelledby="modalTurnoDescargueLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalTurnoDescargueLabel">
+                    <i class="fas fa-calendar-check me-2"></i>Asignar Turno y Fecha/Hora de Descargue
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formTurnoDescargue">
+                <div class="modal-body">
+                    <input type="hidden" id="solicitudIdInput" name="solicitudId">
+                    <div class="mb-3">
+                        <label for="turnoInput" class="form-label fw-bold">
+                            <i class="fas fa-hashtag me-1"></i>Turno
+                        </label>
+                        <input type="text" class="form-control" id="turnoInput" name="turno" required
+                               placeholder="Ej: T001, T002, etc.">
+                    </div>
+                    <div class="mb-3">
+                        <label for="fechaInput" class="form-label fw-bold">
+                            <i class="fas fa-calendar me-1"></i>Fecha de Descargue
+                        </label>
+                        <input type="date" class="form-control" id="fechaInput" name="fecha_descargue" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="horaInput" class="form-label fw-bold">
+                            <i class="fas fa-clock me-1"></i>Hora de Descargue
+                        </label>
+                        <input type="time" class="form-control" id="horaInput" name="hora_descargue" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success rounded-2 px-4">
+                        <i class="fas fa-check me-1"></i> Asignar Turno
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalEditarSolicitud" tabindex="-1" aria-labelledby="modalEditarSolicitudLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="modalEditarSolicitudLabel">
+                    <i class="fas fa-edit me-2"></i>Editar Datos de Solicitud
+                </h5>
+                <button type="button" class="btn-close btn-close-dark" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formEditarSolicitud">
+                <div class="modal-body">
+                    <input type="hidden" id="editSolicitudId" name="solicitudId">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editImagenGuia" class="form-label fw-bold">
+                                    <i class="fas fa-image me-1"></i>Imagen de Guía
+                                </label>
+                                <input type="file" class="form-control" id="editImagenGuiaFile" name="imagen_guia_file" 
+                                       accept="image/*,application/pdf">
+                                <div class="form-text">O ingresa URL:</div>
+                                <input type="text" class="form-control mt-1" id="editImagenGuia" name="imagen_guia" 
+                                       placeholder="URL o nombre del archivo">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editImagenManifiesto" class="form-label fw-bold">
+                                    <i class="fas fa-file-alt me-1"></i>Imagen de Manifiesto
+                                </label>
+                                <input type="file" class="form-control" id="editImagenManifiestoFile" name="imagen_manifiesto_file" 
+                                       accept="image/*,application/pdf">
+                                <div class="form-text">O ingresa URL:</div>
+                                <input type="text" class="form-control mt-1" id="editImagenManifiesto" name="imagen_manifiesto" 
+                                       placeholder="URL o nombre del archivo">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editTicketGambote" class="form-label fw-bold">
+                                    <i class="fas fa-ticket-alt me-1"></i>Ticket Gambote
+                                </label>
+                                <input type="file" class="form-control" id="editTicketGamboteFile" name="ticket_gambote_file" 
+                                       accept="image/*,application/pdf">
+                                <div class="form-text">O ingresa URL:</div>
+                                <input type="text" class="form-control mt-1" id="editTicketGambote" name="ticket_gambote" 
+                                       placeholder="URL o nombre del archivo">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="editPasoBosconia" name="paso_bosconia">
+                                    <label class="form-check-label fw-bold" for="editPasoBosconia">
+                                        <i class="fas fa-route me-1"></i>¿Pasó por Bosconia?
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="editPasoGambote" name="paso_gambote">
+                                    <label class="form-check-label fw-bold" for="editPasoGambote">
+                                        <i class="fas fa-route me-1"></i>¿Pasó por Gambote?
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUbicacionLat" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Latitud Bosconia
+                                </label>
+                                <input type="number" step="any" class="form-control" id="editUbicacionLat" name="ubicacion_lat" 
+                                       placeholder="Ej: 10.123456">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUbicacionLng" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Longitud Bosconia
+                                </label>
+                                <input type="number" step="any" class="form-control" id="editUbicacionLng" name="ubicacion_lng" 
+                                       placeholder="Ej: -74.123456">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUbicacionGamboteLat" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Latitud Gambote
+                                </label>
+                                <input type="number" step="any" class="form-control" id="editUbicacionGamboteLat" name="ubicacion_gambote_lat" 
+                                       placeholder="Ej: 10.123456">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUbicacionGamboteLng" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Longitud Gambote
+                                </label>
+                                <input type="number" step="any" class="form-control" id="editUbicacionGamboteLng" name="ubicacion_gambote_lng" 
+                                       placeholder="Ej: -75.123456">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="editObservaciones" class="form-label fw-bold">
+                            <i class="fas fa-comment me-1"></i>Observaciones
+                        </label>
+                        <textarea class="form-control" id="editObservaciones" name="observaciones" rows="3" 
+                                  placeholder="Observaciones adicionales..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-outline-secondary rounded-2 px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i> Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning rounded-2 px-4">
+                        <i class="fas fa-save me-1"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Variables CSS Personalizadas - Colores Corporativos Conquers */
+:root {
+    --primary-color: #0B8552;
+    --primary-dark: #096840;
+    --primary-light: #0ea06a;
+    --primary-gradient: linear-gradient(135deg, #0B8552 0%, #0ea06a 100%);
+    --secondary-gradient: linear-gradient(135deg, #096840 0%, #0B8552 100%);
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #2c3e50;
+    --light-bg: #f8f9fc;
+    --border-color: #e3e6f0;
+    --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --shadow-green: 0 0.5rem 1.5rem rgba(11, 133, 82, 0.35);
+}
+
+/* Estilos generales */
+.programacion-cargue-page {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Encabezado de página */
+.page-header {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.page-title-box {
+    display: flex;
+    align-items: center;
+}
+
+.icon-box {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.bg-gradient-primary {
+    background: var(--primary-gradient);
+}
+
+.page-title {
+    font-weight: 700;
+    color: var(--dark-color);
+    font-size: 1.75rem;
+}
+
+.page-subtitle {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Tarjetas modernas */
+.card-modern {
+    border: none;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.card-modern:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header-modern {
+    background: var(--light-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 1.5rem;
+}
+
+.card-title-modern {
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 0;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--primary-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+/* Tabla moderna - AHORA CON CONTENIDO COMPLETO */
+.table-modern {
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: auto !important;
+    min-width: 100%;
+}
+
+.thead-modern {
+    background: var(--primary-gradient);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.thead-modern th {
+    border: none;
+    padding: 14px 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tbody-modern tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.tbody-modern tr:hover {
+    background-color: rgba(11, 133, 82, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.tbody-modern td {
+    border: none;
+    padding: 12px;
+    vertical-align: middle;
+    font-size: 0.9rem;
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: none;
+}
+
+/* Eliminar restricciones de ancho fijo y permitir expansión */
+.tbody-modern td,
+.thead-modern th {
+    min-width: 80px;
+}
+
+/* Columnas específicas con anchos más apropiados */
+.tbody-modern td:nth-child(4), /* Nombre */
+.tbody-modern td:nth-child(16), /* Lugar Descargue */
+.tbody-modern td:nth-child(17) /* Observaciones */ {
+    min-width: 180px;
+    max-width: 300px;
+}
+
+.tbody-modern td:nth-child(11) /* Ubicación */ {
+    min-width: 150px;
+}
+
+/* Botones modernos */
+.btn-modern {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.btn-primary {
+    background: var(--primary-gradient);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: var(--secondary-gradient);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-green);
+}
+
+.btn-outline-primary {
+    color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+
+/* Badges */
+.badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+
+.summary-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.status-summary-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    gap: 0.75rem;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.status-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    background: #f9fafb;
+    border: 1px solid transparent;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.status-chip:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+}
+
+.status-chip-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.status-chip .status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 1rem;
+    background: rgba(11, 133, 82, 0.12);
+    color: var(--primary-color);
+}
+
+.status-chip .status-metrics {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    text-align: right;
+}
+
+.status-chip .status-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6c757d;
+}
+
+.status-chip .status-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.status-chip-total {
+    background: linear-gradient(135deg, rgba(11, 133, 82, 0.07), rgba(11, 133, 82, 0.02));
+}
+.status-chip-success {
+    border-color: rgba(25, 135, 84, 0.18);
+    background: rgba(25, 135, 84, 0.08);
+}
+
+.status-chip-info {
+    border-color: rgba(13, 202, 240, 0.2);
+    background: rgba(13, 202, 240, 0.08);
+}
+
+.status-chip-warning {
+    border-color: rgba(255, 193, 7, 0.24);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.status-chip-danger {
+    border-color: rgba(220, 53, 69, 0.2);
+    background: rgba(220, 53, 69, 0.08);
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.04);
+}
+
+.status-dot-neutral {
+    background: #94a3b8;
+}
+
+.status-dot-muted {
+    background: #adb5bd;
+}
+
+.status-dot-success {
+    background: #2ca66d;
+}
+
+.status-dot-info {
+    background: #0aa4c0;
+}
+
+.status-dot-warning {
+    background: #e3a008;
+}
+
+.status-dot-danger {
+    background: #d85a5a;
+}
+
+.quick-filters-card {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.quick-filters-action {
+    white-space: nowrap;
+}
+
+.status-chip-neutral .status-icon {
+    background: rgba(108, 117, 125, 0.12);
+    color: #6c757d;
+}
+
+.status-chip-success .status-icon {
+    background: rgba(40, 167, 69, 0.12);
+    color: #198754;
+}
+
+.status-chip-success .status-value {
+    color: #198754;
+}
+
+.status-chip-info .status-icon {
+    background: rgba(13, 202, 240, 0.18);
+    color: #0aa4c0;
+}
+
+.status-chip-info .status-value {
+    color: #0aa4c0;
+}
+
+.status-chip-warning .status-icon {
+    background: rgba(255, 193, 7, 0.2);
+    color: #d39e00;
+}
+
+.status-chip-warning .status-value {
+    color: #d39e00;
+}
+
+.status-chip-danger .status-icon {
+    background: rgba(220, 53, 69, 0.18);
+    color: #c82333;
+}
+
+.status-chip-danger .status-value {
+    color: #c82333;
+}
+
+
+.estado-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    background: rgba(108, 117, 125, 0.12);
+    color: #495057;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.estado-chip .estado-chip-icon {
+    font-size: 0.9rem;
+}
+
+.estado-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.04);
+}
+
+.estado-chip-success {
+    background: rgba(25, 135, 84, 0.12);
+    color: #1e7e34;
+}
+
+.estado-chip-warning {
+    background: rgba(222, 170, 12, 0.18);
+    color: #b8860b;
+}
+
+.estado-chip-info {
+    background: rgba(13, 202, 240, 0.18);
+    color: #0aa4c0;
+}
+
+.estado-chip-danger {
+    background: rgba(220, 53, 69, 0.18);
+    color: #c82333;
+}
+
+.estado-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #6c757d;
+}
+
+.estado-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 999px;
+    padding: 0.3rem 0.6rem;
+    background: rgba(220, 53, 69, 0.12);
+    color: #c82333;
+}
+
+.estado-tag-asesor {
+    background: rgba(220, 53, 69, 0.12);
+    color: #c82333;
+}
+
+/* Responsive */
+.table-responsive-modern {
+    border-radius: 0 0 12px 12px;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+/* Scroll personalizado */
+.table-responsive-modern::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dark);
+}
+
+.table-modern th:nth-child(8),
+.table-modern td:nth-child(8) { /* Columna Estado */
+    min-width: 100px;
+    width: 100px;
+}
+
+/* Estilos para los badges de estado */
+.table-modern .badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.375rem 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 1.5rem;
+    }
+    
+    .icon-box {
+        width: 50px;
+        height: 50px;
+        font-size: 1.25rem;
+    }
+    
+    .btn-group-vertical {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 2px;
+    }
+    
+    .btn-group-vertical .btn {
+        margin-bottom: 0 !important;
+        font-size: 0.7rem;
+        padding: 0.3rem 0.5rem;
+    }
+    
+    .table-responsive-modern {
+        font-size: 0.8rem;
+    }
+
+    .status-summary-card {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        padding: 0.75rem;
+    }
+
+    .status-chip {
+        padding: 0.7rem 0.8rem;
+    }
+
+    .quick-filters-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .quick-filters-action {
+        width: 100%;
+    }
+}
+
+/* Filtros */
+.form-label-sm {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.form-select-sm, .form-control-sm {
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+/* Estados visuales */
+.solicitud-fila {
+    position: relative;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.solicitud-fila[data-has-turno="false"] {
+    background-color: rgba(108, 117, 125, 0.04);
+    box-shadow: inset 4px 0 0 rgba(108, 117, 125, 0.35);
+}
+
+.solicitud-fila[data-has-turno="true"] {
+    background-color: rgba(25, 135, 84, 0.03);
+    box-shadow: inset 4px 0 0 rgba(25, 135, 84, 0.4);
+}
+
+.solicitud-fila[data-pendiente-inscripcion="true"] {
+    background-color: rgba(13, 202, 240, 0.08);
+    box-shadow: inset 4px 0 0 rgba(13, 202, 240, 0.85);
+}
+
+.solicitud-fila[data-en-revision="true"] {
+    background-color: rgba(255, 193, 7, 0.08);
+    box-shadow: inset 4px 0 0 rgba(222, 170, 12, 0.75);
+}
+
+.solicitud-fila[data-asesor="true"] {
+    background-color: rgba(220, 53, 69, 0.06);
+    box-shadow: inset 4px 0 0 rgba(220, 53, 69, 0.85);
+}
+
+/* Contador de registros */
+#contador-registros {
+    font-size: 0.875rem;
+}
+
+/* Tooltips personalizados */
+.tooltip {
+    font-size: 0.8rem;
+}
+
+/* Modal mejorado */
+.modal-content {
+    border-radius: 12px;
+}
+
+.viewer-container {
+    min-height: 400px;
+    max-height: 70vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    overflow: auto;
+    background-color: #f8f9fa;
+}
+
+.viewer-container iframe.viewer-pdf {
+    width: 100%;
+    height: 70vh;
+    border: none;
+}
+
+.viewer-container embed,
+.viewer-container img {
+    width: 100%;
+}
+
+.viewer-img {
+    transition: transform 0.15s ease;
+    transform-origin: center center;
+}
+
+/* Texto mejorado - SIN CORTES */
+.text-truncate {
+    overflow: visible;
+    white-space: normal;
+}
+
+.smaller {
+    font-size: 0.75rem;
+}
+
+/* Observaciones con scroll si es muy largo */
+.observaciones-texto {
+    max-height: 80px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.observaciones-texto::-webkit-scrollbar {
+    width: 4px;
+}
+
+.observaciones-texto::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 2px;
+}
+
+/* Mejor espaciado general */
+.px-3 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+/* Estilos para botones de acciones deshabilitados */
+.btn-aceptar:disabled,
+.btn-rechazar:disabled,
+.btn-editar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+.btn-aceptar:disabled:hover,
+.btn-rechazar:disabled:hover,
+.btn-editar:disabled:hover {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+/* Modal estilo chat para envío de mensajes */
+#modalEnviarMensaje .modal-dialog {
+    max-width: 720px;
+}
+
+.chat-modal-shell {
+    border-radius: 20px;
+    border: 1px solid #e8ebf2;
+    box-shadow: 0 24px 56px rgba(15, 23, 42, 0.16);
+    background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+}
+
+.chat-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    background: #ffffff;
+    border-radius: 20px 20px 0 0;
+    box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.06);
+}
+
+.chat-header-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #f5f7fb;
+    color: var(--primary-dark);
+    transition: all 0.2s ease;
+}
+
+.chat-header-btn:hover {
+    background: #ecf1fb;
+    border-color: rgba(15, 23, 42, 0.2);
+}
+
+.chat-modal-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: #1f2937;
+}
+
+.chat-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.chat-info-block {
+    border-radius: 16px;
+    background: #f0fdf5;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(16, 185, 129, 0.14);
+    display: grid;
+    gap: 0.6rem;
+}
+
+.chat-info-line {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #334155;
+}
+
+.chat-info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    flex-shrink: 0;
+    font-size: 0.95rem;
+}
+
+.chat-info-icon i {
+    line-height: 1;
+}
+
+.chat-info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.chat-info-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.chat-info-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.2;
+}
+
+.chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: linear-gradient(180deg, #f8f8fb 0%, #f4f5fb 98%);
+    border-radius: 16px;
+    padding: 1.35rem 1.15rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    min-height: 180px;
+}
+
+.chat-history {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 6px;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.chat-history::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.55);
+    border-radius: 999px;
+}
+
+.chat-history::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-history-empty {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #94a3b8;
+    padding: 1rem 0.5rem;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 0.75rem 1.1rem;
+    border-radius: 18px;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    position: relative;
+    color: #0f172a;
+    background: #f8fafc;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(1px);
+}
+
+.chat-bubble.incoming {
+    align-self: flex-start;
+    border-bottom-left-radius: 6px;
+    background: #ffffff;
+}
+
+.chat-bubble.outgoing {
+    align-self: flex-end;
+    border-bottom-right-radius: 6px;
+    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 18px 32px rgba(37, 99, 235, 0.35);
+}
+
+.chat-preview-bubble {
+    opacity: 0.92;
+    background: rgba(11, 133, 82, 0.12);
+    color: #0b8552;
+    border: 1px dashed rgba(11, 133, 82, 0.26);
+    transition: opacity 0.2s ease;
+}
+
+.chat-preview-bubble.is-empty {
+    display: none;
+}
+
+.chat-preview-placeholder {
+    color: #34d399;
+    font-style: italic;
+}
+
+.chat-bubble .message-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.45rem;
+}
+
+.message-role {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: rgba(15, 23, 42, 0.08);
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+.message-role i {
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.message-role span {
+    line-height: 1;
+}
+
+.message-role--driver {
+    background: rgba(249, 115, 22, 0.15);
+    color: #c2410c;
+}
+
+.message-role--bot {
+    background: rgba(11, 133, 82, 0.18);
+    color: #0b8552;
+}
+
+.message-role--human {
+    background: rgba(16, 185, 129, 0.25);
+    color: #0f172a;
+}
+
+.message-role--system {
+    background: rgba(59, 130, 246, 0.18);
+    color: #1d4ed8;
+}
+
+.message-timestamp {
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: rgba(15, 23, 42, 0.55);
+    white-space: nowrap;
+}
+
+.chat-bubble .message-text {
+    display: block;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.chat-bubble .message-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+.chat-bubble.incoming .message-attachment {
+    color: #1d4ed8;
+}
+
+.chat-bubble.outgoing .message-attachment {
+    color: #f9fafb;
+}
+
+.chat-bubble[data-sender-role="driver"] {
+    border: 1px solid rgba(249, 115, 22, 0.18);
+    box-shadow: 0 14px 28px rgba(249, 115, 22, 0.08);
+}
+
+.chat-bubble[data-sender-role="bot"] {
+    background: linear-gradient(135deg, #0b8552 0%, #13b26d 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 18px 32px rgba(11, 133, 82, 0.32);
+}
+
+.chat-bubble[data-sender-role="human"] {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 18px 32px rgba(16, 185, 129, 0.32);
+}
+
+.chat-bubble[data-sender-role="system"] {
+    background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+    color: #ffffff;
+    border: none;
+}
+
+.chat-bubble[data-sender-role="bot"] .message-timestamp,
+.chat-bubble[data-sender-role="human"] .message-timestamp,
+.chat-bubble[data-sender-role="system"] .message-timestamp {
+    color: rgba(248, 250, 252, 0.76);
+}
+
+.chat-bubble[data-sender-role="bot"] .message-role,
+.chat-bubble[data-sender-role="human"] .message-role,
+.chat-bubble[data-sender-role="system"] .message-role {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.chat-quick-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.chat-quick-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.chat-quick-toggle {
+    border: none;
+    background: rgba(226, 232, 240, 0.7);
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.chat-quick-toggle .toggle-icon {
+    font-size: 0.75rem;
+}
+
+.chat-quick-toggle:hover,
+.chat-quick-toggle:focus {
+    background: rgba(148, 163, 184, 0.35);
+    color: #1f2937;
+}
+
+.chat-quick-toggle[aria-expanded="true"] .toggle-icon {
+    transform: rotate(180deg);
+    transition: transform 0.2s ease;
+}
+
+.chat-quick-groups.collapse:not(.show) {
+    display: none;
+}
+
+.chat-quick-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+}
+
+.chat-quick-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.chat-quick-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.chat-quick-subtitle {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.chat-quick-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.chat-quick-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    padding: 0.48rem 0.95rem;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: rgba(226, 232, 240, 0.6);
+    color: #1f2937;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.chat-quick-option .chat-quick-option-icon {
+    font-size: 0.9rem;
+}
+
+.chat-quick-option:hover,
+.chat-quick-option:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+    text-decoration: none;
+}
+
+.chat-quick-option--accent {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.28);
+    color: #4338ca;
+}
+
+.chat-quick-option--primary {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #047857;
+}
+
+.chat-quick-option--info {
+    background: rgba(14, 165, 233, 0.14);
+    border-color: rgba(14, 165, 233, 0.32);
+    color: #0369a1;
+}
+
+.chat-quick-option--success {
+    background: rgba(34, 197, 94, 0.16);
+    border-color: rgba(34, 197, 94, 0.32);
+    color: #0f766e;
+}
+
+.chat-quick-option--warning {
+    background: rgba(250, 204, 21, 0.18);
+    border-color: rgba(250, 204, 21, 0.34);
+    color: #b45309;
+}
+
+.chat-quick-option.active {
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.15);
+}
+
+.chat-quick-option--accent.active {
+    background: linear-gradient(135deg, #818cf8, #4338ca);
+}
+
+.chat-quick-option--primary.active {
+    background: linear-gradient(135deg, #34d399, #059669);
+}
+
+.chat-quick-option--info.active {
+    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+}
+
+.chat-quick-option--success.active {
+    background: linear-gradient(135deg, #6ee7b7, #0d9488);
+}
+
+.chat-quick-option--warning.active {
+    background: linear-gradient(135deg, #facc15, #f97316);
+}
+
+.chat-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, #f9fafb 0%, #f5f7fb 100%);
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 0.85rem 1.1rem;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09);
+    flex-wrap: nowrap;
+}
+
+.chat-attach-btn {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 14px;
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    background: rgba(255, 255, 255, 0.8);
+    color: #1d4ed8;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.chat-attach-btn.has-file {
+    border-style: solid;
+    background: rgba(37, 99, 235, 0.18);
+    color: #1e3a8a;
+}
+
+.chat-attach-btn:hover,
+.chat-attach-btn:focus {
+    background: rgba(37, 99, 235, 0.12);
+    color: #1e40af;
+    border-color: rgba(37, 99, 235, 0.55);
+}
+
+.chat-attach-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.chat-input {
+    flex: 1;
+    border: none;
+    resize: none;
+    min-height: 48px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    background: transparent;
+    color: #1f2937;
+    min-width: 0;
+}
+
+.chat-input:focus {
+    outline: none;
+    box-shadow: inset 0 -2px 0 rgba(59, 130, 246, 0.35);
+}
+
+.chat-input::placeholder {
+    color: #a5b4fc;
+    font-style: italic;
+}
+
+.chat-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.24);
+    color: #1e40af;
+    border-radius: 999px;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    max-width: 100%;
+    margin-bottom: 0.6rem;
+    align-self: flex-start;
+}
+
+.chat-attachment-chip[hidden] {
+    display: none;
+}
+
+.chat-attachment-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-attachment-chip-name {
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-attachment-chip-remove {
+    border: none;
+    background: transparent;
+    color: #1e3a8a;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: color 0.2s ease;
+    cursor: pointer;
+}
+
+.chat-attachment-chip-remove:hover,
+.chat-attachment-chip-remove:focus {
+    color: #b91c1c;
+}
+
+.chat-attach-input {
+    display: none;
+}
+
+.chat-clear-btn {
+    border: none;
+    background: transparent;
+    color: #9ca3af;
+    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.1rem;
+    transition: color 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.chat-clear-btn:hover,
+.chat-clear-btn:focus {
+    color: #ef4444;
+}
+
+.chat-char-counter {
+    font-size: 0.8rem;
+    color: #64748b;
+    min-width: 70px;
+    text-align: right;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+.chat-send-btn {
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.28);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-send-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 32px rgba(37, 99, 235, 0.35);
+}
+
+.chat-urgent-toggle {
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.chat-urgent-toggle .form-check-input {
+    width: 2.3rem;
+    height: 1.3rem;
+    cursor: pointer;
+}
+
+#charCount {
+    font-weight: 600;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+@media (max-width: 576px) {
+    #modalEnviarMensaje .modal-dialog {
+        max-width: 95vw;
+        margin: 0 auto;
+    }
+
+    .chat-modal-body {
+        padding: 1.25rem;
+    }
+
+    .chat-info-block {
+        padding: 0.9rem 1rem;
+        gap: 0.5rem;
+    }
+
+    .chat-info-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .chat-info-value {
+        font-size: 0.95rem;
+    }
+
+    .chat-thread {
+        min-height: 140px;
+    }
+
+    .chat-history {
+        max-height: 240px;
+    }
+
+    .chat-bubble {
+        max-width: 85%;
+    }
+
+    .chat-input-bar {
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .chat-attach-btn {
+        order: 1;
+    }
+
+    .chat-input {
+        order: 2;
+        flex: 1 1 calc(100% - 60px);
+        min-height: 80px;
+        width: calc(100% - 60px);
+    }
+
+    .chat-clear-btn {
+        order: 3;
+    }
+
+    .chat-char-counter {
+        order: 4;
+        margin-left: auto;
+    }
+
+    .chat-send-btn {
+        order: 5;
+        margin-left: auto;
+    }
+
+    .chat-quick-row {
+        flex-direction: column;
+    }
+
+    .chat-quick-option {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .chat-quick-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+
+    // Distribuir filas en pestañas al cargar
+    distribuirFilasEnPestanas();
+
+    function escapeHtml(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        return value.toString()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    const mensajeInput = document.getElementById('mensajePersonalizado');
+    const templateSelect = document.getElementById('mensajeTemplate');
+    const charCountElement = document.getElementById('charCount');
+    const chatPreviewText = document.getElementById('chatPreviewText');
+    const chatPreviewBubble = document.querySelector('.chat-preview-bubble');
+    const chatHistoryContainer = document.getElementById('chatHistory');
+    const chatQuickOptions = document.querySelectorAll('.chat-quick-option');
+    const btnLimpiarMensaje = document.getElementById('btnLimpiarMensaje');
+    const quickRepliesContainer = document.getElementById('quickRepliesContainer');
+    const btnToggleQuickReplies = document.getElementById('btnToggleQuickReplies');
+    const chatNombreDisplay = document.getElementById('chatConductorNombre');
+    const chatPlacaDisplay = document.getElementById('chatConductorPlaca');
+    const hiddenNombreInput = document.getElementById('conductorNombreHidden');
+    const adjuntoInput = document.getElementById('mensajeAdjunto');
+    const btnAdjuntarArchivo = document.getElementById('btnAdjuntarArchivo');
+    const adjuntoChip = document.getElementById('adjuntoChip');
+    const adjuntoChipName = document.getElementById('adjuntoChipName');
+    const adjuntoChipRemove = document.getElementById('adjuntoChipRemove');
+    const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+    const ALLOWED_ATTACHMENT_MIME = new Set([
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'application/pdf'
+    ]);
+    const guiaViewer = document.getElementById('guia-viewer');
+    const guiaZoomInBtn = document.getElementById('guia-zoom-in');
+    const guiaZoomOutBtn = document.getElementById('guia-zoom-out');
+    const guiaZoomResetBtn = document.getElementById('guia-zoom-reset');
+    const guiaDownloadLink = document.getElementById('guia-download');
+    const guiaModalEl = document.getElementById('guiaModal');
+    let guiaCurrentZoom = 1;
+    let guiaIsImage = false;
+    let guiaCurrentUrl = null;
+    const basePreviewText = '';
+    let currentChatSolicitudId = null;
+    let currentChatHistorySignature = null;
+    let chatHistoryPollTimer = null;
+    const CHAT_HISTORY_POLL_MS = 5000;
+    let recordatorioRequestSeq = 0;
+
+    function formatearBytes(bytes) {
+        if (typeof bytes !== 'number' || Number.isNaN(bytes) || bytes <= 0) {
+            return '0 B';
+        }
+        const unidades = ['B', 'KB', 'MB', 'GB'];
+        let valor = bytes;
+        let idx = 0;
+        while (valor >= 1024 && idx < unidades.length - 1) {
+            valor /= 1024;
+            idx += 1;
+        }
+        const decimales = idx === 0 ? 0 : 1;
+        return `${valor.toFixed(decimales)} ${unidades[idx]}`;
+    }
+
+    function esExtensionPermitida(nombre) {
+        if (!nombre) {
+            return false;
+        }
+        return /\.(jpg|jpeg|png|gif|webp|pdf)$/i.test(nombre.trim());
+    }
+
+    function ocultarChipAdjunto() {
+        if (adjuntoChip) {
+            adjuntoChip.setAttribute('hidden', '');
+        }
+        if (adjuntoChipName) {
+            adjuntoChipName.textContent = '';
+            adjuntoChipName.removeAttribute('title');
+        }
+        if (btnAdjuntarArchivo) {
+            btnAdjuntarArchivo.classList.remove('has-file');
+        }
+    }
+
+    function mostrarChipAdjunto(nombre, tamanoBytes) {
+        if (!adjuntoChip || !adjuntoChipName) {
+            return;
+        }
+        const sizeText = typeof tamanoBytes === 'number' ? ` (${formatearBytes(tamanoBytes)})` : '';
+        adjuntoChipName.textContent = `${nombre}${sizeText}`;
+        adjuntoChipName.setAttribute('title', nombre);
+        adjuntoChip.removeAttribute('hidden');
+        if (btnAdjuntarArchivo) {
+            btnAdjuntarArchivo.classList.add('has-file');
+        }
+    }
+
+    function limpiarAdjunto() {
+        if (adjuntoInput) {
+            adjuntoInput.value = '';
+        }
+        ocultarChipAdjunto();
+    }
+
+    if (adjuntoInput) {
+        adjuntoInput.addEventListener('change', function() {
+            if (!adjuntoInput.files || !adjuntoInput.files.length) {
+                limpiarAdjunto();
+                return;
+            }
+
+            const file = adjuntoInput.files[0];
+            const mime = (file.type || '').toLowerCase();
+            const nombre = file.name || '';
+
+            if (file.size > MAX_ATTACHMENT_BYTES) {
+                alert('El archivo supera el límite máximo de 10 MB.');
+                limpiarAdjunto();
+                return;
+            }
+
+            const permitido = (mime && ALLOWED_ATTACHMENT_MIME.has(mime)) || esExtensionPermitida(nombre);
+            if (!permitido) {
+                alert('Formato no permitido. Solo se aceptan imágenes (JPG, PNG, GIF, WebP) o archivos PDF.');
+                limpiarAdjunto();
+                return;
+            }
+
+            mostrarChipAdjunto(nombre, file.size);
+        });
+    }
+
+    if (btnAdjuntarArchivo && adjuntoInput) {
+        btnAdjuntarArchivo.addEventListener('click', function() {
+            adjuntoInput.click();
+        });
+    }
+
+    if (adjuntoChipRemove) {
+        adjuntoChipRemove.addEventListener('click', function() {
+            limpiarAdjunto();
+            if (btnAdjuntarArchivo) {
+                btnAdjuntarArchivo.focus();
+            }
+        });
+    }
+
+    limpiarAdjunto();
+
+    function applyGuiaZoom() {
+        if (!guiaIsImage || !guiaViewer) {
+            return;
+        }
+        const img = guiaViewer.querySelector('.viewer-img');
+        if (img) {
+            img.style.transform = `scale(${guiaCurrentZoom})`;
+        }
+    }
+
+    function setGuiaZoomButtonsEnabled(enabled) {
+        const buttons = [guiaZoomInBtn, guiaZoomOutBtn, guiaZoomResetBtn];
+        buttons.forEach(btn => {
+            if (!btn) {
+                return;
+            }
+            btn.disabled = !enabled;
+        });
+    }
+
+    function resetGuiaZoomState(isImage) {
+        guiaIsImage = Boolean(isImage);
+        guiaCurrentZoom = 1;
+        setGuiaZoomButtonsEnabled(guiaIsImage);
+        if (!guiaIsImage && guiaViewer) {
+            const img = guiaViewer.querySelector('.viewer-img');
+            if (img) {
+                img.style.transform = 'scale(1)';
+            }
+        }
+        applyGuiaZoom();
+    }
+
+    if (guiaZoomInBtn) {
+        guiaZoomInBtn.addEventListener('click', function() {
+            if (!guiaIsImage) {
+                return;
+            }
+            guiaCurrentZoom = Math.min(guiaCurrentZoom + 0.2, 3);
+            applyGuiaZoom();
+        });
+    }
+
+    if (guiaZoomOutBtn) {
+        guiaZoomOutBtn.addEventListener('click', function() {
+            if (!guiaIsImage) {
+                return;
+            }
+            guiaCurrentZoom = Math.max(guiaCurrentZoom - 0.2, 0.4);
+            applyGuiaZoom();
+        });
+    }
+
+    if (guiaZoomResetBtn) {
+        guiaZoomResetBtn.addEventListener('click', function() {
+            if (!guiaIsImage) {
+                return;
+            }
+            guiaCurrentZoom = 1;
+            applyGuiaZoom();
+        });
+    }
+
+    function updateGuiaDownloadLink(url) {
+        if (!guiaDownloadLink) {
+            return;
+        }
+        if (url) {
+            guiaDownloadLink.href = url;
+            guiaDownloadLink.classList.remove('disabled');
+            guiaDownloadLink.removeAttribute('aria-disabled');
+            guiaDownloadLink.setAttribute('download', '');
+        } else {
+            guiaDownloadLink.href = '#';
+            guiaDownloadLink.classList.add('disabled');
+            guiaDownloadLink.setAttribute('aria-disabled', 'true');
+            guiaDownloadLink.removeAttribute('download');
+        }
+    }
+
+    if (guiaDownloadLink) {
+        guiaDownloadLink.addEventListener('click', function(evt) {
+            if (guiaDownloadLink.classList.contains('disabled')) {
+                evt.preventDefault();
+                evt.stopPropagation();
+            }
+        });
+    }
+
+    setGuiaZoomButtonsEnabled(false);
+    updateGuiaDownloadLink(null);
+
+    if (guiaModalEl) {
+        guiaModalEl.addEventListener('hidden.bs.modal', function() {
+            if (guiaViewer) {
+                guiaViewer.innerHTML = '';
+            }
+            guiaCurrentUrl = null;
+            resetGuiaZoomState(false);
+            updateGuiaDownloadLink(null);
+        });
+    }
+
+    function marcarOpcionActiva(templateKey) {
+        if (!chatQuickOptions || !chatQuickOptions.length) {
+            return;
+        }
+        chatQuickOptions.forEach(btn => {
+            const isActive = templateKey !== 'personalizado' && btn.dataset.template === templateKey;
+            btn.classList.toggle('active', isActive);
+        });
+    }
+
+    function resolveSenderInfo(sender, direction) {
+        const base = {
+            role: 'system',
+            label: 'Conquers',
+            icon: 'fa-building'
+        };
+
+        if (sender === 'driver') {
+            return { role: 'driver', label: 'Conductor', icon: 'fa-id-card' };
+        }
+        if (sender === 'bot') {
+            return { role: 'bot', label: 'Fisher (bot)', icon: 'fa-robot' };
+        }
+        if (sender === 'human') {
+            return { role: 'human', label: 'Equipo logística', icon: 'fa-headset' };
+        }
+        if (sender === 'system') {
+            return { role: 'system', label: 'Sistema', icon: 'fa-bolt' };
+        }
+
+        if (direction === 'inbound') {
+            return { role: 'driver', label: 'Conductor', icon: 'fa-id-card' };
+        }
+
+        return base;
+    }
+
+    function formatSenderLabel(sender, direction) {
+        return resolveSenderInfo(sender, direction).label;
+    }
+
+    function setChatHistoryInfo(message, iconClass) {
+        if (!chatHistoryContainer) {
+            return;
+        }
+        chatHistoryContainer.innerHTML = '';
+        const info = document.createElement('div');
+        info.className = 'chat-history-empty';
+        if (iconClass) {
+            const icon = document.createElement('i');
+            icon.className = `${iconClass} me-2`;
+            info.appendChild(icon);
+        }
+        info.appendChild(document.createTextNode(message));
+        chatHistoryContainer.appendChild(info);
+    }
+
+    function scrollChatHistoryToBottom() {
+        if (!chatHistoryContainer) {
+            return;
+        }
+        chatHistoryContainer.scrollTop = chatHistoryContainer.scrollHeight;
+    }
+
+    function renderChatHistory(messages) {
+        if (!chatHistoryContainer) {
+            return;
+        }
+
+        const safeMessages = Array.isArray(messages) ? messages : [];
+        const signature = JSON.stringify(safeMessages.map(msg => [
+            msg.id,
+            msg.fecha,
+            msg.contenido,
+            msg.media_url,
+            msg.direction,
+            msg.sender
+        ]));
+
+        if (signature === currentChatHistorySignature) {
+            return;
+        }
+
+        currentChatHistorySignature = signature;
+        chatHistoryContainer.innerHTML = '';
+
+        if (!safeMessages.length) {
+            setChatHistoryInfo('No hay mensajes previos en esta conversación.', 'fas fa-comments');
+            return;
+        }
+
+        safeMessages.forEach(msg => {
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble');
+            bubble.classList.add(msg.direction === 'inbound' ? 'incoming' : 'outgoing');
+
+            const senderInfo = resolveSenderInfo(msg.sender, msg.direction);
+            bubble.dataset.senderRole = senderInfo.role;
+
+            const meta = document.createElement('div');
+            meta.className = 'message-meta';
+            const fechaTexto = msg.fecha || 'Sin fecha';
+            meta.innerHTML = `
+                <span class="message-role message-role--${senderInfo.role}">
+                    <i class="fas ${senderInfo.icon}" aria-hidden="true"></i>
+                    <span>${senderInfo.label}</span>
+                </span>
+                <span class="message-timestamp">${fechaTexto}</span>
+            `;
+            bubble.appendChild(meta);
+
+            if (msg.contenido) {
+                const cuerpo = document.createElement('span');
+                cuerpo.className = 'message-text';
+                cuerpo.textContent = msg.contenido;
+                bubble.appendChild(cuerpo);
+            }
+
+            if (msg.media_url) {
+                const mediaUrl = msg.media_url.trim();
+                const esLink = /^https?:\/\//i.test(mediaUrl);
+                const adjunto = esLink ? document.createElement('a') : document.createElement('span');
+                adjunto.className = 'message-attachment';
+                if (esLink) {
+                    adjunto.href = mediaUrl;
+                    adjunto.target = '_blank';
+                    adjunto.rel = 'noopener noreferrer';
+                    adjunto.textContent = 'Abrir adjunto';
+                } else {
+                    adjunto.textContent = `Adjunto: ${mediaUrl}`;
+                }
+                bubble.appendChild(adjunto);
+            }
+
+            chatHistoryContainer.appendChild(bubble);
+        });
+
+        scrollChatHistoryToBottom();
+    }
+
+    function loadChatHistory(solicitudId, options = {}) {
+        const { silent = false } = options;
+        if (!chatHistoryContainer || !solicitudId) {
+            return;
+        }
+
+        if (currentChatSolicitudId !== solicitudId) {
+            currentChatHistorySignature = null;
+        }
+
+        currentChatSolicitudId = solicitudId;
+
+        if (!silent && currentChatHistorySignature === null) {
+            setChatHistoryInfo('Cargando historial...', 'fas fa-spinner fa-spin');
+        }
+
+        fetch(`/api/solicitud_cita/${solicitudId}/mensajes`, { cache: 'no-store' })
+            .then(response => response.json())
+            .then(data => {
+                if (currentChatSolicitudId !== solicitudId) {
+                    return;
+                }
+                if (data && data.success) {
+                    renderChatHistory(data.mensajes || []);
+                } else if (!silent) {
+                    setChatHistoryInfo('No fue posible cargar la conversación.', 'fas fa-exclamation-triangle');
+                }
+            })
+            .catch(() => {
+                if (currentChatSolicitudId !== solicitudId) {
+                    return;
+                }
+                if (!silent) {
+                    setChatHistoryInfo('Ocurrió un error al cargar la conversación.', 'fas fa-exclamation-triangle');
+                }
+            });
+    }
+
+    function stopChatHistoryPolling() {
+        if (chatHistoryPollTimer) {
+            clearInterval(chatHistoryPollTimer);
+            chatHistoryPollTimer = null;
+        }
+    }
+
+    function startChatHistoryPolling(solicitudId) {
+        stopChatHistoryPolling();
+        if (!solicitudId) {
+            return;
+        }
+
+        chatHistoryPollTimer = window.setInterval(() => {
+            if (currentChatSolicitudId === solicitudId) {
+                loadChatHistory(solicitudId, { silent: true });
+            }
+        }, CHAT_HISTORY_POLL_MS);
+    }
+
+    function ajustarAlturaTextarea() {
+        if (!mensajeInput) {
+            return;
+        }
+        mensajeInput.style.height = 'auto';
+        const maxHeight = 220;
+        const newHeight = Math.max(Math.min(mensajeInput.scrollHeight, maxHeight), 48);
+        mensajeInput.style.height = newHeight + 'px';
+    }
+
+    function actualizarPreview() {
+        if (!mensajeInput || !chatPreviewText) {
+            return;
+        }
+        const texto = mensajeInput.value.trim();
+        if (texto) {
+            chatPreviewText.textContent = texto;
+            chatPreviewText.classList.remove('chat-preview-placeholder');
+            if (chatPreviewBubble) {
+                chatPreviewBubble.classList.remove('is-empty');
+            }
+        } else {
+            chatPreviewText.textContent = basePreviewText;
+            if (!chatPreviewText.classList.contains('chat-preview-placeholder')) {
+                chatPreviewText.classList.add('chat-preview-placeholder');
+            }
+            if (chatPreviewBubble && !chatPreviewBubble.classList.contains('is-empty')) {
+                chatPreviewBubble.classList.add('is-empty');
+            }
+        }
+    }
+
+    function actualizarInfoConductor(nombre, placa) {
+        if (chatNombreDisplay) {
+            chatNombreDisplay.textContent = nombre || 'Conductor';
+        }
+        if (chatPlacaDisplay) {
+            chatPlacaDisplay.textContent = placa || 'Sin placa';
+        }
+        if (hiddenNombreInput) {
+            hiddenNombreInput.value = nombre || '';
+        }
+    }
+
+    function resetMensajeModal(nombre, placa) {
+        stopChatHistoryPolling();
+        currentChatSolicitudId = null;
+        currentChatHistorySignature = null;
+        actualizarInfoConductor(nombre, placa);
+        if (templateSelect) {
+            templateSelect.value = 'personalizado';
+        }
+        if (mensajeInput) {
+            mensajeInput.value = '';
+            ajustarAlturaTextarea();
+        }
+        actualizarPreview();
+        actualizarCharCount();
+        setChatHistoryInfo('Cargando historial...', 'fas fa-spinner fa-spin');
+        marcarOpcionActiva('personalizado');
+        const urgenteCheckbox = document.getElementById('marcarUrgente');
+        if (urgenteCheckbox) {
+            urgenteCheckbox.checked = false;
+        }
+        limpiarAdjunto();
+    }
+
+    function hideModalSafely(modalId) {
+        const modalEl = document.getElementById(modalId);
+        if (!modalEl) {
+            return;
+        }
+        const activeElement = document.activeElement;
+        if (activeElement && modalEl.contains(activeElement) && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+        }
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    }
+
+    function obtenerNombreCorto(nombreCompleto) {
+        if (!nombreCompleto) {
+            return 'conductor';
+        }
+        const partes = nombreCompleto.trim().split(/\s+/);
+        if (!partes.length) {
+            return 'conductor';
+        }
+        const nombre = partes[0];
+        return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+    }
+
+    function construirMensajeTemplate(templateKey, nombreCompleto) {
+        const nombre = obtenerNombreCorto(nombreCompleto);
+        switch (templateKey) {
+            case 'bienvenida_samantha':
+                return `¡Hola ${nombre}! 👋 Te saluda Samantha del equipo humano de Fisher. ¿Cómo estás hoy? Estoy lista para ayudarte a que tu enturnamiento quede perfecto. Cuéntame en qué te apoyo.`;
+            case 'nueva_guia':
+                return `Hola ${nombre} 👋, necesitamos una nueva foto de la guía o manifiesto. Envíala por este chat y reemplazaremos la anterior cuando llegue.`;
+            case 'nuevo_ticket':
+                return `Hola ${nombre} 👋, por favor envía nuevamente el ticket de peaje de Gambote. Lo actualizaremos apenas lo recibamos.`;
+            case 'nueva_ubicacion_bosconia':
+                return `Hola ${nombre} 👋, comparte tu ubicación en tiempo real al pasar por Bosconia para validar el registro.`;
+            case 'nueva_ubicacion_gambote':
+                return `Hola ${nombre} 👋, comparte tu ubicación en tiempo real cuando cruces el peaje de Gambote para validar el registro.`;
+            case 'turno_retrasado':
+                return `Hola ${nombre} 👋. Tenemos un retraso operativo y debemos ajustar tu turno. Apenas nuestro equipo confirme la nueva fecha, hora y número de turno te avisaremos por este chat. Gracias por tu paciencia y disculpa los inconvenientes.`;
+            case 'finalizar_atencion':
+                return `Atención humana finalizada. Fisher 🐶 cierra esta conversación. 🏁
+
+Cuando necesites un *nuevo enturne*, solo escribe *NUEVO* y comenzaremos desde cero. ¡Te esperamos!`;
+            case 'personalizado':
+            default:
+                return null;
+        }
+    }
+
+    function construirMensajeRecordatorio(nombreCompleto, analisis) {
+        const nombre = obtenerNombreCorto(nombreCompleto) || 'conductor';
+        if (!analisis || analisis.todos_completos || (analisis.total_faltantes || 0) === 0) {
+            return `Hola ${nombre} 👋, Fisher me confirma que ya tenemos toda la información de tu enturnamiento. Si necesitas algo más, escríbeme por aquí.`;
+        }
+
+        const mensajes = Array.isArray(analisis.mensajes_recomendados) ? analisis.mensajes_recomendados.filter(Boolean) : [];
+        if (mensajes.length === 0) {
+            return `Hola ${nombre} 👋, aún tenemos datos pendientes. Envíalos por este chat y Fisher avanzará automáticamente al siguiente paso.`;
+        }
+
+        if (mensajes.length === 1) {
+            return `Hola ${nombre} 👋, Fisher detectó este pendiente:
+
+${mensajes[0]}
+
+Cuando lo envíes por acá, el sistema avanzará al siguiente paso automáticamente.`;
+        }
+
+        const partes = [`Hola ${nombre} 👋, Fisher identificó ${mensajes.length} pendientes. Vamos paso a paso:`];
+        mensajes.forEach((texto, idx) => {
+            partes.push(`
+${idx + 1}. ${texto}`);
+        });
+        partes.push(`
+
+Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
+        return partes.join('');
+    }
+
+    function finalizarActualizacionTemplate(templateKey, focus = true) {
+        ajustarAlturaTextarea();
+        actualizarCharCount();
+        marcarOpcionActiva(templateKey);
+        if (focus && mensajeInput) {
+            mensajeInput.focus();
+        }
+    }
+
+    function aplicarTemplate(templateKey, options = {}) {
+        if (!mensajeInput) {
+            return;
+        }
+
+        const { focus = true } = options;
+        const claveNormalizada = templateKey || 'personalizado';
+
+        if (templateSelect) {
+            templateSelect.value = claveNormalizada;
+        }
+
+        if (claveNormalizada === 'personalizado') {
+            mensajeInput.value = '';
+            finalizarActualizacionTemplate('personalizado', focus);
+            return;
+        }
+
+        const nombreActual = hiddenNombreInput ? hiddenNombreInput.value : '';
+
+        if (claveNormalizada === 'recordatorio_inteligente') {
+            const solicitudInput = document.getElementById('mensajeSolicitudId');
+            const solicitudId = solicitudInput ? solicitudInput.value : '';
+
+            recordatorioRequestSeq += 1;
+            const requestId = recordatorioRequestSeq;
+
+            mensajeInput.value = 'Consultando pendientes detectados por Fisher...';
+            finalizarActualizacionTemplate('recordatorio_inteligente', false);
+
+            if (!solicitudId) {
+                mensajeInput.value = construirMensajeRecordatorio(nombreActual, null);
+                finalizarActualizacionTemplate('recordatorio_inteligente', focus);
+                return;
+            }
+
+            fetch(`/api/solicitud_cita/${solicitudId}/datos_faltantes`, { cache: 'no-store' })
+                .then(respuesta => {
+                    if (!respuesta.ok) {
+                        throw new Error(`HTTP ${respuesta.status}`);
+                    }
+                    return respuesta.json();
+                })
+                .then(data => {
+                    if (recordatorioRequestSeq !== requestId) {
+                        return;
+                    }
+                    let analisis = null;
+                    if (data) {
+                        if (data.success === false) {
+                            analisis = null;
+                        } else if (data.analisis) {
+                            analisis = data.analisis;
+                        } else {
+                            analisis = data;
+                        }
+                    }
+                    const mensaje = construirMensajeRecordatorio(nombreActual, analisis);
+                    mensajeInput.value = mensaje;
+                    finalizarActualizacionTemplate('recordatorio_inteligente', focus);
+                })
+                .catch(error => {
+                    if (recordatorioRequestSeq !== requestId) {
+                        return;
+                    }
+                    console.error('No se pudo obtener el análisis de pendientes para el recordatorio inteligente:', error);
+                    mensajeInput.value = construirMensajeRecordatorio(nombreActual, null);
+                    finalizarActualizacionTemplate('recordatorio_inteligente', focus);
+                });
+
+            return;
+        }
+
+        const textoTemplate = construirMensajeTemplate(claveNormalizada, nombreActual);
+        mensajeInput.value = textoTemplate !== null ? textoTemplate : '';
+        finalizarActualizacionTemplate(claveNormalizada, focus);
+    }
+
+    if (templateSelect && mensajeInput) {
+        templateSelect.addEventListener('change', function() {
+            const templateKey = this.value || 'personalizado';
+            aplicarTemplate(templateKey, { focus: false });
+        });
+    }
+
+    if (chatQuickOptions && chatQuickOptions.length && mensajeInput) {
+        chatQuickOptions.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (quickRepliesContainer && btnToggleQuickReplies && !quickRepliesContainer.classList.contains('show')) {
+                    btnToggleQuickReplies.click();
+                }
+
+                const templateKey = this.dataset.template || 'personalizado';
+                aplicarTemplate(templateKey, { focus: true });
+            });
+        });
+    }
+
+    if (btnToggleQuickReplies && quickRepliesContainer) {
+        btnToggleQuickReplies.addEventListener('click', function() {
+            const isExpanded = this.getAttribute('aria-expanded') === 'true';
+            const newExpanded = !isExpanded;
+            this.setAttribute('aria-expanded', String(newExpanded));
+            const label = this.querySelector('.toggle-label');
+            if (label) {
+                label.textContent = newExpanded ? 'Ocultar' : 'Mostrar';
+            }
+            const icon = this.querySelector('.toggle-icon');
+            if (icon) {
+                icon.classList.toggle('fa-chevron-up', newExpanded);
+                icon.classList.toggle('fa-chevron-down', !newExpanded);
+            }
+            if (newExpanded) {
+                quickRepliesContainer.classList.add('show');
+            } else {
+                quickRepliesContainer.classList.remove('show');
+            }
+        });
+    }
+
+    if (btnLimpiarMensaje && mensajeInput) {
+        btnLimpiarMensaje.addEventListener('click', function() {
+            aplicarTemplate('personalizado', { focus: true });
+        });
+    }
+    
+    // Ver guía en modal
+    document.querySelectorAll('.btn-view-guia').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const url = btn.getAttribute('data-url');
+            guiaCurrentUrl = url || null;
+
+            if (guiaViewer) {
+                guiaViewer.innerHTML = '';
+            }
+
+            if (!url) {
+                if (guiaViewer) {
+                    guiaViewer.innerHTML = '<div class="text-muted">No hay documento disponible</div>';
+                }
+                resetGuiaZoomState(false);
+                updateGuiaDownloadLink(null);
+            } else if (url.match(/\.(pdf)(\?.*)?$/i)) {
+                if (guiaViewer) {
+                    const pdfSrc = `${url}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`;
+                    guiaViewer.innerHTML = `
+                        <iframe src="${pdfSrc}" class="viewer-pdf" title="Vista previa de la guía" scrolling="auto"></iframe>
+                    `;
+                }
+                resetGuiaZoomState(false);
+                updateGuiaDownloadLink(url);
+            } else if (url.match(/\.(jpg|jpeg|png|gif|bmp|webp)(\?.*)?$/i)) {
+                if (guiaViewer) {
+                    guiaViewer.innerHTML = `
+                        <div class="d-flex justify-content-center align-items-center w-100" style="min-height:50vh;">
+                            <img src="${url}" alt="Documento cargado" class="viewer-img img-fluid" style="max-height:70vh; object-fit:contain;">
+                        </div>`;
+                }
+                resetGuiaZoomState(true);
+                updateGuiaDownloadLink(url);
+            } else {
+                if (guiaViewer) {
+                    guiaViewer.innerHTML = '<div class="text-muted">Formato no compatible para vista previa. Usa "Descargar archivo".</div>';
+                }
+                resetGuiaZoomState(false);
+                updateGuiaDownloadLink(url);
+            }
+
+            if (guiaModalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(guiaModalEl);
+                modal.show();
+            }
+        });
+    });
+
+    // Ver ubicación en modal con mapa
+    document.querySelectorAll('.btn-view-location').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const lat = parseFloat(btn.getAttribute('data-lat'));
+            const lng = parseFloat(btn.getAttribute('data-lng'));
+            const placa = btn.getAttribute('data-placa');
+            
+            showLocationModal(lat, lng, placa, 'Bosconia');
+        });
+    });
+
+    // Ver ubicación Gambote en modal con mapa
+    document.querySelectorAll('.btn-view-location-gambote').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const lat = parseFloat(btn.getAttribute('data-lat'));
+            const lng = parseFloat(btn.getAttribute('data-lng'));
+            const placa = btn.getAttribute('data-placa');
+            
+            showLocationModal(lat, lng, placa, 'Gambote');
+        });
+    });
+    
+    // Función para mostrar modal de ubicación
+    function showLocationModal(lat, lng, placa, puntoControl, options = {}) {
+        const numericLat = Number(lat);
+        const numericLng = Number(lng);
+        if (!Number.isFinite(numericLat) || !Number.isFinite(numericLng)) {
+            alert('No hay coordenadas válidas para mostrar en el mapa.');
+            return;
+        }
+
+        // Llenar información
+        document.getElementById('location-placa').textContent = placa || '-';
+        document.getElementById('location-lat').textContent = numericLat.toFixed(6);
+        document.getElementById('location-lng').textContent = numericLng.toFixed(6);
+        
+        // Configurar enlace a Google Maps
+        const mapsUrl = `https://www.google.com/maps?q=${numericLat},${numericLng}`;
+        document.getElementById('google-maps-link').href = mapsUrl;
+        
+        // Determinar coordenadas del punto de control
+        let controlLat;
+        let controlLng;
+        let controlName;
+        const controlOverride = options.controlCoords;
+        if (controlOverride && Number.isFinite(controlOverride.lat) && Number.isFinite(controlOverride.lng)) {
+            controlLat = controlOverride.lat;
+            controlLng = controlOverride.lng;
+            controlName = controlOverride.nombre || puntoControl || 'Punto de control';
+        } else if (puntoControl === 'Bosconia') {
+            controlLat = 9.97;
+            controlLng = -73.89;
+            controlName = 'Bosconia';
+        } else if (puntoControl === 'Gambote') {
+            controlLat = 10.1361949;
+            controlLng = -75.2642649;
+            controlName = 'Gambote';
+        } else {
+            controlLat = numericLat;
+            controlLng = numericLng;
+            controlName = puntoControl || 'Punto de control';
+        }
+        
+        // Calcular distancia
+        const distance = getDistanceFromLatLonInKm(numericLat, numericLng, controlLat, controlLng);
+        
+        let locationDescription = '';
+        let badgeClass = '';
+        if (distance < 5) {
+            locationDescription = `Muy cerca de ${controlName} (${distance.toFixed(1)} km)`;
+            badgeClass = 'bg-success';
+        } else if (distance < 20) {
+            locationDescription = `Cerca de ${controlName} (${distance.toFixed(1)} km)`;
+            badgeClass = 'bg-info';
+        } else if (distance < 100) {
+            locationDescription = `En ruta hacia ${controlName} (${distance.toFixed(1)} km)`;
+            badgeClass = 'bg-warning text-dark';
+        } else {
+            locationDescription = `Lejos de ${controlName} (${distance.toFixed(1)} km)`;
+            badgeClass = 'bg-secondary';
+        }
+        
+        const statusBadge = document.getElementById('location-status');
+        const badgeText = options.badgeText || `Validación en ${controlName}`;
+        const badgeClassFinal = options.badgeClass ? options.badgeClass : 'bg-primary';
+        statusBadge.textContent = badgeText;
+        statusBadge.className = `badge ${badgeClassFinal}`.trim();
+
+        const distanceBadge = document.getElementById('location-distance');
+        distanceBadge.textContent = locationDescription;
+        distanceBadge.className = (`badge ${badgeClass || 'bg-secondary'}`).trim();
+
+        const footnote = document.getElementById('location-footnote');
+        if (footnote) {
+            if (options.footnote) {
+                footnote.innerHTML = `<i class="fas fa-info-circle me-1"></i>${escapeHtml(options.footnote)}`;
+            } else {
+                footnote.innerHTML = `<i class="fas fa-info-circle me-1"></i>El mapa muestra la ubicación exacta reportada en ${controlName}.`;
+            }
+        }
+
+        // Actualizar título del modal
+        const titleText = options.title || puntoControl;
+        document.getElementById('locationModalLabel').innerHTML =
+            `<i class="fas fa-map-marker-alt me-2"></i>Ubicación del Conductor${titleText ? ' - ' + escapeHtml(titleText) : ''}`;
+        
+        // Configurar iframe del mapa embebido
+        const embedUrl = `https://maps.google.com/maps?q=${numericLat},${numericLng}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+        document.getElementById('location-map').src = embedUrl;
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('locationModal'));
+        modal.show();
+    }
+    
+    // Función para calcular distancia entre dos puntos (fórmula de Haversine)
+    function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radio de la Tierra en km
+        const dLat = deg2rad(lat2 - lat1);
+        const dLon = deg2rad(lon2 - lon1);
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const d = R * c; // Distancia en km
+        return d;
+    }
+    
+    function deg2rad(deg) {
+        return deg * (Math.PI/180);
+    }
+
+    function submitTurnoDescargue(event) {
+        event.preventDefault();
+
+        const form = event.target;
+        if (form.dataset.submitting === '1') {
+            return;
+        }
+        form.dataset.submitting = '1';
+
+        const turno = document.getElementById('turnoInput').value.trim();
+        const fecha = document.getElementById('fechaInput').value;
+        const hora = document.getElementById('horaInput').value;
+        const solicitudId = document.getElementById('solicitudIdInput').value;
+
+        if (!solicitudId) {
+            alert('No se identificó la solicitud a actualizar.');
+            return;
+        }
+
+        fetch(`/api/solicitud_cita/${solicitudId}/estado`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                estado: 'enturnado',
+                turno: turno,
+                fecha_descargue: fecha,
+                hora_descargue: hora
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hideModalSafely('modalTurnoDescargue');
+                alert('Turno y fecha/hora guardados correctamente.');
+                setTimeout(() => location.reload(), 300);
+            } else {
+                alert('Error: ' + (data.message || '')); 
+            }
+        })
+        .catch(err => {
+            alert('Error al guardar: ' + err);
+        })
+        .finally(() => {
+            form.dataset.submitting = '0';
+        });
+    }
+
+    // Subir guía
+    document.querySelectorAll('.btn-upload-guia').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            const input = document.getElementById('hidden-guia-input');
+            input.dataset.solicitudId = id;
+            input.click();
+        });
+    });
+
+    // Manejar subida de archivo
+    document.getElementById('hidden-guia-input').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const solicitudId = this.dataset.solicitudId;
+        if (!solicitudId) return;
+        if (file.size > 5 * 1024 * 1024) {
+            alert('El archivo es demasiado grande. Máximo 5MB');
+            this.value = '';
+            return;
+        }
+        const formData = new FormData();
+        formData.append('imagen', file);
+        fetch(`/api/enturnamiento/${solicitudId}/upload_guia`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Guía subida correctamente');
+                location.reload();
+            } else {
+                alert('Error al subir: ' + (data.message || ''));
+            }
+        })
+        .catch(() => alert('Error de conexión al subir guía'))
+        .finally(() => {
+            this.value = '';
+        });
+    });
+    
+    // Filtros de búsqueda y estado rápido
+    const estadoSelect = document.getElementById('filtro-estado');
+    const placaInput = document.getElementById('filtro-placa');
+    const nombreInput = document.getElementById('filtro-nombre');
+    const fechaInput = document.getElementById('filtro-fecha');
+    const quickFilterButtons = document.querySelectorAll('.estado-pill');
+    const contadorRegistros = document.getElementById('contador-registros');
+    const filasSolicitudes = Array.from(document.querySelectorAll('.solicitud-fila'));
+    const activeQuickFilters = new Set();
+
+    // Inicializar Flatpickr para filtro de fechas
+    let fechaPicker = null;
+    if (fechaInput && typeof flatpickr !== 'undefined') {
+        fechaPicker = flatpickr(fechaInput, {
+            mode: 'multiple',
+            dateFormat: 'Y-m-d',
+            allowInput: true,
+            placeholder: 'Seleccionar fechas',
+            locale: {
+                firstDayOfWeek: 1,
+                weekdays: {
+                    shorthand: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+                    longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+                },
+                months: {
+                    shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                    longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                }
+            }
+        });
+    }
+
+    function buildRowMeta(fila) {
+        return {
+            estado: (fila.dataset.estado || '').toLowerCase(),
+            hasTurno: fila.dataset.hasTurno === 'true',
+            pendienteInscripcion: fila.dataset.pendienteInscripcion === 'true',
+            asesor: fila.dataset.asesor === 'true'
+        };
+    }
+
+    function matchesEstado(meta, filtro) {
+        const normalized = (filtro || '').toString().toLowerCase();
+        switch (normalized) {
+            case '':
+            case 'todos':
+                return true;
+            case 'sin_turno':
+                return !meta.hasTurno;
+            case 'con_turno':
+                return meta.hasTurno;
+            case 'pendiente_inscripcion':
+                return meta.pendienteInscripcion || meta.estado === 'pendiente_inscripcion';
+            case 'enturnado':
+                return meta.estado === 'enturnado';
+            case 'en_revision':
+                return meta.estado === 'en_revision';
+            case 'error':
+                return meta.estado === 'error';
+            case 'asesor':
+                return meta.asesor;
+            default:
+                return meta.estado === normalized;
+        }
+    }
+
+    function matchesQuickFilters(meta) {
+        if (!activeQuickFilters.size) {
+            return true;
+        }
+        for (const filtro of activeQuickFilters) {
+            if (matchesEstado(meta, filtro)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function applyFilters(tabId = null) {
+        const estadoSeleccionado = estadoSelect ? estadoSelect.value : 'todos';
+        const placaFiltro = placaInput ? placaInput.value.trim().toLowerCase() : '';
+        const nombreFiltro = nombreInput ? nombreInput.value.trim().toLowerCase() : '';
+        const fechasSeleccionadas = fechaPicker ? fechaPicker.selectedDates.map(date => date.toISOString().split('T')[0]) : [];
+        let visibles = 0;
+
+        const tbodys = tabId ? [document.getElementById(tabId)] : [
+            document.getElementById('tbody-activas'),
+            document.getElementById('tbody-enturnadas'),
+            document.getElementById('tbody-pendientes')
+        ];
+
+        tbodys.forEach(tbody => {
+            if (!tbody) return;
+            const filas = Array.from(tbody.querySelectorAll('tr'));
+            filas.forEach(fila => {
+                const meta = buildRowMeta(fila);
+                const estadoOk = matchesEstado(meta, estadoSeleccionado);
+                const quickOk = matchesQuickFilters(meta);
+                const placaOk = !placaFiltro || (fila.dataset.placa || '').toLowerCase().includes(placaFiltro);
+                const nombreOk = !nombreFiltro || (fila.dataset.nombre || '').toLowerCase().includes(nombreFiltro);
+                const fechaOk = fechasSeleccionadas.length === 0 || fechasSeleccionadas.includes(fila.dataset.fecha || '');
+
+                const visible = estadoOk && quickOk && placaOk && nombreOk && fechaOk;
+                fila.style.display = visible ? '' : 'none';
+                if (visible) {
+                    visibles += 1;
+                }
+            });
+        });
+
+        if (contadorRegistros) {
+            contadorRegistros.textContent = `Mostrando ${visibles} registros`;
+        }
+    }
+
+    function distribuirFilasEnPestanas() {
+        const tbodyOriginal = document.getElementById('tbody-original');
+        const tbodyActivas = document.getElementById('tbody-activas');
+        const tbodyEnturnadas = document.getElementById('tbody-enturnadas');
+        const tbodyPendientes = document.getElementById('tbody-pendientes');
+
+        if (!tbodyOriginal || !tbodyActivas || !tbodyEnturnadas || !tbodyPendientes) return;
+
+        // Limpiar tbodys
+        tbodyActivas.innerHTML = '';
+        tbodyEnturnadas.innerHTML = '';
+        tbodyPendientes.innerHTML = '';
+
+        // Mover filas
+        const filas = Array.from(tbodyOriginal.querySelectorAll('tr'));
+        filas.forEach(fila => {
+            const estado = (fila.dataset.estado || '').toLowerCase();
+            if (estado === 'enturnado') {
+                tbodyEnturnadas.appendChild(fila);
+            } else if (estado === 'pendiente_inscripcion') {
+                tbodyPendientes.appendChild(fila);
+            } else {
+                tbodyActivas.appendChild(fila);
+            }
+        });
+
+        // Actualizar badges
+        actualizarBadges();
+    }
+
+    function actualizarBadges() {
+        const badgeActivas = document.getElementById('badge-activas');
+        const badgeEnturnadas = document.getElementById('badge-enturnadas');
+        const badgePendientes = document.getElementById('badge-pendientes');
+
+        if (badgeActivas) badgeActivas.textContent = document.querySelectorAll('#tbody-activas tr').length;
+        if (badgeEnturnadas) badgeEnturnadas.textContent = document.querySelectorAll('#tbody-enturnadas tr').length;
+        if (badgePendientes) badgePendientes.textContent = document.querySelectorAll('#tbody-pendientes tr').length;
+    }
+
+    function getActiveTabId() {
+        const activeTab = document.querySelector('#tabs-enturnamiento .nav-link.active');
+        if (activeTab) {
+            const target = activeTab.getAttribute('data-bs-target');
+            return target.replace('#pestana-', 'tbody-');
+        }
+        return null;
+    }
+
+    const btnAplicarFiltros = document.getElementById('btn-aplicar-filtros');
+    if (btnAplicarFiltros) {
+        btnAplicarFiltros.addEventListener('click', function() { applyFilters(getActiveTabId()); });
+    }
+
+    if (estadoSelect) {
+        estadoSelect.addEventListener('change', function() { applyFilters(getActiveTabId()); });
+    }
+
+    if (placaInput) {
+        placaInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyFilters(getActiveTabId());
+            }
+        });
+    }
+
+    if (nombreInput) {
+        nombreInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                applyFilters(getActiveTabId());
+            }
+        });
+    }
+
+    // Event listener para cambios en el filtro de fecha
+    if (fechaPicker) {
+        fechaInput.addEventListener('change', function() {
+            applyFilters(getActiveTabId());
+        });
+    }
+
+    quickFilterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filtro = this.dataset.filter;
+            if (!filtro) {
+                return;
+            }
+            if (activeQuickFilters.has(filtro)) {
+                activeQuickFilters.delete(filtro);
+                this.classList.remove('active');
+            } else {
+                activeQuickFilters.add(filtro);
+                this.classList.add('active');
+            }
+            applyFilters(getActiveTabId());
+        });
+    });
+
+    const btnLimpiarFiltros = document.getElementById('btn-limpiar-filtros');
+    if (btnLimpiarFiltros) {
+        btnLimpiarFiltros.addEventListener('click', function() {
+            if (estadoSelect) {
+                estadoSelect.value = 'todos';
+            }
+            if (placaInput) {
+                placaInput.value = '';
+            }
+            if (nombreInput) {
+                nombreInput.value = '';
+            }
+            if (fechaPicker) {
+                fechaPicker.clear();
+            }
+            activeQuickFilters.clear();
+            quickFilterButtons.forEach(btn => btn.classList.remove('active'));
+            applyFilters(getActiveTabId());
+        });
+    }
+
+    // Event listener para tabs
+    const tabsEnturnamiento = document.getElementById('tabs-enturnamiento');
+    if (tabsEnturnamiento) {
+        tabsEnturnamiento.addEventListener('shown.bs.tab', function (e) {
+            const target = e.target.getAttribute('data-bs-target');
+            const tabId = target.replace('#pestana-', 'tbody-');
+            applyFilters(tabId);
+        });
+    }
+
+    // Crear nueva solicitud manualmente
+    const modalNuevaSolicitudEl = document.getElementById('modalNuevaSolicitud');
+    const formNuevaSolicitud = document.getElementById('formNuevaSolicitud');
+    const btnAbrirModalNuevaSolicitud = document.getElementById('btnAbrirModalNuevaSolicitud');
+    const btnGuardarNuevaSolicitud = document.getElementById('btnGuardarSolicitud');
+    const inputTelefonoNuevaSolicitud = document.getElementById('nuevaTelefono');
+    const estadoNuevaSolicitud = document.getElementById('nuevaEstado');
+    let modalNuevaSolicitudInstance = null;
+
+    function getNuevaSolicitudModal() {
+        if (!modalNuevaSolicitudEl) {
+            return null;
+        }
+        if (!modalNuevaSolicitudInstance) {
+            modalNuevaSolicitudInstance = new bootstrap.Modal(modalNuevaSolicitudEl);
+        }
+        return modalNuevaSolicitudInstance;
+    }
+
+    function resetFormNuevaSolicitud() {
+        if (formNuevaSolicitud) {
+            formNuevaSolicitud.reset();
+            formNuevaSolicitud.dataset.submitting = '0';
+        }
+        if (estadoNuevaSolicitud) {
+            estadoNuevaSolicitud.value = 'sin turno';
+        }
+        if (btnGuardarNuevaSolicitud) {
+            btnGuardarNuevaSolicitud.disabled = false;
+            btnGuardarNuevaSolicitud.innerHTML = 'Guardar solicitud';
+        }
+    }
+
+    if (modalNuevaSolicitudEl) {
+        modalNuevaSolicitudEl.addEventListener('shown.bs.modal', function() {
+            if (inputTelefonoNuevaSolicitud) {
+                inputTelefonoNuevaSolicitud.focus();
+            }
+        });
+        modalNuevaSolicitudEl.addEventListener('hidden.bs.modal', function() {
+            resetFormNuevaSolicitud();
+        });
+    }
+
+    if (btnAbrirModalNuevaSolicitud) {
+        btnAbrirModalNuevaSolicitud.addEventListener('click', function() {
+            const modalInstance = getNuevaSolicitudModal();
+            if (!modalInstance) {
+                return;
+            }
+            resetFormNuevaSolicitud();
+            modalInstance.show();
+        });
+    }
+
+    if (formNuevaSolicitud) {
+        formNuevaSolicitud.addEventListener('submit', function(event) {
+            event.preventDefault();
+            if (formNuevaSolicitud.dataset.submitting === '1') {
+                return;
+            }
+
+            const formData = new FormData(formNuevaSolicitud);
+            const telefono = (formData.get('telefono') || '').trim();
+            if (!telefono) {
+                alert('El número de teléfono es obligatorio.');
+                if (inputTelefonoNuevaSolicitud) {
+                    inputTelefonoNuevaSolicitud.focus();
+                }
+                return;
+            }
+
+            const payload = {
+                telefono: telefono,
+                nombre_completo: (formData.get('nombre_completo') || '').trim(),
+                cedula: (formData.get('cedula') || '').trim(),
+                placa: (formData.get('placa') || '').trim().toUpperCase(),
+                placa_remolque: (formData.get('placa_remolque') || '').trim().toUpperCase(),
+                celular: (formData.get('celular') || '').trim(),
+                observaciones: (formData.get('observaciones') || '').trim(),
+                estado: (formData.get('estado') || 'sin turno').trim().toLowerCase()
+            };
+
+            if (btnGuardarNuevaSolicitud) {
+                btnGuardarNuevaSolicitud.disabled = true;
+                btnGuardarNuevaSolicitud.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Guardando...';
+            }
+            formNuevaSolicitud.dataset.submitting = '1';
+
+            fetch('/api/solicitud_cita', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    hideModalSafely('modalNuevaSolicitud');
+                    alert('Solicitud creada correctamente.');
+                    setTimeout(() => window.location.reload(), 350);
+                } else {
+                    const message = (data && data.message) ? data.message : 'No fue posible crear la solicitud.';
+                    alert(message);
+                }
+            })
+            .catch(err => {
+                alert('Error al crear la solicitud: ' + err);
+            })
+            .finally(() => {
+                formNuevaSolicitud.dataset.submitting = '0';
+                if (btnGuardarNuevaSolicitud) {
+                    btnGuardarNuevaSolicitud.disabled = false;
+                    btnGuardarNuevaSolicitud.innerHTML = 'Guardar solicitud';
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            if (!btn || btn.dataset.deleting === '1') {
+                return;
+            }
+
+            const id = btn.getAttribute('data-id');
+            const nombre = btn.getAttribute('data-nombre') || '';
+            if (!id) {
+                return;
+            }
+
+            const confirmMessage = nombre ? `¿Eliminar la solicitud de ${nombre}? Esta acción no se puede deshacer.` : '¿Eliminar esta solicitud? Esta acción no se puede deshacer.';
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            const originalHtml = btn.innerHTML;
+            btn.dataset.deleting = '1';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch(`/api/solicitud_cita/${id}`, {
+                method: 'DELETE'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    alert('Solicitud eliminada correctamente.');
+                    const fila = btn.closest('tr');
+                    if (fila) {
+                        fila.remove();
+                    }
+                    setTimeout(() => window.location.reload(), 300);
+                } else {
+                    const message = (data && data.message) ? data.message : 'No fue posible eliminar la solicitud.';
+                    alert(message);
+                }
+            })
+            .catch(err => {
+                alert('Error al eliminar la solicitud: ' + err);
+            })
+            .finally(() => {
+                btn.dataset.deleting = '0';
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            });
+        });
+    });
+    // Abrir modal para turno y fecha/hora de descargue
+    var modalTurnoDescargue = document.getElementById('modalTurnoDescargue');
+    var formTurnoDescargue = document.getElementById('formTurnoDescargue');
+    var solicitudIdInput = document.getElementById('solicitudIdInput');
+    if (modalTurnoDescargue) {
+        modalTurnoDescargue.addEventListener('hide.bs.modal', function() {
+            const active = document.activeElement;
+            if (active && modalTurnoDescargue.contains(active) && typeof active.blur === 'function') {
+                active.blur();
+            }
+        });
+    }
+    document.querySelectorAll('.btn-aceptar-solicitud').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var solicitudId = btn.getAttribute('data-id');
+            solicitudIdInput.value = solicitudId;
+            var modal = new bootstrap.Modal(document.getElementById('modalTurnoDescargue'));
+            modal.show();
+        });
+    });
+    if (formTurnoDescargue && !formTurnoDescargue.dataset.boundSubmit) {
+        formTurnoDescargue.dataset.boundSubmit = '1';
+        formTurnoDescargue.addEventListener('submit', submitTurnoDescargue);
+    }
+
+    // Rechazar solicitud (X)
+    document.querySelectorAll('.btn-rechazar-solicitud').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            fetch(`/api/solicitud_cita/${id}/estado`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado: 'Rechazado', notificar_bot: true })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Solicitud rechazada. El bot notificará al usuario si falta información.');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    alert('Error al rechazar la solicitud.');
+                }
+            });
+        });
+    });
+    
+    // Botones de acciones (chulito y X)
+    var formTurnoDescargue = document.getElementById('formTurnoDescargue');
+    if (formTurnoDescargue && !formTurnoDescargue.dataset.boundSubmit) {
+        formTurnoDescargue.dataset.boundSubmit = '1';
+        formTurnoDescargue.addEventListener('submit', submitTurnoDescargue);
+    }
+
+    // Botones de acciones (chulito y X)
+    document.querySelectorAll('.btn-aceptar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            // Verificar si el botón está deshabilitado
+            if (btn.disabled) {
+                alert('Esta acción ya no está disponible para esta solicitud.');
+                return;
+            }
+            document.getElementById('solicitudIdInput').value = id;
+            const turnoField = document.getElementById('turnoInput');
+            const fechaField = document.getElementById('fechaInput');
+            const horaField = document.getElementById('horaInput');
+            if (turnoField) {
+                turnoField.value = btn.dataset.turno || '';
+            }
+            if (fechaField) {
+                fechaField.value = btn.dataset.fechaDescargue || '';
+            }
+            if (horaField) {
+                horaField.value = btn.dataset.horaDescargue || '';
+            }
+            var modal = new bootstrap.Modal(document.getElementById('modalTurnoDescargue'));
+            modal.show();
+        });
+    });
+
+    document.querySelectorAll('.btn-rechazar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            // Verificar si el botón está deshabilitado
+            if (btn.disabled) {
+                alert('Esta acción ya no está disponible para esta solicitud.');
+                return;
+            }
+            if (confirm('¿Estás seguro de marcar esta solicitud como datos incorrectos? Se notificará al usuario que un asesor se comunicará con él.')) {
+                fetch('/api/solicitud_cita/' + id + '/estado', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: 'error' })
+                })
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        alert('Los datos están incompletos o incorrectos. Se notificó al usuario que un asesor se comunicará con él.');
+                        // Solo deshabilitar el botón de rechazar, dejar el de aceptar habilitado para poder enturnar después
+                        const row = btn.closest('tr');
+                        const btnRechazar = row.querySelector('.btn-rechazar');
+                        if (btnRechazar) btnRechazar.disabled = true;
+                        location.reload();
+                    } else {
+                        alert('Error al actualizar estado.');
+                    }
+                });
+            }
+        });
+    });
+
+    function handleInscripcionActions(event) {
+        const approveBtn = event.target.closest('.btn-aprobar-inscripcion');
+        if (approveBtn) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (approveBtn.disabled || approveBtn.dataset.loading === '1') {
+                return;
+            }
+
+            const solicitudId = approveBtn.getAttribute('data-id');
+            const nombre = approveBtn.getAttribute('data-nombre') || 'el conductor';
+            if (!solicitudId) {
+                return;
+            }
+            if (!confirm(`¿Aprobar la inscripción manual de ${nombre}?`)) {
+                return;
+            }
+
+            const originalHtml = approveBtn.innerHTML;
+            approveBtn.dataset.loading = '1';
+            approveBtn.disabled = true;
+            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            fetch(`/api/solicitud_cita/${solicitudId}/inscripcion/aprobar`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    alert(data.message || 'Inscripción aprobada correctamente.');
+                    setTimeout(() => window.location.reload(), 350);
+                } else {
+                    const message = (data && data.message) ? data.message : 'No fue posible aprobar la inscripción.';
+                    alert(message);
+                }
+            })
+            .catch(err => {
+                alert('Error al aprobar la inscripción: ' + err);
+            })
+            .finally(() => {
+                approveBtn.dataset.loading = '0';
+                approveBtn.disabled = false;
+                approveBtn.innerHTML = originalHtml;
+            });
+
+            return;
+        }
+
+        const rejectBtn = event.target.closest('.btn-rechazar-inscripcion');
+        if (!rejectBtn) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        if (rejectBtn.disabled || rejectBtn.dataset.loading === '1') {
+            return;
+        }
+
+        const solicitudId = rejectBtn.getAttribute('data-id');
+        const nombre = rejectBtn.getAttribute('data-nombre') || 'el conductor';
+        if (!solicitudId) {
+            return;
+        }
+        if (!confirm(`¿Cancelar el enturne para ${nombre}?`)) {
+            return;
+        }
+
+        let motivo = prompt('Motivo de la cancelación (opcional):', '') || '';
+        motivo = motivo.trim();
+
+        const originalHtml = rejectBtn.innerHTML;
+        rejectBtn.dataset.loading = '1';
+        rejectBtn.disabled = true;
+        rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch(`/api/solicitud_cita/${solicitudId}/inscripcion/rechazar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(motivo ? { motivo: motivo } : {})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                alert(data.message || 'Inscripción cancelada correctamente.');
+                setTimeout(() => window.location.reload(), 350);
+            } else {
+                const message = (data && data.message) ? data.message : 'No fue posible cancelar la inscripción.';
+                alert(message);
+            }
+        })
+        .catch(err => {
+            alert('Error al cancelar la inscripción: ' + err);
+        })
+        .finally(() => {
+            rejectBtn.dataset.loading = '0';
+            rejectBtn.disabled = false;
+            rejectBtn.innerHTML = originalHtml;
+        });
+    }
+
+    // Escucha delegada para aprobar o cancelar inscripciones manuales
+    document.addEventListener('click', handleInscripcionActions);
+
+    // Botón para enviar mensaje al conductor
+    document.querySelectorAll('.btn-mensaje').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            const nombre = btn.getAttribute('data-nombre');
+            const placa = btn.getAttribute('data-placa') || 'Sin placa';
+
+            const solicitudInput = document.getElementById('mensajeSolicitudId');
+            if (solicitudInput) {
+                solicitudInput.value = id;
+            }
+
+            resetMensajeModal(nombre, placa);
+            loadChatHistory(id);
+            startChatHistoryPolling(id);
+
+            const modalEl = document.getElementById('modalEnviarMensaje');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            setTimeout(() => {
+                if (mensajeInput) {
+                    mensajeInput.focus();
+                }
+            }, 220);
+        });
+    });
+
+    // Contador de Caracteres
+    function actualizarCharCount() {
+        if (mensajeInput && charCountElement) {
+            const longitud = mensajeInput.value.length;
+            charCountElement.textContent = `${longitud}/1000`;
+
+            if (longitud > 900) {
+                charCountElement.style.color = '#dc2626';
+            } else if (longitud > 750) {
+                charCountElement.style.color = '#f97316';
+            } else {
+                charCountElement.style.color = '#64748b';
+            }
+        }
+        actualizarPreview();
+    }
+
+    if (mensajeInput) {
+        mensajeInput.addEventListener('input', function() {
+            ajustarAlturaTextarea();
+            actualizarCharCount();
+        });
+        ajustarAlturaTextarea();
+        actualizarCharCount();
+    }
+
+    const modalEnviarMensajeEl = document.getElementById('modalEnviarMensaje');
+    if (modalEnviarMensajeEl) {
+        modalEnviarMensajeEl.addEventListener('hide.bs.modal', function() {
+            const active = document.activeElement;
+            if (active && modalEnviarMensajeEl.contains(active) && typeof active.blur === 'function') {
+                active.blur();
+            }
+            stopChatHistoryPolling();
+            currentChatSolicitudId = null;
+            currentChatHistorySignature = null;
+            if (chatHistoryContainer) {
+                setChatHistoryInfo('Selecciona una solicitud para ver la conversación.', 'fas fa-comments');
+            }
+        });
+    }
+
+    const formEnviarMensaje = document.getElementById('formEnviarMensaje');
+    if (formEnviarMensaje) {
+        formEnviarMensaje.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (formEnviarMensaje.dataset.submitting === '1') {
+                return;
+            }
+
+            const solicitudId = document.getElementById('mensajeSolicitudId') ? document.getElementById('mensajeSolicitudId').value : '';
+            const mensaje = mensajeInput ? mensajeInput.value.trim() : '';
+            const hasAdjunto = adjuntoInput && adjuntoInput.files && adjuntoInput.files.length > 0;
+
+            if (!solicitudId) {
+                alert('No se identificó la solicitud para enviar el mensaje.');
+                return;
+            }
+
+            if (!mensaje && !hasAdjunto) {
+                alert('Escribe un mensaje o adjunta un archivo antes de enviarlo.');
+                return;
+            }
+
+            formEnviarMensaje.dataset.submitting = '1';
+
+            const urgenteCheckbox = document.getElementById('marcarUrgente');
+            const urgenteMarcado = urgenteCheckbox ? urgenteCheckbox.checked : false;
+
+            const formData = new FormData();
+            formData.append('mensaje', mensaje);
+            formData.append('preset', templateSelect ? templateSelect.value : 'personalizado');
+            formData.append('urgente', urgenteMarcado ? '1' : '0');
+            if (hasAdjunto) {
+                formData.append('adjunto', adjuntoInput.files[0]);
+            }
+
+            fetch(`/api/solicitud_cita/${solicitudId}/enviar_mensaje`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reset controles del formulario y mantener el modal abierto para envíos consecutivos
+                    aplicarTemplate('personalizado', { focus: false });
+
+                    limpiarAdjunto();
+
+                    const urgenteCheckbox = document.getElementById('marcarUrgente');
+                    if (urgenteCheckbox) {
+                        urgenteCheckbox.checked = false;
+                    }
+
+                    currentChatHistorySignature = null;
+                    loadChatHistory(solicitudId, { silent: true });
+
+                    if (mensajeInput) {
+                        mensajeInput.focus();
+                    }
+                } else {
+                    if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'No fue posible enviar el mensaje',
+                            text: data.message || ''
+                        });
+                    } else {
+                        alert(data.message || 'No fue posible enviar el mensaje.');
+                    }
+                }
+            })
+            .catch(err => {
+                const errorMsg = (err && err.message) ? err.message : String(err);
+                if (typeof Swal !== 'undefined' && Swal && typeof Swal.fire === 'function') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al enviar el mensaje',
+                        text: errorMsg
+                    });
+                } else {
+                    alert('Error al enviar el mensaje: ' + errorMsg);
+                }
+            })
+            .finally(() => {
+                formEnviarMensaje.dataset.submitting = '0';
+            });
+        });
+    }
+
+    document.querySelectorAll('.btn-pendiente-ubicacion').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const lat = parseFloat(btn.getAttribute('data-lat'));
+            const lng = parseFloat(btn.getAttribute('data-lng'));
+            const placa = btn.getAttribute('data-placa') || '-';
+            const tipo = (btn.getAttribute('data-tipo') || 'Revisión').toLowerCase();
+            const mensaje = btn.getAttribute('data-mensaje') || 'Revisar ubicación enviada por el conductor.';
+
+            let titulo = 'Revisión manual';
+            let badgeClass = 'bg-danger';
+            let badgeText = 'Revisión humana';
+            let controlLabel = 'Revisión';
+
+            if (tipo === 'bosconia' || tipo === 'gambote') {
+                titulo = `Revisión manual - ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`;
+                controlLabel = tipo.charAt(0).toUpperCase() + tipo.slice(1);
+            }
+
+            showLocationModal(
+                lat,
+                lng,
+                placa,
+                controlLabel,
+                {
+                    title: titulo,
+                    badgeText: badgeText,
+                    badgeClass: badgeClass,
+                    footnote: mensaje
+                }
+            );
+        });
+    });
+
+    function resolverUbicacionPendiente(id, accion, btn) {
+        if (!id) {
+            return;
+        }
+        const tipo = (btn.getAttribute('data-tipo') || '').toLowerCase();
+        const nombre = btn.getAttribute('data-nombre') || 'el conductor';
+        const tipoLabel = tipo ? tipo.charAt(0).toUpperCase() + tipo.slice(1) : 'ubicación';
+
+        const confirmText = accion === 'aprobar'
+            ? `¿Aprobar la ubicación de ${tipoLabel} enviada por ${nombre}?`
+            : `¿Rechazar la ubicación de ${tipoLabel} de ${nombre} y solicitar una nueva?`;
+
+        if (!confirm(confirmText)) {
+            return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        fetch(`/api/solicitud_cita/${id}/ubicacion_pendiente`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ accion: accion })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                alert(data.message || 'Acción realizada con éxito.');
+                setTimeout(() => window.location.reload(), 350);
+            } else {
+                const message = (data && data.message) ? data.message : 'No fue posible procesar la acción.';
+                alert(message);
+            }
+        })
+        .catch(err => {
+            alert('Error al contactar el servidor: ' + err);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        });
+    }
+
+    document.querySelectorAll('.btn-aprobar-ubicacion').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            resolverUbicacionPendiente(id, 'aprobar', btn);
+        });
+    });
+
+    document.querySelectorAll('.btn-rechazar-ubicacion').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const id = btn.getAttribute('data-id');
+            resolverUbicacionPendiente(id, 'rechazar', btn);
+        });
+    });
+});
+
+// Editar solicitud
+document.querySelectorAll('.btn-editar').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        const id = btn.getAttribute('data-id');
+        
+        // Obtener datos completos de la solicitud via AJAX
+        fetch(`/api/solicitud_cita/${id}`)
+        .then(response => response.json())
+        .then(solicitud => {
+            // Llenar el modal con los datos
+            document.getElementById('editSolicitudId').value = solicitud.id;
+            document.getElementById('editImagenGuia').value = solicitud.imagen_guia || '';
+            document.getElementById('editImagenManifiesto').value = solicitud.imagen_manifiesto || '';
+            document.getElementById('editPasoBosconia').checked = solicitud.paso_bosconia || false;
+            document.getElementById('editPasoGambote').checked = solicitud.paso_gambote || false;
+            document.getElementById('editTicketGambote').value = solicitud.ticket_gambote || '';
+            document.getElementById('editUbicacionLat').value = solicitud.ubicacion_lat || '';
+            document.getElementById('editUbicacionLng').value = solicitud.ubicacion_lng || '';
+            document.getElementById('editUbicacionGamboteLat').value = solicitud.ubicacion_gambote_lat || '';
+            document.getElementById('editUbicacionGamboteLng').value = solicitud.ubicacion_gambote_lng || '';
+            document.getElementById('editObservaciones').value = solicitud.observaciones || '';
+            
+            // Mostrar el modal
+            var modal = new bootstrap.Modal(document.getElementById('modalEditarSolicitud'));
+            modal.show();
+        })
+        .catch(err => {
+            alert('Error al cargar datos de la solicitud: ' + err);
+        });
+    });
+});
+
+// Guardar cambios de edición
+document.getElementById('formEditarSolicitud').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const solicitudId = formData.get('solicitudId');
+    formData.delete('solicitudId');
+    
+    // Solo enviar campos que tienen valores (archivos o texto no vacío)
+    const dataToSend = new FormData();
+    
+    // Procesar archivos
+    const imagenGuiaFile = document.getElementById('editImagenGuiaFile').files[0];
+    const imagenManifiestoFile = document.getElementById('editImagenManifiestoFile').files[0];
+    const ticketGamboteFile = document.getElementById('editTicketGamboteFile').files[0];
+    
+    if (imagenGuiaFile) dataToSend.append('imagen_guia_file', imagenGuiaFile);
+    if (imagenManifiestoFile) dataToSend.append('imagen_manifiesto_file', imagenManifiestoFile);
+    if (ticketGamboteFile) dataToSend.append('ticket_gambote_file', ticketGamboteFile);
+    
+    // Procesar campos de texto (solo si no están vacíos)
+    const imagenGuia = formData.get('imagen_guia');
+    const imagenManifiesto = formData.get('imagen_manifiesto');
+    const ticketGambote = formData.get('ticket_gambote');
+    const pasoBosconia = document.getElementById('editPasoBosconia').checked;
+    const pasoGambote = document.getElementById('editPasoGambote').checked;
+    const ubicacionLat = formData.get('ubicacion_lat');
+    const ubicacionLng = formData.get('ubicacion_lng');
+    const ubicacionGamboteLat = formData.get('ubicacion_gambote_lat');
+    const ubicacionGamboteLng = formData.get('ubicacion_gambote_lng');
+    const observaciones = formData.get('observaciones');
+    
+    if (imagenGuia && imagenGuia.trim()) dataToSend.append('imagen_guia', imagenGuia);
+    if (imagenManifiesto && imagenManifiesto.trim()) dataToSend.append('imagen_manifiesto', imagenManifiesto);
+    if (ticketGambote && ticketGambote.trim()) dataToSend.append('ticket_gambote', ticketGambote);
+    dataToSend.append('paso_bosconia', pasoBosconia);
+    dataToSend.append('paso_gambote', pasoGambote);
+    if (ubicacionLat && ubicacionLat.trim()) dataToSend.append('ubicacion_lat', ubicacionLat);
+    if (ubicacionLng && ubicacionLng.trim()) dataToSend.append('ubicacion_lng', ubicacionLng);
+    if (ubicacionGamboteLat && ubicacionGamboteLat.trim()) dataToSend.append('ubicacion_gambote_lat', ubicacionGamboteLat);
+    if (ubicacionGamboteLng && ubicacionGamboteLng.trim()) dataToSend.append('ubicacion_gambote_lng', ubicacionGamboteLng);
+    if (observaciones && observaciones.trim()) dataToSend.append('observaciones', observaciones);
+    
+    fetch(`/api/solicitud_cita/${solicitudId}`, {
+        method: 'PUT',
+        body: dataToSend  // No enviar Content-Type, dejar que el navegador lo determine para FormData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Datos actualizados correctamente.');
+            location.reload();
+        } else {
+            alert('Error al actualizar: ' + data.message);
+        }
+    })
+    .catch(err => {
+        alert('Error al guardar: ' + err);
+    });
+});
+</script>
+{% endblock %}

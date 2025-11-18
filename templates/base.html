@@ -18,6 +18,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <!-- Tema Profesional Centralizado -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/professional-theme.css') }}?v=1.1">
+    <style>
+        .dropdown-menu-scrollable {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 
@@ -69,6 +75,7 @@
                             'qualitycontrol@conquerstrading.com',
                             'quality.manager@conquerstrading.com'
                         ] %}
+                        {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
                         {% if 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in allowed_trasiegos or session.get('rol') == 'admin' %}
                             {% set _ = user_planillas.append(('trasiegos_page', 'Trasiegos TK→Barcaza', 'arrow-left-right')) %}
                         {% endif %}
@@ -81,31 +88,35 @@
                         {% if 'inventario_epp' in session.get('area', []) %}{% set _ = user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
                         {% endif %}
                         {% if 'modelo_optimizacion' in session.get('area', []) %}{% set _ = user_planillas.append(('modelo_optimizacion_page', 'Modelo Optimización', 'cpu')) %}{% endif %}
+                            {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
+                            {% if session.get('email', '').lower() in panel_allowed %}
+                                {% set _ = user_planillas.append(('panel_enturnamiento', 'Panel de Enturnamiento', 'list-check')) %}
+                            {% endif %}
                         {% if user_planillas|length > 0 and session.get('rol') != 'admin' %}
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle quick-access-btn" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-file-earmark-text-fill me-1"></i> Mis Planillas
-                                    {% if user_planillas|length > 1 %}
-                                        <span class="quick-access-badge">{{ user_planillas|length }}</span>
-                                    {% endif %}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="planillasDropdown">
-                                    {% for endpoint, nombre, icon in user_planillas %}
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle quick-access-btn" href="#" id="planillasDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-file-earmark-text-fill me-1"></i> Mis Planillas
+                                        {% if user_planillas|length > 1 %}
+                                            <span class="quick-access-badge">{{ user_planillas|length }}</span>
+                                        {% endif %}
+                                    </a>
+                                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-scrollable" aria-labelledby="planillasDropdown">
+                                        {% for endpoint, nombre, icon in user_planillas %}
+                                            <li>
+                                                <a class="dropdown-item {% if request.endpoint == endpoint %}active{% endif %}" href="{{ url_for(endpoint) }}">
+                                                    <i class="bi bi-{{ icon }} me-2"></i>{{ nombre }}
+                                                </a>
+                                            </li>
+                                        {% endfor %}
+                                        {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
                                         <li>
-                                            <a class="dropdown-item {% if request.endpoint == endpoint %}active{% endif %}" href="{{ url_for(endpoint) }}">
-                                                <i class="bi bi-{{ icon }} me-2"></i>{{ nombre }}
+                                            <a class="dropdown-item {% if request.endpoint == 'gestion_compras' %}active{% endif %}" href="{{ url_for('gestion_compras') }}">
+                                                <i class="bi bi-cart-check me-2"></i> Gestión de Compras
                                             </a>
                                         </li>
-                                    {% endfor %}
-                                    {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
-                                    <li>
-                                        <a class="dropdown-item {% if request.endpoint == 'gestion_compras' %}active{% endif %}" href="{{ url_for('gestion_compras') }}">
-                                            <i class="bi bi-cart-check me-2"></i> Gestión de Compras
-                                        </a>
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </li>
+                                        {% endif %}
+                                    </ul>
+                                </li>
                         {% endif %}
                         
                         <!-- Menú administrativo -->
@@ -114,7 +125,7 @@
                                 <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="bi bi-gear-fill me-1"></i> Administración
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
+                                <ul class="dropdown-menu dropdown-menu-end dropdown-menu-scrollable" aria-labelledby="adminDropdown">
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header">Todas las Planillas</h6></li>
                                     <li><a class="dropdown-item" href="{{ url_for('inventario_zisa') }}"><i class="bi bi-box-seam me-2"></i>Inventario SIZA</a></li>
@@ -135,6 +146,7 @@
                                     <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i class="bi bi-truck me-2"></i>Generar Guía</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i class="bi bi-droplet-fill me-2"></i>Simulador Rendimiento</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i class="bi bi-calendar-check me-2"></i>Programación de Despachos</a></li>
+                                    <li><a class="dropdown-item {% if request.endpoint == 'panel_enturnamiento' %}active{% endif %}" href="{{ url_for('panel_enturnamiento') }}"><i class="bi bi-list-check me-2"></i>Panel de Enturnamiento</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('control_remolcadores_page') }}"><i class="bi bi-life-preserver me-2"></i>Control Remolcadores</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header">Utilidades</h6></li>

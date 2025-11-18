@@ -1,10 +1,11 @@
+import requests
 from sqlalchemy import or_
 import json
 import hashlib
 from datetime import datetime, time, date, timedelta
 import os
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory # Añadido send_file, current_app, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory, has_app_context # Añadido send_file, current_app, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl 
 from io import BytesIO # Para Excel
@@ -12,6 +13,7 @@ import logging # Para un logging más flexible
 import copy
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 import pytz
 import pandas as pd
 import uuid
@@ -35,9 +37,51 @@ import io
 from flask import Response
 import base64
 from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from urllib.parse import urljoin, urlparse, quote, unquote
+load_dotenv()
+
+BOGOTA_TZ = pytz.timezone('America/Bogota')
+
+
+def to_bogota_datetime(value, *, assume_local=False):
+    """Convierte un datetime a la zona horaria de Bogotá (devuelve datetime aware).
+
+    Si ``value`` no tiene información de zona horaria se asume UTC por defecto.
+    Para valores guardados como hora local de Bogotá en formato naive, pasar
+    ``assume_local=True`` para evitar desplazamientos involuntarios.
+    """
+    if not value:
+        return None
+    try:
+        if value.tzinfo is None:
+            if assume_local:
+                value = BOGOTA_TZ.localize(value)
+            else:
+                value = pytz.utc.localize(value)
+        return value.astimezone(BOGOTA_TZ)
+    except Exception:
+        return None
+
+
+def bogota_naive(value):
+    """Normaliza un datetime a naive en zona Bogotá (para persistir sin offset)."""
+    if not value:
+        return None
+    try:
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(BOGOTA_TZ).replace(tzinfo=None)
+    except Exception:
+        return None
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- Módulo modelo optimización (nuevo) ---
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
+
+# --- Blueprint para WhatsApp ---
+from bot_whatsapp import bot_bp
 
 # Utilidad simple de permiso admin
 def admin_required(f):
@@ -153,6 +197,18 @@ def grafico_barra_base64(labels, data, ylabel):
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
 
+
+def _derive_media_filename(media_url):
+    """Intenta extraer un nombre de archivo legible desde una URL de adjunto."""
+    try:
+        parsed = urlparse(media_url)
+        candidate = os.path.basename(parsed.path or '')
+        if candidate:
+            return candidate
+    except Exception:
+        pass
+    return 'adjunto.pdf'
+
 def procesar_analisis_remolcadores(registros):
     """
     Toma una lista de registros, ejecuta el análisis de Pandas y devuelve
@@ -186,27 +242,24 @@ def procesar_analisis_remolcadores(registros):
     df["trayecto_final"] = df["pair"]
     df = df.sort_values(["ID", "HORA INICIO"]).reset_index(drop=True)
 
-    comb_rules = {
-        ("LLEGADA SPD -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "INICIO SPD -> LLEGADA BASE OPS",
-        ("LLEGADA SPD -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "INICIO SPD -> LLEGADA CONTECAR",
-        ("LLEGADA SPD -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "INICIO SPD -> LLEGADA FONDEO",
-        ("LLEGADA SPD -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "INICIO SPD -> LLEGADA SPRC",
-        ("LLEGADA SPD -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "INICIO SPD -> LLEGADA PUERTO BAHIA",
-    
-        ("LLEGADA BITA -> INICIO BASE OPS", "INICIO BASE OPS -> LLEGADA BASE OPS"): "INICIO BITA -> LLEGADA BASE OPS",
-        ("LLEGADA BITA -> INICIO CONTECAR", "INICIO CONTECAR -> LLEGADA CONTECAR"): "INICIO BITA -> LLEGADA CONTECAR",
-        ("LLEGADA BITA -> INICIO FONDEO", "INICIO FONDEO -> LLEGADA FONDEO"): "INICIO BITA -> LLEGADA FONDEO",
-        ("LLEGADA BITA -> INICIO SPRC", "INICIO SPRC -> LLEGADA SPRC"): "INICIO BITA -> LLEGADA SPRC",
-        ("LLEGADA BITA -> INICIO PUERTO BAHIA", "INICIO PUERTO BAHIA -> LLEGADA PUERTO BAHIA"): "INICIO BITA -> LLEGADA PUERTO BAHIA",
+    # Segunda pasada: reglas de regreso
+    comb_rules_regreso = {
+        ("INICIO CONTECAR -> LLEGADA SPD", "INICIO SPD -> LLEGADA BASE OPS"): "INICIO CONTECAR -> LLEGADA BASE OPS",
+        ("INICIO FONDEO -> LLEGADA SPD", "INICIO SPD -> LLEGADA BASE OPS"): "INICIO FONDEO -> LLEGADA BASE OPS",
+        ("INICIO SPRC -> LLEGADA SPD", "INICIO SPD -> LLEGADA BASE OPS"): "INICIO SPRC -> LLEGADA BASE OPS",
+        ("INICIO PUERTO BAHIA -> LLEGADA SPD", "INICIO SPD -> LLEGADA BASE OPS"): "INICIO PUERTO BAHIA -> LLEGADA BASE OPS",
+        ("INICIO CONTECAR -> LLEGADA BITA", "INICIO BITA -> LLEGADA BASE OPS"): "INICIO CONTECAR -> LLEGADA BASE OPS",
+        ("INICIO FONDEO -> LLEGADA BITA", "INICIO BITA -> LLEGADA BASE OPS"): "INICIO FONDEO -> LLEGADA BASE OPS",
+        ("INICIO SPRC -> LLEGADA BITA", "INICIO BITA -> LLEGADA BASE OPS"): "INICIO SPRC -> LLEGADA BASE OPS",
+        ("INICIO PUERTO BAHIA -> LLEGADA BITA", "INICIO BITA -> LLEGADA BASE OPS"): "INICIO PUERTO BAHIA -> LLEGADA BASE OPS",
     }
-
     for i in range(len(df) - 1):
         if df.at[i, "ID"] != df.at[i + 1, "ID"]: continue
-        key = (df.at[i, "pair"], df.at[i + 1, "pair"])
-        if key in comb_rules:
+        key = (df.at[i, "trayecto_final"], df.at[i + 1, "trayecto_final"])
+        if key in comb_rules_regreso:
             df.at[i, "duration_hours"] += df.at[i + 1, "duration_hours"]
             df.at[i, "HORA FIN"] = df.at[i + 1, "HORA FIN"]
-            df.at[i, "trayecto_final"] = comb_rules[key]
+            df.at[i, "trayecto_final"] = comb_rules_regreso[key]
             df.loc[i + 1, ["trayecto_final", "duration_hours"]] = [None, np.nan]
 
     def convertir_a_texto_legible(horas):
@@ -354,6 +407,37 @@ app.config['MIME_DEBUG'] = os.environ.get('MIME_DEBUG', '0')  # Activa logs de d
 os.makedirs(app.config['GUIDES_DIR'], exist_ok=True)
 db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
 migrate = Migrate(app, db)
+
+scheduler = BackgroundScheduler()
+
+@app.get('/.well-known/appspecific/com.chrome.devtools.json')
+def chrome_devtools_probe():
+    """Responde la sonda de Chrome DevTools con 204 para evitar 404 en logs."""
+    return Response(status=204)
+
+def send_reminders():
+    # Función para enviar recordatorios a usuarios inactivos en step 4
+    with app.app_context():
+        now = datetime.utcnow()
+        # Buscar sesiones en step 4 que no han tenido actividad en las últimas 5 horas
+        sesiones_inactivas = SolicitudCita.query.filter(
+            SolicitudCita.whatsapp_step == '4',
+            SolicitudCita.last_reminder.isnot(None),
+            (now - SolicitudCita.last_reminder) >= timedelta(hours=5)
+        ).all()
+        
+        for solicitud in sesiones_inactivas:
+            # Enviar mensaje de recordatorio
+            mensaje = "Recordatorio: Aún esperamos la imagen de la guía/manifesto para completar su solicitud. Por favor, envíela lo antes posible."
+            # Enviar el mensaje por WhatsApp
+            send_whatsapp_message(solicitud.telefono, mensaje)
+            # Actualizar last_reminder
+            solicitud.last_reminder = now
+            db.session.commit()
+
+# Inicializar el scheduler después de la configuración de la app
+scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
+scheduler.start()
 
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
@@ -830,9 +914,13 @@ def serve_guia(filename):
     - Fallback a application/pdf si extensión .pdf o firma %PDF.
     - Fuerza Content-Disposition: inline y añade X-Content-Type-Options: nosniff.
     """
+    normalized = _normalize_guia_relative_path(filename)
+    if not normalized:
+        return jsonify(success=False, message='Archivo no encontrado'), 404
+
     base_dir = app.config['GUIDES_DIR']
     # Normalizar y prevenir traversal
-    safe_path = os.path.normpath(os.path.join(base_dir, filename))
+    safe_path = os.path.normpath(os.path.join(base_dir, normalized))
     base_norm = os.path.normpath(base_dir)
     if not safe_path.startswith(base_norm + os.sep) and safe_path != base_norm:
         return jsonify(success=False, message='Ruta inválida'), 400
@@ -867,7 +955,7 @@ def serve_guia(filename):
             except Exception:
                 pass
             current_app.logger.info(
-                f"[MIME_DEBUG] /guias -> file={filename} mime={mime} size={size} disposition=inline Accept={request.headers.get('Accept')}"
+                f"[MIME_DEBUG] /guias -> file={normalized} mime={mime} size={size} disposition=inline Accept={request.headers.get('Accept')}"
             )
     except Exception:
         pass
@@ -1573,6 +1661,13 @@ USUARIOS = {
         "nombre": "Carlos Barón",
         "rol": "admin",
         "area": [] # El admin no necesita áreas específicas, su rol le da acceso a todo.
+    },
+    # Brandon (Admin): Acceso total, igual que Carlos.
+    "logistics.inventory@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Brandon Niño",
+        "rol": "admin",
+        "area": []
     },
     # Juan Diego (Editor): Solo acceso a Barcaza Orion.
     "qualitycontrol@conquerstrading.com": {
@@ -6391,22 +6486,29 @@ def upload_remolcadores_excel():
         for maniobra_id, group in df.groupby('Id'):
             for _, row in group.iterrows():
                 barcaza = row['Barcaza'] if pd.notna(row['Barcaza']) else None
+                # Validar y convertir 'Mt Entregadas' correctamente
                 mt_val = row['Mt Entregadas']
-                mt_entregadas = float(mt_val) if pd.notna(mt_val) else None
+                if pd.isna(mt_val) or mt_val == '':
+                    mt_entregadas = None
+                else:
+                    try:
+                        mt_entregadas = float(mt_val)
+                    except (ValueError, TypeError):
+                        mt_entregadas = None
                 hora_inicio = pd.to_datetime(row['Hora Inicio'], dayfirst=True)
                 hora_fin = pd.to_datetime(row['Hora Fin'], dayfirst=True) if pd.notna(row['Hora Fin']) else None
-
                 # Lógica para manejar el campo opcional 'Nombre Del Barco'
                 nombre_barco_valor = None
                 if 'Nombre Del Barco' in df.columns:
                     nombre_barco_valor = row['Nombre Del Barco'] if pd.notna(row['Nombre Del Barco']) else None
-                
+                # Validar 'Carga' como texto
+                carga_estado = str(row['Carga']).strip() if pd.notna(row['Carga']) else ''
                 registro = RegistroRemolcador(
                     maniobra_id=int(maniobra_id),
                     barcaza=barcaza,
-                    nombre_barco=nombre_barco_valor, # ✅ 2. Asignar el valor a la nueva columna
+                    nombre_barco=nombre_barco_valor,
                     mt_entregadas=mt_entregadas,
-                    carga_estado=row['Carga'],
+                    carga_estado=carga_estado,
                     evento_anterior=row['Evento Anterior'],
                     hora_inicio=hora_inicio,
                     evento_actual=row['Evento Actual'],
@@ -7236,27 +7338,26 @@ def exportar_programacion_cargue(formato):
     if formato == 'excel':
         # Preparamos los datos en una lista de diccionarios
         datos_para_df = [{
-            'Fecha Programación': r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '',
-            'Hora Estimada': r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '',
-            'Empresa Transportadora': r.empresa_transportadora,
-            'Placa': r.placa,
-            'Conductor': r.nombre_conductor,
-            'Cédula': r.cedula_conductor,
-            'Celular': r.celular_conductor,
-            'Producto': r.producto_a_cargar,
-            'Destino': r.destino,
-            'Cliente': r.cliente,
-            'Estado': r.estado,
-            'Fecha Despacho': r.fecha_despacho,
-            'Número Guía': r.numero_guia,
-            'Galones': r.galones,
-            'Barriles': r.barriles,
-            'Temperatura': r.temperatura,
-            'API Observado': r.api_obs,
-            'API Corregido': r.api_corregido,
-            'Precintos': r.precintos,
-            'Último Editor': r.ultimo_editor,
-            'Fecha Actualización': r.fecha_actualizacion.strftime('%Y-%m-%d %H:%M') if r.fecha_actualizacion else ''
+            'FECHA PROGRAMACION': r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else '',
+            'EMPRESA TRANSPORTADORA': r.empresa_transportadora,
+            'PLACA': r.placa,
+            'TANQUE': r.tanque,
+            'NOMBRE CONDUCTOR': r.nombre_conductor,
+            'CEDULA CONDUCTOR': r.cedula_conductor,
+            'CELULAR CONDUCTOR': r.celular_conductor,
+            'HORA LLEGADA ESTIMADA': r.hora_llegada_estimada.strftime('%H:%M') if r.hora_llegada_estimada else '',
+            'PRODUCTO A CARGAR': r.producto_a_cargar,
+            'DESTINO': r.destino,
+            'CLIENTE': r.cliente,
+            'ESTADO': r.estado,
+            'GALONES': r.galones,
+            'BARRILES': r.barriles,
+            'TEMPERATURA': r.temperatura,
+            'API OBS': r.api_obs,
+            'API CORREGIDO': r.api_corregido,
+            'PRECINTOS': r.precintos,
+            'FECHA DESPACHO': r.fecha_despacho.strftime('%Y-%m-%d') if r.fecha_despacho else '',
+            'NUMERO GUIA': r.numero_guia
         } for r in registros]
 
         df = pd.DataFrame(datos_para_df)
@@ -7370,15 +7471,16 @@ def upload_programacion_image(id):
 
         # Eliminar archivo anterior si existía (ruta en disco)
         if registro.imagen_guia and not str(registro.imagen_guia).startswith('data:'):
-            old_abs = os.path.join(current_app.config['GUIDES_DIR'], registro.imagen_guia)
+            old_rel = _normalize_guia_relative_path(registro.imagen_guia)
+            old_abs = os.path.join(current_app.config['GUIDES_DIR'], old_rel) if old_rel else None
             try:
-                if os.path.exists(old_abs):
+                if old_abs and os.path.exists(old_abs):
                     os.remove(old_abs)
             except Exception:
                 pass
 
         # Guardar ruta relativa
-        rel_path = f"{id}/{fname}"
+        rel_path = _normalize_guia_relative_path(f"{id}/{fname}")
         registro.imagen_guia = rel_path
         registro.ultimo_editor = session.get('nombre', 'No identificado')
         registro.fecha_actualizacion = datetime.utcnow()
@@ -7424,9 +7526,9 @@ def get_programacion_image(id):
             return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime or 'application/octet-stream', imagen=registro.imagen_guia)
 
         # Ruta relativa en disco
-        rel_path = registro.imagen_guia
-        abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path)
-        if not os.path.exists(abs_path):
+        rel_path = _normalize_guia_relative_path(registro.imagen_guia)
+        abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path) if rel_path else None
+        if not abs_path or not os.path.exists(abs_path):
             return jsonify(success=False, message='Archivo no encontrado'), 404
         url = url_for('serve_guia', filename=rel_path)
         mime, _ = mimetypes.guess_type(abs_path)
@@ -7452,9 +7554,10 @@ def delete_programacion_image(id):
             return jsonify(success=True, message='No hay archivo para eliminar')
         # Si es ruta, intentar borrar del disco
         if not str(registro.imagen_guia).startswith('data:'):
-            abs_path = os.path.join(current_app.config['GUIDES_DIR'], registro.imagen_guia)
+            rel_path = _normalize_guia_relative_path(registro.imagen_guia)
+            abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path) if rel_path else None
             try:
-                if os.path.exists(abs_path):
+                if abs_path and os.path.exists(abs_path):
                     os.remove(abs_path)
             except Exception:
                 pass
@@ -7465,6 +7568,48 @@ def delete_programacion_image(id):
         return jsonify(success=True, message='Archivo eliminado correctamente')
     except Exception as e:
         db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/<int:id>/importar-sharepoint', methods=['POST'])
+def importar_guia_sharepoint(id):
+    """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
+    registro = ProgramacionCargue.query.get_or_404(id)
+    numero_guia = (registro.numero_guia or '').strip()
+
+    if not numero_guia:
+        return jsonify(success=False, message='No hay número de guía registrado para este ítem.'), 400
+
+    try:
+        resultado = descargar_guia_sharepoint(registro, numero_guia)
+
+        if resultado.get('status') != 'exito':
+            return jsonify(success=False, message=resultado.get('mensaje', 'Error desconocido')), 500
+
+        if registro.imagen_guia and not str(registro.imagen_guia).startswith('data:'):
+            old_rel = _normalize_guia_relative_path(registro.imagen_guia)
+            old_abs = os.path.join(current_app.config['GUIDES_DIR'], old_rel) if old_rel else None
+            try:
+                if old_abs and os.path.exists(old_abs):
+                    os.remove(old_abs)
+            except Exception as err:
+                current_app.logger.warning(f"No se pudo eliminar archivo anterior (registro {registro.id}): {err}")
+
+        registro.imagen_guia = resultado['ruta_relativa']
+        registro.ultimo_editor = session.get('nombre', 'No identificado')
+        registro.fecha_actualizacion = datetime.utcnow()
+        db.session.commit()
+
+        url = url_for('serve_guia', filename=resultado['ruta_relativa'])
+        mime, _ = mimetypes.guess_type(resultado['ruta_abs'])
+
+        return jsonify(success=True, message=f"Guía {numero_guia}.pdf importada.", url=url, mime=mime or 'application/pdf')
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error importando desde SharePoint (ID: {id}): {e}")
         return jsonify(success=False, message=str(e)), 500
 
 @login_required
@@ -9560,6 +9705,68 @@ def guardar_clientes(clientes):
 from flask_sqlalchemy import SQLAlchemy
 db: SQLAlchemy  # Asegúrate de que tu app ya tiene db = SQLAlchemy(app)
 
+# Modelo para solicitudes de enturnamiento recibidas por WhatsApp
+class SolicitudCita(db.Model):
+    __tablename__ = 'solicitudes_cita'
+    __table_args__ = (
+        db.UniqueConstraint('turno_fecha', 'turno', name='uq_solicitudes_turno_fecha'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    telefono = db.Column(db.String(32), nullable=False)
+    mensaje = db.Column(db.Text, nullable=False)
+    fecha = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    nombre_completo = db.Column(db.String(255))
+    cedula = db.Column(db.String(64))
+    placa = db.Column(db.String(64))
+    placa_remolque = db.Column(db.String(64))
+    celular = db.Column(db.String(32))
+    imagen_guia = db.Column(db.String(512))  # URL o nombre de archivo
+    imagen_manifiesto = db.Column(db.String(512))
+    paso_bosconia = db.Column(db.Boolean, default=False)
+    ticket_gambote = db.Column(db.String(512))
+    ubicacion_lat = db.Column(db.Float)  # Latitud Bosconia enviada por WhatsApp
+    ubicacion_lng = db.Column(db.Float)  # Longitud Bosconia enviada por WhatsApp
+    ubicacion_gambote_lat = db.Column(db.Float)  # Latitud Gambote enviada por WhatsApp
+    ubicacion_gambote_lng = db.Column(db.Float)  # Longitud Gambote enviada por WhatsApp
+    paso_gambote = db.Column(db.Boolean, default=False)
+    ubicacion_zisa_lat = db.Column(db.Float)  # Latitud ZISA enviada por WhatsApp
+    ubicacion_zisa_lng = db.Column(db.Float)  # Longitud ZISA enviada por WhatsApp
+    paso_zisa = db.Column(db.Boolean, default=False)
+    ubicacion_pendiente_lat = db.Column(db.Float)
+    ubicacion_pendiente_lng = db.Column(db.Float)
+    ubicacion_pendiente_tipo = db.Column(db.String(32))
+    ubicacion_pendiente_mensaje = db.Column(db.String(255))
+    ubicacion_pendiente_desde = db.Column(db.DateTime)
+    ruta_alterna = db.Column(db.Boolean, default=False)  # Para casos de paro/protesta
+    estado = db.Column(db.String(32), default='preconfirmacion')  # preconfirmacion, pendiente_inscripcion, sin turno, en revision, enturnado, error
+    observaciones = db.Column(db.Text)
+    turno = db.Column(db.Integer)
+    turno_fecha = db.Column(db.Date)
+    fecha_descargue = db.Column(db.DateTime)
+    lugar_descargue = db.Column(db.String(255), default='Sociedad Portuaria del Dique')
+    whatsapp_step = db.Column(db.String(32), default='0')  # Paso actual en el flujo de WhatsApp
+    whatsapp_last_activity = db.Column(db.DateTime)  # Última actividad en WhatsApp
+    whatsapp_timeout_minutes = db.Column(db.Integer, default=5)  # Minutos de timeout para la sesión
+    whatsapp_warning_sent = db.Column(db.Boolean, default=False)  # Si ya se envió advertencia de timeout
+    asesor_pendiente = db.Column(db.Boolean, default=False)
+    asesor_pendiente_desde = db.Column(db.DateTime)
+
+
+class WhatsappMessage(db.Model):
+    __tablename__ = 'whatsapp_messages'
+    id = db.Column(db.Integer, primary_key=True)
+    solicitud_id = db.Column(db.Integer, db.ForeignKey('solicitudes_cita.id'), nullable=True)
+    telefono = db.Column(db.String(32), nullable=False, index=True)
+    direction = db.Column(db.String(16), nullable=False)  # inbound / outbound
+    sender = db.Column(db.String(16), nullable=False)  # driver / bot / human
+    message_type = db.Column(db.String(32), nullable=False, default='text')
+    content = db.Column(db.Text, nullable=True)
+    media_url = db.Column(db.String(512), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    solicitud = db.relationship('SolicitudCita', backref=db.backref('mensajes_whatsapp', lazy='dynamic'))
+
+
 class Cliente(db.Model):
     __tablename__ = 'clientes'
     id = db.Column(db.Integer, primary_key=True)
@@ -9573,11 +9780,1681 @@ class Conductor(db.Model):
     nombre = db.Column(db.String(255), nullable=False)
     cedula = db.Column(db.String(64), nullable=False, unique=True)
     placa = db.Column(db.String(64), nullable=False)
+    placa_remolque = db.Column(db.String(64))
+    celular = db.Column(db.String(32))
 
 class Empresa(db.Model):
     __tablename__ = 'empresas_transportadoras'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False, unique=True)
+
+    # --- PANEL DE REVISIÓN DE SOLICITUDES DE ENTURNAMIENTO ---
+    @login_required
+    @app.route('/panel_enturnamiento')
+    def panel_enturnamiento():
+        allowed_panel_emails = {'logistic@conquerstrading.com', 'ops@conquerstrading.com'}
+        email_actual = (session.get('email') or '').lower()
+        if session.get('rol') != 'admin' and email_actual not in allowed_panel_emails:
+            flash('Acceso restringido solo para el área de logística.', 'danger')
+            return redirect(url_for('home'))
+        solicitudes = (
+            SolicitudCita.query
+            .filter(
+                or_(
+                    SolicitudCita.estado != 'preconfirmacion',
+                    SolicitudCita.estado.is_(None),
+                    SolicitudCita.asesor_pendiente.is_(True)
+                )
+            )
+            .order_by(SolicitudCita.fecha.desc())
+            .all()
+        )
+        solicitudes_handoff = [s for s in solicitudes if getattr(s, 'asesor_pendiente', False)]
+        handoff_count = len(solicitudes_handoff)
+        # Añadir url de Google Maps si hay lat/lng
+        for s in solicitudes:
+            if getattr(s, 'ubicacion_lat', None) and getattr(s, 'ubicacion_lng', None):
+                s.url_maps = f"https://www.google.com/maps?q={s.ubicacion_lat},{s.ubicacion_lng}"
+            else:
+                s.url_maps = None
+            
+            # Validar secuencia GPS
+            validacion_gps = validar_secuencia_gps(s)
+            s.validacion_gps = validacion_gps
+            s.fecha_local = to_bogota_datetime(getattr(s, 'fecha', None))
+            s.fecha_descargue_local = to_bogota_datetime(getattr(s, 'fecha_descargue', None), assume_local=True)
+            s.whatsapp_last_activity_local = to_bogota_datetime(getattr(s, 'whatsapp_last_activity', None))
+        return render_template('panel_enturnamiento.html', solicitudes=solicitudes, handoff_count=handoff_count)
+
+    @login_required
+    @app.route('/api/solicitud_cita/<int:id>/estado', methods=['POST'])
+    def actualizar_estado_solicitud(id):
+        data = request.get_json()
+        nuevo_estado = data.get('estado')
+        observaciones = data.get('observaciones', '')
+        solicitud = SolicitudCita.query.get_or_404(id)
+        solicitud.observaciones = observaciones
+
+        estado_anterior = solicitud.estado
+        fecha_descargue_anterior = to_bogota_datetime(solicitud.fecha_descargue, assume_local=True)
+        turno_anterior = solicitud.turno
+
+        turno_val = None
+        turno_fecha = None
+        fecha_descargue_input_local = None
+        fecha_descargue_local = None
+        message_to_send = None
+
+        fecha_descargue_str = (data.get('fecha_descargue') or '').strip()
+        hora_descargue_str = (data.get('hora_descargue') or '').strip()
+
+        if nuevo_estado == 'enturnado':
+            if fecha_descargue_str and hora_descargue_str:
+                try:
+                    naive_local = datetime.strptime(f"{fecha_descargue_str} {hora_descargue_str}", '%Y-%m-%d %H:%M')
+                    fecha_descargue_input_local = BOGOTA_TZ.localize(naive_local)
+                except ValueError:
+                    fecha_descargue_input_local = None
+            elif fecha_descargue_str:
+                try:
+                    fecha_base = datetime.strptime(fecha_descargue_str, '%Y-%m-%d').date()
+                    naive_local = datetime.combine(fecha_base, time.min)
+                    fecha_descargue_input_local = BOGOTA_TZ.localize(naive_local)
+                except ValueError:
+                    fecha_descargue_input_local = None
+
+            if fecha_descargue_input_local is not None:
+                fecha_descargue_local = fecha_descargue_input_local
+            else:
+                existente_local = to_bogota_datetime(solicitud.fecha_descargue, assume_local=True)
+                fecha_descargue_local = existente_local or datetime.now(BOGOTA_TZ)
+
+            turno_manual = (data.get('turno') or '').strip()
+            if turno_manual:
+                try:
+                    turno_val = int(turno_manual)
+                except ValueError:
+                    return jsonify(success=False, message='El turno debe ser un número entero.'), 400
+
+                fecha_para_turno = fecha_descargue_input_local or fecha_descargue_local
+
+                if fecha_para_turno is None:
+                    return jsonify(success=False, message='Debes seleccionar una fecha de descargue para asignar turno.'), 400
+
+                turno_fecha = fecha_para_turno.date()
+
+                conflicto = (
+                    SolicitudCita.query
+                    .filter(
+                        SolicitudCita.turno == turno_val,
+                        SolicitudCita.turno_fecha == turno_fecha,
+                        SolicitudCita.id != solicitud.id
+                    )
+                    .first()
+                )
+                if conflicto:
+                    fecha_conflicto = conflicto.turno_fecha.strftime('%d/%m/%Y') if conflicto.turno_fecha else 'desconocida'
+                    return jsonify(success=False, message=f'El turno {turno_val} ya está asignado el {fecha_conflicto} a la solicitud #{conflicto.id}.'), 409
+
+        try:
+            if nuevo_estado == 'enturnado':
+                solicitud.estado = 'enturnado'
+                fecha_descargue_bogota = fecha_descargue_local or datetime.now(BOGOTA_TZ)
+                solicitud.fecha_descargue = bogota_naive(fecha_descargue_bogota)
+                solicitud.turno = turno_val
+                solicitud.turno_fecha = turno_fecha if turno_val is not None else None
+                solicitud.lugar_descargue = 'Sociedad Portuaria del Dique'
+                mensaje_enturnado = build_enturnado_message(solicitud)
+                was_enturnado = estado_anterior in {'enturnado', STATE_FINALIZADO}
+
+                if was_enturnado:
+                    turno_actual = solicitud.turno
+                    turno_cambio = turno_actual != turno_anterior
+
+                    cambio_fecha = False
+                    cambio_hora = False
+                    if fecha_descargue_anterior and fecha_descargue_bogota:
+                        cambio_fecha = fecha_descargue_anterior.date() != fecha_descargue_bogota.date()
+                        cambio_hora = fecha_descargue_anterior.time() != fecha_descargue_bogota.time()
+                    elif fecha_descargue_anterior or fecha_descargue_bogota:
+                        # Uno de los valores es None y el otro no, tratamos ambos como cambio
+                        cambio_fecha = True
+                        cambio_hora = True
+
+                    ajustes = []
+                    turno_texto = turno_actual if turno_actual is not None else 'Pendiente'
+                    if turno_cambio:
+                        ajustes.append(f'Nuevo turno: {turno_texto}.')
+
+                    if cambio_fecha and cambio_hora:
+                        ajustes.append(
+                            f"Nueva fecha y hora de descargue: {fecha_descargue_bogota.strftime('%d/%m/%Y %H:%M')}."
+                        )
+                    elif cambio_fecha:
+                        ajustes.append(
+                            f"Nueva fecha de descargue: {fecha_descargue_bogota.strftime('%d/%m/%Y')}."
+                        )
+                        ajustes.append(
+                            f"La hora se mantiene a las {fecha_descargue_bogota.strftime('%H:%M')}."
+                        )
+                    elif cambio_hora:
+                        ajustes.append(
+                            f"Nueva hora de descargue: {fecha_descargue_bogota.strftime('%H:%M')}."
+                        )
+
+                    if ajustes:
+                        lineas_reschedule = [
+                            '🙏 Hola, te habla Fisher 🐶. Lamentamos el cambio, ajustamos tu enturnamiento.',
+                            *ajustes,
+                            'Si necesitas hablar con nuestro equipo humano, responde *asesor* y te contactamos.',
+                            '\n🏁 *Si todo está bien, esta conversación finaliza aquí. Escribe NUEVO para tu próximo enturne.*'
+                        ]
+                        message_to_send = '\n'.join(lineas_reschedule)
+                        solicitud.mensaje = message_to_send
+                    else:
+                        message_to_send = None
+
+                    solicitud.estado = 'enturnado'
+                    solicitud.asesor_pendiente = False
+                    solicitud.asesor_pendiente_desde = None
+                    solicitud.whatsapp_step = str(STEP_INACTIVE)
+                    solicitud.whatsapp_timeout_minutes = 0
+                    solicitud.whatsapp_warning_sent = False
+                    solicitud.whatsapp_last_activity = datetime.utcnow()
+                else:
+                    message_to_send = mensaje_enturnado
+                    solicitud.mensaje = mensaje_enturnado
+                    solicitud.estado = STATE_FINALIZADO
+                    solicitud.asesor_pendiente = False
+                    solicitud.asesor_pendiente_desde = None
+                    solicitud.whatsapp_step = str(STEP_INACTIVE)
+                    solicitud.whatsapp_timeout_minutes = 0
+                    solicitud.whatsapp_warning_sent = False
+                    solicitud.whatsapp_last_activity = datetime.utcnow()
+            elif nuevo_estado == 'error':
+                solicitud.estado = 'error'
+                solicitud.turno = None
+                solicitud.turno_fecha = None
+                solicitud.fecha_descargue = None
+                solicitud.lugar_descargue = None
+                solicitud.whatsapp_step = 'error'
+                solicitud.whatsapp_timeout_minutes = 0
+                solicitud.whatsapp_warning_sent = False
+                solicitud.asesor_pendiente = False
+                solicitud.asesor_pendiente_desde = None
+                mensaje = (
+                    "❌ Fisher 🐶 olfateó que nos faltan datos para cerrar tu enturnamiento.\n"
+                    "Enseguida uno de nuestros asesores humanos te contactará para completar el proceso juntos.\n"
+                    "¡Gracias por tu paciencia y por confiar en Fisher!"
+                )
+                solicitud.mensaje = mensaje
+                message_to_send = mensaje
+            elif nuevo_estado == STATE_PENDING_INSCRIPTION:
+                solicitud.estado = STATE_PENDING_INSCRIPTION
+                solicitud.turno = None
+                solicitud.turno_fecha = None
+                solicitud.fecha_descargue = None
+                solicitud.lugar_descargue = None
+                solicitud.whatsapp_step = STEP_HUMAN_HANDOFF
+                solicitud.whatsapp_timeout_minutes = 0
+                solicitud.whatsapp_warning_sent = False
+                solicitud.whatsapp_last_activity = datetime.utcnow()
+                solicitud.asesor_pendiente = True
+                if not solicitud.asesor_pendiente_desde:
+                    solicitud.asesor_pendiente_desde = datetime.utcnow()
+                if not solicitud.mensaje:
+                    solicitud.mensaje = 'Solicitud en pendiente de inscripción para revisión humana.'
+            else:  # sin turno
+                solicitud.estado = 'sin turno'
+                solicitud.turno = None
+                solicitud.turno_fecha = None
+                solicitud.fecha_descargue = None
+                solicitud.lugar_descargue = None
+                solicitud.whatsapp_step = '0'
+                solicitud.whatsapp_timeout_minutes = _normalize_timeout_minutes(5)
+                solicitud.whatsapp_warning_sent = False
+                solicitud.mensaje = 'Solicitud en estado sin turno.'
+                solicitud.asesor_pendiente = False
+                solicitud.asesor_pendiente_desde = None
+
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            if turno_val is not None:
+                return jsonify(success=False, message=f'El turno {turno_val} ya está asignado a otra solicitud.'), 409
+            return jsonify(success=False, message='No fue posible guardar los cambios. Verifique la información e intente nuevamente.'), 409
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception('Error actualizando estado de solicitud %s', id)
+            return jsonify(success=False, message='Error interno al actualizar la solicitud.'), 500
+
+        if message_to_send:
+            try:
+                send_whatsapp_message(solicitud.telefono, message_to_send)
+            except Exception as send_err:
+                current_app.logger.warning('No se pudo enviar mensaje WhatsApp para solicitud %s: %s', id, send_err)
+
+        return jsonify(success=True, estado=solicitud.estado)
+
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/mensajes', methods=['GET'])
+def obtener_mensajes_whatsapp(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+    mensajes = (
+        WhatsappMessage.query
+        .filter_by(solicitud_id=solicitud.id)
+        .order_by(WhatsappMessage.created_at.asc())
+        .all()
+    )
+
+    def serialize(msg):
+        fecha_local = to_bogota_datetime(msg.created_at)
+        return {
+            'id': msg.id,
+            'sender': msg.sender,
+            'direction': msg.direction,
+            'tipo': msg.message_type,
+            'contenido': msg.content or '',
+            'media_url': msg.media_url,
+            'fecha': fecha_local.strftime('%d/%m/%Y %H:%M') if fecha_local else ''
+        }
+
+    return jsonify(success=True, mensajes=[serialize(m) for m in mensajes])
+
+
+@login_required
+@app.route('/api/solicitud_cita', methods=['POST'])
+def crear_solicitud_desde_panel():
+    data = request.get_json() or {}
+    telefono = (data.get('telefono') or '').strip()
+    if not telefono:
+        return jsonify(success=False, message='El número de teléfono es obligatorio.'), 400
+
+    estado_raw = (data.get('estado') or 'sin turno').strip().lower()
+    estado_permitido = {'sin turno', 'preconfirmacion', 'en revision', 'enturnado', STATE_FINALIZADO, 'error', STATE_PENDING_INSCRIPTION}
+    estado = estado_raw if estado_raw in estado_permitido else 'sin turno'
+
+    solicitud = SolicitudCita(
+        telefono=telefono,
+        mensaje='Solicitud creada manualmente desde el panel.',
+        fecha=datetime.utcnow(),
+        nombre_completo=(data.get('nombre_completo') or '').strip() or None,
+        cedula=(data.get('cedula') or '').strip() or None,
+        placa=(data.get('placa') or '').strip().upper() or None,
+        placa_remolque=(data.get('placa_remolque') or '').strip().upper() or None,
+        celular=(data.get('celular') or '').strip() or None,
+        observaciones=(data.get('observaciones') or '').strip() or None,
+        estado=estado,
+        whatsapp_step='0',
+        whatsapp_last_activity=datetime.utcnow(),
+    whatsapp_timeout_minutes=0,
+    whatsapp_warning_sent=False,
+        asesor_pendiente=False,
+        asesor_pendiente_desde=None
+    )
+
+    try:
+        db.session.add(solicitud)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify(success=False, message='No fue posible crear la solicitud. Verifica la información e intenta nuevamente.'), 400
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Error creando solicitud manualmente')
+        return jsonify(success=False, message='Error interno al crear la solicitud.'), 500
+
+    return jsonify(success=True, id=solicitud.id)
+
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/inscripcion/aprobar', methods=['POST'])
+def aprobar_inscripcion_manual(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+
+    if solicitud.estado != STATE_PENDING_INSCRIPTION:
+        return jsonify(success=False, message='La solicitud no está en estado pendiente de inscripción.'), 400
+
+    datos_requeridos = {
+        'nombre completo': solicitud.nombre_completo,
+        'cédula': solicitud.cedula,
+        'placa del camión': solicitud.placa
+    }
+    faltantes = [campo for campo, valor in datos_requeridos.items() if not valor]
+    if faltantes:
+        return jsonify(
+            success=False,
+            message='Faltan datos obligatorios para completar la inscripción: ' + ', '.join(faltantes)
+        ), 400
+
+    try:
+        conductor = Conductor.query.filter_by(cedula=solicitud.cedula).first()
+        celular_registrado = solicitud.celular or solicitud.telefono
+        placa_remolque_norm = (solicitud.placa_remolque or '').upper() or ''
+
+        if conductor:
+            conductor.nombre = solicitud.nombre_completo
+            conductor.placa = solicitud.placa
+            if hasattr(conductor, 'placa_remolque'):
+                conductor.placa_remolque = placa_remolque_norm
+            if hasattr(conductor, 'celular'):
+                conductor.celular = celular_registrado
+        else:
+            nuevo_conductor_kwargs = {
+                'nombre': solicitud.nombre_completo,
+                'cedula': solicitud.cedula,
+                'placa': solicitud.placa
+            }
+            if 'placa_remolque' in Conductor.__table__.columns:
+                nuevo_conductor_kwargs['placa_remolque'] = placa_remolque_norm
+            if 'celular' in Conductor.__table__.columns:
+                nuevo_conductor_kwargs['celular'] = celular_registrado
+            db.session.add(Conductor(**nuevo_conductor_kwargs))
+
+        solicitud.estado = 'sin turno'
+        solicitud.asesor_pendiente = False
+        solicitud.asesor_pendiente_desde = None
+        solicitud.whatsapp_step = str(STEP_AWAIT_GUIA)
+        solicitud.whatsapp_last_activity = datetime.utcnow()
+        solicitud.whatsapp_timeout_minutes = 30
+        solicitud.whatsapp_warning_sent = False
+        if not solicitud.celular:
+            solicitud.celular = solicitud.telefono
+        solicitud.mensaje = 'Inscripción aprobada manualmente. Solicitando guía al conductor.'
+
+        marca = datetime.utcnow().strftime('%d/%m/%Y %H:%M')
+        nota = f"[{marca}] Inscripción manual aprobada por {session.get('email', 'panel')}"
+        if solicitud.observaciones:
+            solicitud.observaciones = f"{solicitud.observaciones}\n{nota}"
+        else:
+            solicitud.observaciones = nota
+
+        db.session.commit()
+
+        try:
+            conductores = cargar_conductores()
+            documento_objetivo = str(solicitud.cedula or '').strip()
+            placa_objetivo = (solicitud.placa or '').upper()
+            nombre_norm = (solicitud.nombre_completo or '').strip().upper()
+            celular_norm = celular_registrado.strip() if isinstance(celular_registrado, str) else celular_registrado
+            documento_json_val = int(documento_objetivo) if documento_objetivo.isdigit() else documento_objetivo
+            celular_json_val = int(celular_norm) if isinstance(celular_norm, str) and celular_norm.isdigit() else celular_norm
+            actualizado = False
+
+            for conductor_json in conductores:
+                doc_json = str(conductor_json.get('N° DOCUMENTO', '')).strip()
+                placa_json = (conductor_json.get('PLACA', '') or '').upper()
+                if (documento_objetivo and doc_json == documento_objetivo) or placa_json == placa_objetivo:
+                    conductor_json['PLACA'] = placa_objetivo
+                    conductor_json['PLACA REMOLQUE'] = placa_remolque_norm or ''
+                    conductor_json['NOMBRE CONDUCTOR'] = nombre_norm or conductor_json.get('NOMBRE CONDUCTOR', '')
+                    conductor_json['N° DOCUMENTO'] = documento_json_val or conductor_json.get('N° DOCUMENTO', '')
+                    conductor_json['CELULAR'] = celular_json_val or conductor_json.get('CELULAR', '')
+                    actualizado = True
+                    break
+
+            if not actualizado:
+                nueva_entrada = {
+                    'PLACA': placa_objetivo,
+                    'PLACA REMOLQUE': placa_remolque_norm or '',
+                    'NOMBRE CONDUCTOR': nombre_norm or solicitud.nombre_completo or '',
+                    'N° DOCUMENTO': documento_json_val or solicitud.cedula or '',
+                    'CELULAR': celular_json_val or ''
+                }
+                conductores.append(nueva_entrada)
+
+            guardar_conductores(conductores)
+        except Exception:
+            current_app.logger.exception('No se pudo actualizar Conductores.json para la solicitud %s', id)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Error aprobando inscripción manual para solicitud %s', id)
+        return jsonify(success=False, message='No fue posible aprobar la inscripción. Intente nuevamente.'), 500
+
+    try:
+        from bot_whatsapp.routes import _cancel_final_timeout_message
+        _cancel_final_timeout_message(solicitud.id)
+    except Exception:
+        current_app.logger.debug('No se pudo cancelar timeout previo para solicitud %s', solicitud.id)
+
+    mensaje_confirmacion = (
+        "🎉 Fisher 🐶 olfateó que todo está en orden y movió la cola: ya quedaste inscrito con Conquers.\n"
+        "📄 Envía la foto de la guía o manifiesto como imagen o PDF para seguir con tu enturnamiento.\n"
+        "🛑 Recuerda estacionar el camión antes de responderme, yo espero aquí."
+    )
+    try:
+        send_whatsapp_message(solicitud.telefono, mensaje_confirmacion)
+    except Exception:
+        current_app.logger.warning('No se pudo enviar mensaje de aprobación al conductor %s', solicitud.telefono)
+
+    reset_safety_reminder_counter(solicitud.telefono)
+
+    return jsonify(success=True, message='Inscripción aprobada y conductor notificado.')
+
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/inscripcion/rechazar', methods=['POST'])
+def rechazar_inscripcion_manual(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+
+    if solicitud.estado != STATE_PENDING_INSCRIPTION:
+        return jsonify(success=False, message='La solicitud no está en estado pendiente de inscripción.'), 400
+
+    data = request.get_json() or {}
+    motivo = (data.get('motivo') or '').strip()
+
+    try:
+        solicitud.estado = 'preconfirmacion'
+        solicitud.asesor_pendiente = False
+        solicitud.asesor_pendiente_desde = None
+        solicitud.turno = None
+        solicitud.turno_fecha = None
+        solicitud.fecha_descargue = None
+        solicitud.lugar_descargue = None
+        solicitud.whatsapp_step = str(STEP_INACTIVE)
+        solicitud.whatsapp_timeout_minutes = 0
+        solicitud.whatsapp_warning_sent = False
+        solicitud.whatsapp_last_activity = datetime.utcnow()
+        solicitud.mensaje = 'Inscripción cancelada manualmente desde el panel.'
+
+        marca = datetime.utcnow().strftime('%d/%m/%Y %H:%M')
+        nota = f"[{marca}] Inscripción manual rechazada por {session.get('email', 'panel')}"
+        if motivo:
+            nota = f"{nota}. Motivo: {motivo}"
+        if solicitud.observaciones:
+            solicitud.observaciones = f"{solicitud.observaciones}\n{nota}"
+        else:
+            solicitud.observaciones = nota
+
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Error rechazando inscripción manual para solicitud %s', id)
+        return jsonify(success=False, message='No fue posible cancelar la inscripción.'), 500
+
+    try:
+        from bot_whatsapp.routes import _cancel_final_timeout_message
+        _cancel_final_timeout_message(solicitud.id)
+    except Exception:
+        current_app.logger.debug('No se pudo cancelar timeout previo para solicitud %s', solicitud.id)
+
+    mensaje_cancelacion = (
+        "❌ Fisher 🐶 olfateó un cambio de planes: este enturnamiento se cancela aquí.\n"
+        "Si necesitas iniciar uno nuevo, escribe NUEVO y arrancamos juntos cuando quieras."
+    )
+    try:
+        send_whatsapp_message(solicitud.telefono, mensaje_cancelacion)
+    except Exception:
+        current_app.logger.warning('No se pudo enviar mensaje de cancelación al conductor %s', solicitud.telefono)
+
+    reset_safety_reminder_counter(solicitud.telefono)
+
+    return jsonify(success=True, message='Inscripción cancelada y conductor notificado.')
+
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>', methods=['DELETE'])
+def eliminar_solicitud(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+
+    try:
+        try:
+            from bot_whatsapp.routes import _cancel_final_timeout_message
+            _cancel_final_timeout_message(solicitud.id)
+        except Exception:
+            current_app.logger.debug('No se pudo cancelar timeout final para solicitud %s', solicitud.id)
+
+        WhatsappMessage.query.filter_by(solicitud_id=solicitud.id).delete()
+        db.session.delete(solicitud)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Error eliminando la solicitud %s', id)
+        return jsonify(success=False, message='Error interno al eliminar la solicitud.'), 500
+
+    return jsonify(success=True)
+
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/ubicacion_pendiente', methods=['POST'])
+def resolver_ubicacion_pendiente(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+    data = request.get_json() or {}
+    accion = (data.get('accion') or '').strip().lower()
+
+    if accion not in {'aprobar', 'rechazar'}:
+        return jsonify(success=False, message='Acción inválida.'), 400
+
+    if not solicitud.ubicacion_pendiente_lat or not solicitud.ubicacion_pendiente_tipo:
+        return jsonify(success=False, message='No hay ubicación pendiente para revisar.'), 400
+
+    tipo = solicitud.ubicacion_pendiente_tipo
+    lat = solicitud.ubicacion_pendiente_lat
+    lng = solicitud.ubicacion_pendiente_lng
+    telefono = solicitud.telefono
+
+    try:
+        if accion == 'aprobar':
+            if tipo == 'bosconia':
+                solicitud.ubicacion_lat = lat
+                solicitud.ubicacion_lng = lng
+                solicitud.paso_bosconia = True
+                siguiente_step = 6
+                mensaje = (
+                    "✅ Nuestro equipo revisó la ubicación de Bosconia y la aprobó. "
+                    "Continúa con el proceso enviando el ticket o la siguiente información."
+                )
+            elif tipo == 'gambote':
+                solicitud.ubicacion_gambote_lat = lat
+                solicitud.ubicacion_gambote_lng = lng
+                solicitud.paso_gambote = True
+                siguiente_step = 9
+                mensaje = (
+                    "✅ Validamos la ubicación de Gambote y está aprobada. "
+                    "Tu solicitud sigue avanzando."
+                )
+            else:
+                return jsonify(success=False, message='Tipo de ubicación pendiente desconocido.'), 400
+
+            solicitud.asesor_pendiente = False
+            solicitud.asesor_pendiente_desde = None
+            solicitud.ubicacion_pendiente_lat = None
+            solicitud.ubicacion_pendiente_lng = None
+            solicitud.ubicacion_pendiente_tipo = None
+            solicitud.ubicacion_pendiente_mensaje = None
+            solicitud.ubicacion_pendiente_desde = None
+            db.session.commit()
+
+            send_whatsapp_message(telefono, mensaje)
+
+            session_data = get_or_create_whatsapp_session(telefono)
+            session_data['solicitud'] = solicitud
+            session_data['step'] = siguiente_step
+            session_data['timeout_minutes'] = 30
+            session_data['warning_sent'] = False
+            update_whatsapp_session(telefono, session_data)
+
+            return jsonify(success=True, message='Ubicación aprobada y conductor notificado.')
+
+        # Rechazo manual
+        if tipo == 'bosconia':
+            siguiente_step = STEP_AWAIT_GPS_BOSCONIA
+            mensaje = (
+                "❌ Revisamos la ubicación y no coincide con Bosconia. "
+                "Envía una nueva ubicación en tiempo real desde Bosconia para continuar."
+            )
+        elif tipo == 'gambote':
+            siguiente_step = STEP_AWAIT_GPS_GAMBOTE
+            mensaje = (
+                "❌ Nuestro equipo revisó la ubicación y no corresponde a Gambote. "
+                "Compártela nuevamente desde el peaje para poder continuar."
+            )
+        else:
+            return jsonify(success=False, message='Tipo de ubicación pendiente desconocido.'), 400
+
+        solicitud.asesor_pendiente = False
+        solicitud.asesor_pendiente_desde = None
+        solicitud.ubicacion_pendiente_lat = None
+        solicitud.ubicacion_pendiente_lng = None
+        solicitud.ubicacion_pendiente_tipo = None
+        solicitud.ubicacion_pendiente_mensaje = None
+        solicitud.ubicacion_pendiente_desde = None
+        db.session.commit()
+
+        send_whatsapp_message(telefono, mensaje)
+
+        session_data = get_or_create_whatsapp_session(telefono)
+        session_data['solicitud'] = solicitud
+        session_data['step'] = siguiente_step
+        session_data['timeout_minutes'] = 30
+        session_data['warning_sent'] = False
+        update_whatsapp_session(telefono, session_data)
+
+        return jsonify(success=True, message='Se notificó al conductor para reenviar la ubicación.')
+
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Error resolviendo ubicación pendiente para solicitud %s', id)
+        return jsonify(success=False, message='Error interno al actualizar la solicitud.'), 500
+
+def save_whatsapp_image(media_info, prefix='whatsapp'):
+    """Descarga un archivo enviado por WhatsApp (imagen o documento) y lo guarda localmente."""
+    if not media_info:
+        return None
+
+    try:
+        media_url = None
+        media_id = None
+        filename = None
+        content_type_hint = None
+
+        if isinstance(media_info, str):
+            media_url = media_info
+        elif isinstance(media_info, dict):
+            media_url = media_info.get('url')
+            media_id = media_info.get('id')
+            filename = media_info.get('filename')
+            content_type_hint = media_info.get('mime_type')
+
+        if not media_url and media_id and WHATSAPP_TOKEN:
+            meta_resp = requests.get(
+                f"https://graph.facebook.com/v18.0/{media_id}",
+                headers={'Authorization': f"Bearer {WHATSAPP_TOKEN}"},
+                timeout=15
+            )
+            meta_resp.raise_for_status()
+            media_url = meta_resp.json().get('url')
+
+        if not media_url:
+            print(f"No fue posible resolver URL para el medio de WhatsApp: {media_info}")
+            return None
+
+        headers = {'Authorization': f"Bearer {WHATSAPP_TOKEN}"} if WHATSAPP_TOKEN else {}
+
+        response = requests.get(media_url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        from io import BytesIO
+        from werkzeug.datastructures import FileStorage
+
+        content_type = content_type_hint or response.headers.get('content-type', '') or 'application/octet-stream'
+        if 'jpeg' in content_type or 'jpg' in content_type:
+            extension = '.jpg'
+        elif 'png' in content_type:
+            extension = '.png'
+        elif 'gif' in content_type:
+            extension = '.gif'
+        elif 'webp' in content_type:
+            extension = '.webp'
+        elif 'pdf' in content_type:
+            extension = '.pdf'
+        else:
+            extension = ''
+
+        if not filename:
+            filename = f"whatsapp_media{extension or ''}"
+
+        stream = BytesIO(response.content)
+        stream.seek(0)
+
+        # FileStorage provee los atributos que save_uploaded_file espera (.save, .mimetype, etc.)
+        file_storage = FileStorage(stream=stream, filename=filename, content_type=content_type)
+
+        return save_uploaded_file(file_storage, prefix)
+
+    except Exception as e:
+        print(f"Error descargando imagen de WhatsApp (media={media_info}): {e}")
+        return None
+
+def validar_ubicacion_gps(lat, lng, punto_control, radio_km=10, ruta_alterna=False):
+    """
+    Valida si las coordenadas GPS están cerca de un punto de control o si corresponden a una ubicación
+    posterior al mismo dentro del corredor esperado.
+    
+    Args:
+        lat: Latitud a validar
+        lng: Longitud a validar  
+        punto_control: 'bosconia' o 'gambote'
+        radio_km: Radio de validación en kilómetros (default 10km)
+        ruta_alterna: Si True, aplica tolerancias más amplias pensadas para desvíos autorizados
+    
+    Returns:
+        dict: {'valido': bool, 'distancia': float, 'mensaje': str, ...}
+    """
+    if not lat or not lng:
+        return {'valido': False, 'distancia': None, 'mensaje': 'Coordenadas no proporcionadas'}
+    
+    # Coordenadas de puntos de control (aproximadas)
+    DESTINO_FINAL = {
+        'lat': 10.295833,
+        'lng': -75.513833,
+        'nombre': 'Sociedad Portuaria del Dique'
+    }
+
+    PUNTOS_CONTROL = {
+        'bosconia': {
+            'lat': 9.97,
+            'lng': -73.89,
+            'nombre': 'Bosconia',
+            'siguiente': {'lat': 10.1361949, 'lng': -75.2642649},
+            'corridor_km': 25,
+            'max_post_km': 90,
+            'corridor_km_alterna': 32,
+            'max_post_km_alterna': 110,
+            'fallback': [
+                {
+                    'destino': 'gambote',
+                    'max_km': 32,
+                    'max_km_alterna': 42
+                },
+                {
+                    'destino': 'final',
+                    'max_km': 22,
+                    'max_km_alterna': 30,
+                    'skip_next': 'gambote'
+                }
+            ]
+        },
+        'gambote': {
+            'lat': 10.1361949,
+            'lng': -75.2642649,
+            'nombre': 'Peaje de Gambote',
+            'siguiente': {'lat': 10.3834, 'lng': -75.499},
+            'corridor_km': 25,
+            'max_post_km': 140,
+            'corridor_km_alterna': 35,
+            'max_post_km_alterna': 160,
+            'alternas': [
+                {'lat': 10.2200, 'lng': -75.1500}
+            ],
+            'fallback': [
+                {
+                    'destino': DESTINO_FINAL,
+                    'max_km': 28,
+                    'max_km_alterna': 38,
+                    'skip_next': 'final'
+                }
+            ]
+        }
+    }
+    
+    if punto_control not in PUNTOS_CONTROL:
+        return {'valido': False, 'distancia': None, 'mensaje': f'Punto de control desconocido: {punto_control}'}
+    
+    punto = PUNTOS_CONTROL[punto_control]
+
+    def _distancia_km(lat0, lng0, lat1, lng1):
+        lat0_r, lng0_r = radians(lat0), radians(lng0)
+        lat1_r, lng1_r = radians(lat1), radians(lng1)
+        dlat = lat1_r - lat0_r
+        dlng = lng1_r - lng0_r
+        a = sin(dlat / 2) ** 2 + cos(lat0_r) * cos(lat1_r) * sin(dlng / 2) ** 2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return 6371 * c
+
+    def _to_km_vectors(lat0, lng0, lat1, lng1):
+        promedio_lat = radians((lat0 + lat1) / 2.0)
+        delta_lat = lat1 - lat0
+        delta_lng = lng1 - lng0
+        # Aproximación plana válida para los rangos de distancia manejados (<200 km)
+        eje_y = delta_lat * 110.574
+        eje_x = delta_lng * (111.320 * cos(promedio_lat))
+        return eje_x, eje_y
+
+    def _evaluar_post_pasaje(destino):
+        if not destino:
+            return None
+        vector_x, vector_y = _to_km_vectors(punto['lat'], punto['lng'], destino['lat'], destino['lng'])
+        magnitude_sq = vector_x ** 2 + vector_y ** 2
+        if magnitude_sq <= 0:
+            return None
+        posicion_x, posicion_y = _to_km_vectors(punto['lat'], punto['lng'], lat, lng)
+        proyeccion = (posicion_x * vector_x + posicion_y * vector_y) / magnitude_sq
+        if proyeccion <= 0:
+            return None
+        base = sqrt(magnitude_sq)
+        # Distancia lateral (desvío) respecto al corredor
+        desviacion = abs(posicion_x * vector_y - posicion_y * vector_x) / base
+        # Distancia recorrida sobre el corredor desde el punto de control
+        avance = proyeccion * base
+        return {
+            'proyeccion': proyeccion,
+            'desviacion': desviacion,
+            'avance': avance
+        }
+    
+    # Calcular distancia usando fórmula de Haversine
+    from math import radians, sin, cos, sqrt, atan2
+    
+    # Convertir a radianes
+    lat1, lng1 = radians(lat), radians(lng)
+    lat2, lng2 = radians(punto['lat']), radians(punto['lng'])
+    
+    # Diferencias
+    dlat = lat2 - lat1
+    dlng = lng2 - lng1
+    
+    # Fórmula de Haversine
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlng/2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1-a))
+    distancia = 6371 * c  # Radio de la Tierra en km
+    mensaje_base = f"Distancia a {punto['nombre']}: {distancia:.2f} km"
+
+    if distancia <= radio_km:
+        mensaje = f"{mensaje_base} ✅ Válido (dentro de {radio_km} km)"
+        return {
+            'valido': True,
+            'distancia': distancia,
+            'mensaje': mensaje
+        }
+
+    # Evaluar si la ubicación llegó tarde pero sobre el corredor posterior al punto de control
+    corredores = []
+    if punto.get('siguiente'):
+        corredores.append(punto['siguiente'])
+    if punto.get('alternas'):
+        corredores.extend(punto['alternas'])
+
+    corredor_valido = None
+    for destino in corredores:
+        evaluacion = _evaluar_post_pasaje(destino)
+        if not evaluacion:
+            continue
+        corredor_tolerancia = punto.get('corridor_km', 20)
+        corredor_max_post = punto.get('max_post_km', 100)
+        if ruta_alterna:
+            corredor_tolerancia = max(corredor_tolerancia, punto.get('corridor_km_alterna', corredor_tolerancia))
+            corredor_max_post = max(corredor_max_post, punto.get('max_post_km_alterna', corredor_max_post))
+
+        if evaluacion['desviacion'] <= corredor_tolerancia and evaluacion['avance'] <= corredor_max_post:
+            corredor_valido = evaluacion
+            break
+
+    if corredor_valido:
+        mensaje = (
+            f"{mensaje_base} ⚠️ Fuera del radio inmediato ({radio_km} km), "
+            "pero se detecta después del punto de control. "
+            f"Desvío lateral: {corredor_valido['desviacion']:.1f} km."
+        )
+        resultado = {
+            'valido': True,
+            'distancia': distancia,
+            'mensaje': mensaje,
+            'post_pasaje': True,
+            'desvio_corridor': corredor_valido['desviacion'],
+            'avance_ruta_km': corredor_valido['avance']
+        }
+        return resultado
+
+    fallback_cfg = punto.get('fallback')
+    if fallback_cfg:
+        fallback_entries = fallback_cfg if isinstance(fallback_cfg, (list, tuple)) else [fallback_cfg]
+        for entry in fallback_entries:
+            destino_cfg = entry.get('destino')
+            max_km = entry.get('max_km', 30)
+            if ruta_alterna:
+                max_km = max(max_km, entry.get('max_km_alterna', max_km))
+
+            posibles_destinos = []
+            if isinstance(destino_cfg, (list, tuple)):
+                posibles_destinos = destino_cfg
+            else:
+                posibles_destinos = [destino_cfg]
+
+            for posible in posibles_destinos:
+                destino_info = None
+                if isinstance(posible, str):
+                    if posible in PUNTOS_CONTROL:
+                        destino_info = PUNTOS_CONTROL[posible]
+                    elif posible == 'final':
+                        destino_info = DESTINO_FINAL
+                elif isinstance(posible, dict):
+                    destino_info = posible
+
+                if not destino_info:
+                    continue
+
+                distancia_destino = _distancia_km(lat, lng, destino_info['lat'], destino_info['lng'])
+                if distancia_destino <= max_km and distancia_destino < distancia:
+                    mensaje = (
+                        f"{mensaje_base} ⚠️ Fuera del radio inmediato, pero ya estás "
+                        f"más cerca de {destino_info.get('nombre', 'el siguiente punto')} ({distancia_destino:.2f} km). "
+                        "Marcamos el control como cumplido."
+                    )
+                    resultado = {
+                        'valido': True,
+                        'distancia': distancia,
+                        'mensaje': mensaje,
+                        'post_pasaje': True,
+                        'destino_referencia': destino_info.get('nombre')
+                    }
+                    if entry.get('skip_next'):
+                        resultado['skip_next'] = entry['skip_next']
+                    return resultado
+
+    mensaje = f"{mensaje_base} ❌ Inválido (fuera de {radio_km} km)"
+    return {
+        'valido': False,
+        'distancia': distancia,
+        'mensaje': mensaje
+    }
+
+def validar_secuencia_gps(solicitud):
+    """
+    Valida la secuencia GPS de una solicitud (Bosconia -> Gambote).
+    
+    Args:
+        solicitud: Objeto SolicitudCita
+    
+    Returns:
+        dict: {'valido': bool, 'mensaje': str, 'detalles': dict}
+    """
+    detalles = {
+        'bosconia': {'valido': False, 'distancia': None, 'mensaje': 'Sin validar'},
+        'gambote': {'valido': False, 'distancia': None, 'mensaje': 'Sin validar'},
+        'secuencia': {'valido': False, 'mensaje': 'Secuencia no validada'}
+    }
+    
+    # Validar Bosconia
+    if solicitud.ubicacion_lat and solicitud.ubicacion_lng:
+        resultado_bosconia = validar_ubicacion_gps(
+            solicitud.ubicacion_lat, 
+            solicitud.ubicacion_lng, 
+            'bosconia',
+            ruta_alterna=getattr(solicitud, 'ruta_alterna', False)
+        )
+        detalles['bosconia'] = resultado_bosconia
+    
+    # Validar Gambote
+    if solicitud.ubicacion_gambote_lat and solicitud.ubicacion_gambote_lng:
+        resultado_gambote = validar_ubicacion_gps(
+            solicitud.ubicacion_gambote_lat, 
+            solicitud.ubicacion_gambote_lng, 
+            'gambote',
+            ruta_alterna=getattr(solicitud, 'ruta_alterna', False)
+        )
+        detalles['gambote'] = resultado_gambote
+    
+    # Validar secuencia (Bosconia -> Gambote)
+    if getattr(solicitud, 'ruta_alterna', False):
+        # Ruta alterna: consideramos válido si al menos se validó Gambote
+        if detalles['gambote']['valido']:
+            detalles['secuencia'] = {
+                'valido': True, 
+                'mensaje': '✅ Ruta alterna válida: Se validó la ubicación de Gambote'
+            }
+        else:
+            detalles['secuencia'] = {
+                'valido': False, 
+                'mensaje': '❌ Ruta alterna inválida: Falta validar la ubicación de Gambote'
+            }
+    else:
+        # Ruta normal: Bosconia y Gambote
+        ambos_validos = detalles['bosconia']['valido'] and detalles['gambote']['valido']
+
+        if ambos_validos:
+            detalles['secuencia'] = {
+                'valido': True, 
+                'mensaje': '✅ Secuencia GPS válida: Bosconia → Gambote'
+            }
+        elif detalles['bosconia']['valido'] and not detalles['gambote']['valido']:
+            detalles['secuencia'] = {
+                'valido': False, 
+                'mensaje': '❌ Bosconia válido, Gambote faltante o inválido'
+            }
+        else:
+            detalles['secuencia'] = {
+                'valido': False, 
+                'mensaje': '❌ Secuencia GPS incompleta o inválida'
+            }
+    
+    mensaje_general = detalles['secuencia']['mensaje']
+    if detalles['bosconia']['mensaje'] != 'Sin validar':
+        mensaje_general += f"\n{detalles['bosconia']['mensaje']}"
+    if detalles['gambote']['mensaje'] != 'Sin validar':
+        mensaje_general += f"\n{detalles['gambote']['mensaje']}"
+    
+    return {
+        'valido': detalles['secuencia']['valido'],
+        'mensaje': mensaje_general,
+        'detalles': detalles
+    }
+
+def _normalize_guia_relative_path(value):
+    """Normaliza rutas relativas de guías para que sean relativas a GUIDES_DIR."""
+    if not value:
+        return None
+
+    clean = str(value).strip().replace('\\', '/')
+    prefixes = ['static/guias/', '/static/guias/', 'guias/', '/guias/']
+    while True:
+        clean_lower = clean.lower()
+        removed = False
+        for prefix in prefixes:
+            if clean_lower.startswith(prefix):
+                clean = clean[len(prefix):]
+                removed = True
+                break
+        if not removed:
+            break
+    cleaned = clean.lstrip('/')
+    return cleaned or None
+
+
+def save_uploaded_file(file, prefix='file'):
+    """Guarda un archivo subido y retorna la ruta relativa dentro de GUIDES_DIR."""
+    import os
+    import uuid
+    from werkzeug.utils import secure_filename
+    
+    if not file or not getattr(file, 'filename', None):
+        return None
+    
+    # Validar tipo MIME
+    allowed_mime_types = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf'
+    ]
+    
+    # Obtener tipo MIME del archivo
+    mime_type = getattr(file, 'mimetype', None) or getattr(file, 'content_type', '')
+    
+    # Si no hay MIME type, intentar detectar por extensión
+    if not mime_type:
+        filename = secure_filename(file.filename).lower()
+        if filename.endswith(('.jpg', '.jpeg')):
+            mime_type = 'image/jpeg'
+        elif filename.endswith('.png'):
+            mime_type = 'image/png'
+        elif filename.endswith('.gif'):
+            mime_type = 'image/gif'
+        elif filename.endswith('.webp'):
+            mime_type = 'image/webp'
+        elif filename.endswith('.pdf'):
+            mime_type = 'application/pdf'
+    
+    if mime_type not in allowed_mime_types:
+        raise ValueError(f"Tipo de archivo no permitido: {mime_type}. Solo se permiten imágenes (JPEG, PNG, GIF, WebP) y PDFs.")
+    
+    # Crear directorio si no existe (GUIDES_DIR configurable)
+    if has_app_context():
+        config_source = current_app.config
+        base_path = current_app.root_path
+    else:
+        config_source = app.config
+        base_path = app.root_path
+
+    upload_dir = config_source.get('GUIDES_DIR') or os.path.join(base_path, 'guias')
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generar nombre único
+    filename = secure_filename(file.filename)
+    _, ext = os.path.splitext(filename)
+    if not ext:
+        # Determinar extensión por MIME type
+        if mime_type == 'image/jpeg':
+            ext = '.jpg'
+        elif mime_type == 'image/png':
+            ext = '.png'
+        elif mime_type == 'image/gif':
+            ext = '.gif'
+        elif mime_type == 'image/webp':
+            ext = '.webp'
+        elif mime_type == 'application/pdf':
+            ext = '.pdf'
+        else:
+            ext = '.bin'
+    
+    unique_filename = f"{prefix}_{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    # Guardar archivo
+    if hasattr(file, 'seek'):
+        file.seek(0)
+    elif hasattr(file, 'stream') and hasattr(file.stream, 'seek'):
+        file.stream.seek(0)
+
+    if hasattr(file, 'save'):
+        file.save(file_path)
+    else:
+        with open(file_path, 'wb') as f:
+            f.write(file.read())
+    
+    # Retornar ruta relativa para acceder desde web
+    return _normalize_guia_relative_path(unique_filename)
+
+@app.route('/api/solicitud_cita/<int:id>', methods=['GET'])
+def obtener_solicitud(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+    return jsonify({
+        'id': solicitud.id,
+        'imagen_guia': solicitud.imagen_guia,
+        'imagen_manifiesto': solicitud.imagen_manifiesto,
+        'paso_bosconia': solicitud.paso_bosconia,
+        'ticket_gambote': solicitud.ticket_gambote,
+        'ubicacion_lat': solicitud.ubicacion_lat,
+        'ubicacion_lng': solicitud.ubicacion_lng,
+        'ubicacion_gambote_lat': solicitud.ubicacion_gambote_lat,
+        'ubicacion_gambote_lng': solicitud.ubicacion_gambote_lng,
+        'paso_gambote': solicitud.paso_gambote,
+        'observaciones': solicitud.observaciones
+    })
+
+@app.route('/api/solicitud_cita/<int:id>', methods=['PUT'])
+def actualizar_solicitud(id):
+    solicitud = SolicitudCita.query.get_or_404(id)
+
+    # Manejar tanto FormData (con archivos) como JSON (datos simples)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        # Procesar FormData con archivos
+        actualizado = False
+
+        # Procesar archivos - PRIORIDAD: si hay archivo, usar el archivo guardado
+        if 'imagen_guia_file' in request.files:
+            file = request.files['imagen_guia_file']
+            if file and file.filename:
+                try:
+                    ruta_guardada = save_uploaded_file(file, 'guia')
+                    if ruta_guardada:
+                        solicitud.imagen_guia = ruta_guardada
+                        actualizado = True
+                except ValueError as e:
+                    return jsonify(success=False, message=str(e)), 400
+
+        if 'imagen_manifiesto_file' in request.files:
+            file = request.files['imagen_manifiesto_file']
+            if file and file.filename:
+                try:
+                    ruta_guardada = save_uploaded_file(file, 'manifiesto')
+                    if ruta_guardada:
+                        solicitud.imagen_manifiesto = ruta_guardada
+                        actualizado = True
+                except ValueError as e:
+                    return jsonify(success=False, message=str(e)), 400
+
+        if 'ticket_gambote_file' in request.files:
+            file = request.files['ticket_gambote_file']
+            if file and file.filename:
+                try:
+                    ruta_guardada = save_uploaded_file(file, 'ticket')
+                    if ruta_guardada:
+                        solicitud.ticket_gambote = ruta_guardada
+                        actualizado = True
+                except ValueError as e:
+                    return jsonify(success=False, message=str(e)), 400
+
+        # Procesar campos de texto del formulario (SOLO si NO se subió archivo para ese campo)
+        campos_texto = ['paso_bosconia', 'ubicacion_lat', 'ubicacion_lng', 'ubicacion_gambote_lat', 'ubicacion_gambote_lng', 'paso_gambote', 'observaciones']
+        for campo in campos_texto:
+            if campo in request.form:
+                valor_nuevo = request.form[campo]
+                valor_actual = getattr(solicitud, campo)
+
+                # Convertir tipos según sea necesario
+                if campo in ['ubicacion_lat', 'ubicacion_lng', 'ubicacion_gambote_lat', 'ubicacion_gambote_lng']:
+                    try:
+                        valor_nuevo = float(valor_nuevo) if valor_nuevo else None
+                    except (ValueError, TypeError):
+                        valor_nuevo = None
+                elif campo in ['paso_bosconia', 'paso_gambote']:
+                    valor_nuevo = valor_nuevo.lower() in ('true', '1', 'yes', 'si') if valor_nuevo else False
+
+                if valor_actual != valor_nuevo:
+                    setattr(solicitud, campo, valor_nuevo)
+                    actualizado = True
+
+        # Procesar campos de texto de archivos SOLO si NO se subió archivo
+        # (como respaldo para URLs directas)
+        if 'imagen_guia' in request.form and not ('imagen_guia_file' in request.files and request.files['imagen_guia_file'].filename):
+            valor_bruto = request.form['imagen_guia'].strip()
+            valor_nuevo = _normalize_guia_relative_path(valor_bruto)
+            actual_bruto = (getattr(solicitud, 'imagen_guia', '') or '').strip()
+            actual_normalizado = _normalize_guia_relative_path(actual_bruto)
+            if valor_nuevo and (valor_nuevo != actual_normalizado or actual_bruto != actual_normalizado):
+                solicitud.imagen_guia = valor_nuevo
+                actualizado = True
+            elif not valor_bruto and actual_bruto:
+                solicitud.imagen_guia = None
+                actualizado = True
+
+        if 'imagen_manifiesto' in request.form and not ('imagen_manifiesto_file' in request.files and request.files['imagen_manifiesto_file'].filename):
+            valor_bruto = request.form['imagen_manifiesto'].strip()
+            valor_nuevo = _normalize_guia_relative_path(valor_bruto)
+            actual_bruto = (getattr(solicitud, 'imagen_manifiesto', '') or '').strip()
+            actual_normalizado = _normalize_guia_relative_path(actual_bruto)
+            if valor_nuevo and (valor_nuevo != actual_normalizado or actual_bruto != actual_normalizado):
+                solicitud.imagen_manifiesto = valor_nuevo
+                actualizado = True
+            elif not valor_bruto and actual_bruto:
+                solicitud.imagen_manifiesto = None
+                actualizado = True
+
+        if 'ticket_gambote' in request.form and not ('ticket_gambote_file' in request.files and request.files['ticket_gambote_file'].filename):
+            valor_bruto = request.form['ticket_gambote'].strip()
+            valor_nuevo = _normalize_guia_relative_path(valor_bruto)
+            actual_bruto = (getattr(solicitud, 'ticket_gambote', '') or '').strip()
+            actual_normalizado = _normalize_guia_relative_path(actual_bruto)
+            if valor_nuevo and (valor_nuevo != actual_normalizado or actual_bruto != actual_normalizado):
+                solicitud.ticket_gambote = valor_nuevo
+                actualizado = True
+            elif not valor_bruto and actual_bruto:
+                solicitud.ticket_gambote = None
+                actualizado = True
+    else:
+        # Procesar JSON (comportamiento original)
+        data = request.get_json()
+        campos_actualizables = [
+            'imagen_guia', 'imagen_manifiesto', 'paso_bosconia',
+            'ticket_gambote', 'ubicacion_lat', 'ubicacion_lng', 
+            'ubicacion_gambote_lat', 'ubicacion_gambote_lng', 'paso_gambote',
+            'observaciones'
+        ]
+
+        actualizado = False
+        for campo in campos_actualizables:
+            if campo in data:
+                valor_actual = getattr(solicitud, campo)
+                nuevo_valor = data[campo]
+                if campo in {'imagen_guia', 'imagen_manifiesto', 'ticket_gambote'}:
+                    if nuevo_valor:
+                        nuevo_valor_norm = _normalize_guia_relative_path(nuevo_valor)
+                        actual_norm = _normalize_guia_relative_path(valor_actual)
+                        if nuevo_valor_norm and (nuevo_valor_norm != actual_norm or valor_actual != actual_norm):
+                            setattr(solicitud, campo, nuevo_valor_norm)
+                            actualizado = True
+                    else:
+                        if valor_actual:
+                            setattr(solicitud, campo, None)
+                            actualizado = True
+                else:
+                    if valor_actual != nuevo_valor:
+                        setattr(solicitud, campo, nuevo_valor)
+                        actualizado = True
+
+    if actualizado:
+        db.session.commit()
+        return jsonify(success=True, message='Solicitud actualizada correctamente')
+    else:
+        return jsonify(success=True, message='No se realizaron cambios')
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/enviar_mensaje', methods=['POST'])
+def enviar_mensaje_conductor(id):
+    """Envía un mensaje personalizado al conductor desde el panel de enturnamiento"""
+    try:
+        content_type = (request.content_type or '').lower()
+        is_multipart = 'multipart/form-data' in content_type
+
+        data = {}
+        uploaded_file = None
+
+        if is_multipart:
+            data = request.form.to_dict(flat=True)
+            uploaded_file = request.files.get('adjunto')
+        else:
+            data = request.get_json(silent=True) or {}
+            # fallback para clientes que envían form-urlencoded sin JSON
+            if not data and request.form:
+                data = request.form.to_dict(flat=True)
+                uploaded_file = request.files.get('adjunto')
+        mensaje = (data.get('mensaje') or '').strip()
+        preset_raw = (data.get('preset') or 'personalizado').strip().lower()
+        urgente_value = data.get('urgente')
+        if isinstance(urgente_value, str):
+            urgente = urgente_value.strip().lower() in {'1', 'true', 'yes', 'on', 'si', 'sí'}
+        else:
+            urgente = bool(urgente_value)
+        has_attachment = bool(uploaded_file and getattr(uploaded_file, 'filename', ''))
+        presets_validos = {
+            'personalizado',
+            'nueva_guia',
+            'nuevo_ticket',
+            'nueva_ubicacion_bosconia',
+            'nueva_ubicacion_gambote',
+            'recordatorio_inteligente',
+            'turno_retrasado',
+            'finalizar_atencion'
+        }
+        preset = preset_raw if preset_raw in presets_validos else 'personalizado'
+        
+        if not mensaje and not has_attachment and preset != 'recordatorio_inteligente':
+            return jsonify(success=False, message='Escribe un mensaje o adjunta un archivo antes de enviarlo.'), 400
+
+        media_url = None
+        if has_attachment:
+            try:
+                stored_name = save_uploaded_file(uploaded_file, prefix='mensaje')
+            except ValueError as file_err:
+                return jsonify(success=False, message=str(file_err)), 400
+            except Exception:
+                current_app.logger.exception('No se pudo guardar adjunto para solicitud %s', id)
+                return jsonify(success=False, message='No se pudo guardar el adjunto.'), 500
+
+            if stored_name:
+                base_public_url = (current_app.config.get('WHATSAPP_MEDIA_BASE_URL')
+                                   or os.environ.get('WHATSAPP_MEDIA_BASE_URL')
+                                   or request.host_url)
+                if not base_public_url.endswith('/'):
+                    base_public_url = f"{base_public_url}/"
+                media_url = urljoin(base_public_url, f'guias/{stored_name}')
+                if media_url.startswith('http://'):
+                    current_app.logger.warning(
+                        'El adjunto para solicitud %s se está enviando con URL no segura (%s). '
+                        'WhatsApp requiere HTTPS accesible públicamente.',
+                        id,
+                        media_url
+                    )
+        
+        # Buscar la solicitud
+        solicitud = SolicitudCita.query.get_or_404(id)
+        
+        if not solicitud.telefono:
+            return jsonify(success=False, message='La solicitud no tiene un número de teléfono registrado'), 400
+        
+        if preset == 'recordatorio_inteligente':
+            analisis_faltantes = analizar_datos_faltantes(solicitud)
+            if analisis_faltantes['todos_completos']:
+                return jsonify(success=False, message='Todos los datos están completos. No hay recordatorio que enviar.'), 400
+            if not mensaje:
+                if analisis_faltantes['total_faltantes'] == 1:
+                    mensaje = (
+                        "Fisher 🐶 detectó un pendiente y te guiará enseguida:\n\n"
+                        f"{analisis_faltantes['mensajes_recomendados'][0]}\n\n"
+                        "Cuando lo envíes, avanzamos automáticamente al siguiente paso."
+                    )
+                else:
+                    partes = [
+                        "Fisher 🐶 revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
+                    ]
+                    for idx, texto_faltante in enumerate(analisis_faltantes['mensajes_recomendados'], 1):
+                        partes.append(f"{idx}. {texto_faltante}\n\n")
+                    partes.append("Comencemos con el primero; te indicaré al instante qué necesitas enviar.")
+                    mensaje = ''.join(partes)
+
+        mensaje_completo = mensaje
+        if urgente and mensaje_completo:
+            mensaje_completo = f"🚨 {mensaje_completo}"
+        
+        exito = send_whatsapp_message(
+            solicitud.telefono,
+            mensaje_completo,
+            media_url=media_url,
+            sender='human',
+            solicitud=solicitud
+        )
+        
+        if exito:
+            def aplicar_accion_preset(solicitud_obj, preset_key):
+                aplicado = False
+                detalle = None
+                ahora = datetime.utcnow()
+                presets_reinicio = {
+                    'nueva_guia',
+                    'nuevo_ticket',
+                    'nueva_ubicacion_bosconia',
+                    'nueva_ubicacion_gambote'
+                }
+
+                def reprogramar_timeout(minutos, contexto):
+                    try:
+                        from bot_whatsapp.routes import (
+                            _schedule_inactivity_timeout,
+                            _cancel_inactivity_timeout,
+                            _cancel_final_timeout_message
+                        )
+                        _cancel_inactivity_timeout(solicitud_obj.id)
+                        _cancel_final_timeout_message(solicitud_obj.id)
+                        if minutos and minutos > 0 and solicitud_obj.telefono:
+                            _schedule_inactivity_timeout(solicitud_obj.id, solicitud_obj.telefono, delay_minutes=minutos)
+                    except Exception as scheduling_err:
+                        current_app.logger.warning(
+                            'No se pudo reprogramar timeout tras %s para solicitud %s: %s',
+                            contexto,
+                            solicitud_obj.id,
+                            scheduling_err
+                        )
+
+                if preset_key == 'nueva_guia':
+                    if solicitud_obj.imagen_guia:
+                        solicitud_obj.imagen_guia = None
+                        aplicado = True
+                    if solicitud_obj.imagen_manifiesto:
+                        solicitud_obj.imagen_manifiesto = None
+                        aplicado = True
+                    detalle = 'Se solicitó reenviar la guía o manifiesto.'
+                elif preset_key == 'nuevo_ticket':
+                    if solicitud_obj.ticket_gambote:
+                        solicitud_obj.ticket_gambote = None
+                        aplicado = True
+                    detalle = 'Se solicitó reenviar el ticket de Gambote.'
+                elif preset_key == 'nueva_ubicacion_bosconia':
+                    if solicitud_obj.paso_bosconia or solicitud_obj.ubicacion_lat or solicitud_obj.ubicacion_lng:
+                        aplicado = True
+                    solicitud_obj.paso_bosconia = False
+                    solicitud_obj.ubicacion_lat = None
+                    solicitud_obj.ubicacion_lng = None
+                    detalle = 'Se solicitó revalidar la ubicación de Bosconia.'
+                elif preset_key == 'nueva_ubicacion_gambote':
+                    if solicitud_obj.paso_gambote or solicitud_obj.ubicacion_gambote_lat or solicitud_obj.ubicacion_gambote_lng:
+                        aplicado = True
+                    solicitud_obj.paso_gambote = False
+                    solicitud_obj.ubicacion_gambote_lat = None
+                    solicitud_obj.ubicacion_gambote_lng = None
+                    detalle = 'Se solicitó revalidar la ubicación de Gambote.'
+                elif preset_key == 'turno_retrasado':
+                    solicitud_obj.asesor_pendiente = True
+                    solicitud_obj.asesor_pendiente_desde = ahora
+                    solicitud_obj.whatsapp_step = str(STEP_HUMAN_HANDOFF)
+                    solicitud_obj.whatsapp_timeout_minutes = 0
+                    solicitud_obj.whatsapp_warning_sent = False
+                    solicitud_obj.whatsapp_last_activity = ahora
+                    reprogramar_timeout(0, 'turno en ajuste operativo')
+                    detalle = 'Se notificó ajuste operativo del turno y el caso quedó en manos del equipo humano.'
+                    aplicado = True
+                elif preset_key == 'recordatorio_inteligente':
+                    analisis_local = analizar_datos_faltantes(solicitud_obj)
+                    if analisis_local['todos_completos']:
+                        detalle = 'Recordatorio inteligente omitido: no hay datos pendientes.'
+                        return False, detalle
+
+                    faltantes_txt = ', '.join(analisis_local['datos_faltantes']) if analisis_local['datos_faltantes'] else 'sin pendientes'
+                    detalle = f'Se envió recordatorio inteligente. Pendientes detectados: {faltantes_txt}.'
+                    session_preparada = preparar_sesion_para_pendientes(solicitud_obj, enviar_prompt=True)
+                    if not session_preparada:
+                        siguiente_step = determinar_siguiente_step_pendiente(solicitud_obj)
+                        solicitud_obj.whatsapp_step = str(siguiente_step)
+                        solicitud_obj.whatsapp_last_activity = ahora
+                        solicitud_obj.whatsapp_warning_sent = False
+                        if siguiente_step == STEP_FINAL_CONFIRMATION:
+                            solicitud_obj.whatsapp_timeout_minutes = 0
+                            reprogramar_timeout(0, 'recordatorio inteligente (sin timeout)')
+                        else:
+                            solicitud_obj.whatsapp_timeout_minutes = 30
+                            reprogramar_timeout(30, 'recordatorio inteligente')
+                    aplicado = True
+                elif preset_key == 'finalizar_atencion':
+                    solicitud_obj.estado = STATE_FINALIZADO
+                    solicitud_obj.whatsapp_step = str(STEP_INACTIVE)
+                    solicitud_obj.whatsapp_last_activity = ahora
+                    solicitud_obj.whatsapp_timeout_minutes = 0
+                    solicitud_obj.whatsapp_warning_sent = False
+                    reprogramar_timeout(0, 'finalizar atención')
+                    solicitud_obj.asesor_pendiente = False
+                    solicitud_obj.asesor_pendiente_desde = None
+                    detalle = 'Atención humana finalizada; la conversación quedó cerrada para un nuevo enturnamiento.'
+                    aplicado = True
+
+                if preset_key in presets_reinicio:
+                    solicitud_obj.estado = 'sin turno'
+                    solicitud_obj.whatsapp_timeout_minutes = 30
+                    solicitud_obj.whatsapp_warning_sent = False
+                    solicitud_obj.whatsapp_last_activity = ahora
+                    siguiente = determinar_siguiente_step_pendiente(solicitud_obj)
+                    solicitud_obj.whatsapp_step = str(siguiente)
+                    reprogramar_timeout(30, f'preset {preset_key}')
+                    aplicado = True
+
+                if aplicado and detalle:
+                    marca = datetime.now().strftime('%d/%m/%Y %H:%M')
+                    observacion_nueva = f"[{marca}] {detalle}"
+                    if solicitud_obj.observaciones:
+                        solicitud_obj.observaciones = f"{solicitud_obj.observaciones}\n{observacion_nueva}"
+                    else:
+                        solicitud_obj.observaciones = observacion_nueva
+
+                return aplicado, detalle
+
+            aplicado, detalle = aplicar_accion_preset(solicitud, preset)
+            cambios_extra = False
+            if solicitud.asesor_pendiente:
+                if preset != 'turno_retrasado':
+                    solicitud.asesor_pendiente = False
+                    solicitud.asesor_pendiente_desde = None
+                    cambios_extra = True
+
+            solicitud.whatsapp_last_activity = datetime.utcnow()
+            solicitud.whatsapp_warning_sent = False
+
+            if aplicado or cambios_extra:
+                db.session.commit()
+
+            mensaje_respuesta = 'Mensaje enviado correctamente al conductor.'
+            if detalle:
+                mensaje_respuesta = f"{mensaje_respuesta} {detalle}"
+            return jsonify(success=True, message=mensaje_respuesta, preset=preset, cambios_aplicados=aplicado)
+        else:
+            return jsonify(success=False, message='Error al enviar el mensaje por WhatsApp'), 500
+            
+    except Exception as e:
+        current_app.logger.exception('Error enviando mensaje al conductor via panel (solicitud %s)', id)
+        return jsonify(success=False, message='Error interno del servidor'), 500
+
+def analizar_datos_faltantes(solicitud):
+    """Analiza qué datos faltan en una solicitud y retorna información detallada"""
+    datos_faltantes = []
+    mensajes_recomendados = []
+    
+    # Verificar guía/manifiesto
+    if not solicitud.imagen_guia and not solicitud.imagen_manifiesto:
+        datos_faltantes.append("guía")
+        mensajes_recomendados.append("📄 Te falta enviar la foto de la guía o manifiesto de transporte. Por favor, envíala ahora para continuar con tu enturnamiento.")
+    
+    # Verificar ubicación Bosconia
+    if not solicitud.paso_bosconia or not solicitud.ubicacion_lat or not solicitud.ubicacion_lng:
+        datos_faltantes.append("ubicación Bosconia")
+        mensajes_recomendados.append("📍 Te falta validar tu ubicación en Bosconia. Por favor, comparte tu ubicación GPS cuando pases por Bosconia.")
+    
+    # Verificar ticket Gambote
+    if not solicitud.ticket_gambote:
+        datos_faltantes.append("ticket Gambote")
+        mensajes_recomendados.append("🎫 Te falta enviar la foto del ticket de peaje de Gambote. Por favor, envíala para continuar.")
+    
+    # Verificar ubicación Gambote
+    if not solicitud.paso_gambote or not solicitud.ubicacion_gambote_lat or not solicitud.ubicacion_gambote_lng:
+        datos_faltantes.append("ubicación Gambote")
+        mensajes_recomendados.append("📍 Te falta validar tu ubicación en Gambote. Por favor, comparte tu ubicación GPS cuando pases por el peaje de Gambote.")
+    
+    return {
+        'datos_faltantes': datos_faltantes,
+        'mensajes_recomendados': mensajes_recomendados,
+        'total_faltantes': len(datos_faltantes),
+        'todos_completos': len(datos_faltantes) == 0
+    }
+
+
+def preparar_sesion_para_pendientes(solicitud, enviar_prompt=True):
+    """Configura la sesión para retomar el flujo en el siguiente pendiente y opcionalmente dispara el prompt del bot."""
+    if not solicitud or not solicitud.telefono:
+        return None
+
+    siguiente_step = determinar_siguiente_step_pendiente(solicitud)
+    ahora = datetime.utcnow()
+    timeout = 0 if siguiente_step == STEP_FINAL_CONFIRMATION else 30
+
+    solicitud.whatsapp_step = str(siguiente_step)
+    solicitud.whatsapp_last_activity = ahora
+    solicitud.whatsapp_timeout_minutes = timeout
+    solicitud.whatsapp_warning_sent = False
+
+    db.session.commit()
+
+    session_payload = {
+        'step': siguiente_step,
+        'data': {},
+        'last_activity': ahora,
+        'timeout_minutes': timeout,
+        'warning_sent': False,
+        'solicitud': solicitud
+    }
+
+    try:
+        from bot_whatsapp.routes import _prompt_for_next_pending_requirement, _commit_session
+    except Exception:
+        current_app.logger.exception(
+            'No se pudieron importar utilidades del bot para preparar pendientes (solicitud %s).',
+            solicitud.id if solicitud else 'desconocida'
+        )
+        return session_payload
+
+    try:
+        if enviar_prompt:
+            _prompt_for_next_pending_requirement(session_payload, solicitud, solicitud.telefono)
+        _commit_session(solicitud.telefono, session_payload)
+    except Exception:
+        current_app.logger.exception(
+            'Fallo preparando recordatorio inteligente para la solicitud %s.',
+            solicitud.id if solicitud else 'desconocida'
+        )
+
+    return session_payload
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/recordatorio_inteligente', methods=['POST'])
+def enviar_recordatorio_inteligente(id):
+    """Envía recordatorios automáticos basados en datos faltantes"""
+    try:
+        # Buscar la solicitud
+        solicitud = SolicitudCita.query.get_or_404(id)
+        
+        if not solicitud.telefono:
+            return jsonify(success=False, message='La solicitud no tiene un número de teléfono registrado'), 400
+        
+        # Analizar qué datos faltan
+        analisis = analizar_datos_faltantes(solicitud)
+        
+        if analisis['todos_completos']:
+            return jsonify(success=False, message='Todos los datos están completos. No hay nada que recordar.'), 400
+        
+        # Generar mensaje inteligente
+        if analisis['total_faltantes'] == 1:
+            mensaje = (
+                "Fisher 🐶 detectó un pendiente y te guiará enseguida:\n\n"
+                f"{analisis['mensajes_recomendados'][0]}\n\n"
+                "Cuando lo envíes, avanzamos automáticamente al siguiente paso."
+            )
+        else:
+            partes = [
+                "Fisher 🐶 revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
+            ]
+            for i, msg in enumerate(analisis['mensajes_recomendados'], 1):
+                partes.append(f"{i}. {msg}\n\n")
+            partes.append("Comencemos con el primero; te indicaré al instante qué necesitas enviar.")
+            mensaje = ''.join(partes)
+        
+        # Enviar el mensaje
+        exito = send_whatsapp_message(solicitud.telefono, mensaje)
+        
+        if exito:
+            preparar_sesion_para_pendientes(solicitud, enviar_prompt=True)
+            return jsonify(success=True, 
+                         message=f'Recordatorio enviado correctamente. Se notificaron {analisis["total_faltantes"]} datos faltantes.',
+                         datos_faltantes=analisis['datos_faltantes'])
+        else:
+            return jsonify(success=False, message='Error al enviar el recordatorio por WhatsApp'), 500
+            
+    except Exception as e:
+        print(f"Error enviando recordatorio inteligente: {e}")
+        return jsonify(success=False, message='Error interno del servidor'), 500
+
+@login_required
+@app.route('/api/solicitud_cita/<int:id>/datos_faltantes', methods=['GET'])
+def obtener_datos_faltantes(id):
+    """Retorna información sobre qué datos faltan en una solicitud"""
+    try:
+        solicitud = SolicitudCita.query.get_or_404(id)
+        analisis = analizar_datos_faltantes(solicitud)
+        
+        return jsonify({
+            'success': True,
+            'solicitud_id': id,
+            'conductor': solicitud.nombre_completo or 'Sin nombre',
+            'analisis': analisis
+        })
+        
+    except Exception as e:
+        print(f"Error obteniendo datos faltantes: {e}")
+        return jsonify(success=False, message='Error interno del servidor'), 500
 
 @login_required
 @app.route('/gestionar_clientes')
@@ -9669,6 +11546,79 @@ def agregar_cliente_ajax():
 
     return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
 
+
+@login_required
+@app.route('/actualizar_cliente_ajax', methods=['POST'])
+def actualizar_cliente_ajax():
+    data = request.get_json() or {}
+    original_nombre = (data.get('original_nombre') or '').strip()
+    nombre = (data.get('nombre') or '').strip()
+    direccion = (data.get('direccion') or '').strip()
+    ciudad = (data.get('ciudad') or '').strip()
+
+    if not original_nombre or not nombre or not direccion or not ciudad:
+        return jsonify(success=False, message='Todos los campos son obligatorios.'), 400
+
+    original_upper = original_nombre.upper()
+    nombre_upper = nombre.upper()
+    direccion_upper = direccion.upper()
+    ciudad_upper = ciudad.upper()
+
+    clientes = cargar_clientes()
+    coincidencia = None
+    for c in clientes:
+        if (c.get('NOMBRE_CLIENTE') or '').upper() == original_upper:
+            coincidencia = c
+            break
+
+    if not coincidencia:
+        return jsonify(success=False, message=f"No se encontró el cliente '{original_nombre}'."), 404
+
+    if nombre_upper != coincidencia.get('NOMBRE_CLIENTE') and any(
+        (otro.get('NOMBRE_CLIENTE') or '').upper() == nombre_upper for otro in clientes
+    ):
+        return jsonify(success=False, message=f"Ya existe un cliente con el nombre '{nombre_upper}'."), 409
+
+    coincidencia['NOMBRE_CLIENTE'] = nombre_upper
+    coincidencia['DIRECCION'] = direccion_upper
+    coincidencia['CIUDAD_DEPARTAMENTO'] = ciudad_upper
+    clientes.sort(key=lambda x: x.get('NOMBRE_CLIENTE', ''))
+
+    try:
+        guardar_clientes(clientes)
+    except Exception as file_err:
+        return jsonify(success=False, message=f'No se pudo actualizar el archivo de clientes: {file_err}'), 500
+
+    try:
+        cliente_db = Cliente.query.filter_by(nombre=original_upper).first()
+        if cliente_db:
+            cliente_db.nombre = nombre_upper
+            cliente_db.direccion = direccion_upper
+            cliente_db.ciudad_departamento = ciudad_upper
+        else:
+            cliente_db = Cliente.query.filter_by(nombre=nombre_upper).first()
+            if cliente_db:
+                cliente_db.direccion = direccion_upper
+                cliente_db.ciudad_departamento = ciudad_upper
+            else:
+                cliente_db = Cliente(
+                    nombre=nombre_upper,
+                    direccion=direccion_upper,
+                    ciudad_departamento=ciudad_upper
+                )
+                db.session.add(cliente_db)
+        db.session.commit()
+    except Exception as db_err:
+        db.session.rollback()
+        return jsonify(success=False, message=f'Error al actualizar la base de datos: {db_err}'), 500
+
+    actualizado = {
+        'NOMBRE_CLIENTE': nombre_upper,
+        'DIRECCION': direccion_upper,
+        'CIUDAD_DEPARTAMENTO': ciudad_upper
+    }
+    return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=actualizado)
+
 @login_required
 @permiso_requerido('planilla_precios')
 @app.route('/planilla_precios')
@@ -9703,6 +11653,40 @@ def cargar_conductores():
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return []
+
+def buscar_conductor_por_placa(placa):
+    """
+    Busca conductor por placa primero en PostgreSQL, luego en JSON como fallback.
+    
+    Args:
+        placa: Placa del vehículo a buscar
+    
+    Returns:
+        dict: Datos del conductor o None si no se encuentra
+    """
+    # Primero buscar en PostgreSQL
+    conductor_db = Conductor.query.filter_by(placa=placa.upper()).first()
+    if conductor_db:
+        return {
+            'PLACA': conductor_db.placa or '-',
+            'PLACA REMOLQUE': conductor_db.placa_remolque or '-',
+            'NOMBRE CONDUCTOR': conductor_db.nombre or '-',
+            'N° DOCUMENTO': conductor_db.cedula or '-',
+            'CELULAR': conductor_db.celular or '-'
+        }
+    
+    # Fallback: buscar en JSON
+    conductores = cargar_conductores()
+    for c in conductores:
+        if c.get('PLACA', '').upper() == placa.upper():
+            return {
+                'PLACA': c.get('PLACA', '-'),
+                'PLACA REMOLQUE': c.get('PLACA REMOLQUE', '-'),
+                'NOMBRE CONDUCTOR': c.get('NOMBRE CONDUCTOR', '-'),
+                'N° DOCUMENTO': c.get('N° DOCUMENTO', '-'),
+                'CELULAR': c.get('CELULAR', '-')
+            }
+    return None
 
 def guardar_conductores(conductores):
     """Función auxiliar para guardar la lista de conductores en Conductores.json."""
@@ -9807,6 +11791,1089 @@ def agregar_empresa_ajax():
 
     return jsonify(success=True, message="Empresa agregada exitosamente.", nueva_empresa=nueva_empresa)
 
+def get_or_create_whatsapp_session(telefono):
+    """
+    Obtiene o crea una sesión de WhatsApp desde la base de datos.
+    Solo busca solicitudes pendientes para evitar duplicar conversaciones cuando ya existe un enturne en curso.
+    
+    Args:
+        telefono: Número de teléfono del usuario
+    
+    Returns:
+        dict: Diccionario con la información de la sesión
+    """
+    # Asegurar que la última solicitud enturnada tenga el mensaje final persistido
+    ultima_enturnada = (
+        SolicitudCita.query
+        .filter(
+            SolicitudCita.telefono == telefono,
+            SolicitudCita.estado.in_(['enturnado', STATE_FINALIZADO])
+        )
+        .order_by(SolicitudCita.fecha_descargue.desc(), SolicitudCita.fecha.desc())
+        .first()
+    )
+    if ultima_enturnada and (not ultima_enturnada.mensaje or 'Solicitud enturnada' not in ultima_enturnada.mensaje):
+        ultima_enturnada.mensaje = build_enturnado_message(ultima_enturnada)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    # Buscar la solicitud pendiente más reciente para este teléfono
+    solicitud = (
+        SolicitudCita.query
+        .filter(
+            SolicitudCita.telefono == telefono,
+            SolicitudCita.estado.in_(['preconfirmacion', 'sin turno', 'en revision', 'error', STATE_PENDING_INSCRIPTION])
+        )
+        .order_by(SolicitudCita.fecha.desc())
+        .first()
+    )
+
+    ultima_sesion = (
+        SolicitudCita.query
+        .filter(SolicitudCita.telefono == telefono)
+        .order_by(SolicitudCita.fecha.desc())
+        .first()
+    )
+    if ultima_sesion and ultima_sesion.estado == STATE_FINALIZADO:
+        solicitud_fecha = getattr(solicitud, 'fecha', None)
+        ultima_fecha = getattr(ultima_sesion, 'fecha', None)
+        if not solicitud_fecha or (ultima_fecha and ultima_fecha >= solicitud_fecha):
+            solicitud = None
+            ultima_enturnada = None
+
+    if not solicitud and ultima_enturnada:
+        solicitud = ultima_enturnada
+    
+    # Si no hay solicitud activa, crear una nueva
+    if not solicitud:
+        solicitud = SolicitudCita(
+            telefono=telefono,
+            mensaje='Sesión WhatsApp iniciada (pendiente de confirmación)',
+            estado='preconfirmacion',
+            whatsapp_step='0',
+            whatsapp_timeout_minutes=5,
+            whatsapp_warning_sent=False
+        )
+        db.session.add(solicitud)
+        db.session.commit()
+    
+    # Preparar valores por defecto para la sesión
+    raw_step = solicitud.whatsapp_step or '0'
+    if raw_step in {STEP_UNDER_REVIEW, STEP_HUMAN_HANDOFF}:
+        step = raw_step
+    else:
+        try:
+            step = int(raw_step)
+        except (ValueError, TypeError):
+            step = 0
+    
+    last_activity = solicitud.whatsapp_last_activity or datetime.now()
+    timeout_minutes = _normalize_timeout_minutes(solicitud.whatsapp_timeout_minutes)
+    warning_sent = bool(solicitud.whatsapp_warning_sent and timeout_minutes > 0)
+    
+    session_data = {
+        'step': step,
+        'data': {},  # Mantener compatibilidad pero no usar para datos críticos
+        'last_activity': last_activity,
+        'timeout_minutes': timeout_minutes,
+        'warning_sent': warning_sent,
+        'solicitud': solicitud  # Referencia a la solicitud para actualizarla fácilmente
+    }
+    
+    return session_data
+
+def update_whatsapp_session(telefono, session_data):
+    """
+    Actualiza la sesión de WhatsApp en la base de datos.
+    
+    Args:
+        telefono: Número de teléfono del usuario
+        session_data: Diccionario con la información de la sesión
+    """
+    solicitud = session_data.get('solicitud')
+    if not solicitud:
+        # Buscar la solicitud si no está en session_data
+        solicitud = SolicitudCita.query.filter_by(telefono=telefono).order_by(SolicitudCita.fecha.desc()).first()
+        if not solicitud:
+            return
+    
+    # Actualizar los campos de sesión
+    step = session_data.get('step', 0)
+    if isinstance(step, str):
+        solicitud.whatsapp_step = step
+    else:
+        solicitud.whatsapp_step = str(step)
+    
+    solicitud.whatsapp_last_activity = session_data.get('last_activity', datetime.now())
+    solicitud.whatsapp_timeout_minutes = _normalize_timeout_minutes(session_data.get('timeout_minutes'))
+    warning_flag = session_data.get('warning_sent', False)
+    solicitud.whatsapp_warning_sent = bool(warning_flag and solicitud.whatsapp_timeout_minutes > 0)
+    
+    db.session.commit()
+
+def is_confirmation_positive(texto):
+    """
+    Verifica si el texto representa una confirmación positiva.
+    
+    Args:
+        texto: Texto a verificar
+    
+    Returns:
+        bool: True si es confirmación positiva
+    """
+    positive_responses = ['si', 'sí', 's', 'ok', 'confirmo', 'listo', 'correcto', 'bien', 'dale', 'yes', 'y']
+    return texto.strip().lower() in positive_responses
+
+def is_confirmation_negative(texto):
+    """
+    Verifica si el texto representa una confirmación negativa.
+    
+    Args:
+        texto: Texto a verificar
+    
+    Returns:
+        bool: True si es confirmación negativa
+    """
+    negative_responses = ['no', 'n', 'cancelar', 'cancel', 'ninguno', 'no tengo']
+    return texto.strip().lower() in negative_responses
+
+def send_confirmation_request(telefono, message, step_on_confirm, step_on_deny=None, timeout_minutes=60):
+    """
+    Envía un mensaje de confirmación estandarizado y configura la sesión.
+    
+    Args:
+        telefono: Número de teléfono
+        message: Mensaje a enviar
+        step_on_confirm: Paso al que ir si confirma
+        step_on_deny: Paso al que ir si niega (opcional)
+        timeout_minutes: Minutos de timeout
+    """
+    full_message = f"{message}\n\nResponde 'sí' para confirmar o 'no' para cancelar."
+    send_yes_no_prompt(
+        telefono,
+        full_message,
+        context_label='PANEL'
+    )
+    
+    # La sesión se actualiza en el caller
+    return {
+        'step': step_on_confirm,
+        'timeout_minutes': timeout_minutes
+    }
+
+
+def build_enturnado_message(solicitud):
+    """Genera el texto estándar para notificar un enturnamiento completado."""
+    turno_texto = solicitud.turno if solicitud.turno is not None else 'Por asignar'
+    fecha_local = to_bogota_datetime(solicitud.fecha_descargue, assume_local=True)
+    fecha_descargue_texto = fecha_local.strftime('%d/%m/%Y %H:%M') if fecha_local else 'Por definir'
+    lugar_texto = solicitud.lugar_descargue or 'Sociedad Portuaria del Dique'
+    base = (
+        "✅ Solicitud enturnada.\n"
+        f"Turno: {turno_texto}\n"
+        f"Fecha y hora de descargue: {fecha_descargue_texto}\n"
+        f"Lugar: {lugar_texto}\n"
+        "Fisher 🐶 te agradece la confianza. ¡Muchas gracias y nos vemos pronto!"
+    )
+    instrucciones = (
+        "\n\nSi necesitas un nuevo enturne escribe *NUEVO*.\n"
+        "Si el horario no te sirve responde *asesor* para que nuestro equipo te contacte."
+    )
+    return f"{base}{instrucciones}"
+
+def validar_y_guardar_ubicacion(telefono, lat, lng, ubicacion_tipo, session, next_step):
+    """
+    Función auxiliar para validar ubicación GPS y guardar en BD.
+    
+    Args:
+        telefono: Número de teléfono
+        lat: Latitud
+        lng: Longitud  
+    ubicacion_tipo: 'bosconia' o 'gambote'
+        session: Sesión actual
+        next_step: Siguiente paso si es válido
+    
+    Returns:
+        bool: True si la ubicación fue válida
+    """
+    solicitud = session.get('solicitud')
+    if not solicitud:
+        solicitud = SolicitudCita.query.filter_by(telefono=telefono).order_by(SolicitudCita.fecha.desc()).first()
+
+    ruta_alterna_flag = getattr(solicitud, 'ruta_alterna', False) if solicitud else False
+    validacion = validar_ubicacion_gps(lat, lng, ubicacion_tipo, ruta_alterna=ruta_alterna_flag)
+
+    if validacion['valido']:
+        # Guardar directamente en la solicitud de la base de datos
+        if solicitud:
+            if ubicacion_tipo == 'bosconia':
+                solicitud.ubicacion_lat = lat
+                solicitud.ubicacion_lng = lng
+                solicitud.paso_bosconia = True
+            elif ubicacion_tipo == 'gambote':
+                solicitud.ubicacion_gambote_lat = lat
+                solicitud.ubicacion_gambote_lng = lng
+                solicitud.paso_gambote = True
+            if validacion.get('skip_next') == 'gambote':
+                # Marcar Gambote como cumplido automáticamente
+                solicitud.ubicacion_gambote_lat = solicitud.ubicacion_gambote_lat or lat
+                solicitud.ubicacion_gambote_lng = solicitud.ubicacion_gambote_lng or lng
+                solicitud.paso_gambote = True
+
+            pendiente_ubicacion = bool(solicitud.ubicacion_pendiente_tipo)
+            solicitud.ubicacion_pendiente_lat = None
+            solicitud.ubicacion_pendiente_lng = None
+            solicitud.ubicacion_pendiente_tipo = None
+            solicitud.ubicacion_pendiente_mensaje = None
+            solicitud.ubicacion_pendiente_desde = None
+            if pendiente_ubicacion:
+                solicitud.asesor_pendiente = False
+                solicitud.asesor_pendiente_desde = None
+
+            db.session.commit()
+        reset_contextual_memory(session)
+
+        send_whatsapp_message(telefono, f"✅ Ubicación en {ubicacion_tipo.title()} validada.\n{validacion['mensaje']}")
+        if validacion.get('skip_next') == 'gambote':
+            session['step'] = 9  # Ir directo a confirmación final
+        else:
+            session['step'] = next_step
+        return True
+    else:
+        enviar_mensaje_ubicacion_invalida(
+            telefono,
+            ubicacion_tipo,
+            lat=lat,
+            lng=lng,
+            validacion=validacion,
+            session=session
+        )
+        return False
+
+def guardar_imagen_whatsapp(telefono, media_payload, tipo_imagen, session):
+    """
+    Función auxiliar para guardar imágenes de WhatsApp.
+    
+    Args:
+        telefono: Número de teléfono
+        image_url: URL de la imagen
+        tipo_imagen: 'guia', 'ticket_gambote', etc.
+        session: Sesión actual
+    """
+    if media_payload:
+        ruta_guardada = save_whatsapp_image(media_payload, 'whatsapp')
+        if ruta_guardada:
+            # Guardar directamente en la solicitud de la base de datos
+            solicitud = session.get('solicitud')
+            if not solicitud:
+                solicitud = SolicitudCita.query.filter_by(telefono=telefono).order_by(SolicitudCita.fecha.desc()).first()
+            
+            if solicitud:
+                if tipo_imagen == 'imagen_guia':
+                    solicitud.imagen_guia = ruta_guardada
+                elif tipo_imagen == 'ticket_gambote':
+                    solicitud.ticket_gambote = ruta_guardada
+                db.session.commit()
+                print(f"Imagen {tipo_imagen} guardada para {telefono}: {ruta_guardada}")
+                reset_contextual_memory(session)
+        else:
+            print(f"Error guardando imagen {tipo_imagen} para {telefono}")
+            send_whatsapp_message(telefono, "⚠️ Hubo un problema descargando el archivo. Por favor, intenta reenviarlo en unos segundos.")
+    else:
+        print(f"No se recibió URL de imagen para {tipo_imagen} de {telefono}")
+
+def _normalize_timeout_minutes(value):
+    """Normaliza los minutos de timeout para mantener consistencia en sesión y BD."""
+    if value is None:
+        return 0
+    try:
+        normalized = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return max(0, normalized)
+
+
+def configurar_timeout_session(session, minutos):
+    """Configura el timeout de la sesión aplicando normalización y limpieza de flags."""
+    timeout_normalizado = _normalize_timeout_minutes(minutos)
+    session['timeout_minutes'] = timeout_normalizado
+    session['warning_sent'] = False
+
+def enviar_mensaje_ubicacion_invalida(telefono, ubicacion, lat=None, lng=None, validacion=None, session=None):
+    """
+    Función auxiliar para enviar mensajes de ubicación inválida.
+    
+    Args:
+        telefono: Número de teléfono
+    ubicacion: Nombre de la ubicación ('bosconia' o 'gambote')
+    """
+    mensajes = {
+        'bosconia': "La ubicación que recibí no coincide con Bosconia. Ya le pedí apoyo a un agente humano para validar tu registro.",
+        'gambote': "La ubicación que recibí no corresponde a Gambote. Consultaré con un agente humano para revisarla.",
+    }
+    step_map = {
+        'bosconia': STEP_AWAIT_GPS_BOSCONIA,
+        'gambote': STEP_AWAIT_GPS_GAMBOTE
+    }
+    instruccion = mensajes.get(
+        ubicacion,
+        'La ubicación enviada no coincide con el punto esperado. Solicité ayuda a un agente humano.'
+    )
+
+    solicitud = None
+    if session is not None:
+        solicitud = session.get('solicitud')
+    if not solicitud:
+        solicitud = (
+            SolicitudCita.query
+            .filter_by(telefono=telefono)
+            .order_by(SolicitudCita.fecha.desc())
+            .first()
+        )
+
+    detalle_mensaje = instruccion
+    if validacion and isinstance(validacion, dict) and validacion.get('mensaje'):
+        detalle_mensaje = validacion['mensaje']
+
+    if session is not None:
+        cuerpo = compose_contextual_hint(
+            session,
+            step_map.get(ubicacion, STEP_AWAIT_GPS_BOSCONIA),
+            f"{instruccion}\n\nPor favor espera mientras verificamos tu información."
+        )
+    else:
+        cuerpo = (
+            "Fisher 🐶 no reconoció la ubicación enviada. "
+            f"{instruccion} Espera un momento mientras validamos tus datos."
+        )
+
+    mensaje = f"❌ {cuerpo}"
+    send_whatsapp_message(
+        telefono,
+        mensaje,
+        force_reminder=True
+    )
+
+    if solicitud:
+        try:
+            if not solicitud.asesor_pendiente:
+                solicitud.asesor_pendiente = True
+                solicitud.asesor_pendiente_desde = datetime.utcnow()
+            else:
+                solicitud.asesor_pendiente_desde = datetime.utcnow()
+
+            solicitud.ubicacion_pendiente_lat = lat
+            solicitud.ubicacion_pendiente_lng = lng
+            solicitud.ubicacion_pendiente_tipo = ubicacion
+            solicitud.ubicacion_pendiente_mensaje = str(detalle_mensaje)[:255] if detalle_mensaje else None
+            solicitud.ubicacion_pendiente_desde = datetime.utcnow()
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('No se pudo marcar asesor pendiente para %s', solicitud.id)
+    return 'ok', 200
+
+
+def enviar_mensaje_solicitar_ubicacion(telefono, ubicacion):
+    """
+    Función auxiliar para enviar mensajes solicitando ubicación.
+    
+    Args:
+        telefono: Número de teléfono
+    ubicacion: Nombre de la ubicación ('bosconia' o 'gambote')
+    """
+    mensajes = {
+        'bosconia': "Cuando llegues a Bosconia abre el clip, toca ‘Ubicación’ y envíala en tiempo real. Solo puedo registrar ubicaciones en este paso.",
+        'gambote': "Cuando cruces el peaje de Gambote abre el clip, elige ‘Ubicación’ y envíala en tiempo real. Solo puedo registrar ubicaciones en este paso.",
+    }
+    send_whatsapp_message(telefono, mensajes.get(ubicacion, 'Por favor, comparte tu ubicación en tiempo real.'))
+    return 'ok', 200
+
+def get_solicitud_data(solicitud):
+    """
+    Función auxiliar para obtener datos de la solicitud de manera segura.
+    
+    Args:
+        solicitud: Objeto SolicitudCita
+    
+    Returns:
+        dict: Diccionario con los datos de la solicitud
+    """
+    if not solicitud:
+        return {}
+    
+    return {
+        'nombre_completo': solicitud.nombre_completo or '',
+        'cedula': solicitud.cedula or '',
+        'placa': solicitud.placa or '',
+        'placa_remolque': solicitud.placa_remolque or '',
+        'celular': solicitud.celular or '',
+        'imagen_guia': solicitud.imagen_guia,
+        'imagen_manifiesto': solicitud.imagen_manifiesto,
+        'ticket_gambote': solicitud.ticket_gambote,
+        'paso_bosconia': solicitud.paso_bosconia or False,
+        'paso_gambote': solicitud.paso_gambote or False,
+        'paso_zisa': solicitud.paso_zisa or False
+    }
+    return 'ok', 200
+
+# Configuración de WhatsApp Business API
+WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
+PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
+VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "TU_TOKEN_SECRETO_INVENTADO")
+
+# Estados nombrados para la conversación (en lugar de números mágicos)
+STATE_PENDING_INSCRIPTION = 'pendiente_inscripcion'
+STATE_FINALIZADO = 'finalizado'
+
+STEP_INACTIVE = 0
+STEP_WELCOME = 1
+STEP_AWAIT_PLACA = 2
+STEP_CONFIRM_DATA = 3
+STEP_AWAIT_GUIA = 4
+STEP_AWAIT_GPS_BOSCONIA = 5
+STEP_AWAIT_TICKET_GAMBOTE = 6
+STEP_AWAIT_GPS_GAMBOTE = 7
+STEP_AWAIT_GPS_ZISA = 8
+STEP_FINAL_CONFIRMATION = 9
+STEP_MANUAL_REG_NAME = 10
+STEP_MANUAL_REG_CEDULA = 11
+STEP_MANUAL_REG_REMOLQUE = 12
+STEP_MANUAL_REG_CONFIRM = 13
+STEP_CONFIRM_UNKNOWN_PLACA = 14
+STEP_UNDER_REVIEW = 'confirmed'
+STEP_HUMAN_HANDOFF = 'human_handoff'
+
+STEP_TIMEOUT_CONFIG = {
+    STEP_CONFIRM_DATA: {
+        'timeout': 10,
+        'warning_before': 5,
+        'warning_message': (
+            "Fisher 🐶 nota que llevas un rato sin confirmar tus datos. ¿Sigues ahí? "
+            "Respóndeme 'sí' si todo está bien o 'no' si quieres corregirlos."
+        ),
+        'timeout_message': (
+            "😴 Fisher cerró esta confirmación porque pasaron 10 minutos sin respuesta. "
+            "Escribe NUEVO para volver a revisar tus datos cuando estés listo."
+        )
+    },
+    STEP_MANUAL_REG_CONFIRM: {
+        'timeout': 10,
+        'warning_before': 5,
+        'warning_message': (
+            "Fisher 🐶 sigue esperando tu confirmación manual. ¿Todo está correcto? "
+            "Respóndeme 'sí' para guardar los datos o 'no' para ajustarlos."
+        ),
+        'timeout_message': (
+            "😴 Cerré esta confirmación manual porque no recibí respuesta en 10 minutos. "
+            "Cuando quieras retomarla, escribe NUEVO y volvemos a registrar tus datos."
+        )
+    }
+}
+
+
+def get_step_timeout_config(step):
+    return STEP_TIMEOUT_CONFIG.get(step, {})
+
+def determinar_siguiente_step_pendiente(solicitud):
+    """Determina el siguiente paso pendiente según la data almacenada."""
+    if not solicitud:
+        return STEP_AWAIT_GUIA
+
+    if not (solicitud.imagen_guia or solicitud.imagen_manifiesto):
+        return STEP_AWAIT_GUIA
+
+    if not solicitud.paso_bosconia or not solicitud.ubicacion_lat or not solicitud.ubicacion_lng:
+        return STEP_AWAIT_GPS_BOSCONIA
+
+    if not solicitud.ticket_gambote:
+        return STEP_AWAIT_TICKET_GAMBOTE
+
+    if not solicitud.paso_gambote or not solicitud.ubicacion_gambote_lat or not solicitud.ubicacion_gambote_lng:
+        return STEP_AWAIT_GPS_GAMBOTE
+
+    return STEP_FINAL_CONFIRMATION
+
+def build_confirmation_summary(solicitud):
+    """Construye el mensaje de resumen para confirmación final."""
+    datos = get_solicitud_data(solicitud)
+    if not datos:
+        return (
+            "Por favor confirma que todos tus datos son correctos."
+            " Responde 'sí' para confirmar."
+        )
+
+    def _status(check, ok_text, pending_text):
+        return ok_text if check else pending_text
+
+    tiene_guia = datos.get('imagen_guia') or datos.get('imagen_manifiesto')
+    resumen = (
+        "\nPor favor confirma que todos tus datos son correctos:\n"
+        f"Nombre: {datos.get('nombre_completo') or '-'}\n"
+        f"Cédula: {datos.get('cedula') or '-'}\n"
+        f"Placa: {datos.get('placa') or '-'}\n"
+        f"Placa remolque: {datos.get('placa_remolque') or '-'}\n"
+        f"Celular: {datos.get('celular') or '-'}\n"
+        f"Guía: {_status(tiene_guia, 'recibida', 'pendiente')}\n"
+        f"Ubicación Bosconia: {_status(datos.get('paso_bosconia'), '✅ validada', 'pendiente')}\n"
+        f"Ticket Gambote: {_status(datos.get('ticket_gambote'), 'recibido', 'pendiente')}\n"
+        f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '✅ validada', 'pendiente')}\n"
+        "\n¿Todo está correcto? Responde 'sí' para confirmar."
+    )
+    return resumen
+
+
+# Recordatorio de seguridad para los conductores antes de responder.
+SAFETY_REMINDER_VARIANTS = (
+    "\n\n🔒 Seguridad ante todo: detén el camión antes de responder; Fisher espera tu señal.",
+    "\n\n🚦 Seguridad ante todo: estaciona en un punto seguro y retomamos la conversación.",
+    "\n\n🛡️ Seguridad ante todo: pausa la marcha y responde solo cuando estés detenido."
+)
+WHATSAPP_SAFETY_REMINDER = SAFETY_REMINDER_VARIANTS[0]
+
+# Texto característico del mensaje que confirma el enturnamiento final.
+ENTURNE_COMPLETED_TOKEN = "Solicitud enturnada"
+
+# Fragmento que usamos para detectar si el recordatorio ya fue agregado.
+REMINDER_SENTINEL = "Seguridad ante todo"
+
+SAFETY_REMINDER_TRACKER = {}
+FIRST_REMINDER_INTERVAL = 3
+try:
+    SAFETY_REMINDER_INTERVAL = int(os.environ.get('WHATSAPP_REMINDER_EVERY', 3)) or 3
+except (TypeError, ValueError):
+    SAFETY_REMINDER_INTERVAL = 3
+IMPORTANT_REMINDER_EMOJIS = ('⚠', '🚨')
+IMPORTANT_REMINDER_KEYWORDS = (
+    'urgente',
+    'precaucion',
+    'precaución',
+    'cuidado',
+    'alerta'
+)
+
+
+def reset_safety_reminder_counter(telefono):
+    """Permite reiniciar el contador del recordatorio de seguridad para un número."""
+    if telefono:
+        SAFETY_REMINDER_TRACKER.pop(telefono, None)
+
+
+def compose_contextual_hint(session, step, hint):
+    """Genera un mensaje contextual recordando al conductor qué debe responder."""
+    if not session:
+        return hint
+
+    tracker = session.setdefault('contextual_memory', {})
+    step_key = str(step)
+    last_step = tracker.get('_last_step')
+
+    if last_step != step_key:
+        tracker[step_key] = 0
+
+    tracker[step_key] = tracker.get(step_key, 0) + 1
+    tracker['_last_step'] = step_key
+    session['contextual_memory'] = tracker
+
+    count = tracker[step_key]
+    if count == 1:
+        lead = "Fisher 🐶 no logró entender este mensaje."
+    elif count == 2:
+        lead = "Fisher 🐶 sigue esperando esa información exacta."
+    else:
+        lead = "Fisher 🐶 necesita esa información para continuar."
+
+    return f"{lead} {hint}"
+
+
+def reset_contextual_memory(session, step=None):
+    """Limpia la memoria contextual para evitar mensajes repetidos."""
+    if not session:
+        return
+
+    tracker = session.get('contextual_memory')
+    if not tracker:
+        return
+
+    if step is None:
+        session.pop('contextual_memory', None)
+    else:
+        step_key = str(step)
+        tracker.pop(step_key, None)
+        if tracker.get('_last_step') == step_key:
+            tracker['_last_step'] = None
+        session['contextual_memory'] = tracker
+
+
+def _next_safety_reminder(tracker):
+    if not SAFETY_REMINDER_VARIANTS:
+        return ''
+
+    index = tracker.get('variant_index', 0) % len(SAFETY_REMINDER_VARIANTS)
+    tracker['variant_index'] = (index + 1) % len(SAFETY_REMINDER_VARIANTS)
+    return SAFETY_REMINDER_VARIANTS[index]
+
+
+def _detects_important_context(mensaje):
+    texto = mensaje.lower()
+    return any(token in mensaje for token in IMPORTANT_REMINDER_EMOJIS) or any(
+        palabra in texto for palabra in IMPORTANT_REMINDER_KEYWORDS
+    )
+
+
+def _maybe_append_safety_reminder(mensaje, telefono=None, force=False, skip=False, prime_after_force=False):
+    """Añade el recordatorio de seguridad con cadencia inteligente."""
+    if skip or not mensaje:
+        if skip and prime_after_force and telefono:
+            tracker_key = telefono or '__global__'
+            tracker = SAFETY_REMINDER_TRACKER.setdefault(
+                tracker_key,
+                {
+                    'since': 0,
+                    'interval': SAFETY_REMINDER_INTERVAL,
+                    'variant_index': 0
+                }
+            )
+            tracker['since'] = 0
+            tracker['interval'] = max(1, FIRST_REMINDER_INTERVAL)
+        return mensaje
+    if ENTURNE_COMPLETED_TOKEN in mensaje:
+        reset_safety_reminder_counter(telefono)
+        return mensaje
+    if REMINDER_SENTINEL in mensaje:
+        return mensaje
+    if mensaje.startswith("✅ Ubicación en"):
+        return mensaje
+    if "Tus datos han sido enviados para revisión" in mensaje:
+        return mensaje
+
+    tracker_key = telefono or '__global__'
+    tracker = SAFETY_REMINDER_TRACKER.setdefault(
+        tracker_key,
+        {
+            'since': 0,
+            'interval': SAFETY_REMINDER_INTERVAL,
+            'variant_index': 0
+        }
+    )
+
+    if force or _detects_important_context(mensaje):
+        tracker['since'] = 0
+        if prime_after_force:
+            tracker['interval'] = max(1, FIRST_REMINDER_INTERVAL)
+        else:
+            tracker['interval'] = SAFETY_REMINDER_INTERVAL
+        return f"{mensaje}{_next_safety_reminder(tracker)}"
+
+    tracker['since'] = tracker.get('since', 0) + 1
+    interval = tracker.get('interval') or SAFETY_REMINDER_INTERVAL
+    interval = max(1, interval)
+    if tracker['since'] >= interval:
+        tracker['since'] = 0
+        tracker['interval'] = SAFETY_REMINDER_INTERVAL
+        return f"{mensaje}{_next_safety_reminder(tracker)}"
+
+    return mensaje
+
+
+def _resolve_solicitud_for_logging(telefono, solicitud=None):
+    if solicitud and getattr(solicitud, 'id', None):
+        return solicitud
+    if not telefono:
+        return None
+    return (
+        SolicitudCita.query
+        .filter_by(telefono=telefono)
+        .order_by(SolicitudCita.fecha.desc())
+        .first()
+    )
+
+
+def log_whatsapp_message(telefono, contenido, direction, sender, message_type='text', media_url=None, solicitud=None):
+    try:
+        solicitud_ref = _resolve_solicitud_for_logging(telefono, solicitud)
+        registro = WhatsappMessage(
+            solicitud_id=solicitud_ref.id if solicitud_ref else None,
+            telefono=telefono,
+            direction=direction,
+            sender=sender,
+            message_type=message_type or 'text',
+            content=contenido or '',
+            media_url=media_url
+        )
+        db.session.add(registro)
+        db.session.commit()
+    except Exception as err:
+        db.session.rollback()
+        current_app.logger.warning('No se pudo registrar mensaje WhatsApp (%s): %s', sender, err)
+
+
+def send_whatsapp_message(
+    telefono,
+    mensaje,
+    media_url=None,
+    sender='bot',
+    solicitud=None,
+    *,
+    force_reminder=False,
+    skip_reminder=False,
+    prime_after_force=False,
+    buttons=None
+):
+    """
+    Envía mensaje por WhatsApp Business API
+    """
+    try:
+        mensaje = mensaje or ''
+        auto_force = _detects_important_context(mensaje) if mensaje else False
+        mensaje = _maybe_append_safety_reminder(
+            mensaje,
+            telefono=telefono,
+            force=force_reminder or auto_force,
+            skip=skip_reminder,
+            prime_after_force=prime_after_force
+        )
+
+        if buttons and media_url:
+            app.logger.warning('No se puede enviar botones interactivos junto a un adjunto; se omitirá el archivo adjunto.')
+            media_url = None
+
+        # Configurar credenciales desde variables de entorno
+        token = os.environ.get('WHATSAPP_TOKEN')
+        phone_id = os.environ.get('WHATSAPP_PHONE_ID')
+        
+        if not all([token, phone_id]):
+            app.logger.error("Credenciales de WhatsApp no configuradas")
+            return False
+            
+        url = f"https://graph.facebook.com/v17.0/{phone_id}/messages"
+        
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": telefono
+        }
+
+        message_type = 'text'
+
+        if buttons:
+            message_type = 'interactive'
+            payload.update({
+                "type": "interactive",
+                "interactive": {
+                    "type": "button",
+                    "body": {"text": mensaje},
+                    "action": {"buttons": buttons}
+                }
+            })
+        elif media_url:
+            message_type = 'document'
+            document_payload = {
+                "link": media_url,
+                "filename": _derive_media_filename(media_url)
+            }
+            if mensaje:
+                document_payload["caption"] = mensaje
+            payload.update({
+                "type": "document",
+                "document": document_payload
+            })
+        else:
+            payload.update({
+                "type": "text",
+                "text": {"body": mensaje}
+            })
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            app.logger.info(f"WhatsApp enviado a {telefono}")
+            try:
+                log_whatsapp_message(
+                    telefono,
+                    mensaje,
+                    direction='outbound',
+                    sender=sender,
+                    message_type=message_type,
+                    media_url=media_url,
+                    solicitud=solicitud
+                )
+            except Exception:
+                # El log already maneja su propio rollback; no propagar
+                pass
+            return True
+        else:
+            app.logger.error(f"Error WhatsApp {response.status_code}: {response.text}")
+            return False
+            
+    except Exception as e:
+        app.logger.error(f"Excepción enviando WhatsApp: {e}")
+        return False
+
+
+def send_yes_no_prompt(
+    telefono,
+    mensaje,
+    *,
+    sender='bot',
+    solicitud=None,
+    skip_reminder=False,
+    prime_after_force=False,
+    force_reminder=False,
+    yes_title='Sí',
+    no_title='No',
+    context_label=None
+):
+    """Envía un mensaje con botones interactivos Sí/No para facilitar la respuesta."""
+    suffix = (context_label or 'GEN').upper()
+    unique = uuid.uuid4().hex[:4].upper()
+    yes_id = f"YES_{suffix}_{unique}"
+    no_id = f"NO_{suffix}_{unique}"
+
+    buttons = [
+        {"type": "reply", "reply": {"id": yes_id, "title": yes_title}},
+        {"type": "reply", "reply": {"id": no_id, "title": no_title}}
+    ]
+
+    return send_whatsapp_message(
+        telefono,
+        mensaje,
+        sender=sender,
+        solicitud=solicitud,
+        skip_reminder=skip_reminder,
+        prime_after_force=prime_after_force,
+        force_reminder=force_reminder,
+        buttons=buttons
+    )
+
+def handle_step_welcome(telefono, texto, tipo, msg, session):
+    """Handler for welcome step - ask if user wants to enturnar"""
+    intentos = session.get('welcome_invalid_attempts', 0)
+    texto_normalizado = (texto or '').strip().lower()
+
+    if 'asesor' in texto_normalizado:
+        send_whatsapp_message(
+            telefono,
+            "Entendido. Avisaré a un asesor humano para que continúe contigo en breve."
+        )
+        solicitud = session.get('solicitud')
+        if solicitud:
+            solicitud.asesor_pendiente = True
+            solicitud.asesor_pendiente_desde = datetime.utcnow()
+            solicitud.whatsapp_step = str(STEP_HUMAN_HANDOFF)
+            solicitud.whatsapp_last_activity = datetime.utcnow()
+            db.session.commit()
+        session['step'] = STEP_HUMAN_HANDOFF
+        session['timeout_minutes'] = 0
+        session['warning_sent'] = False
+        session['welcome_invalid_attempts'] = 0
+        reset_contextual_memory(session)
+        update_whatsapp_session(telefono, session)
+        return 'ok', 200
+
+    if is_confirmation_negative(texto):
+        send_whatsapp_message(
+            telefono,
+            "Entendido. Este bot automático es solo para enturne. Cuando necesites gestionar tu turno, escribe 'NUEVO' y Fisher te ayudará. ¡Hasta pronto!"
+        )
+        reset_safety_reminder_counter(telefono)
+        reset_contextual_memory(session)
+        session['step'] = STEP_INACTIVE
+        session['timeout_minutes'] = 0
+        session['warning_sent'] = False
+        session['welcome_invalid_attempts'] = 0
+
+        solicitud = session.get('solicitud')
+        if solicitud:
+            solicitud.mensaje = 'Conversación cerrada: el usuario indicó que no era para enturne.'
+            solicitud.whatsapp_step = str(STEP_INACTIVE)
+            solicitud.whatsapp_timeout_minutes = 0
+            solicitud.whatsapp_warning_sent = False
+            solicitud.whatsapp_last_activity = datetime.utcnow()
+            solicitud.estado = 'preconfirmacion'
+            solicitud.asesor_pendiente = False
+            solicitud.asesor_pendiente_desde = None
+            db.session.commit()
+
+        update_whatsapp_session(telefono, session)
+        return 'ok', 200
+
+    if is_confirmation_positive(texto):
+        send_whatsapp_message(
+            telefono,
+            "Perfecto. Por favor dime la placa de tu camión para buscarte en la base de datos.",
+            force_reminder=True,
+            prime_after_force=True
+        )
+        session['step'] = STEP_AWAIT_PLACA
+        configurar_timeout_session(session, 10)  # 10 minutos para ingresar placa
+        session['welcome_invalid_attempts'] = 0
+        reset_contextual_memory(session)
+        return None
+
+    intentos += 1
+    session['welcome_invalid_attempts'] = intentos
+
+    if intentos >= 2:
+        send_whatsapp_message(
+            telefono,
+            "Fisher 🐶 no recibió una respuesta válida. Cierro la conversación por ahora; escribe 'REINICIAR' cuando quieras comenzar de nuevo."
+        )
+        reset_safety_reminder_counter(telefono)
+        reset_contextual_memory(session)
+        session['step'] = STEP_INACTIVE
+        session['data'] = {}
+        session['timeout_minutes'] = 0
+        session['warning_sent'] = False
+        session['welcome_invalid_attempts'] = 0
+        update_whatsapp_session(telefono, session)
+        return 'ok', 200
+
+    send_yes_no_prompt(
+        telefono,
+        "Para continuar necesito que respondas exactamente 'sí' o 'no'. Inténtalo de nuevo, por favor.",
+        context_label='WELCOME_RETRY'
+    )
+    configurar_timeout_session(session, 5)
+    update_whatsapp_session(telefono, session)
+    return 'ok', 200
+
+def handle_step_await_placa(telefono, texto, tipo, msg, session):
+    """Handler for awaiting placa input"""
+    placa = texto.upper().replace(' ', '')
+    conductor = buscar_conductor_por_placa(placa)
+    if conductor:
+        respuesta = (
+            f"¿Estos datos son correctos?\n"
+            f"Placa: {conductor['PLACA']}\n"
+            f"Placa remolque: {conductor['PLACA REMOLQUE']}\n"
+            f"Nombre: {conductor['NOMBRE CONDUCTOR']}\n"
+            f"N° Documento: {conductor['N° DOCUMENTO']}\n"
+            f"Celular: {conductor['CELULAR']}\n"
+            "Responde 'sí' si son correctos o 'no' si necesitas corregirlos."
+        )
+        
+        # Guardar directamente en la solicitud de la base de datos
+        solicitud = session.get('solicitud')
+        if solicitud:
+            solicitud.nombre_completo = conductor['NOMBRE CONDUCTOR']
+            solicitud.placa = conductor['PLACA']
+            solicitud.placa_remolque = conductor['PLACA REMOLQUE']
+            solicitud.cedula = conductor['N° DOCUMENTO']
+            solicitud.celular = conductor['CELULAR']
+            solicitud.estado = 'sin turno'
+            db.session.commit()
+
+        send_yes_no_prompt(telefono, respuesta, context_label='CONF_DATOS')
+        session['step'] = STEP_CONFIRM_DATA
+        timeout_cfg = get_step_timeout_config(STEP_CONFIRM_DATA)
+        configurar_timeout_session(session, timeout_cfg.get('timeout', 10))
+        reset_contextual_memory(session)
+        return None
+    else:
+        mensaje = (
+            f"No encontré la placa {placa} en nuestra base de datos.\n"
+            "¿La escribiste correctamente?"
+        )
+        # Guardar la placa original en la solicitud
+        solicitud = session.get('solicitud')
+        if solicitud:
+            solicitud.placa = placa.upper()
+            db.session.commit()
+        session.setdefault('data', {})
+        session['data']['last_placa_input'] = placa.upper()
+
+        send_yes_no_prompt(
+            telefono,
+            mensaje,
+            context_label='CONFIRM_UNKNOWN_PLACA'
+        )
+        session['step'] = STEP_CONFIRM_UNKNOWN_PLACA
+        configurar_timeout_session(session, 10)
+        reset_contextual_memory(session)
+        return None
+
+def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
+    """Confirm whether an unknown plate was typed correctly before branching."""
+    if is_confirmation_positive(texto):
+        send_whatsapp_message(
+            telefono,
+            "Perfecto, entonces te registro manualmente. Por favor escribe tu nombre completo."
+        )
+        session['step'] = STEP_MANUAL_REG_NAME
+        configurar_timeout_session(session, 30)
+        reset_contextual_memory(session)
+        return None
+
+    if is_confirmation_negative(texto):
+        send_whatsapp_message(
+            telefono,
+            "Sin problema. Escríbeme nuevamente la placa del camión, esta vez verificando cada letra y número."
+        )
+        session['step'] = STEP_AWAIT_PLACA
+        configurar_timeout_session(session, 10)
+        reset_contextual_memory(session)
+        return None
+
+    send_yes_no_prompt(
+        telefono,
+        "Necesito que confirmes si la placa está correcta para saber cómo ayudarte. Pulsa Sí o No, por favor.",
+        context_label='CONFIRM_UNKNOWN_PLACA_RETRY'
+    )
+    configurar_timeout_session(session, 5)
+    return None
+
+# Mapeo de handlers para cada estado (reemplaza el if/elif gigante)
+STEP_HANDLERS = {
+    STEP_INACTIVE: None,  # No handler needed
+    STEP_WELCOME: handle_step_welcome,
+    STEP_AWAIT_PLACA: handle_step_await_placa,
+    STEP_CONFIRM_DATA: None,  # Handled in main flow
+    STEP_AWAIT_GUIA: None,  # Handled in main flow
+    STEP_AWAIT_GPS_BOSCONIA: None,  # Handled in main flow
+    STEP_AWAIT_TICKET_GAMBOTE: None,  # Handled in main flow
+    STEP_AWAIT_GPS_GAMBOTE: None,  # Handled in main flow
+    STEP_AWAIT_GPS_ZISA: None,  # Handled in main flow
+    STEP_FINAL_CONFIRMATION: None,  # Handled in main flow
+    STEP_MANUAL_REG_NAME: None,  # Handled in main flow
+    STEP_MANUAL_REG_CEDULA: None,  # Handled in main flow
+    STEP_MANUAL_REG_REMOLQUE: None,  # Handled in main flow
+    STEP_MANUAL_REG_CONFIRM: None,  # Handled in main flow
+    STEP_CONFIRM_UNKNOWN_PLACA: handle_step_confirm_unknown_placa,
+    STEP_UNDER_REVIEW: None,  # Handled in main flow
+    STEP_HUMAN_HANDOFF: None,
+}
+
+@login_required
+@app.route('/api/solicitudes_cita')
+def api_solicitudes_cita():
+    solicitudes = SolicitudCita.query.order_by(SolicitudCita.fecha.desc()).all()
+    def serialize(s):
+        return {
+            'id': s.id,
+            'fecha': s.fecha.strftime('%d/%m/%Y %H:%M'),
+            'nombre_completo': s.nombre_completo,
+            'cedula': s.cedula,
+            'placa': s.placa,
+            'placa_remolque': s.placa_remolque,
+            'celular': s.celular,
+            'estado': s.estado,
+            'turno': s.turno,
+            'fecha_descargue': s.fecha_descargue.strftime('%d/%m/%Y %H:%M') if s.fecha_descargue else '',
+            'lugar_descargue': s.lugar_descargue,
+            'observaciones': s.observaciones or '',
+            'imagen_guia': s.imagen_guia,
+            'imagen_manifiesto': s.imagen_manifiesto,
+            'paso_bosconia': s.paso_bosconia,
+            'ticket_gambote': s.ticket_gambote
+        }
+    return jsonify([serialize(s) for s in solicitudes])    
 
 @app.cli.command("init-db")
 def init_db_command():
@@ -9816,6 +12883,240 @@ def init_db_command():
 
 with app.app_context():
  db.create_all()
+
+# Registrar el Blueprint de WhatsApp
+app.register_blueprint(bot_bp)
+
+# ===================================================================
+# --- INICIO: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
+# ===================================================================
+
+
+def get_access_token():
+    """Solicita un token OAuth2 para la Graph API usando client credentials."""
+    tenant_id = os.getenv('MS_TENANT_ID')
+    client_id = os.getenv('MS_CLIENT_ID')
+    client_secret = os.getenv('MS_CLIENT_SECRET')
+
+    if not all([tenant_id, client_id, client_secret]):
+        current_app.logger.error('Faltan variables MS_TENANT_ID, MS_CLIENT_ID o MS_CLIENT_SECRET para autenticación.')
+        return None
+
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+    payload = {
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'scope': 'https://graph.microsoft.com/.default',
+        'grant_type': 'client_credentials'
+    }
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+
+    try:
+        response = requests.post(url, headers=headers, data=payload, timeout=30)
+        response.raise_for_status()
+        token_data = response.json()
+        return token_data.get('access_token')
+    except requests.exceptions.RequestException as exc:
+        current_app.logger.error(f'Error al obtener token de Graph API: {exc}')
+        return None
+
+
+def descargar_guia_sharepoint(registro, numero_guia):
+    """Descarga un PDF desde SharePoint y lo almacena en GUIDES_DIR/<registro_id>/."""
+    registro_id = getattr(registro, 'id', None)
+    if registro_id is None:
+        return {'status': 'error', 'mensaje': 'Registro inválido para importar la guía.'}
+
+    token = get_access_token()
+    if not token:
+        return {'status': 'error', 'mensaje': 'Fallo al obtener token de autenticación.'}
+
+    sp_hostname = os.getenv('SP_SITE_HOSTNAME')
+    sp_site_path = os.getenv('SP_SITE_PATH')
+    sp_folder_default = os.getenv('SP_GUIDES_FOLDER')
+    sp_folder_diluyente = os.getenv('SP_GUIDES_FOLDER_DILUYENTE')
+    sp_folder_fo4 = os.getenv('SP_GUIDES_FOLDER_FO4')
+
+    producto = ((registro.producto_a_cargar or '').strip().upper())
+    chosen_folder = None
+
+    if producto:
+        if 'DILUY' in producto and sp_folder_diluyente:
+            chosen_folder = sp_folder_diluyente
+        elif 'FO4' in producto and sp_folder_fo4:
+            chosen_folder = sp_folder_fo4
+
+    if not chosen_folder:
+        chosen_folder = sp_folder_default
+
+    if not all([sp_hostname, sp_site_path, chosen_folder]):
+        return {'status': 'error', 'mensaje': 'Faltan variables SP_SITE_HOSTNAME, SP_SITE_PATH o carpeta SharePoint configurada.'}
+
+    normalized_folder = str(chosen_folder).strip().strip('/')
+
+
+    nombre_archivo_sp = f"{numero_guia}.pdf"
+    # Usar siempre la ruta relativa a la raíz del drive
+    folder_relative = normalized_folder
+    # Si la ruta contiene 'Documentos compartidos/', eliminar ese prefijo
+    if folder_relative.lower().startswith('documentos compartidos/'):
+        folder_relative = folder_relative[len('documentos compartidos/'):]
+    # Si la ruta contiene solo la carpeta raíz (por ejemplo, 'General'), dejarla tal cual
+    # Si la ruta contiene 'General/...' dejarla tal cual
+    # Si la ruta contiene cualquier otro prefijo, eliminarlo
+    # (Opcional: podrías validar que la primera carpeta existe en el log de DRIVE_ROOT)
+    encoded_folder = quote(folder_relative, safe='/')
+    encoded_filename = quote(nombre_archivo_sp)
+    headers = {'Authorization': f'Bearer {token}'}
+
+    try:
+        current_app.logger.info(
+            f"[SP_IMPORT] Registro {registro_id} -> carpeta '{normalized_folder}' producto '{producto}'"
+        )
+        file_metadata = None
+        search_data = []
+
+        # 1. Obtener drive-id del sitio
+        drive_url = f"https://graph.microsoft.com/v1.0/sites/{sp_hostname}:{sp_site_path}:/drives"
+        drive_resp = requests.get(drive_url, headers=headers, timeout=30)
+        drive_resp.raise_for_status()
+        drives = drive_resp.json().get('value', [])
+        # Buscar el drive correcto (normalmente el que tiene 'document' en el nombre)
+        drive_id = None
+        for d in drives:
+            if 'document' in (d.get('name', '').lower()):
+                drive_id = d.get('id')
+                break
+        if not drive_id and drives:
+            drive_id = drives[0].get('id')
+        if not drive_id:
+            current_app.logger.error(f"[SP_IMPORT][DRIVE_ID_ERROR] No se pudo obtener el drive-id del sitio. Drives: {drives}")
+            return {'status': 'error', 'mensaje': 'No se pudo obtener el drive-id del sitio.'}
+
+        # Listar todos los drives y sus carpetas raíz para depuración
+        all_drives_url = f"https://graph.microsoft.com/v1.0/sites/{sp_hostname}:{sp_site_path}:/drives"
+        all_drives_resp = requests.get(all_drives_url, headers=headers, timeout=30)
+        all_drives_resp.raise_for_status()
+        all_drives = all_drives_resp.json().get('value', [])
+        for drive in all_drives:
+            drive_id_dbg = drive.get('id')
+            drive_name_dbg = drive.get('name')
+            root_url_dbg = f"https://graph.microsoft.com/v1.0/drives/{drive_id_dbg}/root/children"
+            root_resp_dbg = requests.get(root_url_dbg, headers=headers, timeout=30)
+            root_resp_dbg.raise_for_status()
+            root_items_dbg = root_resp_dbg.json().get('value', [])
+            current_app.logger.info(
+                f"[SP_IMPORT][DRIVE_LIST] Drive: {drive_name_dbg} ({drive_id_dbg}) -> Raíz: "
+                f"{[{'name': item.get('name'), 'folder': 'folder' in item, 'id': item.get('id')} for item in root_items_dbg]}"
+            )
+
+        # ...existing code...
+
+        # Listar carpetas y archivos dentro de 'General' para depuración
+        # Listar carpetas y archivos dentro de 'General' para depuración
+        general_folder_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/General:/children"
+        general_folder_resp = requests.get(general_folder_url, headers=headers, timeout=30)
+        general_folder_resp.raise_for_status()
+        general_items = general_folder_resp.json().get('value', [])
+        current_app.logger.info(
+            f"[SP_IMPORT][GENERAL_FOLDER] Carpetas y archivos en 'General': "
+            f"{[{'name': item.get('name'), 'folder': 'folder' in item, 'id': item.get('id')} for item in general_items]}"
+        )
+
+        # ...existing code...
+
+        # Buscar la carpeta en todos los drives disponibles
+        folder_id = None
+        found_drive_id = None
+        found_drive_name = None
+        for d in drives:
+            test_drive_id = d.get('id')
+            test_drive_name = d.get('name')
+            folder_meta_url = f"https://graph.microsoft.com/v1.0/drives/{test_drive_id}/root:/{encoded_folder}"
+            try:
+                folder_meta_response = requests.get(folder_meta_url, headers=headers, timeout=30)
+                if folder_meta_response.status_code == 200:
+                    folder_meta = folder_meta_response.json()
+                    folder_id = folder_meta.get('id')
+                    found_drive_id = test_drive_id
+                    found_drive_name = test_drive_name
+                    break
+            except Exception as e:
+                current_app.logger.warning(f"[SP_IMPORT][FOLDER_SEARCH] Error buscando carpeta en drive {test_drive_name}: {e}")
+        if not folder_id:
+            current_app.logger.error(f"[SP_IMPORT][FOLDER_ID_ERROR] No se pudo encontrar la carpeta '{normalized_folder}' en ningún drive. Revisa permisos y ruta.")
+            return {'status': 'error', 'mensaje': f'No se pudo encontrar la carpeta en ningún drive.'}
+
+        # 3. Listar archivos en la carpeta encontrada
+        children_url = f"https://graph.microsoft.com/v1.0/drives/{found_drive_id}/items/{folder_id}/children"
+        children_response = requests.get(children_url, headers=headers, timeout=30)
+        children_response.raise_for_status()
+        search_data = children_response.json().get('value', [])
+        # Buscar archivo por nombre
+        for item in search_data:
+            name = (item.get('name') or '').lower()
+            if name == nombre_archivo_sp.lower():
+                file_metadata = item
+                break
+        current_app.logger.info(
+            f"[SP_IMPORT][SEARCH_RESULTS] Archivos en carpeta '{normalized_folder}' (drive '{found_drive_name}'): "
+            f"{[{'name': item.get('name'), 'path': unquote(item.get('parentReference', {}).get('path') or '')} for item in search_data]}"
+        )
+        if not file_metadata:
+            current_app.logger.warning(
+                f"[SP_IMPORT][NO_MATCH] No se encontró coincidencia exacta para '{nombre_archivo_sp}' en carpeta. Resultados: "
+                f"{[{'name': item.get('name'), 'path': unquote(item.get('parentReference', {}).get('path') or '')} for item in search_data]}"
+            )
+            return {
+                'status': 'error',
+                'mensaje': (
+                    f"Guía {numero_guia} no encontrada en SharePoint. "
+                    "Verifica el nombre del archivo y la carpeta."
+                )
+            }
+
+        download_url = file_metadata.get('@microsoft.graph.downloadUrl')
+        if not download_url:
+            current_app.logger.error(f"[SP_IMPORT][NO_DOWNLOAD_URL] No se pudo obtener la URL de descarga para '{numero_guia}'.")
+            if search_data:
+                current_app.logger.error(f"[SP_IMPORT][SEARCH_RESULTS_ON_ERROR] {search_data}")
+            return {'status': 'error', 'mensaje': 'No se pudo obtener la URL de descarga.'}
+
+        file_response = requests.get(download_url, timeout=60)
+        file_response.raise_for_status()
+
+        save_dir = os.path.join(current_app.config['GUIDES_DIR'], str(registro_id))
+        os.makedirs(save_dir, exist_ok=True)
+
+        unique_filename = f"sharepoint_{uuid.uuid4().hex[:8]}.pdf"
+        ruta_guardado_abs = os.path.join(save_dir, unique_filename)
+
+        with open(ruta_guardado_abs, 'wb') as destino:
+            destino.write(file_response.content)
+
+        ruta_relativa = os.path.join(str(registro_id), unique_filename).replace('\\', '/')
+
+        return {
+            'status': 'exito',
+            'ruta_relativa': ruta_relativa,
+            'ruta_abs': ruta_guardado_abs
+        }
+
+    except requests.exceptions.RequestException as exc:
+        current_app.logger.error(f"[SP_IMPORT][EXCEPTION] Error de red o API: {exc}")
+        if 'search_data' in locals() and search_data:
+            current_app.logger.error(f"[SP_IMPORT][SEARCH_RESULTS_ON_EXCEPTION] {search_data}")
+        return {'status': 'error', 'mensaje': f'Error de red o API: {exc}'}
+    except Exception as exc:
+        current_app.logger.error(f"[SP_IMPORT][EXCEPTION] Error inesperado: {exc}")
+        if 'search_data' in locals() and search_data:
+            current_app.logger.error(f"[SP_IMPORT][SEARCH_RESULTS_ON_EXCEPTION] {search_data}")
+        return {'status': 'error', 'mensaje': f'Error inesperado: {exc}'}
+
+
+# ===================================================================
+# --- FIN: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
+# ===================================================================
 
 if __name__ == '__main__':
     app.run(debug=True) 

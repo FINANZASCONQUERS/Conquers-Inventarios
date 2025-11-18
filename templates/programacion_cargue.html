@@ -212,17 +212,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let mostrandoHistorialCompleto = false;
 
     const DESPACHADO_LOCK_DELAY_MS = 30 * 60 * 1000;
-    const DESPACHADO_LOCK_STORAGE_KEY = 'programacionDespachadoLocks_v1';
+    const DESPACHADO_OVERRIDE_EMAIL = 'logistic@conquerstrading.com';
+    const isDespachadoOverride = userEmail === DESPACHADO_OVERRIDE_EMAIL;
     const despachadoLockTimers = new Map();
-    let despachadoLocks = {};
-    try {
-        const storedLocks = localStorage.getItem(DESPACHADO_LOCK_STORAGE_KEY);
-        if (storedLocks) {
-            despachadoLocks = JSON.parse(storedLocks);
-        }
-    } catch (error) {
-        despachadoLocks = {};
-    }
 
     const permissions = {
         'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -344,6 +336,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
 
     // --- FUNCIÓN MODIFICADA PARA RENDERIZAR EL INPUT ---
     function renderBody(data) {
+        Array.from(despachadoLockTimers.keys()).forEach(cancelDespachadoTimer);
         tbody.innerHTML = '';
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4 text-muted">No hay programaciones que coincidan con los filtros.</td></tr>`;
@@ -351,14 +344,15 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         }
 
         data.forEach(row => {
-            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" class="align-middle">`;
+            const despachadoDesdeAttr = row.despachado_bloqueado_desde || '';
+            const despachadoBloqueadoAttr = row.despachado_bloqueado ? '1' : '0';
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" class="align-middle">`;
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
                 // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
                 const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho'].includes(col);
-                // Si el registro es viejo y el campo tiene valor, bloquearlo
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
                 if (config.type === 'datalist' && finalEditable) {
@@ -388,7 +382,11 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                                     ${!row.imagen_guia ? `
                                     <button class="btn btn-outline-success btn-xs btn-upload-image" title="Subir archivo de guía" aria-label="Subir">
                                         <i class="fas fa-upload"></i>
-                                    </button>` : ''}
+                                    </button>
+                                    <button class="btn btn-outline-info btn-xs btn-import-sharepoint" title="Importar desde SharePoint" aria-label="Importar" ${!row.numero_guia ? 'disabled' : ''}>
+                                        <i class="fas fa-cloud-download-alt"></i>
+                                    </button>
+                                    ` : ''}
                                     ${row.imagen_guia ? `
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver archivo de guía" aria-label="Ver">
                                         <i class="fas fa-image"></i>
@@ -701,6 +699,66 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             }
         }
 
+        // Botón Importar desde SharePoint
+        const importButton = e.target.closest('.btn-import-sharepoint');
+        if (importButton) {
+            const row = importButton.closest('tr');
+            const id = row.dataset.id;
+            const statusIndicator = row.querySelector('.save-indicator');
+
+            const guiaCell = row.querySelector('td[data-field="numero_guia"]');
+            let numeroGuia = '';
+            if (guiaCell) {
+                const input = guiaCell.querySelector('input.editable-input');
+                const span = guiaCell.querySelector('.cell-editor');
+                if (input) {
+                    numeroGuia = input.value;
+                } else if (span) {
+                    numeroGuia = span.textContent;
+                } else {
+                    numeroGuia = guiaCell.textContent;
+                }
+            }
+            numeroGuia = numeroGuia.trim();
+
+            if (!numeroGuia) {
+                showToast('danger', 'No hay un número de guía en esta fila para importar.');
+                return;
+            }
+
+            if (!confirm(`¿Estás seguro de que deseas importar la guía "${numeroGuia}.pdf" desde SharePoint? Esto sobrescribirá cualquier archivo de guía existente.`)) {
+                return;
+            }
+
+            statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+            importButton.disabled = true;
+
+            fetch(`/api/programacion/${id}/importar-sharepoint`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ numero_guia: numeroGuia })
+            })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.success) {
+                    showToast('success', data.message || 'Guía importada exitosamente.');
+                    fetchAndRender(mostrandoHistorialCompleto);
+                } else {
+                    showToast('danger', `Error al importar: ${data.message || 'Error desconocido'}`);
+                    statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                    setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
+                }
+            })
+            .catch(() => {
+                showToast('danger', 'Error de red al importar.');
+                statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+                setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
+            })
+            .finally(() => {
+                // La tabla se recargará cuando corresponda; mantener el estado controlado aquí.
+            });
+        }
+
         const estadoCell = e.target.closest('td[data-field="estado"].editable-cell');
         if (estadoCell && !estadoCell.querySelector('select')) {
             const originalValue = estadoCell.textContent.trim();
@@ -785,17 +843,25 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 
                 // Actualizar el color de la fila automáticamente si cambió el estado
                 if (field === 'estado' && value) {
-                    updateRowColors(row, value);
-                    if (value === 'DESPACHADO') {
-                        startDespachadoCountdown(row, true);
+                    const estadoActual = value.toUpperCase();
+                    row.dataset.estado = estadoActual;
+                    updateRowColors(row, estadoActual);
+                    if (estadoActual === 'DESPACHADO') {
+                        row.dataset.despachadoDesde = new Date().toISOString();
+                        row.dataset.despachadoBloqueado = '0';
                     } else {
-                        row.classList.remove('row-blocked');
-                        clearDespachadoLock(row.dataset.id);
+                        row.dataset.despachadoDesde = '';
+                        row.dataset.despachadoBloqueado = '0';
+                        releaseRowBlock(row);
                     }
+                    initializeDespachadoLock(row);
                 }
             } else {
                 statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
                 showToast('danger', `Error en ${field}: ` + (data.message || 'Error'));
+                if (field === 'estado') {
+                    fetchAndRender(mostrandoHistorialCompleto);
+                }
             }
         })
         .catch(error => {
@@ -807,15 +873,8 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         });
     }
 
-    function persistDespachadoLocks() {
-        try {
-            localStorage.setItem(DESPACHADO_LOCK_STORAGE_KEY, JSON.stringify(despachadoLocks));
-        } catch (error) {
-            /* storage fallback no-op */
-        }
-    }
-
-    function cancelDespachadoLockTimer(id) {
+    function cancelDespachadoTimer(id) {
+        if (!id) return;
         const timerId = despachadoLockTimers.get(id);
         if (timerId) {
             clearTimeout(timerId);
@@ -824,69 +883,104 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     }
 
     function applyRowBlock(row) {
-        if (!row) return;
+        if (!row || isDespachadoOverride) return;
+        row.dataset.despachadoBloqueado = '1';
         row.querySelectorAll('input, select, textarea').forEach(el => {
+            if (!el.classList.contains('blocked-field')) {
+                el.dataset.originalDisabled = el.disabled ? '1' : '0';
+            }
             el.disabled = true;
             el.classList.add('blocked-field');
         });
         row.querySelectorAll('.cell-editor').forEach(el => {
+            if (!el.classList.contains('blocked-field')) {
+                const original = el.getAttribute('contenteditable');
+                el.dataset.originalContentEditable = original !== null ? original : '';
+            }
             el.setAttribute('contenteditable', 'false');
             el.classList.add('blocked-field');
         });
         row.classList.add('row-blocked');
     }
 
-    function clearDespachadoLock(id) {
-        if (!id) return;
-        cancelDespachadoLockTimer(id);
-        if (despachadoLocks[id]) {
-            delete despachadoLocks[id];
-            persistDespachadoLocks();
+    function releaseRowBlock(row) {
+        if (!row) return;
+        cancelDespachadoTimer(row.dataset.id);
+        row.querySelectorAll('input, select, textarea').forEach(el => {
+            if (!el.classList.contains('blocked-field')) return;
+            const originalDisabled = el.dataset.originalDisabled;
+            if (originalDisabled === '0') {
+                el.disabled = false;
+            }
+            el.classList.remove('blocked-field');
+            delete el.dataset.originalDisabled;
+        });
+        row.querySelectorAll('.cell-editor').forEach(el => {
+            if (!el.classList.contains('blocked-field')) return;
+            const originalEditable = el.dataset.originalContentEditable;
+            if (originalEditable === '') {
+                el.removeAttribute('contenteditable');
+            } else if (originalEditable !== undefined) {
+                el.setAttribute('contenteditable', originalEditable);
+            }
+            el.classList.remove('blocked-field');
+            delete el.dataset.originalContentEditable;
+        });
+        row.classList.remove('row-blocked');
+        if (row.dataset.despachadoBloqueado === '1') {
+            row.dataset.despachadoBloqueado = '0';
         }
     }
 
-    function startDespachadoCountdown(row, triggeredByChange) {
+    function initializeDespachadoLock(row) {
         if (!row) return;
         const id = row.dataset.id;
         if (!id) return;
+        cancelDespachadoTimer(id);
 
-        cancelDespachadoLockTimer(id);
-
-        let lockStart = despachadoLocks[id];
-        if (!lockStart) {
-            lockStart = triggeredByChange ? Date.now() : Date.now() - DESPACHADO_LOCK_DELAY_MS;
-            despachadoLocks[id] = lockStart;
-            persistDespachadoLocks();
-        } else if (triggeredByChange) {
-            lockStart = Date.now();
-            despachadoLocks[id] = lockStart;
-            persistDespachadoLocks();
+        if (isDespachadoOverride) {
+            releaseRowBlock(row);
+            return;
         }
 
-        const elapsed = Date.now() - lockStart;
+        const estadoActual = (row.dataset.estado || '').toUpperCase();
+        if (estadoActual !== 'DESPACHADO') {
+            releaseRowBlock(row);
+            return;
+        }
+
+        const startIso = row.dataset.despachadoDesde;
+        const yaBloqueado = row.dataset.despachadoBloqueado === '1';
+        if (!startIso) {
+            if (yaBloqueado) {
+                applyRowBlock(row);
+            } else {
+                releaseRowBlock(row);
+            }
+            return;
+        }
+
+        const isoWithTz = /Z$|[+-]\d{2}:?\d{2}$/.test(startIso) ? startIso : `${startIso}Z`;
+        const startTime = Date.parse(isoWithTz);
+        if (Number.isNaN(startTime)) {
+            releaseRowBlock(row);
+            return;
+        }
+
+        const elapsed = Date.now() - startTime;
         const remaining = DESPACHADO_LOCK_DELAY_MS - elapsed;
 
-        if (remaining <= 0) {
+        if (remaining <= 0 || yaBloqueado) {
             applyRowBlock(row);
             return;
         }
 
+        releaseRowBlock(row);
         const timerId = setTimeout(() => {
             applyRowBlock(row);
             despachadoLockTimers.delete(id);
         }, remaining);
         despachadoLockTimers.set(id, timerId);
-    }
-
-    function initializeDespachadoLock(row) {
-        const id = row.dataset.id;
-        if (!id) return;
-        const estado = row.dataset.estado || 'PROGRAMADO';
-        if (estado === 'DESPACHADO') {
-            startDespachadoCountdown(row, false);
-        } else {
-            clearDespachadoLock(id);
-        }
     }
 
     // Función para actualizar los colores de la fila según el estado

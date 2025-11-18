@@ -254,6 +254,9 @@
     <button type="button" id="btnAbrirModalCliente" class="btn btn-outline-success">
         <i class="bi bi-person-plus-fill me-1"></i> Agregar Cliente
     </button>
+    <button type="button" id="btnEditarCliente" class="btn btn-outline-primary">
+        <i class="bi bi-pencil-square me-1"></i> Editar Cliente
+    </button>
     <button type="button" id="btnAbrirModalConductor" class="btn btn-outline-success">
         <i class="bi bi-person-plus-fill me-1"></i> Agregar Conductor
     </button>
@@ -384,6 +387,37 @@
       </div>
     </div>
   </div>
+</div>
+<div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalLabelEditarCliente" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabelEditarCliente">Editar Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarCliente">
+                        <input type="hidden" id="originalNombreCliente">
+                        <div class="mb-3">
+                                <label for="editarNombreCliente" class="form-label">Nombre del Cliente</label>
+                                <input type="text" class="form-control" id="editarNombreCliente" required>
+                        </div>
+                        <div class="mb-3">
+                                <label for="editarDireccionCliente" class="form-label">Dirección</label>
+                                <input type="text" class="form-control" id="editarDireccionCliente" required>
+                        </div>
+                        <div class="mb-3">
+                                <label for="editarCiudadCliente" class="form-label">Ciudad y Departamento</label>
+                                <input type="text" class="form-control" id="editarCiudadCliente" required>
+                        </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnActualizarCliente">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
 </div>
 <div class="modal fade" id="modalAgregarConductor" tabindex="-1" aria-labelledby="modalLabelConductor" aria-hidden="true">
     <div class="modal-dialog">
@@ -594,6 +628,8 @@ if (Object.keys(datosGuia).length > 1) {
     // 2. Definir todas las variables de los modales en un solo lugar
     const modalElCliente = document.getElementById('modalAgregarCliente');
     const modalCliente = new bootstrap.Modal(modalElCliente);
+    const modalElEditarCliente = document.getElementById('modalEditarCliente');
+    const modalEditarCliente = modalElEditarCliente ? new bootstrap.Modal(modalElEditarCliente) : null;
     
     const modalElConductor = document.getElementById('modalAgregarConductor');
     const modalConductor = new bootstrap.Modal(modalElConductor);
@@ -608,6 +644,27 @@ if (Object.keys(datosGuia).length > 1) {
         document.getElementById('formAgregarCliente').reset();
         modalCliente.show();
     });
+    const btnEditarCliente = document.getElementById('btnEditarCliente');
+    if (btnEditarCliente && modalEditarCliente) {
+        btnEditarCliente.addEventListener('click', () => {
+            const select = document.getElementById('clienteSelect');
+            const seleccionado = (select.value || '').trim();
+            if (!seleccionado || seleccionado === 'AGREGAR_CLIENTE') {
+                Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
+                return;
+            }
+            const clienteActual = clientes.find(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === seleccionado.toUpperCase());
+            if (!clienteActual) {
+                Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No pudimos cargar los datos de ese cliente. Actualiza la página e inténtalo de nuevo.' });
+                return;
+            }
+            document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+            document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+            document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
+            document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
+            modalEditarCliente.show();
+        });
+    }
     document.getElementById('clienteSelect').addEventListener('change', function() {
         if (this.value === 'AGREGAR_CLIENTE') {
             document.getElementById('formAgregarCliente').reset();
@@ -636,6 +693,40 @@ if (Object.keys(datosGuia).length > 1) {
             }
         } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
     });
+    const btnActualizarCliente = document.getElementById('btnActualizarCliente');
+    if (btnActualizarCliente && modalEditarCliente) {
+        btnActualizarCliente.addEventListener('click', async () => {
+            const original = document.getElementById('originalNombreCliente').value.trim();
+            const nombre = document.getElementById('editarNombreCliente').value.trim();
+            const direccion = document.getElementById('editarDireccionCliente').value.trim();
+            const ciudad = document.getElementById('editarCiudadCliente').value.trim();
+            if (!original || !nombre || !direccion || !ciudad) {
+                Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa todos los campos antes de guardar.' });
+                return;
+            }
+            try {
+                const response = await fetch("{{ url_for('actualizar_cliente_ajax') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ original_nombre: original, nombre, direccion, ciudad })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                    actualizarDropdownClientes();
+                    const select = document.getElementById('clienteSelect');
+                    select.value = result.cliente.NOMBRE_CLIENTE;
+                    select.dispatchEvent(new Event('change'));
+                    modalEditarCliente.hide();
+                    Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo actualizar el cliente.' });
+                }
+            } catch (error) {
+                Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' });
+            }
+        });
+    }
 
     // Eventos para CONDUCTOR
     document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
