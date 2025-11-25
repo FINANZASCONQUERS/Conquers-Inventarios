@@ -125,7 +125,7 @@
                         <option value="recordatorio_inteligente">Seguimiento automático</option>
                         <option value="turno_retrasado">Turno en ajuste operativo</option>
                         <option value="finalizar_atencion">Finalizar atención humana</option>
-                        <option value="iniciar_conversacion">Enviar Notificación Inicio (Plantilla)</option>
+                        <option value="iniciar_conversacion">Inicio (Plantilla)</option>
                     </select>
 
                     <div class="chat-modal-body">
@@ -169,6 +169,10 @@
                                 <div class="chat-quick-group">
                                     <p class="chat-quick-subtitle"><i class="fas fa-handshake me-2"></i>Saludo humano</p>
                                     <div class="chat-quick-row">
+                                        <button type="button" class="chat-quick-option chat-quick-option--primary" data-template="iniciar_conversacion">
+                                            <i class="fas fa-paper-plane chat-quick-option-icon"></i>
+                                            <span>Inicio</span>
+                                        </button>
                                         <button type="button" class="chat-quick-option chat-quick-option--accent" data-template="bienvenida_samantha">
                                             <i class="fas fa-handshake chat-quick-option-icon"></i>
                                             <span>Saludo Samantha</span>
@@ -215,10 +219,6 @@
                                         <button type="button" class="chat-quick-option chat-quick-option--warning" data-template="recordatorio_inteligente">
                                             <i class="fas fa-bell chat-quick-option-icon"></i>
                                             <span>Seguimiento automático</span>
-                                        </button>
-                                        <button type="button" class="chat-quick-option chat-quick-option--primary" data-template="iniciar_conversacion">
-                                            <i class="fas fa-paper-plane chat-quick-option-icon"></i>
-                                            <span>Enviar Notificación Inicio</span>
                                         </button>
                                     </div>
                                 </div>
@@ -375,13 +375,13 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="enturnadas-tab" data-bs-toggle="tab" data-bs-target="#enturnadas" type="button" role="tab" aria-controls="enturnadas" aria-selected="false">
-                        <i class="fas fa-check-double me-2"></i>Enturnadas <span class="badge bg-success ms-1" id="badge-enturnadas">0</span>
+                    <button class="nav-link" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab" aria-controls="pendientes" aria-selected="false">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Pendientes <span class="badge bg-warning ms-1" id="badge-pendientes">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab" aria-controls="pendientes" aria-selected="false">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Pendientes <span class="badge bg-warning ms-1" id="badge-pendientes">0</span>
+                    <button class="nav-link" id="enturnadas-tab" data-bs-toggle="tab" data-bs-target="#enturnadas" type="button" role="tab" aria-controls="enturnadas" aria-selected="false">
+                        <i class="fas fa-check-double me-2"></i>Enturnadas <span class="badge bg-success ms-1" id="badge-enturnadas">0</span>
                     </button>
                 </li>
             </ul>
@@ -3190,8 +3190,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 Cuando necesites un *nuevo enturne*, solo escribe *NUEVO* y comenzaremos desde cero. ¡Te esperamos!`;
             case 'iniciar_conversacion':
-                return "Enviando notificación oficial de orden de servicio (Plantilla)...";
-            case 'personalizado':
+                return "";
             default:
                 return null;
         }
@@ -3311,6 +3310,13 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
 
         const textoTemplate = construirMensajeTemplate(claveNormalizada, nombreActual);
         mensajeInput.value = textoTemplate !== null ? textoTemplate : '';
+        
+        if (claveNormalizada === 'iniciar_conversacion') {
+            mensajeInput.placeholder = 'Se enviará la plantilla oficial de bienvenida de Fisher 🐶';
+        } else {
+            mensajeInput.placeholder = 'Escribe un mensaje...';
+        }
+        
         finalizarActualizacionTemplate(claveNormalizada, focus);
     }
 
@@ -4346,7 +4352,9 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
                 return;
             }
 
-            if (!mensaje && !hasAdjunto) {
+            const preset = templateSelect ? templateSelect.value : 'personalizado';
+
+            if (!mensaje && !hasAdjunto && preset !== 'iniciar_conversacion') {
                 alert('Escribe un mensaje o adjunta un archivo antes de enviarlo.');
                 return;
             }

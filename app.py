@@ -11192,11 +11192,12 @@ def enviar_mensaje_conductor(id):
             'nueva_ubicacion_gambote',
             'recordatorio_inteligente',
             'turno_retrasado',
-            'finalizar_atencion'
+            'finalizar_atencion',
+            'iniciar_conversacion'
         }
         preset = preset_raw if preset_raw in presets_validos else 'personalizado'
         
-        if not mensaje and not has_attachment and preset != 'recordatorio_inteligente':
+        if not mensaje and not has_attachment and preset not in ('recordatorio_inteligente', 'iniciar_conversacion'):
             return jsonify(success=False, message='Escribe un mensaje o adjunta un archivo antes de enviarlo.'), 400
 
         media_url = None
@@ -11250,17 +11251,32 @@ def enviar_mensaje_conductor(id):
                     partes.append("Comencemos con el primero; te indicaré al instante qué necesitas enviar.")
                     mensaje = ''.join(partes)
 
-        mensaje_completo = mensaje
-        if urgente and mensaje_completo:
-            mensaje_completo = f"🚨 {mensaje_completo}"
-        
-        exito = send_whatsapp_message(
-            solicitud.telefono,
-            mensaje_completo,
-            media_url=media_url,
-            sender='human',
-            solicitud=solicitud
-        )
+        if preset == 'iniciar_conversacion':
+            # Enviar plantilla de WhatsApp para notificación de inicio
+            nombre_conductor = solicitud.nombre_completo or 'Conductor'
+            # --- CORRECCIÓN: Añadir la segunda variable (Placa) ---
+            placa_vehiculo = solicitud.placa or 'su vehículo'
+            
+            exito = send_whatsapp_message(
+                solicitud.telefono,
+                template_name='recordatorio_inicio_fisher',
+                # Enviar AMBAS variables en orden: {{1}}=Nombre, {{2}}=Placa
+                template_vars=[nombre_conductor, placa_vehiculo],
+                sender='human',
+                solicitud=solicitud
+            )
+        else:
+            mensaje_completo = mensaje
+            if urgente and mensaje_completo:
+                mensaje_completo = f"🚨 {mensaje_completo}"
+            
+            exito = send_whatsapp_message(
+                solicitud.telefono,
+                mensaje_completo,
+                media_url=media_url,
+                sender='human',
+                solicitud=solicitud
+            )
         
         if exito:
             def aplicar_accion_preset(solicitud_obj, preset_key):
@@ -12679,14 +12695,18 @@ def send_whatsapp_message(
 
         # Agregar variables si se proporcionan
         if template_vars:
-            components = []
-            for i, var in enumerate(template_vars):
-                components.append({
-                    "type": "body",
-                    "parameters": [{"type": "text", "text": str(var)}]
+            parameters = []
+            for var in template_vars:
+                parameters.append({
+                    "type": "text",
+                    "text": str(var)
                 })
-            if components:
-                payload["template"]["components"] = components
+            
+            # La API de WhatsApp espera UN solo objeto en la lista 'components' para el body
+            payload["template"]["components"] = [{
+                "type": "body",
+                "parameters": parameters
+            }]
 
     else:
         # Mensaje regular (texto, botones o multimedia)
