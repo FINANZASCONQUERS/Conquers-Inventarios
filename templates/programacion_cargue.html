@@ -228,21 +228,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     const columnsConfig = {
-        'fecha_programacion': { width: '120px', type: 'date' },
+        'fecha_programacion': { width: '100px', type: 'date' },
+        'hora_llegada_estimada': { width: '70px', type: 'time' },
+        'destino': { width: '150px' },
+        'placa': { width: '100px' },
+        'tanque': { width: '80px' },
+        'empresa_transportadora': { width: '120px' },
+        'nombre_conductor': { width: '180px' },
+        'cedula_conductor': { width: '120px' },
         'producto_a_cargar': { 
-            width: '150px', 
+            width: '120px', 
             type: 'datalist',
             options: ['FUEL OIL 4','FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO']
         },
-        'cliente': { width: '180px' },
-        'hora_llegada_estimada': { width: '120px', type: 'time' },
-        'placa': { width: '100px' },
-        'empresa_transportadora': { width: '180px' },
-        'tanque': { width: '80px' },
-        'nombre_conductor': { width: '180px' },
-        'cedula_conductor': { width: '120px' },
         'celular_conductor': { width: '120px' },
-        'destino': { width: '150px' },
+        'cliente': { width: '180px' },
         'estado': { width: '130px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'DESPACHADO'] },
         'galones': { width: '100px', type: 'number' },
         'barriles': { width: '100px', type: 'number', readonly: true },
@@ -416,6 +416,19 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     }
 
     function formatColumnName(colName) {
+        const abbreviations = {
+            'hora_llegada_estimada': 'HORA LLEG',
+            'empresa_transportadora': 'EMPRESA TRANSP',
+            'fecha_programacion': 'FECHA PROG',
+            'fecha_despacho': 'FECHA DESP',
+            'numero_guia': 'N° GUIA',
+            'producto_a_cargar': 'PRODUCTO',
+            'nombre_conductor': 'CONDUCTOR',
+            'cedula_conductor': 'CÉDULA',
+            'celular_conductor': 'CELULAR',
+            'api_corregido': 'API CORR'
+        };
+        if (abbreviations[colName]) return abbreviations[colName];
         return colName.replace(/_/g, ' ').toUpperCase();
     }
 
@@ -1445,7 +1458,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     z-index: 10;
     font-size: 0.75rem;
     padding: 1rem 0.875rem;
-    text-align: left;
+    text-align: center;
     text-transform: uppercase;
     font-weight: 700;
     letter-spacing: 0.8px;

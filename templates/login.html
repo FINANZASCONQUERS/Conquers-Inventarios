@@ -16,8 +16,7 @@
         html, body { height:100%; }
         body { margin:0; font-family:'Inter', 'Poppins', system-ui, -apple-system, sans-serif; overflow:hidden; color:#1f2d35; -webkit-font-smoothing:antialiased; }
         /* --- Background Video Layer --- */
-        .bg-wrapper { position:fixed; inset:0; z-index:-3; }
-        .bg-wrapper video { width:100%; height:100%; object-fit:cover; filter:brightness(0.85) saturate(1.05); }
+        .bg-wrapper { position:fixed; inset:0; z-index:-3; background-image: url("{{ url_for('static', filename='Fondo.png') }}"); background-size: cover; background-position: center; background-repeat: no-repeat; filter: brightness(0.85) saturate(1.05); }
         .bg-overlay { position:absolute; inset:0; background:radial-gradient(circle at 30% 30%, rgba(10,124,93,0.55), rgba(29,45,53,0.8)), linear-gradient(120deg, rgba(10,124,93,0.25), rgba(29,45,53,0.65)); backdrop-filter:blur(4px); }
         /* Noise texture */
         .bg-noise { position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.12'/%3E%3C/svg%3E") center/300px 300px repeat; mix-blend-mode:overlay; pointer-events:none; }
@@ -86,10 +85,6 @@
 <body>
     <!-- Background Layers -->
     <div class="bg-wrapper">
-        <video id="bg-video" autoplay muted loop playsinline poster="{{ url_for('static', filename='Fondo.png') }}" oncanplay="window.hideVideoLoader?.()">
-            <source src="{{ url_for('static', filename='fondo_login.mp4') }}" type="video/mp4" />
-            Tu navegador no soporta la reproducción de video.
-        </video>
         <div class="bg-overlay"></div>
         <div class="bg-noise"></div>
     </div>
@@ -182,9 +177,6 @@
             document.getElementById('btnSpinner').classList.remove('d-none');
             document.getElementById('loginBtn').disabled = true;
         });
-
-        // Video loader fallback (exposed earlier in legacy code pattern)
-        window.hideVideoLoader = function(){};
     </script>
 </body>
 </html>
