@@ -13,9 +13,13 @@ import random
 nlp = spacy.load('es_core_news_sm')
 
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "TU_TOKEN_SECRETO_INVENTADO")
+
 # Registro de sesiones esperando comando 'NUEVO' tras timeout
 AWAITING_NEW_AFTER_TIMEOUT = {}
 STEP_TIMER_JOBS = {}
+
+# Paso especial para confirmar reinicio de sesión
+STEP_CONFIRM_RESET = 99
 
 
 def _clear_step_timer_jobs(solicitud_id):
@@ -211,6 +215,138 @@ def _commit_session(telefono, session):
     schedule_step_timers_for_session(session, telefono)
 
 
+def _handle_spoofing_attempt(session, telefono, checkpoint_name):
+    """Maneja intentos de spoofing GPS con advertencias progresivas y degradación de prioridad."""
+    from app import db, SolicitudCita
+    
+    solicitud = session.get('solicitud')
+    
+    # Contar intentos previos desde las observaciones
+    spoofing_count = 1  # Este intento actual
+    if solicitud and solicitud.observaciones:
+        # Contar cuántas marcas de "[SPOOFING #" hay en las observaciones
+        import re
+        spoofing_matches = re.findall(r'\[SPOOFING #(\d+)\]', solicitud.observaciones)
+        if spoofing_matches:
+            # El contador más alto encontrado + 1
+            spoofing_count = max(int(match) for match in spoofing_matches) + 1
+    
+    # Mensajes progresivos de Fisher para spoofing
+    spoofing_messages = [
+        # Primer intento - Divertido pero firme
+        f"🐶 Fisher 🐶: ¡Oye, amigo! Detecté que intentaste enviar una ubicación de mapa 📍 en lugar de GPS real desde {checkpoint_name}.\n\n"
+        "Sé que eres inteligente, pero esto no engaña a mi nariz de perro 🐕. ¡Inténtalo de nuevo con tu ubicación REAL!",
+        
+        # Segundo intento - Más serio
+        f"🐕 Fisher 🐶: ¡Guau! Segundo intento fallido en {checkpoint_name}. Mi olfato canino huele que estás tratando de engañarme con una ubicación del mapa.\n\n"
+        "Recuerda: Clip 📎 → Ubicación → **'Enviar mi ubicación actual'** (el botón azul). ¡No uses el buscador!",
+        
+        # Tercer intento - Amenazante
+        f"🐶 Fisher 🐶: ¡Basta ya! Tres intentos de spoofing GPS en {checkpoint_name}. Mi paciencia de perro se está agotando.\n\n"
+        "⚠️ Si sigues intentando engañarme, tu posición en el enturnamiento bajará automáticamente. ¡Envía tu ubicación REAL ahora!",
+        
+        # Cuarto intento - Muy serio con consecuencias
+        f"🐕 Fisher 🐶: ¡Esto es inaceptable! Cuatro intentos de spoofing en {checkpoint_name}.\n\n"
+        "🚫 Como castigo por intentar engañar al sistema, tu prioridad en el enturnamiento ha bajado. Ahora tendrás que esperar más tiempo.\n\n"
+        "¡Última oportunidad! Envía tu ubicación REAL o tu posición seguirá bajando.",
+        
+        # Quinto intento y posteriores - Máxima severidad
+        f"🐶 Fisher 🐶: ¡Ya basta! Múltiples intentos de spoofing detectados en {checkpoint_name}.\n\n"
+        "💀 Tu posición en el enturnamiento ha sido degradada significativamente. Ahora eres el último en la fila.\n\n"
+        "Si sigues intentando engañarme, tu solicitud será cancelada permanentemente. ¡Comportate!"
+    ]
+    
+    # Seleccionar mensaje basado en el contador
+    # Para intentos > 5, usar siempre el último mensaje (más severo)
+    if spoofing_count >= 5:
+        message_index = len(spoofing_messages) - 1  # Siempre el último mensaje
+    else:
+        message_index = min(spoofing_count - 1, len(spoofing_messages) - 1)
+    message = spoofing_messages[message_index]
+    
+    # Degradar prioridad después de ciertos intentos
+    if solicitud:
+        # Agregar marca de spoofing en las observaciones SIEMPRE
+        marca_spoofing = f"[SPOOFING #{spoofing_count}] Intento de ubicación falsa en {checkpoint_name} - {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
+        if solicitud.observaciones:
+            solicitud.observaciones = f"{solicitud.observaciones}\n{marca_spoofing}"
+        else:
+            solicitud.observaciones = marca_spoofing
+        
+        # NO BLOQUEAR NUNCA - Solo registrar el historial
+        # El sistema seguirá enviando advertencias hasta que envíe ubicación correcta
+        
+        db.session.commit()
+    
+    return message
+
+
+def _handle_forwarded_ticket_attempt(session, telefono, ticket_type):
+    """Maneja intentos de enviar tickets forwarded con advertencias progresivas."""
+    from app import db, SolicitudCita
+    
+    solicitud = session.get('solicitud')
+    
+    # Contar intentos previos de tickets forwarded desde las observaciones
+    ticket_count = 1  # Este intento actual
+    if solicitud and solicitud.observaciones:
+        # Contar cuántas marcas de "[FORWARDED TICKET #" hay en las observaciones
+        import re
+        ticket_matches = re.findall(r'\[FORWARDED TICKET #(\d+)\]', solicitud.observaciones)
+        if ticket_matches:
+            # El contador más alto encontrado + 1
+            ticket_count = max(int(match) for match in ticket_matches) + 1
+    
+    # Mensajes progresivos de Fisher para tickets forwarded
+    ticket_messages = [
+        # Primer intento - Divertido pero firme
+        f"🐶 Fisher 🐶: ¡Oye, amigo! Detecté que intentaste enviar un {ticket_type} 📄 reenviado en lugar de una foto fresca.\n\n"
+        "Mi olfato canino huele que esto no es una foto tomada ahora mismo 🐕. ¡Necesito una foto RECIENTE del ticket!",
+        
+        # Segundo intento - Más serio
+        f"🐕 Fisher 🐶: ¡Guau! Segundo intento con {ticket_type} reenviado. Mi nariz está oliendo que estás tratando de engañarme con una foto vieja.\n\n"
+        "Recuerda: Abre la cámara 📷 → Toma la foto → **Envíala inmediatamente**. ¡No reenvíes fotos viejas!",
+        
+        # Tercer intento - Amenazante
+        f"🐶 Fisher 🐶: ¡Basta ya! Tres intentos de {ticket_type} reenviado. Mi paciencia de perro se está agotando.\n\n"
+        "⚠️ Si sigues enviando fotos reenviadas, tu posición en el enturnamiento bajará automáticamente. ¡Envía una foto FRESCA ahora!",
+        
+        # Cuarto intento - Muy serio con consecuencias
+        f"🐕 Fisher 🐶: ¡Esto es inaceptable! Cuatro intentos de {ticket_type} reenviado.\n\n"
+        "🚫 Como castigo por intentar engañar al sistema, tu prioridad en el enturnamiento ha bajado. Ahora tendrás que esperar más tiempo.\n\n"
+        "¡Última oportunidad! Envía una foto RECIENTE del ticket o tu posición seguirá bajando.",
+        
+        # Quinto intento y posteriores - Máxima severidad
+        f"🐶 Fisher 🐶: ¡Ya basta! Múltiples intentos de {ticket_type} reenviado detectados.\n\n"
+        "💀 Tu posición en el enturnamiento ha sido degradada significativamente. Ahora eres el último en la fila.\n\n"
+        "Si sigues enviando fotos reenviadas, tu solicitud será cancelada permanentemente. ¡Comportate!"
+    ]
+    
+    # Seleccionar mensaje basado en el contador
+    # Para intentos > 5, usar siempre el último mensaje (más severo)
+    if ticket_count >= 5:
+        message_index = len(ticket_messages) - 1  # Siempre el último mensaje
+    else:
+        message_index = min(ticket_count - 1, len(ticket_messages) - 1)
+    message = ticket_messages[message_index]
+    
+    # Registrar el intento en observaciones
+    if solicitud:
+        # Agregar marca de ticket forwarded en las observaciones SIEMPRE
+        marca_ticket = f"[FORWARDED TICKET #{ticket_count}] Intento de {ticket_type} reenviado - {datetime.utcnow().strftime('%d/%m/%Y %H:%M')}"
+        if solicitud.observaciones:
+            solicitud.observaciones = f"{solicitud.observaciones}\n{marca_ticket}"
+        else:
+            solicitud.observaciones = marca_ticket
+        
+        # NO BLOQUEAR NUNCA - Solo registrar el historial
+        # El sistema seguirá enviando advertencias hasta que envíe ticket correcto
+        
+        db.session.commit()
+    
+    return message
+
+
 def _send_confirmation_summary(solicitud, telefono):
     """Envía el resumen de confirmación final con todos los datos recopilados."""
     if not solicitud:
@@ -242,11 +378,17 @@ def _prompt_for_next_pending_requirement(session, solicitud, telefono):
         enviar_mensaje_solicitar_ubicacion,
         reset_contextual_memory,
         STEP_AWAIT_GUIA,
+        STEP_AWAIT_MANIFIESTO,
         STEP_AWAIT_GPS_BOSCONIA,
         STEP_AWAIT_TICKET_GAMBOTE,
         STEP_AWAIT_GPS_GAMBOTE,
         STEP_FINAL_CONFIRMATION
     )
+
+    # Constantes de tiempo logístico
+    TIMEOUT_DOCUMENTOS = 60  # 1 hora para documentos
+    TIMEOUT_VIAJE_LARGO = 4320  # 72 horas / 3 días para viajes largos
+    TIMEOUT_ANTI_FRAUDE = 30  # 30 minutos para anti-fraude GPS
 
     siguiente = determinar_siguiente_step_pendiente(solicitud)
 
@@ -254,26 +396,39 @@ def _prompt_for_next_pending_requirement(session, solicitud, telefono):
 
     if siguiente == STEP_AWAIT_GUIA:
         session['step'] = STEP_AWAIT_GUIA
-        configurar_timeout_session(session, 30)
+        configurar_timeout_session(session, TIMEOUT_DOCUMENTOS)
         try:
-            send_whatsapp_message(telefono, "Necesito la foto de la guía o manifiesto como imagen o PDF para revisar tu turno.")
+            send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Woof! Es hora de la guía. Envía la foto o PDF de tu guía de transporte. Mi nariz de perro detective revisará cada línea para que tu viaje sea impecable. ¡Vamos, no me dejes con la lengua afuera esperando!")
         except Exception:
             current_app.logger.warning('No se pudo solicitar guía nuevamente a %s', telefono)
+    elif siguiente == STEP_AWAIT_MANIFIESTO:
+        session['step'] = STEP_AWAIT_MANIFIESTO
+        configurar_timeout_session(session, TIMEOUT_DOCUMENTOS)
+        try:
+            send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Guía recibida! Ahora necesito el manifiesto como imagen o PDF. Mi nariz está ansiosa por revisar todos los documentos. ¡Envíalo pronto para continuar con tu enturne!")
+        except Exception:
+            current_app.logger.warning('No se pudo solicitar manifiesto a %s', telefono)
     elif siguiente == STEP_AWAIT_GPS_BOSCONIA:
         session['step'] = STEP_AWAIT_GPS_BOSCONIA
-        configurar_timeout_session(session, 30)
-        enviar_mensaje_solicitar_ubicacion(telefono, 'bosconia')
+        configurar_timeout_session(session, TIMEOUT_VIAJE_LARGO)
+        try:
+            send_whatsapp_message(telefono, "📍 ¡Punto de control: Bosconia! 🚛\n\nPara verificar que estás en ruta, envíame tu Ubicación en Tiempo Real desde Bosconia (Clip 📎 -> Ubicación -> Tiempo Real).\n\n🐶 Fisher está vigilando el camino. ¡No intentes engañarme con ubicaciones del mapa o reenviadas, mi olfato es infalible!")
+        except Exception:
+            current_app.logger.warning('No se pudo solicitar ubicación de Bosconia a %s', telefono)
     elif siguiente == STEP_AWAIT_TICKET_GAMBOTE:
         session['step'] = STEP_AWAIT_TICKET_GAMBOTE
-        configurar_timeout_session(session, 30)
+        configurar_timeout_session(session, TIMEOUT_VIAJE_LARGO)
         try:
-            send_whatsapp_message(telefono, "Ahora necesito la foto del ticket de peaje de Gambote para cerrar la validación.")
+            send_whatsapp_message(telefono, "🎫 ¡Próxima parada: Gambote! 🚚\n\nCuando pases el peaje, envíame una foto clara del ticket.\n\n⚠️ ¡Atento, amigo! Apenas reciba el ticket, mi nariz de sabueso te pedirá tu Ubicación en Tiempo Real de inmediato. Ve buscando un lugar seguro y con señal, ¡no me hagas esperar mucho o me pongo nervioso! 🐾")
         except Exception:
             current_app.logger.warning('No se pudo solicitar ticket de Gambote a %s', telefono)
     elif siguiente == STEP_AWAIT_GPS_GAMBOTE:
         session['step'] = STEP_AWAIT_GPS_GAMBOTE
-        configurar_timeout_session(session, 30)
-        enviar_mensaje_solicitar_ubicacion(telefono, 'gambote')
+        configurar_timeout_session(session, TIMEOUT_ANTI_FRAUDE)
+        try:
+            send_whatsapp_message(telefono, "📍 ¡Olfateando rastro! 🐶\n\nYa tengo el ticket. Para confirmar que estás ahí físicamente, envíame tu Ubicación en Tiempo Real YA MISMO (Clip 📎 -> Ubicación -> Tiempo Real).\n\n⏳ Tienes 30 minutos exactos. Si no la envías antes de que se acabe el tiempo, tendré que anular el turno por seguridad. ¡Corre!")
+        except Exception:
+            current_app.logger.warning('No se pudo solicitar ubicación de Gambote a %s', telefono)
     elif siguiente == STEP_FINAL_CONFIRMATION:
         session['step'] = STEP_FINAL_CONFIRMATION
         configurar_timeout_session(session, None)
@@ -352,6 +507,7 @@ def _webhook_whatsapp_impl():
         STEP_AWAIT_PLACA,
         STEP_CONFIRM_DATA,
         STEP_AWAIT_GUIA,
+        STEP_AWAIT_MANIFIESTO,
         STEP_AWAIT_GPS_BOSCONIA,
         STEP_AWAIT_TICKET_GAMBOTE,
         STEP_AWAIT_GPS_GAMBOTE,
@@ -475,6 +631,7 @@ def _webhook_whatsapp_impl():
                 2: "Esperando placa",
                 3: "Confirmando datos",
                 4: "Esperando guía",
+                15: "Esperando manifiesto",
                 5: "Esperando ubicación Bosconia",
                 6: "Esperando ticket Gambote",
                 7: "Esperando ubicación Gambote",
@@ -575,7 +732,8 @@ def _webhook_whatsapp_impl():
             STEP_MANUAL_REG_REMOLQUE,
             STEP_MANUAL_REG_CONFIRM,
             STEP_CONFIRM_UNKNOWN_PLACA,
-            STEP_HUMAN_HANDOFF
+            STEP_HUMAN_HANDOFF,
+            STEP_CONFIRM_RESET
         }
         if texto.upper() == 'NO' and step not in protected_no_steps:
             send_whatsapp_message(
@@ -593,9 +751,8 @@ def _webhook_whatsapp_impl():
             _commit_session(telefono, session)
             return 'ok', 200
 
-        # Si el usuario escribe 'NUEVO' o 'REINICIAR', reiniciar el flujo SIEMPRE antes de chequear registro
-        if texto.upper() in ['NUEVO', 'REINICIAR', 'RESET', 'INICIAR']:  # palabras clave para reinicio
-            # Limpiar la solicitud activa (sin importar estado) para obligar a iniciar desde cero
+        # Si el usuario escribe 'NUEVO' o 'REINICIAR', verificar si hay datos valiosos antes de reiniciar
+        if texto.upper() in ['NUEVO', 'REINICIAR', 'RESET', 'INICIAR']:
             solicitud_reset = session.get('solicitud')
             if not solicitud_reset:
                 solicitud_reset = (
@@ -605,8 +762,31 @@ def _webhook_whatsapp_impl():
                     .first()
                 )
 
+            # Verificar si hay datos valiosos (imagen_guia o paso_bosconia)
+            tiene_datos_valiosos = False
+            if solicitud_reset and (solicitud_reset.imagen_guia or solicitud_reset.paso_bosconia):
+                tiene_datos_valiosos = True
+
+            if tiene_datos_valiosos:
+                # Paso intermedio de confirmación
+                session['step'] = STEP_CONFIRM_RESET
+                _commit_session(telefono, session)
+                advertencia = (
+                    "🐶 ¡Espera! Tienes un viaje activo. Si escribes 'NUEVO' se borrarán todos tus datos y perderás tu turno. "
+                    "¿Estás seguro? Responde SÍ para borrar todo o NO para continuar tu viaje."
+                )
+                send_yes_no_prompt(
+                    telefono,
+                    advertencia,
+                    skip_reminder=True,
+                    prime_after_force=True,
+                    context_label='CONFIRMAR_RESET'
+                )
+                return 'ok', 200
+
+            # Si no hay datos valiosos, proceder con el reinicio original
             from app import _normalize_timeout_minutes
-            timeout_restart = _normalize_timeout_minutes(5)
+            timeout_restart = _normalize_timeout_minutes(15)
 
             if solicitud_reset:
                 _cancel_final_timeout_message(solicitud_reset.id)
@@ -694,55 +874,184 @@ def _webhook_whatsapp_impl():
         step = session['step']
         user_data = session['data']
 
+        # Handler para confirmación de reinicio (STEP_CONFIRM_RESET)
+        if step == STEP_CONFIRM_RESET:
+            respuesta = texto.strip().upper()
+            solicitud_reset = session.get('solicitud')
+            from app import _normalize_timeout_minutes, determinar_siguiente_step_pendiente
+            if respuesta in ['SI', 'SÍ', 'YES']:
+                timeout_restart = _normalize_timeout_minutes(15)
+                if solicitud_reset:
+                    _cancel_final_timeout_message(solicitud_reset.id)
+                    solicitud_reset.mensaje = 'Sesión reiniciada por el usuario'
+                    solicitud_reset.fecha = datetime.utcnow()
+                    solicitud_reset.estado = 'preconfirmacion'
+                    solicitud_reset.turno = None
+                    solicitud_reset.fecha_descargue = None
+                    solicitud_reset.lugar_descargue = None
+                    solicitud_reset.observaciones = None
+                    solicitud_reset.nombre_completo = None
+                    solicitud_reset.cedula = None
+                    solicitud_reset.placa = None
+                    solicitud_reset.placa_remolque = None
+                    solicitud_reset.celular = None
+                    solicitud_reset.imagen_guia = None
+                    solicitud_reset.imagen_manifiesto = None
+                    solicitud_reset.paso_bosconia = False
+                    solicitud_reset.ticket_gambote = None
+                    solicitud_reset.ubicacion_lat = None
+                    solicitud_reset.ubicacion_lng = None
+                    solicitud_reset.ubicacion_gambote_lat = None
+                    solicitud_reset.ubicacion_gambote_lng = None
+                    solicitud_reset.paso_gambote = False
+                    solicitud_reset.ubicacion_zisa_lat = None
+                    solicitud_reset.ubicacion_zisa_lng = None
+                    solicitud_reset.paso_zisa = False
+                    solicitud_reset.whatsapp_step = '0'
+                    solicitud_reset.whatsapp_timeout_minutes = timeout_restart
+                    solicitud_reset.whatsapp_warning_sent = False
+                    solicitud_reset.whatsapp_last_activity = datetime.utcnow()
+                    solicitud_reset.asesor_pendiente = False
+                    solicitud_reset.asesor_pendiente_desde = None
+                    db.session.commit()
+                else:
+                    solicitud_reset = SolicitudCita(
+                        telefono=telefono,
+                        mensaje='Sesión reiniciada por el usuario',
+                        estado='preconfirmacion',
+                        fecha=datetime.utcnow(),
+                        whatsapp_step='0',
+                        whatsapp_timeout_minutes=timeout_restart,
+                        whatsapp_warning_sent=False,
+                        asesor_pendiente=False
+                    )
+                    db.session.add(solicitud_reset)
+                    db.session.commit()
+
+                reset_safety_reminder_counter(telefono)
+                reset_contextual_memory(session)
+                session = {
+                    'step': 0,
+                    'data': {},
+                    'last_activity': datetime.now(),
+                    'timeout_minutes': timeout_restart,
+                    'warning_sent': False,
+                    'solicitud': solicitud_reset,
+                    'welcome_invalid_attempts': 0
+                }
+                _commit_session(telefono, session)
+                mensaje_reinicio = (
+                    "¡Hola! Soy Fisher 🐶, tu asistente en Conquers.\n"
+                    "Te doy la bienvenida a nuestro WhatsApp.\n"
+                    "¿Vienes a gestionar tu enturne?"
+                )
+                send_yes_no_prompt(
+                    telefono,
+                    mensaje_reinicio,
+                    skip_reminder=True,
+                    prime_after_force=True,
+                    context_label='REINICIO'
+                )
+                session['step'] = 1
+                session['last_activity'] = datetime.now()
+                session['welcome_invalid_attempts'] = 0
+                _commit_session(telefono, session)
+                return 'ok', 200
+            elif respuesta in ['NO', 'N', 'CANCELAR', 'CONTINUAR']:
+                # Restaurar el estado anterior y retomar el flujo
+                if solicitud_reset:
+                    # Determinar el siguiente paso pendiente
+                    siguiente_step = determinar_siguiente_step_pendiente(solicitud_reset)
+                    session['step'] = siguiente_step
+                    _commit_session(telefono, session)
+                    send_whatsapp_message(telefono, "✅ Uff, ¡casi! Sigamos con tu viaje donde lo dejamos.")
+                    # Opcional: disparar el prompt del siguiente pendiente
+                    _prompt_for_next_pending_requirement(session, solicitud_reset, telefono)
+                    return 'ok', 200
+                else:
+                    # Si no hay solicitud, simplemente volver a bienvenida
+                    session['step'] = 0
+                    _commit_session(telefono, session)
+                    send_whatsapp_message(telefono, "No encontré un viaje activo. Si quieres iniciar uno nuevo, escribe 'NUEVO'.")
+                    return 'ok', 200
+            else:
+                # Respuesta no reconocida
+                send_whatsapp_message(telefono, "Por favor responde SÍ para reiniciar o NO para continuar tu viaje.")
+                return 'ok', 200
+
         if step == STEP_HUMAN_HANDOFF:
             solicitud_handoff = session.get('solicitud')
             if solicitud_handoff and getattr(solicitud_handoff, 'asesor_pendiente', False):
+                ahora = datetime.utcnow()
+                tiempo_asesor_pendiente = getattr(solicitud_handoff, 'asesor_pendiente_desde', None)
+                
+                # Enviar mensajes automáticos de espera basados en tiempo transcurrido
+                if tiempo_asesor_pendiente:
+                    minutos_transcurridos = (ahora - tiempo_asesor_pendiente).total_seconds() / 60
+                    mensajes_automaticos_enviados = session.get('auto_wait_messages_sent', 0)
+                    
+                    # Definir intervalos para mensajes automáticos (en minutos)
+                    intervalos_mensajes = [5, 15, 30, 60, 120]  # 5min, 15min, 30min, 1hora, 2horas
+                    
+                    if mensajes_automaticos_enviados < len(intervalos_mensajes) and minutos_transcurridos >= intervalos_mensajes[mensajes_automaticos_enviados]:
+                        # Mensajes automáticos de espera con Fisher
+                        mensajes_espera = [
+                            "🐶 Fisher 🐶: ¡Guau! Mi cola se mueve esperando al equipo humano. Pronto te darán noticias de tu turno. ¡Paciencia, amigo!",
+                            "🐕 Fisher 🐶: Estoy ladrando fuerte para llamar al asesor. Tu caso está siendo revisado con prioridad. ¡Un poco más de espera!",
+                            "🐶 Fisher 🐶: Mi hocico está ocupado transmitiendo tu mensaje al equipo. Están trabajando duro en tu solicitud. ¡Pronto tendrás respuesta!",
+                            "🐕 Fisher 🐶: ¡Estoy corriendo en círculos para acelerar el proceso! El equipo humano está en ello. Gracias por tu paciencia.",
+                            "🐶 Fisher 🐶: Mi corazón de perro late fuerte esperando al asesor. Tu turno está siendo ajustado. ¡Ya casi terminamos!"
+                        ]
+                        
+                        if mensajes_automaticos_enviados < len(mensajes_espera):
+                            mensaje_auto = mensajes_espera[mensajes_automaticos_enviados]
+                            try:
+                                send_whatsapp_message(telefono, mensaje_auto, skip_reminder=True)
+                                session['auto_wait_messages_sent'] = mensajes_automaticos_enviados + 1
+                                solicitud_handoff.whatsapp_last_activity = ahora
+                                db.session.commit()
+                                current_app.logger.info(f'Mensaje automático de espera enviado a {telefono} (mensaje #{mensajes_automaticos_enviados + 1})')
+                            except Exception:
+                                current_app.logger.warning('No se pudo enviar mensaje automático de espera para solicitud %s', solicitud_handoff.id)
+                
                 # Initialize warning count if not present
                 warning_count = session.get('warning_count', 0)
                 
                 # Process incoming message with NLP if text is provided and doesn't contain 'asesor'
                 if texto and 'asesor' not in texto.lower():
-                    doc = nlp(texto.lower())
-                    # Simple NLP: detect if it's a question or contains negative words
-                    is_question = '?' in texto
-                    has_negative = any(token.lemma_ in ['no', 'mal', 'problema', 'esperar', 'urgente'] for token in doc)
+                    # Siempre responder algo al conductor para mantenerlo informado
+                    ahora = datetime.utcnow()
+                    tiempo_asesor_pendiente = getattr(solicitud_handoff, 'asesor_pendiente_desde', None)
+                    minutos_esperando = 0
+                    if tiempo_asesor_pendiente:
+                        minutos_esperando = (ahora - tiempo_asesor_pendiente).total_seconds() / 60
                     
-                    # Varied responses based on message type
-                    if is_question:
-                        responses = [
-                            "Tu consulta está siendo atendida por nuestro equipo. Te responderemos pronto con la información solicitada.",
-                            "Estamos revisando tu pregunta. Un asesor se pondrá en contacto contigo en breve.",
-                            "Gracias por tu pregunta. Nuestro equipo humano la está procesando y te dará una respuesta detallada."
-                        ]
-                    elif has_negative:
-                        responses = [
-                            "Entendemos tu preocupación. Nuestro equipo está trabajando para resolverlo lo antes posible.",
-                            "Lamentamos cualquier inconveniente. Estamos gestionando tu caso con prioridad.",
-                            "Agradecemos tu paciencia mientras ajustamos los detalles. Te mantendremos informado."
-                        ]
-                    else:
-                        responses = [
-                            "👋 Nuestro equipo humano sigue gestionando el ajuste de tu turno por la operación. Apenas tengamos confirmada la nueva fecha, hora y número de turno te avisaremos por este chat. Gracias por tu paciencia.",
-                            "Estamos trabajando en tu solicitud. Un asesor te contactará pronto con la información actualizada. ¡Gracias por esperar!",
-                            "El proceso de ajuste está en marcha. Te notificaremos en cuanto tengamos novedades. Agradezco tu comprensión."
-                        ]
+                    # Mensajes de Fisher para mantener la conversación activa
+                    mensajes_paciencia_fisher = [
+                        "🐶 Fisher 🐶: ¡Estoy aquí vigilando! Mi cola se mueve cada vez que veo que escribes. El equipo humano está trabajando en tu caso. ¡Un poquito más de paciencia!",
+                        "🐕 Fisher 🐶: ¡Guau! Veo que sigues atento. Estoy ladrando fuerte para recordarle al equipo que tienes prisa. Pronto tendrás noticias. ¡Buen chico!",
+                        "🐶 Fisher 🐶: Mi hocico está ocupado transmitiendo todos tus mensajes al equipo. Están revisando tu solicitud con prioridad. ¡Gracias por esperar!",
+                        "🐕 Fisher 🐶: ¡Estoy corriendo en círculos para llamar la atención del humano! Tu caso está siendo atendido. Mantén la calma, amigo.",
+                        "🐶 Fisher 🐶: ¡Mi corazón late fuerte por ti! Cada mensaje tuyo es como una caricia en mi cabeza. El asesor llegará pronto con buenas noticias.",
+                        "🐕 Fisher 🐶: Estoy moviendo la cola de felicidad porque sigues aquí. Significa que confías en nosotros. ¡El equipo está en ello!",
+                        "🐶 Fisher 🐶: ¡Qué perseverancia la tuya! Estoy ladrando sin parar para que el humano te responda. Tu paciencia será recompensada.",
+                        "🐕 Fisher 🐶: Mi nariz está olfateando el aire esperando al asesor. Cada minuto que pasa estamos más cerca de resolver tu caso. ¡Ánimo!"
+                    ]
                     
-                    # Send varied response if under limit
-                    if warning_count < 3:
-                        aviso = random.choice(responses)
-                        try:
-                            send_whatsapp_message(telefono, aviso, skip_reminder=True)
-                        except Exception:
-                            current_app.logger.warning('No se pudo enviar respuesta inteligente para solicitud %s', solicitud_handoff.id)
-                        else:
-                            warning_count += 1
-                            session['warning_count'] = warning_count
-                            solicitud_handoff.whatsapp_last_activity = datetime.utcnow()
-                            try:
-                                db.session.commit()
-                            except Exception:
-                                db.session.rollback()
-                                current_app.logger.exception('No se pudo persistir respuesta inteligente para solicitud %s', solicitud_handoff.id)
+                    # Seleccionar mensaje basado en tiempo de espera
+                    if minutos_esperando > 60:  # Más de 1 hora
+                        mensaje_respuesta = random.choice(mensajes_paciencia_fisher[-4:])  # Mensajes más motivadores
+                    elif minutos_esperando > 30:  # Más de 30 min
+                        mensaje_respuesta = random.choice(mensajes_paciencia_fisher[-6:])  # Mensajes intermedios
+                    else:  # Menos de 30 min
+                        mensaje_respuesta = random.choice(mensajes_paciencia_fisher[:4])  # Mensajes iniciales
+                    
+                    try:
+                        send_whatsapp_message(telefono, mensaje_respuesta, skip_reminder=True)
+                        solicitud_handoff.whatsapp_last_activity = ahora
+                        db.session.commit()
+                    except Exception:
+                        current_app.logger.warning('No se pudo enviar mensaje de paciencia para solicitud %s', solicitud_handoff.id)
                 else:
                     # Original logic: send initial warning if not sent
                     if not getattr(solicitud_handoff, 'whatsapp_warning_sent', False):
@@ -805,7 +1114,7 @@ def _webhook_whatsapp_impl():
                 )
                 reset_contextual_memory(session)
                 session['step'] = STEP_HUMAN_HANDOFF
-                configurar_timeout_session(session, None)
+                configurar_timeout_session(session, 60)
                 session['welcome_invalid_attempts'] = 0
 
                 solicitud = session.get('solicitud')
@@ -850,7 +1159,7 @@ def _webhook_whatsapp_impl():
                 # Si responde cualquier cosa que no sea "no", asumir que quiere enturnar
                 send_whatsapp_message(
                     telefono,
-                    "Perfecto. Escribe la placa de tu camión para buscarte en la base de datos."
+                    "🐶 Fisher 🐶: ¡Guau! Perfecto, amigo. Escribe la placa de tu camión para que pueda olfatear tus datos en la base de datos. ¡Estoy listo para ladrar tu información!"
                 )
                 session['step'] = 2
                 configurar_timeout_session(session, 10)  # 10 minutos para ingresar placa
@@ -859,13 +1168,13 @@ def _webhook_whatsapp_impl():
             conductor = buscar_conductor_por_placa(placa)
             if conductor:
                 respuesta = (
-                    f"¿Estos datos son correctos?\n"
+                    f"🐶 Fisher 🐶: ¡Encontré tus datos! ¿Estos son correctos?\n"
                     f"Placa: {conductor['PLACA']}\n"
                     f"Placa remolque: {conductor['PLACA REMOLQUE']}\n"
                     f"Nombre: {conductor['NOMBRE CONDUCTOR']}\n"
                     f"N° Documento: {conductor['N° DOCUMENTO']}\n"
                     f"Celular: {conductor['CELULAR']}\n"
-                    "Responde 'sí' si son correctos o 'no' si necesitas corregirlos."
+                    "Responde 'sí' si son correctos o 'no' si necesitas corregirlos. ¡Mi cola se mueve esperando tu confirmación!"
                 )
                 
                 # Guardar directamente en la solicitud de la base de datos
@@ -879,7 +1188,7 @@ def _webhook_whatsapp_impl():
                     solicitud.estado = 'preconfirmacion'
                     db.session.commit()
             else:
-                respuesta = f"No se encontró conductor con placa {placa}. Por favor escribe tu nombre completo."
+                respuesta = f"🐶 Fisher 🐶: ¡Guau! No se encontró conductor con placa {placa}. Por favor escribe tu nombre completo. ¡Estoy emocionado por conocerte!"
                 # Guardar la placa original en la solicitud
                 solicitud = session.get('solicitud')
                 if solicitud:
@@ -898,20 +1207,25 @@ def _webhook_whatsapp_impl():
                     solicitud.fecha = datetime.utcnow()
                     db.session.commit()
 
-                send_whatsapp_message(telefono, "Por favor, envía la foto de la guía o manifiesto como imagen o PDF.")
+                send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Woof! Es hora de la guía. Envía la foto o PDF de tu guía de transporte. Mi nariz de perro detective revisará cada línea para que tu viaje sea impecable. ¡Vamos, no me dejes con la lengua afuera esperando!")
                 session['step'] = 4
                 configurar_timeout_session(session, None)  # Sin timeout después de confirmar datos
             else:
                 # Usuario quiere corregir datos - iniciar registro manual
-                send_whatsapp_message(telefono, "Entendido, vamos a registrar tus datos manualmente.\n\nPor favor escribe tu nombre completo:")
+                send_whatsapp_message(telefono, "🐶 Fisher 🐶: Entendido, vamos a registrar tus datos manualmente.\n\nPor favor escribe tu nombre completo. ¡Estoy listo para aprender sobre ti!")
                 session['step'] = 10
                 configurar_timeout_session(session, 30)
         elif step == 4:
             if tipo == 'image' or tipo == 'document':
                 media_payload = msg.get('image') or msg.get('document')
                 guardar_imagen_whatsapp(telefono, media_payload, 'imagen_guia', session)
-                solicitud = session.get('solicitud')
-                _prompt_for_next_pending_requirement(session, solicitud, telefono)
+                # Después de guardar la guía, pedir el manifiesto (NO llamar a _prompt_for_next_pending_requirement)
+                session['step'] = STEP_AWAIT_MANIFIESTO
+                configurar_timeout_session(session, 60)  # 1 hora para manifiesto
+                try:
+                    send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Guía recibida! Ahora necesito el manifiesto como imagen o PDF. Mi nariz está ansiosa por revisar todos los documentos. ¡Envíalo pronto para continuar con tu enturne!")
+                except Exception:
+                    current_app.logger.warning('No se pudo solicitar manifiesto a %s', telefono)
             else:
                 hint = (
                     "Necesito la guía como imagen o PDF. No puedo procesar textos, notas de voz ni otros formatos en este paso."
@@ -920,9 +1234,39 @@ def _webhook_whatsapp_impl():
                 send_whatsapp_message(telefono, fallback_msg)
                 _commit_session(telefono, session)
                 return 'ok', 200
+        elif step == 15:  # STEP_AWAIT_MANIFIESTO
+            if tipo == 'image' or tipo == 'document':
+                media_payload = msg.get('image') or msg.get('document')
+                guardar_imagen_whatsapp(telefono, media_payload, 'imagen_manifiesto', session)
+                solicitud = session.get('solicitud')
+                _prompt_for_next_pending_requirement(session, solicitud, telefono)
+            else:
+                hint = (
+                    "Necesito el manifiesto como imagen o PDF. No puedo procesar textos, notas de voz ni otros formatos en este paso."
+                )
+                fallback_msg = compose_contextual_hint(session, STEP_AWAIT_MANIFIESTO, hint)
+                send_whatsapp_message(telefono, fallback_msg)
+                _commit_session(telefono, session)
+                return 'ok', 200
         elif step == 5:
             if tipo == 'location':
                 loc = msg['location']
+                
+                # --- DETECCIÓN AVANZADA DE SPOOFING ---
+                # 1. Verificar si es ubicación reenviada (forwarded)
+                is_forwarded = msg.get('context') is not None
+                
+                # 2. Verificar si es lugar seleccionado del mapa
+                has_name_or_address = loc.get('name') or loc.get('address')
+                
+                # 3. Si cualquiera de las dos condiciones se cumple, es spoofing
+                if is_forwarded or has_name_or_address:
+                    spoofing_message = _handle_spoofing_attempt(session, telefono, 'Bosconia')
+                    send_whatsapp_message(telefono, spoofing_message, force_reminder=True)
+                    _commit_session(telefono, session)
+                    return 'ok', 200
+                # -----------------------------------------
+                
                 lat = float(loc['latitude'])
                 lng = float(loc['longitude'])
                 
@@ -939,6 +1283,17 @@ def _webhook_whatsapp_impl():
                 return 'ok', 200
         elif step == 6:
             if tipo in ['image', 'document']:
+                # --- DETECCIÓN DE TICKETS FORWARDED ---
+                # Verificar si la imagen/documento es reenviado (forwarded)
+                is_forwarded = msg.get('context') is not None
+                
+                if is_forwarded:
+                    forwarded_message = _handle_forwarded_ticket_attempt(session, telefono, 'ticket de Gambote')
+                    send_whatsapp_message(telefono, forwarded_message, force_reminder=True)
+                    _commit_session(telefono, session)
+                    return 'ok', 200
+                # -----------------------------------------
+                
                 media_payload = msg.get('image') or msg.get('document')
                 guardar_imagen_whatsapp(telefono, media_payload, 'ticket_gambote', session)
                 solicitud = session.get('solicitud')
@@ -946,6 +1301,22 @@ def _webhook_whatsapp_impl():
             elif tipo == 'location':
                 # Si envía ubicación en este paso, validar si es Gambote (quizás saltó el ticket)
                 loc = msg['location']
+                
+                # --- DETECCIÓN AVANZADA DE SPOOFING ---
+                # 1. Verificar si es ubicación reenviada (forwarded)
+                is_forwarded = msg.get('context') is not None
+                
+                # 2. Verificar si es lugar seleccionado del mapa
+                has_name_or_address = loc.get('name') or loc.get('address')
+                
+                # 3. Si cualquiera de las dos condiciones se cumple, es spoofing
+                if is_forwarded or has_name_or_address:
+                    spoofing_message = _handle_spoofing_attempt(session, telefono, 'Gambote')
+                    send_whatsapp_message(telefono, spoofing_message, force_reminder=True)
+                    _commit_session(telefono, session)
+                    return 'ok', 200
+                # -----------------------------------------
+                
                 lat = float(loc['latitude'])
                 lng = float(loc['longitude'])
                 
@@ -963,6 +1334,22 @@ def _webhook_whatsapp_impl():
         elif step == 7:
             if tipo == 'location':
                 loc = msg['location']
+                
+                # --- DETECCIÓN AVANZADA DE SPOOFING ---
+                # 1. Verificar si es ubicación reenviada (forwarded)
+                is_forwarded = msg.get('context') is not None
+                
+                # 2. Verificar si es lugar seleccionado del mapa
+                has_name_or_address = loc.get('name') or loc.get('address')
+                
+                # 3. Si cualquiera de las dos condiciones se cumple, es spoofing
+                if is_forwarded or has_name_or_address:
+                    spoofing_message = _handle_spoofing_attempt(session, telefono, 'Gambote')
+                    send_whatsapp_message(telefono, spoofing_message, force_reminder=True)
+                    _commit_session(telefono, session)
+                    return 'ok', 200
+                # -----------------------------------------
+                
                 lat = float(loc['latitude'])
                 lng = float(loc['longitude'])
 
@@ -1091,7 +1478,7 @@ def _webhook_whatsapp_impl():
             # Nuevo conductor - paso 1: nombre completo
             nombre_completo = texto.strip().title()
             if len(nombre_completo) < 3:
-                send_whatsapp_message(telefono, "El nombre debe tener al menos 3 caracteres. Por favor escribe tu nombre completo:")
+                send_whatsapp_message(telefono, "🐶 Fisher 🐶: El nombre debe tener al menos 3 caracteres. Por favor escribe tu nombre completo. ¡Mi olfato necesita más letras!")
                 _commit_session(telefono, session)
                 return 'ok', 200
             
@@ -1103,14 +1490,14 @@ def _webhook_whatsapp_impl():
                     solicitud.celular = telefono
                 db.session.commit()
             
-            send_whatsapp_message(telefono, f"Nombre registrado: {nombre_completo}\n\nAhora por favor escribe tu número de cédula:")
+            send_whatsapp_message(telefono, f"🐶 Fisher 🐶: ¡Nombre registrado: {nombre_completo}! Mi memoria canina nunca olvida.\n\nAhora por favor escribe tu número de cédula. ¡Estoy olfateando tu identidad!")
             session['step'] = 11
             configurar_timeout_session(session, 30)
         elif step == 11:
             # Nuevo conductor - paso 2: cédula
             cedula = texto.strip().replace(' ', '').replace('.', '').replace('-', '')
             if not cedula.isdigit() or len(cedula) < 5:
-                send_whatsapp_message(telefono, "La cédula debe contener solo números y tener al menos 5 dígitos. Por favor escribe tu número de cédula:")
+                send_whatsapp_message(telefono, "🐶 Fisher 🐶: La cédula debe contener solo números y tener al menos 5 dígitos. Por favor escribe tu número de cédula. ¡Mi hocico está esperando números!")
                 _commit_session(telefono, session)
                 return 'ok', 200
             
@@ -1120,7 +1507,7 @@ def _webhook_whatsapp_impl():
                 solicitud.cedula = cedula
                 db.session.commit()
             
-            send_whatsapp_message(telefono, f"Cédula registrada: {cedula}\n\nAhora por favor escribe la placa del remolque (o escribe 'NO' si no tienes remolque):")
+            send_whatsapp_message(telefono, f"🐶 Fisher 🐶: ¡Cédula registrada: {cedula}! Mi olfato está funcionando perfectamente.\n\nAhora por favor escribe la placa del remolque (o escribe 'NO' si no tienes remolque). ¡Estoy listo para más información!")
             session['step'] = 12
             configurar_timeout_session(session, 30)
         elif step == 12:
@@ -1137,7 +1524,7 @@ def _webhook_whatsapp_impl():
                 placa_remolque = texto.upper().replace(' ', '')
                 # Validar formato básico de placa
                 if not placa_remolque or len(placa_remolque) < 3:
-                    send_whatsapp_message(telefono, "La placa del remolque debe tener al menos 3 caracteres. Por favor escribe la placa del remolque o 'NO' si no tienes:")
+                    send_whatsapp_message(telefono, "🐶 Fisher 🐶: La placa del remolque debe tener al menos 3 caracteres. Por favor escribe la placa del remolque o 'NO' si no tienes. ¡Mi nariz está esperando!")
                     _commit_session(telefono, session)
                     return 'ok', 200
                 
@@ -1195,8 +1582,7 @@ def _webhook_whatsapp_impl():
                 reset_contextual_memory(session)
                 send_whatsapp_message(
                     telefono,
-                    "¡Gracias! Fisher 🐶 guardó tus datos y los compartió con un asesor humano. "
-                    "Te escribirán pronto para completar tu inscripción."
+                    "🐶 Fisher 🐶: ¡Gracias! Guardé tus datos y los compartí con un asesor humano. Te escribirán pronto para completar tu inscripción. ¡Mi cola se mueve de felicidad!"
                 )
                 reset_safety_reminder_counter(telefono)
                 session['step'] = STEP_HUMAN_HANDOFF
@@ -1205,7 +1591,7 @@ def _webhook_whatsapp_impl():
                 session['last_activity'] = datetime.now()
             else:
                 # Reiniciar proceso de registro manual
-                send_whatsapp_message(telefono, "Entendido, vamos a corregir tus datos.\n\nPor favor escribe tu nombre completo:")
+                send_whatsapp_message(telefono, "🐶 Fisher 🐶: Entendido, vamos a corregir tus datos.\n\nPor favor escribe tu nombre completo. ¡Estoy listo para empezar de nuevo!")
                 session['step'] = 10
                 configurar_timeout_session(session, 30)
         # Guardar el estado de la sesión en la base de datos

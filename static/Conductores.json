@@ -5815,5 +5815,12 @@
         "NOMBRE CONDUCTOR": "JULI",
         "N° DOCUMENTO": 1122334,
         "CELULAR": "-"
+    },
+    {
+        "PLACA": "KLD178",
+        "PLACA REMOLQUE": "FGL765",
+        "NOMBRE CONDUCTOR": "SHIRLEY",
+        "N° DOCUMENTO": 123345,
+        "CELULAR": 573115800671
     }
 ]

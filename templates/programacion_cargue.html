@@ -229,21 +229,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const columnsConfig = {
         'fecha_programacion': { width: '120px', type: 'date' },
-        'empresa_transportadora': { width: '180px' },
-        'placa': { width: '100px' },
-        'tanque': { width: '80px' },
-        'nombre_conductor': { width: '180px' },
-        'cedula_conductor': { width: '120px' },
-        'celular_conductor': { width: '120px' },
-        'hora_llegada_estimada': { width: '120px', type: 'time' },
-        // --- CONFIGURACIÓN DE COLUMNA MODIFICADA ---
         'producto_a_cargar': { 
             width: '150px', 
             type: 'datalist',
             options: ['FUEL OIL 4','FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO']
         },
-        'destino': { width: '150px' },
         'cliente': { width: '180px' },
+        'hora_llegada_estimada': { width: '120px', type: 'time' },
+        'placa': { width: '100px' },
+        'empresa_transportadora': { width: '180px' },
+        'tanque': { width: '80px' },
+        'nombre_conductor': { width: '180px' },
+        'cedula_conductor': { width: '120px' },
+        'celular_conductor': { width: '120px' },
+        'destino': { width: '150px' },
         'estado': { width: '130px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'DESPACHADO'] },
         'galones': { width: '100px', type: 'number' },
         'barriles': { width: '100px', type: 'number', readonly: true },

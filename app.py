@@ -1,4 +1,4 @@
-import requests
+﻿import requests
 from sqlalchemy import or_
 import json
 import hashlib
@@ -10075,37 +10075,135 @@ def crear_solicitud_desde_panel():
     estado_permitido = {'sin turno', 'preconfirmacion', 'en revision', 'enturnado', STATE_FINALIZADO, 'error', STATE_PENDING_INSCRIPTION}
     estado = estado_raw if estado_raw in estado_permitido else 'sin turno'
 
-    solicitud = SolicitudCita(
-        telefono=telefono,
-        mensaje='Solicitud creada manualmente desde el panel.',
-        fecha=datetime.utcnow(),
-        nombre_completo=(data.get('nombre_completo') or '').strip() or None,
-        cedula=(data.get('cedula') or '').strip() or None,
-        placa=(data.get('placa') or '').strip().upper() or None,
-        placa_remolque=(data.get('placa_remolque') or '').strip().upper() or None,
-        celular=(data.get('celular') or '').strip() or None,
-        observaciones=(data.get('observaciones') or '').strip() or None,
-        estado=estado,
-        whatsapp_step='0',
-        whatsapp_last_activity=datetime.utcnow(),
-    whatsapp_timeout_minutes=0,
-    whatsapp_warning_sent=False,
-        asesor_pendiente=False,
-        asesor_pendiente_desde=None
+    # Extraer datos del conductor
+    cedula = (data.get('cedula') or '').strip()
+    nombre_completo = (data.get('nombre_completo') or '').strip()
+    placa = (data.get('placa') or '').strip().upper()
+    placa_remolque = (data.get('placa_remolque') or '').strip().upper()
+    celular = (data.get('celular') or '').strip()
+
+    # Crear conductor si se proporcionan los datos mínimos
+    conductor_creado = False
+    if cedula and nombre_completo and placa:
+        conductor_existente = Conductor.query.filter_by(cedula=cedula).first()
+        if not conductor_existente:
+            try:
+                nuevo_conductor = Conductor(
+                    nombre=nombre_completo,
+                    cedula=cedula,
+                    placa=placa,
+                    placa_remolque=placa_remolque if placa_remolque else None,
+                    celular=celular if celular else None
+                )
+                db.session.add(nuevo_conductor)
+                conductor_creado = True
+                current_app.logger.info(f'Conductor creado automáticamente: {cedula} - {nombre_completo}')
+            except Exception as exc:
+                db.session.rollback()
+                current_app.logger.warning(f'No se pudo crear conductor automáticamente: {exc}')
+                # Continuar sin el conductor
+
+    # Verificar si ya existe una solicitud activa para este teléfono
+    solicitud_existente = (
+        SolicitudCita.query
+        .filter(
+            SolicitudCita.telefono == telefono,
+            SolicitudCita.estado != STATE_FINALIZADO
+        )
+        .order_by(SolicitudCita.fecha.desc())
+        .first()
     )
 
-    try:
-        db.session.add(solicitud)
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()
-        return jsonify(success=False, message='No fue posible crear la solicitud. Verifica la información e intenta nuevamente.'), 400
-    except Exception as exc:
-        db.session.rollback()
-        current_app.logger.exception('Error creando solicitud manualmente')
-        return jsonify(success=False, message='Error interno al crear la solicitud.'), 500
+    if solicitud_existente:
+        # Actualizar la solicitud existente en lugar de crear una nueva
+        solicitud = solicitud_existente
+        solicitud_actualizada = True
 
-    return jsonify(success=True, id=solicitud.id)
+        # Actualizar campos básicos
+        if nombre_completo:
+            solicitud.nombre_completo = nombre_completo
+        if cedula:
+            solicitud.cedula = cedula
+        if placa:
+            solicitud.placa = placa
+        if placa_remolque:
+            solicitud.placa_remolque = placa_remolque
+        if celular:
+            solicitud.celular = celular
+
+        # Actualizar estado y observaciones
+        solicitud.estado = estado
+        observaciones = (data.get('observaciones') or '').strip()
+        if observaciones:
+            marca = datetime.utcnow().strftime('%d/%m/%Y %H:%M')
+            nota = f"[{marca}] Solicitud actualizada desde panel por {session.get('email', 'panel')}"
+            if solicitud.observaciones:
+                solicitud.observaciones = f"{solicitud.observaciones}\n{nota}"
+            else:
+                solicitud.observaciones = nota
+
+        # Actualizar mensaje y actividad de WhatsApp
+        solicitud.mensaje = f'Solicitud actualizada manualmente desde el panel. Estado: {estado}'
+        solicitud.whatsapp_last_activity = datetime.utcnow()
+
+        try:
+            db.session.commit()
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception('Error actualizando solicitud existente')
+            return jsonify(success=False, message='Error interno al actualizar la solicitud.'), 500
+    else:
+        # Crear nueva solicitud
+        solicitud = SolicitudCita(
+            telefono=telefono,
+            mensaje='Solicitud creada manualmente desde el panel.',
+            fecha=datetime.utcnow(),
+            nombre_completo=nombre_completo or None,
+            cedula=cedula or None,
+            placa=placa or None,
+            placa_remolque=placa_remolque or None,
+            celular=celular or None,
+            observaciones=(data.get('observaciones') or '').strip() or None,
+            estado=estado,
+            whatsapp_step='0',
+            whatsapp_last_activity=datetime.utcnow(),
+            whatsapp_timeout_minutes=0,
+            whatsapp_warning_sent=False,
+            asesor_pendiente=False,
+            asesor_pendiente_desde=None
+        )
+        solicitud_actualizada = False
+
+        try:
+            db.session.add(solicitud)
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify(success=False, message='No fue posible crear la solicitud. Verifica la información e intenta nuevamente.'), 400
+        except Exception as exc:
+            db.session.rollback()
+            current_app.logger.exception('Error creando solicitud manualmente')
+            return jsonify(success=False, message='Error interno al crear la solicitud.'), 500
+
+    # Enviar mensaje de plantilla solo si se creó una nueva solicitud
+    if not solicitud_actualizada:
+        try:
+            # Enviar plantilla de bienvenida/inicio de conversación
+            exito = send_whatsapp_message(
+                telefono,
+                template_name='bienvenida_conquers',
+                template_vars=[nombre_completo or 'Conductor', placa or 'sin placa'],
+                template_lang='es',
+                sender='panel'
+            )
+            if exito:
+                current_app.logger.info(f'Mensaje de plantilla enviado exitosamente a {telefono} para solicitud {solicitud.id}')
+            else:
+                current_app.logger.warning(f'No se pudo enviar mensaje de plantilla a {telefono} para solicitud {solicitud.id}')
+        except Exception as exc:
+            current_app.logger.warning(f'Error enviando mensaje de plantilla a {telefono}: {exc}')
+
+    return jsonify(success=True, id=solicitud.id, conductor_creado=conductor_creado, actualizada=solicitud_actualizada)
 
 
 @login_required
@@ -10220,7 +10318,7 @@ def aprobar_inscripcion_manual(id):
 
     mensaje_confirmacion = (
         "🎉 Fisher 🐶 olfateó que todo está en orden y movió la cola: ya quedaste inscrito con Conquers.\n"
-        "📄 Envía la foto de la guía o manifiesto como imagen o PDF para seguir con tu enturnamiento.\n"
+        "📄 Envía la foto de la guía como imagen o PDF para seguir con tu enturnamiento.\n"
         "🛑 Recuerda estacionar el camión antes de responderme, yo espero aquí."
     )
     try:
@@ -11318,7 +11416,7 @@ def analizar_datos_faltantes(solicitud):
     # Verificar guía/manifiesto
     if not solicitud.imagen_guia and not solicitud.imagen_manifiesto:
         datos_faltantes.append("guía")
-        mensajes_recomendados.append("📄 Te falta enviar la foto de la guía o manifiesto de transporte. Por favor, envíala ahora para continuar con tu enturnamiento.")
+        mensajes_recomendados.append("📄 Te falta enviar la foto de la guía de transporte. Por favor, envíala ahora para continuar con tu enturnamiento.")
     
     # Verificar ubicación Bosconia
     if not solicitud.paso_bosconia or not solicitud.ubicacion_lat or not solicitud.ubicacion_lng:
@@ -11966,22 +12064,24 @@ def send_confirmation_request(telefono, message, step_on_confirm, step_on_deny=N
 
 def build_enturnado_message(solicitud):
     """Genera el texto estándar para notificar un enturnamiento completado."""
-    turno_texto = solicitud.turno if solicitud.turno is not None else 'Por asignar'
     fecha_local = to_bogota_datetime(solicitud.fecha_descargue, assume_local=True)
     fecha_descargue_texto = fecha_local.strftime('%d/%m/%Y %H:%M') if fecha_local else 'Por definir'
     lugar_texto = solicitud.lugar_descargue or 'Sociedad Portuaria del Dique'
-    base = (
-        "✅ Solicitud enturnada.\n"
-        f"Turno: {turno_texto}\n"
-        f"Fecha y hora de descargue: {fecha_descargue_texto}\n"
-        f"Lugar: {lugar_texto}\n"
-        "Fisher 🐶 te agradece la confianza. ¡Muchas gracias y nos vemos pronto!"
+    
+    # Mensaje ingenioso con Fisher
+    mensaje_fisher = (
+        "🐶 ¡Fisher 🐶 está ladrando de emoción! ¡Tu turno está confirmado!\n\n"
+        f"📅 Fecha y hora: {fecha_descargue_texto}\n"
+        f"📍 Lugar: {lugar_texto}\n\n"
+        "📝 NOTA: El turno es interno, como van llegando, se pesan en zona franca, se muestrea y van descargando.\n\n"
+        "🐕 ¡Muchas gracias por tu paciencia! Fisher te desea un viaje seguro y sin contratiempos. ¡Guau guau! 🐾"
     )
+    
     instrucciones = (
         "\n\nSi necesitas un nuevo enturne escribe *NUEVO*.\n"
         "Si el horario no te sirve responde *asesor* para que nuestro equipo te contacte."
     )
-    return f"{base}{instrucciones}"
+    return f"{mensaje_fisher}{instrucciones}"
 
 def validar_y_guardar_ubicacion(telefono, lat, lng, ubicacion_tipo, session, next_step):
     """
@@ -12073,6 +12173,8 @@ def guardar_imagen_whatsapp(telefono, media_payload, tipo_imagen, session):
             if solicitud:
                 if tipo_imagen == 'imagen_guia':
                     solicitud.imagen_guia = ruta_guardada
+                elif tipo_imagen == 'imagen_manifiesto':
+                    solicitud.imagen_manifiesto = ruta_guardada
                 elif tipo_imagen == 'ticket_gambote':
                     solicitud.ticket_gambote = ruta_guardada
                 db.session.commit()
@@ -12222,6 +12324,7 @@ def get_solicitud_data(solicitud):
 # Configuración de WhatsApp Business API
 WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
+WHATSAPP_PHONE_ID = os.environ.get("WHATSAPP_PHONE_ID") or PHONE_NUMBER_ID
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "TU_TOKEN_SECRETO_INVENTADO")
 
 # Estados nombrados para la conversación (en lugar de números mágicos)
@@ -12243,6 +12346,7 @@ STEP_MANUAL_REG_CEDULA = 11
 STEP_MANUAL_REG_REMOLQUE = 12
 STEP_MANUAL_REG_CONFIRM = 13
 STEP_CONFIRM_UNKNOWN_PLACA = 14
+STEP_AWAIT_MANIFIESTO = 15
 STEP_UNDER_REVIEW = 'confirmed'
 STEP_HUMAN_HANDOFF = 'human_handoff'
 
@@ -12282,8 +12386,11 @@ def determinar_siguiente_step_pendiente(solicitud):
     if not solicitud:
         return STEP_AWAIT_GUIA
 
-    if not (solicitud.imagen_guia or solicitud.imagen_manifiesto):
+    if not solicitud.imagen_guia:
         return STEP_AWAIT_GUIA
+
+    if not solicitud.imagen_manifiesto:
+        return STEP_AWAIT_MANIFIESTO
 
     if not solicitud.paso_bosconia or not solicitud.ubicacion_lat or not solicitud.ubicacion_lng:
         return STEP_AWAIT_GPS_BOSCONIA
@@ -12301,8 +12408,8 @@ def build_confirmation_summary(solicitud):
     datos = get_solicitud_data(solicitud)
     if not datos:
         return (
-            "Por favor confirma que todos tus datos son correctos."
-            " Responde 'sí' para confirmar."
+            "🐶 Fisher 🐶: Por favor confirma que todos tus datos son correctos. "
+            "Responde 'sí' para confirmar."
         )
 
     def _status(check, ok_text, pending_text):
@@ -12310,7 +12417,7 @@ def build_confirmation_summary(solicitud):
 
     tiene_guia = datos.get('imagen_guia') or datos.get('imagen_manifiesto')
     resumen = (
-        "\nPor favor confirma que todos tus datos son correctos:\n"
+        "🐶 Fisher 🐶: ¡Excelente! Hemos completado todos los pasos. Por favor confirma que todos tus datos son correctos:\n\n"
         f"Nombre: {datos.get('nombre_completo') or '-'}\n"
         f"Cédula: {datos.get('cedula') or '-'}\n"
         f"Placa: {datos.get('placa') or '-'}\n"
@@ -12319,8 +12426,8 @@ def build_confirmation_summary(solicitud):
         f"Guía: {_status(tiene_guia, 'recibida', 'pendiente')}\n"
         f"Ubicación Bosconia: {_status(datos.get('paso_bosconia'), '✅ validada', 'pendiente')}\n"
         f"Ticket Gambote: {_status(datos.get('ticket_gambote'), 'recibido', 'pendiente')}\n"
-        f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '✅ validada', 'pendiente')}\n"
-        "\n¿Todo está correcto? Responde 'sí' para confirmar."
+        f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '✅ validada', 'pendiente')}\n\n"
+        "¿Todo está correcto? Responde 'sí' para enviar tus datos a revisión. ¡Mi cola se mueve de emoción!"
     )
     return resumen
 
@@ -12512,20 +12619,82 @@ def log_whatsapp_message(telefono, contenido, direction, sender, message_type='t
 
 def send_whatsapp_message(
     telefono,
-    mensaje,
+    mensaje=None,
     media_url=None,
+    buttons=None,
+    template_name=None,
+    template_vars=None,
+    template_lang='es',
     sender='bot',
     solicitud=None,
     *,
     force_reminder=False,
     skip_reminder=False,
-    prime_after_force=False,
-    buttons=None
+    prime_after_force=False
 ):
     """
-    Envía mensaje por WhatsApp Business API
+    Envía un mensaje de WhatsApp usando la API de Meta (v17.0).
+    Soporta mensajes de texto, plantillas, botones interactivos y archivos multimedia.
+
+    Args:
+        telefono: Número de teléfono del destinatario (sin +57)
+        mensaje: Mensaje de texto a enviar (opcional si se usa template)
+        media_url: URL del archivo multimedia (opcional)
+        buttons: Lista de botones para mensajes interactivos (opcional)
+        template_name: Nombre de la plantilla de WhatsApp Business API (opcional)
+        template_vars: Lista de variables para la plantilla (opcional)
+        template_lang: Idioma de la plantilla (default 'es')
+        sender: Quién envía el mensaje (default 'bot')
+        solicitud: Objeto SolicitudCita asociado (opcional)
+        force_reminder, skip_reminder, prime_after_force: Parámetros para recordatorios de seguridad
+
+    Returns:
+        bool: True si el mensaje se envió correctamente
     """
-    try:
+    import uuid
+    import requests
+    from flask import current_app
+
+    # Validar parámetros
+    if not telefono:
+        current_app.logger.warning("Intento de enviar mensaje sin número de teléfono")
+        return False
+
+    # Si se especifica template, validar que sea compatible con la API
+    if template_name:
+        if not WHATSAPP_TOKEN or not WHATSAPP_PHONE_ID:
+            current_app.logger.error("Credenciales de WhatsApp no configuradas para enviar plantillas")
+            return False
+
+        # Construir payload para plantilla
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": telefono,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": template_lang}
+            }
+        }
+
+        # Agregar variables si se proporcionan
+        if template_vars:
+            components = []
+            for i, var in enumerate(template_vars):
+                components.append({
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": str(var)}]
+                })
+            if components:
+                payload["template"]["components"] = components
+
+    else:
+        # Mensaje regular (texto, botones o multimedia)
+        if not mensaje and not media_url and not buttons:
+            current_app.logger.warning("Mensaje vacío: no hay texto, multimedia ni botones")
+            return False
+
+        # Aplicar lógica de recordatorios de seguridad si es mensaje regular
         mensaje = mensaje or ''
         auto_force = _detects_important_context(mensaje) if mensaje else False
         mensaje = _maybe_append_safety_reminder(
@@ -12537,83 +12706,84 @@ def send_whatsapp_message(
         )
 
         if buttons and media_url:
-            app.logger.warning('No se puede enviar botones interactivos junto a un adjunto; se omitirá el archivo adjunto.')
+            current_app.logger.warning('No se puede enviar botones interactivos junto a un adjunto; se omitirá el archivo adjunto.')
             media_url = None
 
-        # Configurar credenciales desde variables de entorno
-        token = os.environ.get('WHATSAPP_TOKEN')
-        phone_id = os.environ.get('WHATSAPP_PHONE_ID')
-        
-        if not all([token, phone_id]):
-            app.logger.error("Credenciales de WhatsApp no configuradas")
-            return False
-            
-        url = f"https://graph.facebook.com/v17.0/{phone_id}/messages"
-        
         payload = {
             "messaging_product": "whatsapp",
+            "recipient_type": "individual",
             "to": telefono
         }
 
-        message_type = 'text'
-
         if buttons:
-            message_type = 'interactive'
-            payload.update({
-                "type": "interactive",
-                "interactive": {
-                    "type": "button",
-                    "body": {"text": mensaje},
-                    "action": {"buttons": buttons}
-                }
-            })
-        elif media_url:
-            message_type = 'document'
-            document_payload = {
-                "link": media_url,
-                "filename": _derive_media_filename(media_url)
+            # Mensaje interactivo con botones
+            payload["type"] = "interactive"
+            payload["interactive"] = {
+                "type": "button",
+                "body": {"text": mensaje},
+                "action": {"buttons": buttons}
             }
+        elif media_url:
+            # Mensaje con multimedia
             if mensaje:
-                document_payload["caption"] = mensaje
-            payload.update({
-                "type": "document",
-                "document": document_payload
-            })
+                # Documento con caption
+                payload["type"] = "document"
+                payload["document"] = {
+                    "link": media_url,
+                    "caption": mensaje,
+                    "filename": _derive_media_filename(media_url)
+                }
+            else:
+                # Imagen sin texto
+                payload["type"] = "image"
+                payload["image"] = {"link": media_url}
         else:
-            payload.update({
-                "type": "text",
-                "text": {"body": mensaje}
-            })
-        
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json"
-        }
-        
+            # Mensaje de texto simple
+            payload["type"] = "text"
+            payload["text"] = {"body": mensaje}
+
+    # Headers para la API
+    headers = {
+        'Authorization': f'Bearer {WHATSAPP_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+
+    try:
+        # Enviar mensaje
+        url = f"https://graph.facebook.com/v17.0/{WHATSAPP_PHONE_ID}/messages"
         response = requests.post(url, json=payload, headers=headers, timeout=30)
-        
+
         if response.status_code == 200:
-            app.logger.info(f"WhatsApp enviado a {telefono}")
+            response_data = response.json()
+            whatsapp_message_id = response_data.get('messages', [{}])[0].get('id')
+
+            # Guardar en base de datos si hay solicitud asociada
             try:
                 log_whatsapp_message(
                     telefono,
-                    mensaje,
+                    mensaje or template_name or '',
                     direction='outbound',
                     sender=sender,
-                    message_type=message_type,
+                    message_type=payload.get('type', 'text'),
                     media_url=media_url,
                     solicitud=solicitud
                 )
-            except Exception:
-                # El log already maneja su propio rollback; no propagar
-                pass
+            except Exception as db_error:
+                current_app.logger.warning(f"No se pudo guardar mensaje en BD: {db_error}")
+
+            current_app.logger.info(f"Mensaje enviado exitosamente a {telefono}: {whatsapp_message_id}")
             return True
         else:
-            app.logger.error(f"Error WhatsApp {response.status_code}: {response.text}")
+            error_data = response.json()
+            error_message = error_data.get('error', {}).get('message', 'Error desconocido')
+            current_app.logger.error(f"Error enviando mensaje a {telefono}: {error_message}")
             return False
-            
+
+    except requests.exceptions.RequestException as e:
+        current_app.logger.error(f"Error de conexión enviando mensaje a {telefono}: {e}")
+        return False
     except Exception as e:
-        app.logger.error(f"Excepción enviando WhatsApp: {e}")
+        current_app.logger.exception(f"Error inesperado enviando mensaje a {telefono}")
         return False
 
 
@@ -12778,8 +12948,8 @@ def handle_step_await_placa(telefono, texto, tipo, msg, session):
         return None
     else:
         mensaje = (
-            f"No encontré la placa {placa} en nuestra base de datos.\n"
-            "¿La escribiste correctamente?"
+            f"🐶 Fisher 🐶: ¡Guau! No encontré la placa {placa} en mi base de datos.\n"
+            "¿La escribiste correctamente? ¡Mi olfato está fallando!"
         )
         # Guardar la placa original en la solicitud
         solicitud = session.get('solicitud')
@@ -12804,7 +12974,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_positive(texto):
         send_whatsapp_message(
             telefono,
-            "Perfecto, entonces te registro manualmente. Por favor escribe tu nombre completo."
+            "🐶 Fisher 🐶: ¡Perfecto! Te registro manualmente. Por favor escribe tu nombre completo. ¡Estoy emocionado por conocerte!"
         )
         session['step'] = STEP_MANUAL_REG_NAME
         configurar_timeout_session(session, 30)
@@ -12814,7 +12984,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_negative(texto):
         send_whatsapp_message(
             telefono,
-            "Sin problema. Escríbeme nuevamente la placa del camión, esta vez verificando cada letra y número."
+            "🐶 Fisher 🐶: ¡Sin problema! Escríbeme nuevamente la placa del camión, esta vez verificando cada letra y número. ¡Mi olfato está listo para intentarlo de nuevo!"
         )
         session['step'] = STEP_AWAIT_PLACA
         configurar_timeout_session(session, 10)
@@ -12823,7 +12993,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
 
     send_yes_no_prompt(
         telefono,
-        "Necesito que confirmes si la placa está correcta para saber cómo ayudarte. Pulsa Sí o No, por favor.",
+        "🐶 Fisher 🐶: Necesito que confirmes si la placa está correcta para saber cómo ayudarte. Pulsa Sí o No, por favor. ¡Mi cola se mueve esperando tu respuesta!",
         context_label='CONFIRM_UNKNOWN_PLACA_RETRY'
     )
     configurar_timeout_session(session, 5)
@@ -12836,6 +13006,7 @@ STEP_HANDLERS = {
     STEP_AWAIT_PLACA: handle_step_await_placa,
     STEP_CONFIRM_DATA: None,  # Handled in main flow
     STEP_AWAIT_GUIA: None,  # Handled in main flow
+    STEP_AWAIT_MANIFIESTO: None,  # Handled in main flow
     STEP_AWAIT_GPS_BOSCONIA: None,  # Handled in main flow
     STEP_AWAIT_TICKET_GAMBOTE: None,  # Handled in main flow
     STEP_AWAIT_GPS_GAMBOTE: None,  # Handled in main flow

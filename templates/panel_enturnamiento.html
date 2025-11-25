@@ -125,6 +125,7 @@
                         <option value="recordatorio_inteligente">Seguimiento automático</option>
                         <option value="turno_retrasado">Turno en ajuste operativo</option>
                         <option value="finalizar_atencion">Finalizar atención humana</option>
+                        <option value="iniciar_conversacion">Enviar Notificación Inicio (Plantilla)</option>
                     </select>
 
                     <div class="chat-modal-body">
@@ -214,6 +215,10 @@
                                         <button type="button" class="chat-quick-option chat-quick-option--warning" data-template="recordatorio_inteligente">
                                             <i class="fas fa-bell chat-quick-option-icon"></i>
                                             <span>Seguimiento automático</span>
+                                        </button>
+                                        <button type="button" class="chat-quick-option chat-quick-option--primary" data-template="iniciar_conversacion">
+                                            <i class="fas fa-paper-plane chat-quick-option-icon"></i>
+                                            <span>Enviar Notificación Inicio</span>
                                         </button>
                                     </div>
                                 </div>
@@ -403,7 +408,8 @@
                                     <th class="px-3">Placa</th>
                                     <th class="px-3">Remolque</th>
                                     <th class="px-3">Contacto</th>
-                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Guía</th>
+                                    <th class="px-3">Manifiesto</th>
                                     <th class="px-3">Bosconia</th>
                                     <th class="px-3">Gambote</th>
                                     <th class="px-3">Validación GPS</th>
@@ -443,7 +449,8 @@
                                     <th class="px-3">Placa</th>
                                     <th class="px-3">Remolque</th>
                                     <th class="px-3">Contacto</th>
-                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Guía</th>
+                                    <th class="px-3">Manifiesto</th>
                                     <th class="px-3">Bosconia</th>
                                     <th class="px-3">Gambote</th>
                                     <th class="px-3">Validación GPS</th>
@@ -483,7 +490,8 @@
                                     <th class="px-3">Placa</th>
                                     <th class="px-3">Remolque</th>
                                     <th class="px-3">Contacto</th>
-                                    <th class="px-3">Guía / Manifiesto</th>
+                                    <th class="px-3">Guía</th>
+                                    <th class="px-3">Manifiesto</th>
                                     <th class="px-3">Bosconia</th>
                                     <th class="px-3">Gambote</th>
                                     <th class="px-3">Validación GPS</th>
@@ -523,7 +531,8 @@
                             <th class="px-3">Placa</th>
                             <th class="px-3">Remolque</th>
                             <th class="px-3">Contacto</th>
-                            <th class="px-3">Guía / Manifiesto</th>
+                            <th class="px-3">Guía</th>
+                            <th class="px-3">Manifiesto</th>
                             <th class="px-3">Bosconia</th>
                             <th class="px-3">Gambote</th>
                             <th class="px-3">Validación GPS</th>
@@ -585,7 +594,14 @@
                                             <i class="fas fa-eye"></i> Ver
                                         </button>
                                     {% endif %}
-                                {% elif s.imagen_manifiesto %}
+                                {% else %}
+                                    <span class="badge bg-warning text-dark" title="Falta foto de la guía">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Falta guía
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3">
+                                {% if s.imagen_manifiesto %}
                                     {% if s.imagen_manifiesto.lower().endswith('.pdf') %}
                                         <button class="btn btn-sm btn-outline-info btn-view-guia" data-url="/guias/{{ s.imagen_manifiesto }}" title="Ver manifiesto PDF">
                                             <i class="fas fa-file-pdf"></i> Ver PDF
@@ -596,8 +612,8 @@
                                         </button>
                                     {% endif %}
                                 {% else %}
-                                    <span class="badge bg-warning text-dark" title="Falta foto de la guía o manifiesto">
-                                        <i class="fas fa-exclamation-triangle me-1"></i>Falta guía
+                                    <span class="badge bg-warning text-dark" title="Falta foto del manifiesto">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>Falta manifiesto
                                     </span>
                                 {% endif %}
                             </td>
@@ -963,26 +979,19 @@
 <!-- Input oculto para subir guía -->
 <input type="file" id="hidden-guia-input" accept="image/*,application/pdf" style="display: none;">
 
-<!-- Modal para asignar turno y fecha/hora de descargue -->
+<!-- Modal para asignar fecha y hora de descargue -->
 <div class="modal fade" id="modalTurnoDescargue" tabindex="-1" aria-labelledby="modalTurnoDescargueLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="modalTurnoDescargueLabel">
-                    <i class="fas fa-calendar-check me-2"></i>Asignar Turno y Fecha/Hora de Descargue
+                    <i class="fas fa-calendar-check me-2"></i>Asignar Fecha y Hora de Descargue
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="formTurnoDescargue">
                 <div class="modal-body">
                     <input type="hidden" id="solicitudIdInput" name="solicitudId">
-                    <div class="mb-3">
-                        <label for="turnoInput" class="form-label fw-bold">
-                            <i class="fas fa-hashtag me-1"></i>Turno
-                        </label>
-                        <input type="text" class="form-control" id="turnoInput" name="turno" required
-                               placeholder="Ej: T001, T002, etc.">
-                    </div>
                     <div class="mb-3">
                         <label for="fechaInput" class="form-label fw-bold">
                             <i class="fas fa-calendar me-1"></i>Fecha de Descargue
@@ -1001,7 +1010,7 @@
                         <i class="fas fa-times me-1"></i> Cancelar
                     </button>
                     <button type="submit" class="btn btn-success rounded-2 px-4">
-                        <i class="fas fa-check me-1"></i> Asignar Turno
+                        <i class="fas fa-check me-1"></i> Asignar Fecha/Hora
                     </button>
                 </div>
             </form>
@@ -3180,6 +3189,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return `Atención humana finalizada. Fisher 🐶 cierra esta conversación. 🏁
 
 Cuando necesites un *nuevo enturne*, solo escribe *NUEVO* y comenzaremos desde cero. ¡Te esperamos!`;
+            case 'iniciar_conversacion':
+                return "Enviando notificación oficial de orden de servicio (Plantilla)...";
             case 'personalizado':
             default:
                 return null;
@@ -3542,7 +3553,6 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
         }
         form.dataset.submitting = '1';
 
-        const turno = document.getElementById('turnoInput').value.trim();
         const fecha = document.getElementById('fechaInput').value;
         const hora = document.getElementById('horaInput').value;
         const solicitudId = document.getElementById('solicitudIdInput').value;
@@ -3559,7 +3569,6 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
             },
             body: JSON.stringify({
                 estado: 'enturnado',
-                turno: turno,
                 fecha_descargue: fecha,
                 hora_descargue: hora
             })
@@ -3568,7 +3577,7 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
         .then(data => {
             if (data.success) {
                 hideModalSafely('modalTurnoDescargue');
-                alert('Turno y fecha/hora guardados correctamente.');
+                alert('Fecha y hora de descargue guardadas correctamente.');
                 setTimeout(() => location.reload(), 300);
             } else {
                 alert('Error: ' + (data.message || '')); 
@@ -4101,12 +4110,8 @@ Completa el primer punto y Fisher te guiará con el siguiente de inmediato.`);
                 return;
             }
             document.getElementById('solicitudIdInput').value = id;
-            const turnoField = document.getElementById('turnoInput');
             const fechaField = document.getElementById('fechaInput');
             const horaField = document.getElementById('horaInput');
-            if (turnoField) {
-                turnoField.value = btn.dataset.turno || '';
-            }
             if (fechaField) {
                 fechaField.value = btn.dataset.fechaDescargue || '';
             }
