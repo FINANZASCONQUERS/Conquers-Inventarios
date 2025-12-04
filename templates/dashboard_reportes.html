@@ -33,89 +33,123 @@
 {% endblock %}
 
 {% block content %}
-<div class="row access-grid">
-    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-1">
-        <div class="dash-card theme-planta h-100">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="dash-icon"><i class="bi bi-buildings-fill"></i></div>
-                <div class="text-end small text-muted fw-medium">
-                    <div class="dash-updated"><i class="bi bi-clock-history text-planta"></i> {{ planta_summary.info_completa }}</div>
+<div class="row g-4 justify-content-center">
+    <!-- Tarjeta Reporte Planta -->
+    <div class="col-12 col-sm-6 col-xl-3 fade-in-up delay-1">
+        <div class="dash-card theme-planta h-100 shadow-sm hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="dash-icon pulse-on-hover">
+                    <i class="bi bi-buildings-fill"></i>
+                </div>
+                <span class="badge bg-light text-planta border border-2 border-planta">
+                    <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Activo
+                </span>
+            </div>
+            <h3 class="dash-title text-planta fw-bold mb-2">Reporte Planta</h3>
+            <p class="mb-3 small text-muted lh-base flex-grow-1">
+                Indicadores operativos y consolidado de entradas / salidas en planta.
+            </p>
+            <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
+                <div class="small text-muted">
+                    <i class="bi bi-clock-history text-planta me-1"></i>
+                    <span class="fw-medium">{{ planta_summary.info_completa }}</span>
                 </div>
             </div>
-            <h3 class="dash-title text-planta">Reporte Planta</h3>
-            <p class="mb-2 small text-muted flex-grow-1">Indicadores operativos y consolidado de entradas / salidas en planta.</p>
-            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_planta') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
+            <div class="dash-btn mt-3">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_planta') }}">
+                    <span>Acceder al Reporte</span>
+                    <i class="bi bi-arrow-right-circle"></i>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-2">
-        <div class="dash-card theme-transito h-100">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="dash-icon"><i class="bi bi-truck"></i></div>
-                <div class="text-end small text-muted fw-medium">
-                    <div class="dash-updated"><i class="bi bi-clock-history text-transito"></i> {{ transito_summary.info_completa }}</div>
+    <!-- Tarjeta Reporte Tránsito -->
+    <div class="col-12 col-sm-6 col-xl-3 fade-in-up delay-2">
+        <div class="dash-card theme-transito h-100 shadow-sm hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="dash-icon pulse-on-hover">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <span class="badge bg-light text-transito border border-2 border-transito">
+                    <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Activo
+                </span>
+            </div>
+            <h3 class="dash-title text-transito fw-bold mb-2">Reporte Tránsito</h3>
+            <p class="mb-3 small text-muted lh-base flex-grow-1">
+                Seguimiento de movimientos y tiempos logísticos en tránsito.
+            </p>
+            <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
+                <div class="small text-muted">
+                    <i class="bi bi-clock-history text-transito me-1"></i>
+                    <span class="fw-medium">{{ transito_summary.info_completa }}</span>
                 </div>
             </div>
-            <h3 class="dash-title text-transito">Reporte Tránsito</h3>
-            <p class="mb-2 small text-muted">Seguimiento de movimientos y tiempos logísticos en tránsito.</p>
-            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_transito') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
+            <div class="dash-btn mt-3">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_transito') }}">
+                    <span>Acceder al Reporte</span>
+                    <i class="bi bi-arrow-right-circle"></i>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-3">
-        <div class="dash-card theme-orion h-100">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="dash-icon"><i class="bi bi-water"></i></div>
-                <div class="text-end small text-muted fw-medium">
-                    <div class="dash-updated"><i class="bi bi-clock-history text-orion"></i> {{ orion_summary.info_completa }}</div>
+    <!-- Tarjeta Barcaza Orion -->
+    <div class="col-12 col-sm-6 col-xl-3 fade-in-up delay-3">
+        <div class="dash-card theme-orion h-100 shadow-sm hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="dash-icon pulse-on-hover">
+                    <i class="bi bi-water"></i>
+                </div>
+                <span class="badge bg-light text-orion border border-2 border-orion">
+                    <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Activo
+                </span>
+            </div>
+            <h3 class="dash-title text-orion fw-bold mb-2">Barcaza Orion</h3>
+            <p class="mb-3 small text-muted lh-base flex-grow-1">
+                Resumen operativo y métricas clave de la barcaza Orion.
+            </p>
+            <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
+                <div class="small text-muted">
+                    <i class="bi bi-clock-history text-orion me-1"></i>
+                    <span class="fw-medium">{{ orion_summary.info_completa }}</span>
                 </div>
             </div>
-            <h3 class="dash-title text-orion">Barcaza Orion</h3>
-            <p class="mb-2 small text-muted">Resumen operativo y métricas clave de la barcaza Orion.</p>
-            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_barcaza') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
+            <div class="dash-btn mt-3">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_barcaza') }}">
+                    <span>Acceder al Reporte</span>
+                    <i class="bi bi-arrow-right-circle"></i>
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="col-12 col-md-6 col-xl-3 fade-in-up delay-4">
-        <div class="dash-card theme-bita h-100">
-            <div class="d-flex justify-content-between align-items-start">
-                <div class="dash-icon"><i class="bi bi-tsunami"></i></div>
-                <div class="text-end small text-muted fw-medium">
-                    <div class="dash-updated"><i class="bi bi-clock-history text-bita"></i> {{ bita_summary.info_completa }}</div>
+    <!-- Tarjeta Barcaza BITA -->
+    <div class="col-12 col-sm-6 col-xl-3 fade-in-up delay-4">
+        <div class="dash-card theme-bita h-100 shadow-sm hover-lift">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="dash-icon pulse-on-hover">
+                    <i class="bi bi-tsunami"></i>
+                </div>
+                <span class="badge bg-light text-bita border border-2 border-bita">
+                    <i class="bi bi-circle-fill" style="font-size: 0.5rem;"></i> Activo
+                </span>
+            </div>
+            <h3 class="dash-title text-bita fw-bold mb-2">Barcaza BITA</h3>
+            <p class="mb-3 small text-muted lh-base flex-grow-1">
+                Resumen operativo y métricas clave de la barcaza BITA.
+            </p>
+            <div class="d-flex align-items-center justify-content-between mt-auto pt-3 border-top">
+                <div class="small text-muted">
+                    <i class="bi bi-clock-history text-bita me-1"></i>
+                    <span class="fw-medium">{{ bita_summary.info_completa }}</span>
                 </div>
             </div>
-            <h3 class="dash-title text-bita">Barcaza BITA</h3>
-            <p class="mb-2 small text-muted">Resumen operativo y métricas clave de la barcaza BITA.</p>
-            <div class="dash-btn"><a class="btn btn-accent text-white" href="{{ url_for('reporte_barcaza_bita') }}"><span>Acceder</span><i class="bi bi-arrow-right"></i></a></div>
-        </div>
-    </div>
-</div>
-
-<div class="mt-5 fade-in-up delay-2">
-    <div class="row g-4">
-        <div class="col-12">
-            <div class="dash-card h-100">
-                <div class="d-flex justify-content-between flex-wrap gap-2 align-items-center mb-2">
-                    <h4 class="mb-0 d-flex align-items-center gap-2"><i class="bi bi-bell-fill text-info"></i><span>Alertas / Eventos</span></h4>
-                    <div class="small text-muted">Actualizado al cargar la página</div>
-                </div>
-                {% if alerts and alerts|length > 0 %}
-                <ul class="list-unstyled mb-0 small" id="alertList">
-                    {% for a in alerts %}
-                    <li class="py-2 d-flex flex-wrap align-items-start gap-2 border-bottom last-border-0">
-                        <span class="badge rounded-pill bg-{{ 'danger' if a.severity=='danger' else 'warning' if a.severity=='warning' else 'info' if a.severity=='info' else 'success' }} text-dark-emphasis d-inline-flex align-items-center gap-1" style="font-weight:600;">
-                            <i class="bi bi-{{ a.icon }}"></i>{{ a.category }}
-                        </span>
-                        <span class="flex-grow-1 lh-sm">{{ a.message }}</span>
-                        {% if loop.first and a.severity in ['danger','warning'] %}
-                            <span class="ms-auto text-muted small fst-italic">Prioridad alta</span>
-                        {% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                    <div class="small text-muted">Sin alertas generadas.</div>
-                {% endif %}
+            <div class="dash-btn mt-3">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_barcaza_bita') }}">
+                    <span>Acceder al Reporte</span>
+                    <i class="bi bi-arrow-right-circle"></i>
+                </a>
             </div>
         </div>
     </div>
@@ -125,6 +159,107 @@
 
 {% block scripts %}
 {{ super() }}
+<style>
+    .hover-lift {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-lift:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+    }
+    
+    .pulse-on-hover {
+        transition: transform 0.3s ease;
+    }
+    
+    .hover-lift:hover .pulse-on-hover {
+        transform: scale(1.1);
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+    
+    .dash-card {
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .dash-icon {
+        font-size: 2.5rem;
+        width: 70px;
+        height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    
+    /* Colores específicos para cada tema */
+    .theme-planta .dash-icon { 
+        background: linear-gradient(135deg, #FFE8D1 0%, #FFD4A3 100%);
+        color: #FF8C42;
+    }
+    .theme-transito .dash-icon { 
+        background: linear-gradient(135deg, #FFF4CC 0%, #FFE699 100%);
+        color: #FFB800;
+    }
+    .theme-orion .dash-icon { 
+        background: linear-gradient(135deg, #E8D4FF 0%, #D4B3FF 100%);
+        color: #9B59B6;
+    }
+    .theme-bita .dash-icon { 
+        background: linear-gradient(135deg, #C8F0E9 0%, #9FE2D4 100%);
+        color: #10A37F;
+    }
+    
+    .text-planta { color: #FF8C42 !important; }
+    .text-transito { color: #FFB800 !important; }
+    .text-orion { color: #9B59B6 !important; }
+    .text-bita { color: #10A37F !important; }
+    
+    .border-planta { border-color: #FF8C42 !important; }
+    .border-transito { border-color: #FFB800 !important; }
+    .border-orion { border-color: #9B59B6 !important; }
+    .border-bita { border-color: #10A37F !important; }
+    
+    /* Botones con colores específicos */
+    .theme-planta .btn-accent {
+        background: linear-gradient(135deg, #FF8C42 0%, #FF6B1A 100%);
+        border: none;
+    }
+    .theme-transito .btn-accent {
+        background: linear-gradient(135deg, #FFB800 0%, #FF9F00 100%);
+        border: none;
+    }
+    .theme-orion .btn-accent {
+        background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
+        border: none;
+    }
+    .theme-bita .btn-accent {
+        background: linear-gradient(135deg, #10A37F 0%, #0D8B6C 100%);
+        border: none;
+    }
+    
+    .btn-accent {
+        transition: all 0.3s ease;
+        font-weight: 600;
+        padding: 0.625rem 1.25rem;
+        border-radius: 10px;
+    }
+    
+    .btn-accent:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+</style>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const dateElement = document.getElementById('current-date');

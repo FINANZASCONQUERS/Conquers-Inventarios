@@ -43,7 +43,8 @@
     /* ----- Estilo de la Tabla de Resultados Profesional ----- */
     .results-table {
         border-collapse: separate;
-    overflow: hidden;
+        overflow: hidden;
+        font-size: 0.9rem;
     }
 
     .results-table thead th {
@@ -62,6 +63,32 @@
     .results-table td:first-child {
         text-align: left;
         font-weight: 500;
+    }
+
+    /* Estilos para propiedades avanzadas */
+    .results-table tr.table-info td {
+        background-color: #d1ecf1 !important;
+        font-size: 0.85rem;
+    }
+    
+    .results-table tr.table-success td {
+        background-color: #d4edda !important;
+        font-size: 0.85rem;
+    }
+    
+    .results-table tr.table-warning td {
+        background-color: #fff3cd !important;
+        font-size: 0.85rem;
+    }
+    
+    .results-table tr.table-secondary td {
+        background-color: #e2e3e5 !important;
+        font-size: 0.75rem;
+    }
+    
+    .results-table .badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
     }
 
     /* ----- Estilo para Indicadores de Carga ----- */
@@ -171,8 +198,8 @@
                         <div class="col-md-6">
                             <label class="form-label"><b>Tipo de Datos</b></label>
                             <select class="form-select" id="assay-data-type">
-                                <option value="wt">Usar Cumulative Wt%</option>
-                                <option value="vol">Usar Cumulative Vol%</option>
+                                <option value="wt">Usar Mass Yield (Wt%)</option>
+                                <option value="vol" selected>Usar Volume Yield (Vol%)</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -184,13 +211,20 @@
 
                         <div class="col-12">
                             <div class="assay-data-container">
-                                <table class="table table-sm assay-data-table">
+                                <table class="table table-sm table-bordered assay-data-table">
                                     <thead>
                                         <tr>
-                                            <th>Rango °F</th>
-                                            <th>Rango °C</th>
-                                            <th>Cum Wt%</th>
-                                            <th>Cum Vol%</th>
+                                            <th rowspan="2" class="align-middle">Rango °F</th>
+                                            <th rowspan="2" class="align-middle">Rango °C</th>
+                                            <th colspan="2" class="text-center bg-light">Weight %</th>
+                                            <th colspan="2" class="text-center bg-light">Volume %</th>
+                                            <th rowspan="2" class="align-middle"></th>
+                                        </tr>
+                                        <tr>
+                                            <th class="text-center" style="font-size:0.75rem;">Incr.</th>
+                                            <th class="text-center bg-info text-white" style="font-size:0.75rem;">Cum.</th>
+                                            <th class="text-center" style="font-size:0.75rem;">Incr.</th>
+                                            <th class="text-center bg-info text-white" style="font-size:0.75rem;">Cum.</th>
                                         </tr>
                                     </thead>
                                     <tbody id="assay-data-body">
@@ -693,7 +727,22 @@ const CrudeSimulator = {
         
         // Listeners para conversión de temperatura en AMBAS tablas
         this.dom.curveBody.addEventListener('input', (e) => this._handleTempConversion(e));
-        this.dom.assayDataBody.addEventListener('input', (e) => this._handleTempConversion(e));
+        this.dom.assayDataBody.addEventListener('input', (e) => {
+            this._handleTempConversion(e);
+            // Actualizar acumulados cuando cambian los incrementales
+            if (e.target.classList.contains('assay-incr-wt') || e.target.classList.contains('assay-incr-vol')) {
+                this._updateAssayCumulatives();
+            }
+        });
+        
+        // Listener para eliminar filas de assay
+        this.dom.assayDataBody.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-remove-assay-row')) {
+                e.target.closest('tr').remove();
+                this._updateAssayCumulatives();
+            }
+        });
+        
         // Delegación para eliminar corrida individual
         this.dom.resultsTableBody.addEventListener('click', (e)=>{
             const btn = e.target.closest('.btn-delete-run');
@@ -755,9 +804,12 @@ const CrudeSimulator = {
             let bodyHtml = '';
             this.state.comparisonResults.forEach((result, index) => {
                 const color = this.config.CHART_COLORS[index % this.config.CHART_COLORS.length];
+                const dataTypeBadge = result.data_type ? 
+                    `<span class=\"badge bg-secondary ms-2\" style=\"font-size:0.7rem;\">${result.data_type === 'wt' ? 'Mass Yield (Wt%)' : 'Volume Yield (Vol%)'}</span>` : '';
                 bodyHtml += `<tr class=\"crude-header-row\" style=\"background-color: ${color}20;\">`+
                             `<td colspan=\"${productLabels.length + 1}\">`+
                             `<strong style=\"color:${color};\"><i class=\"fas fa-vial me-2\"></i>${result.name.toUpperCase()}</strong>`+
+                            dataTypeBadge +
                             `<button type=\"button\" class=\"btn btn-sm btn-outline-danger float-end btn-delete-run\" data-index=\"${index}\" title=\"Eliminar este cálculo\"><i class=\"fas fa-times\"></i></button>`+
                             `</td></tr>`;
                 // Fila de porcentajes
@@ -768,10 +820,11 @@ const CrudeSimulator = {
                     const bbl = result.barrels_by_product ? (result.barrels_by_product[p] || 0) : 0;
                     return `<td>${bbl}</td>`;
                 }).join('')}</tr>`;
-                // Propiedades
+                // Propiedades BÁSICAS SOLAMENTE
                 bodyHtml += `<tr><td><b>API</b></td>${productLabels.map(p => `<td>${result.api_by_product[p]}</td>`).join('')}</tr>`;
                 bodyHtml += `<tr><td><b>Azufre (%S)</b></td>${productLabels.map(p => `<td>${result.sulfur_by_product[p]}</td>`).join('')}</tr>`;
                 bodyHtml += `<tr><td><b>Viscosidad (cSt)</b></td>${productLabels.map(p => `<td>${result.viscosity_by_product[p]}</td>`).join('')}</tr>`;
+                
                 // Fila total barriles al final
                 bodyHtml += `<tr><td><b>Total Barriles</b></td><td colspan=\"${productLabels.length}\" class=\"text-end\"><b>${totalBbl} bbl</b></td></tr>`;
             });
@@ -799,15 +852,19 @@ const CrudeSimulator = {
         this.dom.curveBody.appendChild(row);
     },
 
-    _addAssayRow(range = '', cumWt = '', cumVol = '') {
+    _addAssayRow(range = '', incrWt = '', incrVol = '') {
     const row = document.createElement('tr');
     row.innerHTML = `
-        <td><input type="text" class="form-control form-control-sm temp-f-input" value="${range}" placeholder="IBP-350"></td>
+        <td><input type="text" class="form-control form-control-sm temp-f-input assay-range-input" value="${range}" placeholder="IBP-350"></td>
         <td><input type="text" class="form-control form-control-sm temp-c-input" placeholder="IBP-177"></td>
-        <td><input type="number" class="form-control form-control-sm" value="${cumWt}" placeholder="Ej: 2.24" step="0.01"></td>
-        <td><input type="number" class="form-control form-control-sm" value="${cumVol}" placeholder="Ej: 3.20" step="0.01"></td>
+        <td><input type="number" class="form-control form-control-sm assay-incr-wt" value="${incrWt}" placeholder="2.24" step="0.01"></td>
+        <td><input type="number" class="form-control form-control-sm bg-info bg-opacity-10 assay-cum-wt" readonly tabindex="-1" placeholder="0.00"></td>
+        <td><input type="number" class="form-control form-control-sm assay-incr-vol" value="${incrVol}" placeholder="3.20" step="0.01"></td>
+        <td><input type="number" class="form-control form-control-sm bg-info bg-opacity-10 assay-cum-vol" readonly tabindex="-1" placeholder="0.00"></td>
+        <td><button class="btn btn-sm btn-outline-danger btn-remove-assay-row" title="Eliminar"><i class="fas fa-times"></i></button></td>
     `;
     this.dom.assayDataBody.appendChild(row);
+    this._updateAssayCumulatives();
 },
 
     _addDefaultAssayRows() {
@@ -816,40 +873,130 @@ const CrudeSimulator = {
         }
     },
 
-    _getAssayData() {
-        const assayData = [];
+    _updateAssayCumulatives() {
         const rows = this.dom.assayDataBody.querySelectorAll('tr');
+        let cumWt = 0;
+        let cumVol = 0;
+        
         rows.forEach(row => {
-            const inputs = row.querySelectorAll('input');
-            const range = inputs[0].value.trim();
-            const cumWt = parseFloat(inputs[2].value);
-            const cumVol = parseFloat(inputs[3].value);
-            if (range && (!isNaN(cumWt) || !isNaN(cumVol))) {
-                assayData.push({
-                    range,
-                    cumWt: isNaN(cumWt) ? 0 : cumWt,
-                    cumVol: isNaN(cumVol) ? 0 : cumVol
-                });
+            const incrWtInput = row.querySelector('.assay-incr-wt');
+            const cumWtInput = row.querySelector('.assay-cum-wt');
+            const incrVolInput = row.querySelector('.assay-incr-vol');
+            const cumVolInput = row.querySelector('.assay-cum-vol');
+            
+            if (incrWtInput && cumWtInput && incrVolInput && cumVolInput) {
+                const incrWt = parseFloat(incrWtInput.value) || 0;
+                const incrVol = parseFloat(incrVolInput.value) || 0;
+                
+                cumWt += incrWt;
+                cumVol += incrVol;
+                
+                cumWtInput.value = cumWt.toFixed(4);
+                cumVolInput.value = cumVol.toFixed(4);
             }
         });
+    },
+
+    _getAssayData() {
+        const rawData = [];
+        const rows = this.dom.assayDataBody.querySelectorAll('tr');
+        
+        // 1. Recolectar datos INCREMENTALES de la tabla
+        rows.forEach(row => {
+            const rangeInput = row.querySelector('.assay-range-input');
+            const incrWtInput = row.querySelector('.assay-incr-wt');
+            const incrVolInput = row.querySelector('.assay-incr-vol');
+            
+            if (rangeInput && incrWtInput && incrVolInput) {
+                const range = rangeInput.value.trim();
+                const incrWt = parseFloat(incrWtInput.value);
+                const incrVol = parseFloat(incrVolInput.value);
+                
+                if (range && (!isNaN(incrWt) || !isNaN(incrVol))) {
+                    rawData.push({
+                        range: range,
+                        incrWt: isNaN(incrWt) ? 0 : incrWt,
+                        incrVol: isNaN(incrVol) ? 0 : incrVol
+                    });
+                }
+            }
+        });
+        
+        // 2. ACUMULACIÓN AUTOMÁTICA - Convertir incrementales a acumulados
+        let cumWt = 0;
+        let cumVol = 0;
+        const assayData = rawData.map(point => {
+            cumWt += point.incrWt;
+            cumVol += point.incrVol;
+            return {
+                range: point.range,
+                cumWt: parseFloat(cumWt.toFixed(4)),
+                cumVol: parseFloat(cumVol.toFixed(4))
+            };
+        });
+        
         return assayData;
     },
     
     _interpolate(points, targetPercent) {
-        let p1 = { percent: 0, tempC: 0 };
-        let p2 = null;
-        for (const point of points) {
-            if (point.percent <= targetPercent) { p1 = point; }
-            if (point.percent > targetPercent) { p2 = point; break; }
+        // INTERPOLACIÓN MEJORADA
+        if (!points || points.length === 0) return 0;
+        
+        // Ordena puntos por porcentaje
+        const sortedPoints = [...points].sort((a, b) => a.percent - b.percent);
+        
+        // Casos extremos
+        if (targetPercent <= sortedPoints[0].percent) return sortedPoints[0].tempC;
+        if (targetPercent >= sortedPoints[sortedPoints.length - 1].percent) {
+            return sortedPoints[sortedPoints.length - 1].tempC;
         }
-        if (!p2) return p1.tempC;
+        
+        // Encuentra índice del segmento
+        let idx = 0;
+        while (idx < sortedPoints.length - 1 && sortedPoints[idx + 1].percent < targetPercent) {
+            idx++;
+        }
+        
+        // Si hay suficientes puntos, usa interpolación Hermite cúbica
+        if (sortedPoints.length >= 4 && idx > 0 && idx < sortedPoints.length - 2) {
+            const p0 = sortedPoints[idx - 1];
+            const p1 = sortedPoints[idx];
+            const p2 = sortedPoints[idx + 1];
+            const p3 = sortedPoints[idx + 2];
+            
+            const t = (targetPercent - p1.percent) / (p2.percent - p1.percent);
+            const t2 = t * t;
+            const t3 = t2 * t;
+            
+            // Tangentes usando diferencias centradas
+            const m1 = (p2.tempC - p0.tempC) / (p2.percent - p0.percent);
+            const m2 = (p3.tempC - p1.tempC) / (p3.percent - p1.percent);
+            
+            // Interpolación Hermite cúbica
+            const temp = (2*t3 - 3*t2 + 1) * p1.tempC +
+                       (t3 - 2*t2 + t) * m1 * (p2.percent - p1.percent) +
+                       (-2*t3 + 3*t2) * p2.tempC +
+                       (t3 - t2) * m2 * (p2.percent - p1.percent);
+            
+            return parseFloat(temp.toFixed(2));
+        }
+        
+        // Fallback: interpolación lineal
+        const p1 = sortedPoints[idx];
+        const p2 = sortedPoints[idx + 1];
+        
         if (p2.percent === p1.percent) return p1.tempC;
-        const temp = p1.tempC + (p2.tempC - p1.tempC) * ((targetPercent - p1.percent) / (p2.percent - p1.percent));
-        return temp.toFixed(1);
+        
+        const temp = p1.tempC + (p2.tempC - p1.tempC) * 
+                    ((targetPercent - p1.percent) / (p2.percent - p1.percent));
+        
+        return parseFloat(temp.toFixed(2));
     },
 
     async _generateCurveFromAssay() {
-    // 1. Obtiene los datos de la tabla de ensayo
+    // ========== VERSIÓN MEJORADA CON ALTA PRECISIÓN ==========
+    
+    // 1. Obtiene y valida datos de ensayo
     const assayData = this._getAssayData();
     if (assayData.length < 2) {
         alert('Se necesitan al menos dos puntos de ensayo para generar la curva.');
@@ -857,54 +1004,192 @@ const CrudeSimulator = {
     }
 
     const dataType = this.dom.assayDataType.value;
-    // ===== LEE EL NUEVO CAMPO IBP =====
     const ibp_F = parseFloat(this.dom.assayIbpInput.value);
+    const apiCrudo = parseFloat(this.dom.crudeApiInput.value) || 30;
 
-    // 2. Convierte los datos de ensayo en puntos base para la curva
+    // 2. Convierte rangos de temperatura a puntos específicos
     const baseCurvePoints = assayData.map(dataPoint => {
         let tempRange = dataPoint.range.trim();
         let pointTempF;
         const FBP_DEFAULT = 1050;
 
+        // Parsing inteligente de rangos
         if (tempRange.toUpperCase().startsWith("IBP-")) {
             pointTempF = parseFloat(tempRange.split('-')[1]);
-        } else if (tempRange.includes('-')) {
-            pointTempF = parseFloat(tempRange.split('-')[1]);
+        } else if (tempRange.includes('-') && !tempRange.endsWith('+')) {
+            const parts = tempRange.split('-');
+            pointTempF = parseFloat(parts[1]); // Toma el punto final del rango
         } else if (tempRange.endsWith('+')) {
-            pointTempF = FBP_DEFAULT;
+            // Extrae el número antes del '+'
+            const numStr = tempRange.replace('+', '').trim();
+            pointTempF = parseFloat(numStr) || FBP_DEFAULT;
         } else {
             pointTempF = parseFloat(tempRange);
         }
         
         const pointTempC = (pointTempF - 32) * 5 / 9;
+        
+        // Determina el porcentaje según tipo de dato
+        let percent;
+        if (dataType === 'wt') {
+            percent = dataPoint.cumWt;
+        } else {
+            percent = dataPoint.cumVol;
+        }
+        
         return {
-            percent: dataType === 'wt' ? dataPoint.cumWt : dataPoint.cumVol,
-            tempC: pointTempC
+            percent: percent,
+            tempC: pointTempC,
+            tempF: pointTempF
         };
     });
     
-    // ===== LÓGICA MEJORADA PARA USAR EL IBP =====
-    // Elimina cualquier punto 0% que pudiera existir para evitar duplicados
-    const finalBaseCurve = baseCurvePoints.filter(p => p.percent > 0);
+    // 3. Ordena por porcentaje y elimina duplicados
+    baseCurvePoints.sort((a, b) => a.percent - b.percent);
+    const uniquePoints = [];
+    baseCurvePoints.forEach(point => {
+        if (uniquePoints.length === 0 || point.percent !== uniquePoints[uniquePoints.length - 1].percent) {
+            uniquePoints.push(point);
+        }
+    });
     
-    if (!isNaN(ibp_F)) {
-        // Si se especificó un IBP, úsalo como el punto 0%.
+    // 4. Agrega punto IBP (0%)
+    const finalBaseCurve = uniquePoints.filter(p => p.percent > 0);
+    
+    if (!isNaN(ibp_F) && ibp_F > 0) {
         const ibp_C = (ibp_F - 32) * 5 / 9;
-        finalBaseCurve.unshift({ percent: 0, tempC: ibp_C });
+        finalBaseCurve.unshift({ percent: 0, tempC: ibp_C, tempF: ibp_F });
     } else if (finalBaseCurve.length > 0 && finalBaseCurve[0].percent > 0) {
-        // Si no, usa el método de estimación antiguo.
-        finalBaseCurve.unshift({ percent: 0, tempC: finalBaseCurve[0].tempC / 2 });
+        // Estimación mejorada del IBP basada en correlación API
+        // IBP típico = Temp_5% * (0.4 + 0.01 * API)
+        const temp5_percent = finalBaseCurve[0];
+        const factor = 0.4 + (0.01 * apiCrudo);
+        const ibp_est_C = temp5_percent.tempC * factor;
+        finalBaseCurve.unshift({ percent: 0, tempC: ibp_est_C, tempF: (ibp_est_C * 9/5) + 32 });
     }
-
-    // 3. Limpia la tabla y dibuja la nueva curva interpolada
+    
+    // 5. NORMALIZACIÓN - Asegurar que el último punto sea exactamente 100%
+    const lastPoint = finalBaseCurve[finalBaseCurve.length - 1];
+    if (lastPoint.percent > 0 && lastPoint.percent !== 100) {
+        const normFactor = 100 / lastPoint.percent;
+        finalBaseCurve.forEach(p => {
+            p.percent = parseFloat((p.percent * normFactor).toFixed(4));
+        });
+    }
+    
+    // 6. VALIDACIÓN DE CONSISTENCIA TERMODINÁMICA
+    // Verifica que la curva sea monotónicamente creciente
+    for (let i = 1; i < finalBaseCurve.length; i++) {
+        if (finalBaseCurve[i].tempC <= finalBaseCurve[i-1].tempC) {
+            // Corrección: promedio entre vecinos
+            finalBaseCurve[i].tempC = (finalBaseCurve[i-1].tempC + 
+                (finalBaseCurve[i+1] ? finalBaseCurve[i+1].tempC : finalBaseCurve[i-1].tempC * 1.1)) / 2;
+        }
+    }
+    
+    // 7. INTERPOLACIÓN MEJORADA con Spline Cúbico o Akima
+    const interpolatedPoints = [];
+    
+    if (finalBaseCurve.length >= 4) {
+        // Usar interpolación suave (similar a spline cúbico)
+        // Implementación simplificada de interpolación Hermite cúbica
+        for (let targetPercent = 0; targetPercent <= 100; targetPercent += 5) {
+            let interpTemp;
+            
+            // Encuentra segmento
+            let idx = 0;
+            while (idx < finalBaseCurve.length - 1 && finalBaseCurve[idx + 1].percent < targetPercent) {
+                idx++;
+            }
+            
+            if (idx === finalBaseCurve.length - 1) {
+                interpTemp = finalBaseCurve[idx].tempC;
+            } else {
+                const p0 = finalBaseCurve[Math.max(0, idx - 1)];
+                const p1 = finalBaseCurve[idx];
+                const p2 = finalBaseCurve[idx + 1];
+                const p3 = finalBaseCurve[Math.min(finalBaseCurve.length - 1, idx + 2)];
+                
+                // Interpolación Catmull-Rom (más suave que lineal)
+                const t = (targetPercent - p1.percent) / (p2.percent - p1.percent);
+                const t2 = t * t;
+                const t3 = t2 * t;
+                
+                // Tangentes
+                const m1 = (p2.tempC - p0.tempC) / (p2.percent - p0.percent);
+                const m2 = (p3.tempC - p1.tempC) / (p3.percent - p1.percent);
+                
+                // Hermite cúbico
+                interpTemp = (2*t3 - 3*t2 + 1) * p1.tempC +
+                           (t3 - 2*t2 + t) * m1 * (p2.percent - p1.percent) +
+                           (-2*t3 + 3*t2) * p2.tempC +
+                           (t3 - t2) * m2 * (p2.percent - p1.percent);
+            }
+            
+            interpolatedPoints.push({
+                percent: targetPercent,
+                tempC: parseFloat(interpTemp.toFixed(2))
+            });
+        }
+    } else {
+        // Fallback a interpolación lineal para pocos puntos
+        for (let targetPercent = 0; targetPercent <= 100; targetPercent += 5) {
+            const interpTemp = this._interpolate(finalBaseCurve, targetPercent);
+            interpolatedPoints.push({
+                percent: targetPercent,
+                tempC: parseFloat(interpTemp)
+            });
+        }
+    }
+    
+    // 8. EXTRAPOLACIÓN INTELIGENTE para 100% si no existe
+    const lastInterp = interpolatedPoints[interpolatedPoints.length - 1];
+    if (lastInterp.percent < 100) {
+        const prevPoint = interpolatedPoints[interpolatedPoints.length - 2];
+        const slope = (lastInterp.tempC - prevPoint.tempC) / (lastInterp.percent - prevPoint.percent);
+        const extrap100 = lastInterp.tempC + slope * (100 - lastInterp.percent);
+        interpolatedPoints.push({
+            percent: 100,
+            tempC: parseFloat(extrap100.toFixed(2))
+        });
+    }
+    
+    // 9. SUAVIZADO FINAL - Elimina picos anómalos
+    for (let i = 1; i < interpolatedPoints.length - 1; i++) {
+        const prev = interpolatedPoints[i-1].tempC;
+        const curr = interpolatedPoints[i].tempC;
+        const next = interpolatedPoints[i+1].tempC;
+        
+        // Detecta picos anómalos (desviación > 20°C del promedio)
+        const expectedTemp = (prev + next) / 2;
+        if (Math.abs(curr - expectedTemp) > 20) {
+            interpolatedPoints[i].tempC = parseFloat(expectedTemp.toFixed(2));
+        }
+    }
+    
+    // 10. Limpia la tabla y dibuja la curva mejorada
     this.dom.curveBody.innerHTML = '';
-    for (let percent = 0; percent <= 100; percent += 5) {
-        // Usa finalBaseCurve para la interpolación
-        const interpolatedTempC = this._interpolate(finalBaseCurve, percent);
-        this._addCurvePoint(percent, interpolatedTempC);
-    }
+    interpolatedPoints.forEach(point => {
+        this._addCurvePoint(point.percent, point.tempC);
+    });
 
-    alert('Curva de destilación generada e interpolada correctamente.');
+    // Mensaje de confirmación con info técnica y validación
+    const method = finalBaseCurve.length >= 4 ? 'Hermite Cúbica' : 'Lineal';
+    const dataTypeLabel = dataType === 'wt' ? 'Mass Yield (Wt%)' : 'Volume Yield (Vol%)';
+    const tempRange = `${interpolatedPoints[0].tempC.toFixed(1)}°C (${((interpolatedPoints[0].tempC * 9/5) + 32).toFixed(1)}°F) - ${interpolatedPoints[interpolatedPoints.length-1].tempC.toFixed(1)}°C (${((interpolatedPoints[interpolatedPoints.length-1].tempC * 9/5) + 32).toFixed(1)}°F)`;
+    
+    // VALIDACIÓN: Advertir si las temperaturas parecen muy altas para el API
+    let warning = '';
+    if (apiCrudo > 50) { // Crudo liviano
+        if (interpolatedPoints[4] && interpolatedPoints[4].tempC > 150) { // 20% > 150°C
+            warning = '\n\n⚠️ ADVERTENCIA: Temperaturas muy altas para un crudo liviano (API ' + apiCrudo.toFixed(1) + ').\nVerifica que los rangos °F del ensayo sean correctos.';
+        }
+    }
+    
+    alert(`✓ Curva generada con interpolación ${method}\n` +
+          `Tipo de dato: ${dataTypeLabel}\n` +
+          `${interpolatedPoints.length} puntos generados\n` +
+          `Rango: ${tempRange}` + warning);
 },
 
     clearComparison() {
@@ -943,13 +1228,18 @@ const CrudeSimulator = {
     const assayData = [];
     const rows = this.dom.assayDataBody.querySelectorAll('tr');
     rows.forEach(row => {
-        const inputs = row.querySelectorAll('input');
-        const range = inputs[0].value.trim();
-        const cumWt = inputs[2].value.trim();
-        const cumVol = inputs[3].value.trim();
-        // Guardamos solo si hay algún dato en la fila
-        if (range || cumWt || cumVol) {
-            assayData.push({ range, cumWt, cumVol });
+        const rangeInput = row.querySelector('.assay-range-input');
+        const incrWtInput = row.querySelector('.assay-incr-wt');
+        const incrVolInput = row.querySelector('.assay-incr-vol');
+        
+        if (rangeInput && incrWtInput && incrVolInput) {
+            const range = rangeInput.value.trim();
+            const incrWt = incrWtInput.value.trim();
+            const incrVol = incrVolInput.value.trim();
+            // Guardamos solo si hay algún dato en la fila (INCREMENTALES)
+            if (range || incrWt || incrVol) {
+                assayData.push({ range, incrWt, incrVol });
+            }
         }
     });
     return assayData;
@@ -958,7 +1248,7 @@ const CrudeSimulator = {
     _populateAssayTable(assayData) {
     this.dom.assayDataBody.innerHTML = ''; // Limpiar tabla
     if (assayData && assayData.length > 0) {
-        assayData.forEach(d => this._addAssayRow(d.range, d.cumWt, d.cumVol));
+        assayData.forEach(d => this._addAssayRow(d.range, d.incrWt || d.cumWt, d.incrVol || d.cumVol));
     } else {
         // Si no hay datos guardados, mostrar las filas por defecto
         this._addDefaultAssayRows();
@@ -984,25 +1274,66 @@ const CrudeSimulator = {
     const celsiusToFahrenheit = (c) => (c * 9 / 5) + 32;
 
     const value = target.value.trim();
-    // Conserva el prefijo "IBP-" si existe
-    const prefix = value.toUpperCase().startsWith("IBP-") ? "IBP-" : "";
-    const numberPart = value.replace(/ibp-/i, '').split('-').pop();
-    const number = parseFloat(numberPart);
     
     // Activa la bandera para que el próximo cambio no active esta función de nuevo.
     this.isUpdating = true;
 
-    if (isNaN(number)) {
-        // Si el valor no es un número, limpia el otro campo.
+    // PARSING MEJORADO para rangos tipo "IBP-59", "59-160", "1020+"
+    if (value === '') {
         (isFahrenheitInput ? cInput : fInput).value = '';
+    } else if (value.toUpperCase().startsWith("IBP-")) {
+        // Formato: IBP-350
+        const temp = parseFloat(value.split('-')[1]);
+        if (!isNaN(temp)) {
+            if (isFahrenheitInput) {
+                const tempC = fahrenheitToCelsius(temp);
+                cInput.value = `IBP-${tempC.toFixed(1)}`;
+            } else {
+                const tempF = celsiusToFahrenheit(temp);
+                fInput.value = `IBP-${tempF.toFixed(1)}`;
+            }
+        }
+    } else if (value.includes('-') && !value.endsWith('+')) {
+        // Formato: 59-160 o 350-440
+        const parts = value.split('-');
+        const temp1 = parseFloat(parts[0]);
+        const temp2 = parseFloat(parts[1]);
+        if (!isNaN(temp1) && !isNaN(temp2)) {
+            if (isFahrenheitInput) {
+                const tempC1 = fahrenheitToCelsius(temp1);
+                const tempC2 = fahrenheitToCelsius(temp2);
+                cInput.value = `${tempC1.toFixed(1)}-${tempC2.toFixed(1)}`;
+            } else {
+                const tempF1 = celsiusToFahrenheit(temp1);
+                const tempF2 = celsiusToFahrenheit(temp2);
+                fInput.value = `${tempF1.toFixed(1)}-${tempF2.toFixed(1)}`;
+            }
+        }
+    } else if (value.endsWith('+')) {
+        // Formato: 1020+
+        const temp = parseFloat(value.replace('+', ''));
+        if (!isNaN(temp)) {
+            if (isFahrenheitInput) {
+                const tempC = fahrenheitToCelsius(temp);
+                cInput.value = `${tempC.toFixed(1)}+`;
+            } else {
+                const tempF = celsiusToFahrenheit(temp);
+                fInput.value = `${tempF.toFixed(1)}+`;
+            }
+        }
     } else {
-        if (isFahrenheitInput) {
-            // Si cambiaste °F, actualiza °C.
-            const tempC = fahrenheitToCelsius(number);
-            cInput.value = prefix + tempC.toFixed(1);
-        } else { // Si cambiaste °C, actualiza °F.
-            const tempF = celsiusToFahrenheit(number);
-            fInput.value = prefix + tempF.toFixed(1);
+        // Formato simple: 350 o 440
+        const temp = parseFloat(value);
+        if (!isNaN(temp)) {
+            if (isFahrenheitInput) {
+                const tempC = fahrenheitToCelsius(temp);
+                cInput.value = tempC.toFixed(1);
+            } else {
+                const tempF = celsiusToFahrenheit(temp);
+                fInput.value = tempF.toFixed(1);
+            }
+        } else {
+            (isFahrenheitInput ? cInput : fInput).value = '';
         }
     }
     
@@ -1073,6 +1404,8 @@ const CrudeSimulator = {
 
         if (data && data.success) {
             data.name = runName;
+            // Guardar tipo de dato usado (Wt% o Vol%)
+            data.data_type = this.dom.assayDataType.value;
             // Guardar temperaturas de corte usadas en esta corrida para mostrarlas luego en reportes
             if (payload.cutPoints) {
                 data.cut_points = {

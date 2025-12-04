@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', function() {
         'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
-        'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'refinery.control@conquerstrading.com': ['galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         // Ignacio ahora con todos los campos como Samantha/logistic
         'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
@@ -322,6 +322,9 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     function renderHeader() {
         let headerHtml = '<tr class="align-middle">';
         let filterHtml = '<tr id="filter-row" class="align-middle">';
+        // Agregar columna de numeración
+        headerHtml += `<th style="width: 50px; min-width: 50px" class="text-center">#</th>`;
+        filterHtml += '<th class="text-center">#</th>';
         allColumns.forEach(col => {
             const config = columnsConfig[col];
             headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
@@ -338,14 +341,16 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         Array.from(despachadoLockTimers.keys()).forEach(cancelDespachadoTimer);
         tbody.innerHTML = '';
         if (data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4 text-muted">No hay programaciones que coincidan con los filtros.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 2}" class="text-center py-4 text-muted">No hay programaciones que coincidan con los filtros.</td></tr>`;
             return;
         }
 
-        data.forEach(row => {
+        data.forEach((row, index) => {
             const despachadoDesdeAttr = row.despachado_bloqueado_desde || '';
             const despachadoBloqueadoAttr = row.despachado_bloqueado ? '1' : '0';
             let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" class="align-middle">`;
+            // Agregar número de fila
+            rowHtml += `<td class="text-center fw-bold text-primary" style="min-width: 50px; background: #f8f9fc; border-right: 2px solid #6c757d;">${index + 1}</td>`;
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
@@ -489,11 +494,83 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         }
     }, true);
 
+    // Quitar resaltado de fila cuando se pierde el foco
+    tbody.addEventListener('focusout', function(e) {
+        const td = e.target.closest('td[data-field]');
+        if (!td) return;
+        const row = td.closest('tr');
+        // Verificar si aún hay algún elemento en la fila con foco
+        setTimeout(() => {
+            if (!row.contains(document.activeElement)) {
+                row.classList.remove('editing-row');
+                hideRowContextInfo();
+            }
+        }, 100);
+    });
+
+    // Función para mostrar información contextual de la fila
+    function showRowContextInfo(row) {
+        const placa = row.querySelector('td[data-field="placa"] .cell-editor')?.textContent || 
+                     row.querySelector('td[data-field="placa"]')?.textContent || 'N/A';
+        const conductor = row.querySelector('td[data-field="nombre_conductor"] .cell-editor')?.textContent || 
+                         row.querySelector('td[data-field="nombre_conductor"]')?.textContent || 'N/A';
+        const producto = row.querySelector('td[data-field="producto_a_cargar"] .cell-editor')?.textContent || 
+                        row.querySelector('td[data-field="producto_a_cargar"]')?.textContent || 'N/A';
+        const estado = row.querySelector('td[data-field="estado"] .cell-editor')?.textContent || 
+                      row.querySelector('td[data-field="estado"]')?.textContent || 'PROGRAMADO';
+
+        let contextInfo = document.getElementById('row-context-info');
+        if (!contextInfo) {
+            contextInfo = document.createElement('div');
+            contextInfo.id = 'row-context-info';
+            contextInfo.className = 'row-context-info';
+            document.body.appendChild(contextInfo);
+        }
+
+        contextInfo.innerHTML = `
+            <div class="context-header">
+                <i class="fas fa-edit"></i>
+                <span>Editando Fila</span>
+            </div>
+            <div class="context-details">
+                <div class="context-item">
+                    <i class="fas fa-truck"></i>
+                    <span><strong>Placa:</strong> ${placa.trim()}</span>
+                </div>
+                <div class="context-item">
+                    <i class="fas fa-user"></i>
+                    <span><strong>Conductor:</strong> ${conductor.trim()}</span>
+                </div>
+                <div class="context-item">
+                    <i class="fas fa-oil-can"></i>
+                    <span><strong>Producto:</strong> ${producto.trim()}</span>
+                </div>
+                <div class="context-item">
+                    <i class="fas fa-info-circle"></i>
+                    <span><strong>Estado:</strong> ${estado.trim()}</span>
+                </div>
+            </div>
+        `;
+        contextInfo.style.display = 'block';
+    }
+
+    // Función para ocultar información contextual
+    function hideRowContextInfo() {
+        const contextInfo = document.getElementById('row-context-info');
+        if (contextInfo) {
+            contextInfo.style.display = 'none';
+        }
+    }
+
     // Locks: al enfocar pedir lock
     tbody.addEventListener('focusin', function(e){
         const td = e.target.closest('td[data-field]');
         if(!td) return;
         const row = td.closest('tr');
+        // Resaltar fila activa
+        row.classList.add('editing-row');
+        // Mostrar información contextual de la fila
+        showRowContextInfo(row);
         fetch('/api/programacion/lock', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -1581,6 +1658,23 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     cursor: text;
 }
 
+/* Fila en edición - Resaltado especial con color gris neutro */
+.editing-row {
+    background: linear-gradient(90deg, rgba(108, 117, 125, 0.15) 0%, rgba(108, 117, 125, 0.08) 100%) !important;
+    box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.4) !important;
+    border: 2px solid #6c757d !important;
+    z-index: 5 !important;
+    position: relative;
+}
+
+.editing-row td {
+    background: transparent !important;
+}
+
+.editing-row .sticky-col {
+    background: rgba(108, 117, 125, 0.1) !important;
+}
+
 /* Campo de precintos - Resaltado */
 td[data-field="precintos"] {
     font-family: 'Courier New', monospace;
@@ -1816,6 +1910,70 @@ td[data-field="precintos"] {
     color: var(--primary-color) !important;
     border-color: var(--primary-color);
     border-right-color: transparent;
+}
+
+/* Indicador contextual de fila en edición */
+.row-context-info {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border: 2px solid #6c757d;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    z-index: 1050;
+    min-width: 280px;
+    display: none;
+    font-size: 0.875rem;
+}
+
+.context-header {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem 0.5rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.context-details {
+    padding: 1rem;
+}
+
+.context-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0;
+}
+
+.context-item:last-child {
+    margin-bottom: 0;
+}
+
+.context-item i {
+    color: #6c757d;
+    width: 16px;
+    text-align: center;
+}
+
+.context-item span {
+    flex: 1;
+    line-height: 1.4;
+}
+
+/* Responsive para el indicador contextual */
+@media (max-width: 768px) {
+    .row-context-info {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+        max-width: calc(100vw - 20px);
+    }
 }
 </style>
 {% endblock %}

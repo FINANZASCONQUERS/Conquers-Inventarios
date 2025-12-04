@@ -5,21 +5,316 @@
 {% block head %}
 {{ super() }}
 <style>
-    .maniobra-group { border: 1px solid #dee2e6; border-radius: .375rem; margin-bottom: 1.5rem; }
-    .maniobra-header { background-color: #f8f9fa; padding: 0.75rem 1rem; border-bottom: 1px solid #dee2e6; }
-    [contenteditable="true"], .form-select:not([disabled]), .form-control:not([readonly]) { 
-        background-color: #e9f7ef;
-        outline: 1px dashed #ced4da; 
+    /* === Estilos Generales === */
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+    
+    .container-fluid { max-width: 1400px; }
+    
+    /* === Header === */
+    .page-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        color: white;
     }
-    .table th { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
-    .total-horas { font-weight: bold; color: #0d6efd; }
+    
+    .page-header h2 {
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    /* === Cards === */
+    .card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
+        background: rgba(255,255,255,0.95);
+        overflow: hidden;
+    }
+    
+    .card-body { padding: 1.5rem; }
+    
+    /* === Botones === */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .btn-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+    
+    .btn-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    /* === Grupos de Maniobra === */
+    .maniobra-group {
+        border: none;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+        background: white;
+        transition: transform 0.3s ease;
+    }
+    
+    .maniobra-group:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+    
+    .maniobra-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem 1.5rem;
+        color: white;
+    }
+    
+    .maniobra-header h5 {
+        color: white;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .maniobra-header label {
+        color: rgba(255,255,255,0.9);
+        font-weight: 600;
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .maniobra-header .form-control,
+    .maniobra-header .form-select {
+        background: rgba(255,255,255,0.95);
+        border: 1px solid rgba(255,255,255,0.3);
+        font-size: 0.875rem;
+    }
+    
+    .maniobra-body {
+        padding: 1rem;
+        background: white;
+    }
+    
+    /* === Tabla === */
+    .table-responsive {
+        border-radius: 8px;
+        overflow-x: auto;
+    }
+    
+    .table {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+    }
+    
+    .table th {
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        color: #2c3e50;
+        border: none;
+        padding: 0.75rem 0.5rem;
+        white-space: nowrap;
+    }
+    
+    .table td {
+        vertical-align: middle;
+        padding: 0.5rem;
+        border-color: #e9ecef;
+    }
+    
+    .table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* === Inputs Editables === */
+    [contenteditable="true"],
+    .form-select:not([disabled]),
+    .form-control:not([readonly]) {
+        background-color: #e3f2fd;
+        border: 2px solid #90caf9;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        background-color: #fff;
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    
+    /* === Total Horas Destacado === */
+    .total-horas {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #667eea;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* === Filtros === */
+    .filtros-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    }
+    
+    /* === Estados Vacío === */
+    .text-muted {
+        color: #6c757d !important;
+    }
+    
+    /* === Mobile Responsive === */
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .page-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .page-header .d-flex {
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 0.5rem;
+        }
+        
+        .page-header .btn {
+            width: 100%;
+        }
+        
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .maniobra-header {
+            padding: 1rem;
+        }
+        
+        .maniobra-header .row {
+            row-gap: 0.75rem;
+        }
+        
+        .maniobra-header h5 {
+            font-size: 1.1rem;
+        }
+        
+        .btn-group-mobile {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+        
+        .btn-group-mobile .btn {
+            width: 100%;
+            margin: 0;
+        }
+        
+        .table {
+            font-size: 0.75rem;
+        }
+        
+        .table th,
+        .table td {
+            padding: 0.4rem 0.25rem;
+            font-size: 0.7rem;
+        }
+        
+        .table .btn-sm {
+            font-size: 0.7rem;
+            padding: 0.25rem 0.4rem;
+        }
+        
+        .form-control-sm,
+        .form-select-sm {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .col-md-3,
+        .col-md-2,
+        .col-md-auto {
+            width: 100%;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .container-fluid {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .maniobra-body {
+            padding: 0.5rem;
+        }
+        
+        .table-responsive {
+            margin: 0 -0.5rem;
+        }
+        
+        /* Hacer tabla más compacta en móviles */
+        .table th:nth-child(5), /* Duración */
+        .table td:nth-child(5) {
+            display: none;
+        }
+    }
+    
+    /* === Animaciones === */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .maniobra-group {
+        animation: fadeIn 0.4s ease;
+    }
+    
+    /* === Scrollbar Personalizado === */
+    .table-responsive::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 text-primary"><i class="fas fa-ship me-2"></i>Control de Tiempos de Remolcadores</h2>
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <h2><i class="fas fa-ship me-2"></i>Control de Tiempos de Remolcadores</h2>
     {% if session.email in ['ops@conquerstrading.com', 'finance@conquerstrading.com'] or session.get('rol') == 'admin' %}
             <div class="d-flex gap-2">
                 <a href="{{ url_for('reporte_analisis_remolcadores') }}" class="btn btn-warning"><i class="fas fa-chart-line me-2"></i>Ver Reporte</a>
@@ -27,28 +322,30 @@
         {% endif %}
     </div>
 
-    <div class="card shadow-sm mb-4">
+    <div class="card filtros-card shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
-    <div class="col-md-3">
-        <label for="filtro_mes" class="form-label fw-semibold">Mes:</label>
+    <div class="col-md-3 col-12">
+        <label for="filtro_mes" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-1"></i>Mes:</label>
         <input type="month" class="form-control form-control-sm" id="filtro_mes">
     </div>
-    <div class="col-md-3">
-        <label for="fecha_inicio" class="form-label fw-semibold">Fecha de Inicio:</label>
+    <div class="col-md-3 col-12">
+        <label for="fecha_inicio" class="form-label fw-semibold"><i class="fas fa-calendar-day me-1"></i>Fecha de Inicio:</label>
         <input type="date" class="form-control form-control-sm" id="fecha_inicio">
     </div>
-    <div class="col-md-3">
-        <label for="fecha_fin" class="form-label fw-semibold">Fecha de Fin:</label>
+    <div class="col-md-3 col-12">
+        <label for="fecha_fin" class="form-label fw-semibold"><i class="fas fa-calendar-check me-1"></i>Fecha de Fin:</label>
         <input type="date" class="form-control form-control-sm" id="fecha_fin">
     </div>
-    <div class="col-md-3 d-flex gap-2">
-        <button id="btn-filtrar" class="btn btn-primary btn-sm w-100">
-            <i class="fas fa-filter me-2"></i>Filtrar
-        </button>
-        <button id="btn-limpiar-filtro" class="btn btn-outline-secondary btn-sm w-100">
-            <i class="fas fa-times me-2"></i>Limpiar
-        </button>
+    <div class="col-md-3 col-12">
+        <div class="d-flex gap-2 flex-column flex-md-row">
+            <button id="btn-filtrar" class="btn btn-primary btn-sm flex-fill">
+                <i class="fas fa-filter me-1"></i>Filtrar
+            </button>
+            <button id="btn-limpiar-filtro" class="btn btn-outline-secondary btn-sm flex-fill">
+                <i class="fas fa-times me-1"></i>Limpiar
+            </button>
+        </div>
     </div>
 <script>
 // Si el usuario selecciona un mes, limpia los campos de fecha
@@ -73,16 +370,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <div class="d-flex gap-2 mb-3">
-                <button class="btn btn-primary" id="btn-iniciar-maniobra"><i class="fas fa-plus me-2"></i>Iniciar Maniobra</button>
-                <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#uploadExcelModal"><i class="fas fa-file-excel me-2"></i>Cargar Excel</button>
-                <a id="btn-descargar-excel" href="{{ url_for('download_remolcadores_excel') }}" class="btn btn-success">
-        <i class="fas fa-file-download me-2"></i>Descargar Excel
-    </a>
-</div>
+            <div class="d-flex gap-2 mb-3 flex-wrap">
+                <button class="btn btn-primary flex-fill flex-md-grow-0" id="btn-iniciar-maniobra">
+                    <i class="fas fa-plus me-2"></i>Iniciar Maniobra
+                </button>
+                <button type="button" class="btn btn-info text-white flex-fill flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
+                    <i class="fas fa-file-excel me-2"></i>Cargar Excel
+                </button>
+                <a id="btn-descargar-excel" href="{{ url_for('download_remolcadores_excel') }}" class="btn btn-success flex-fill flex-md-grow-0">
+                    <i class="fas fa-file-download me-2"></i>Descargar Excel
+                </a>
             </div>
             <div id="contenedor-maniobras">
-                <p class="text-center text-muted py-5">Cargando registros...</p>
+                <div class="text-center text-muted py-5">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p>Cargando registros...</p>
+                </div>
             </div>
         </div>
     </div>
@@ -277,27 +582,29 @@ document.addEventListener('input', function(e) {
             const puedeEditarHeader = esAdminOJuliana || esOperadorOpensean;
             
             let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
-                <div class="col-md-auto"><h5>Maniobra #${maniobra_id}</h5></div>
-                <div class="col-md-2"><label class="form-label-sm">Barcaza</label>
+                <div class="col-12 col-md-auto"><h5><i class="fas fa-anchor me-2"></i>Maniobra #${maniobra_id}</h5></div>
+                <div class="col-12 col-md-2"><label class="form-label-sm">Barcaza</label>
                     <select class="form-select form-select-sm barcaza-maniobra-input" ${!puedeEditarHeader ? 'disabled' : ''}>
                         <option value="">--</option>${barcazaOptions}
                     </select>
                 </div>
-                <div class="col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
+                <div class="col-12 col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
                     <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input" value="${eventos[0].nombre_barco || ''}" ${!puedeEditarHeader ? 'disabled' : ''}>
                 </div>`;
                 
             if (esAdminOJuliana) {
-                cabeceraHtml += `<div class="col-md-2"><label class="form-label-sm">MT Entregadas</label>
+                cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
                     <input type="number" step="0.01" class="form-control form-control-sm mt-maniobra-input" value="${eventos[0].mt_entregadas || ''}">
                 </div>`;
             }
             
-            cabeceraHtml += `<div class="col-md-auto ms-auto text-end">
-                <button class="btn btn-sm btn-outline-primary btn-agregar-evento-grupo"><i class="fas fa-plus"></i> Evento</button>
-                ${puedeEditarHeader ? 
-                  `<button class="btn btn-sm btn-secondary btn-guardar-maniobra">Guardar Maniobra</button>
-                   <button class="btn btn-sm btn-outline-danger btn-eliminar-maniobra"><i class="fas fa-trash"></i></button>` : ''}
+            cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
+                <div class="btn-group-mobile d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
+                    ${puedeEditarHeader ? 
+                      `<button class="btn btn-sm btn-light btn-guardar-maniobra flex-fill">Guardar</button>
+                       <button class="btn btn-sm btn-outline-light btn-eliminar-maniobra flex-fill"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
             </div></div></div>`;
             
             let tablaHtml = `<div class="maniobra-body"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr>
@@ -460,26 +767,28 @@ document.addEventListener('input', function(e) {
         
         // Se construye la cabecera
         let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
-            <div class="col-md-auto"><h5>Nueva Maniobra</h5></div>
-            <div class="col-md-3"><label class="form-label-sm">Barcaza</label>
+            <div class="col-12 col-md-auto"><h5><i class="fas fa-plus-circle me-2"></i>Nueva Maniobra</h5></div>
+            <div class="col-12 col-md-3"><label class="form-label-sm">Barcaza</label>
                 <select class="form-select form-select-sm barcaza-maniobra-input">
                     <option value="">--</option>${barcazas.map(b => `<option value="${b}">${b}</option>`).join('')}
                 </select>
             </div>
-             <div class="col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
+             <div class="col-12 col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
                 <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input">
             </div>`;
 
         // ✅ Se añade el campo MT Entregadas SOLO si el usuario tiene permiso
         if (esAdminOJuliana) {
-            cabeceraHtml += `<div class="col-md-2"><label class="form-label-sm">MT Entregadas</label>
+            cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
                 <input type="number" step="0.01" class="form-control form-control-sm mt-maniobra-input">
             </div>`;
         }
             
-        cabeceraHtml += `<div class="col-md-auto ms-auto text-end">
-                <button class="btn btn-sm btn-outline-primary btn-agregar-evento-grupo"><i class="fas fa-plus"></i> Evento</button>
-                <button class="btn btn-sm btn-secondary btn-guardar-maniobra">Guardar Maniobra</button>
+        cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
+                <div class="btn-group-mobile d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
+                    <button class="btn btn-sm btn-light btn-guardar-maniobra flex-fill">Guardar</button>
+                </div>
             </div>
         </div></div>`;
         

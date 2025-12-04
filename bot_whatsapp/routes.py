@@ -231,38 +231,8 @@ def _handle_spoofing_attempt(session, telefono, checkpoint_name):
             # El contador más alto encontrado + 1
             spoofing_count = max(int(match) for match in spoofing_matches) + 1
     
-    # Mensajes progresivos de Fisher para spoofing
-    spoofing_messages = [
-        # Primer intento - Divertido pero firme
-        f"🐶 Fisher 🐶: ¡Oye, amigo! Detecté que intentaste enviar una ubicación de mapa 📍 en lugar de GPS real desde {checkpoint_name}.\n\n"
-        "Sé que eres inteligente, pero esto no engaña a mi nariz de perro 🐕. ¡Inténtalo de nuevo con tu ubicación REAL!",
-        
-        # Segundo intento - Más serio
-        f"🐕 Fisher 🐶: ¡Guau! Segundo intento fallido en {checkpoint_name}. Mi olfato canino huele que estás tratando de engañarme con una ubicación del mapa.\n\n"
-        "Recuerda: Clip 📎 → Ubicación → **'Enviar mi ubicación actual'** (el botón azul). ¡No uses el buscador!",
-        
-        # Tercer intento - Amenazante
-        f"🐶 Fisher 🐶: ¡Basta ya! Tres intentos de spoofing GPS en {checkpoint_name}. Mi paciencia de perro se está agotando.\n\n"
-        "⚠️ Si sigues intentando engañarme, tu posición en el enturnamiento bajará automáticamente. ¡Envía tu ubicación REAL ahora!",
-        
-        # Cuarto intento - Muy serio con consecuencias
-        f"🐕 Fisher 🐶: ¡Esto es inaceptable! Cuatro intentos de spoofing en {checkpoint_name}.\n\n"
-        "🚫 Como castigo por intentar engañar al sistema, tu prioridad en el enturnamiento ha bajado. Ahora tendrás que esperar más tiempo.\n\n"
-        "¡Última oportunidad! Envía tu ubicación REAL o tu posición seguirá bajando.",
-        
-        # Quinto intento y posteriores - Máxima severidad
-        f"🐶 Fisher 🐶: ¡Ya basta! Múltiples intentos de spoofing detectados en {checkpoint_name}.\n\n"
-        "💀 Tu posición en el enturnamiento ha sido degradada significativamente. Ahora eres el último en la fila.\n\n"
-        "Si sigues intentando engañarme, tu solicitud será cancelada permanentemente. ¡Comportate!"
-    ]
-    
-    # Seleccionar mensaje basado en el contador
-    # Para intentos > 5, usar siempre el último mensaje (más severo)
-    if spoofing_count >= 5:
-        message_index = len(spoofing_messages) - 1  # Siempre el último mensaje
-    else:
-        message_index = min(spoofing_count - 1, len(spoofing_messages) - 1)
-    message = spoofing_messages[message_index]
+    # Mensaje simple para spoofing
+    message = f"Ubicación inválida. Envía tu ubicación real desde {checkpoint_name}. 🐶"
     
     # Degradar prioridad después de ciertos intentos
     if solicitud:
@@ -297,38 +267,8 @@ def _handle_forwarded_ticket_attempt(session, telefono, ticket_type):
             # El contador más alto encontrado + 1
             ticket_count = max(int(match) for match in ticket_matches) + 1
     
-    # Mensajes progresivos de Fisher para tickets forwarded
-    ticket_messages = [
-        # Primer intento - Divertido pero firme
-        f"🐶 Fisher 🐶: ¡Oye, amigo! Detecté que intentaste enviar un {ticket_type} 📄 reenviado en lugar de una foto fresca.\n\n"
-        "Mi olfato canino huele que esto no es una foto tomada ahora mismo 🐕. ¡Necesito una foto RECIENTE del ticket!",
-        
-        # Segundo intento - Más serio
-        f"🐕 Fisher 🐶: ¡Guau! Segundo intento con {ticket_type} reenviado. Mi nariz está oliendo que estás tratando de engañarme con una foto vieja.\n\n"
-        "Recuerda: Abre la cámara 📷 → Toma la foto → **Envíala inmediatamente**. ¡No reenvíes fotos viejas!",
-        
-        # Tercer intento - Amenazante
-        f"🐶 Fisher 🐶: ¡Basta ya! Tres intentos de {ticket_type} reenviado. Mi paciencia de perro se está agotando.\n\n"
-        "⚠️ Si sigues enviando fotos reenviadas, tu posición en el enturnamiento bajará automáticamente. ¡Envía una foto FRESCA ahora!",
-        
-        # Cuarto intento - Muy serio con consecuencias
-        f"🐕 Fisher 🐶: ¡Esto es inaceptable! Cuatro intentos de {ticket_type} reenviado.\n\n"
-        "🚫 Como castigo por intentar engañar al sistema, tu prioridad en el enturnamiento ha bajado. Ahora tendrás que esperar más tiempo.\n\n"
-        "¡Última oportunidad! Envía una foto RECIENTE del ticket o tu posición seguirá bajando.",
-        
-        # Quinto intento y posteriores - Máxima severidad
-        f"🐶 Fisher 🐶: ¡Ya basta! Múltiples intentos de {ticket_type} reenviado detectados.\n\n"
-        "💀 Tu posición en el enturnamiento ha sido degradada significativamente. Ahora eres el último en la fila.\n\n"
-        "Si sigues enviando fotos reenviadas, tu solicitud será cancelada permanentemente. ¡Comportate!"
-    ]
-    
-    # Seleccionar mensaje basado en el contador
-    # Para intentos > 5, usar siempre el último mensaje (más severo)
-    if ticket_count >= 5:
-        message_index = len(ticket_messages) - 1  # Siempre el último mensaje
-    else:
-        message_index = min(ticket_count - 1, len(ticket_messages) - 1)
-    message = ticket_messages[message_index]
+    # Mensaje simple para tickets forwarded
+    message = f"Documento inválido. Envía una foto fresca del {ticket_type}. 🐶"
     
     # Registrar el intento en observaciones
     if solicitud:
@@ -398,35 +338,35 @@ def _prompt_for_next_pending_requirement(session, solicitud, telefono):
         session['step'] = STEP_AWAIT_GUIA
         configurar_timeout_session(session, TIMEOUT_DOCUMENTOS)
         try:
-            send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Woof! Es hora de la guía. Envía la foto o PDF de tu guía de transporte. Mi nariz de perro detective revisará cada línea para que tu viaje sea impecable. ¡Vamos, no me dejes con la lengua afuera esperando!")
+            send_whatsapp_message(telefono, "Envía la foto o PDF de tu guía de transporte. 🐶")
         except Exception:
             current_app.logger.warning('No se pudo solicitar guía nuevamente a %s', telefono)
     elif siguiente == STEP_AWAIT_MANIFIESTO:
         session['step'] = STEP_AWAIT_MANIFIESTO
         configurar_timeout_session(session, TIMEOUT_DOCUMENTOS)
         try:
-            send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Guía recibida! Ahora necesito el manifiesto como imagen o PDF. Mi nariz está ansiosa por revisar todos los documentos. ¡Envíalo pronto para continuar con tu enturne!")
+            send_whatsapp_message(telefono, "Envía el manifiesto como imagen o PDF. 🐶")
         except Exception:
             current_app.logger.warning('No se pudo solicitar manifiesto a %s', telefono)
     elif siguiente == STEP_AWAIT_GPS_BOSCONIA:
         session['step'] = STEP_AWAIT_GPS_BOSCONIA
         configurar_timeout_session(session, TIMEOUT_VIAJE_LARGO)
         try:
-            send_whatsapp_message(telefono, "📍 ¡Punto de control: Bosconia! 🚛\n\nPara verificar que estás en ruta, envíame tu Ubicación en Tiempo Real desde Bosconia (Clip 📎 -> Ubicación -> Tiempo Real).\n\n🐶 Fisher está vigilando el camino. ¡No intentes engañarme con ubicaciones del mapa o reenviadas, mi olfato es infalible!")
+            send_whatsapp_message(telefono, "Envíame tu ubicación en tiempo real desde Bosconia (Clip -> Ubicación -> Tiempo Real). 🐶")
         except Exception:
             current_app.logger.warning('No se pudo solicitar ubicación de Bosconia a %s', telefono)
     elif siguiente == STEP_AWAIT_TICKET_GAMBOTE:
         session['step'] = STEP_AWAIT_TICKET_GAMBOTE
         configurar_timeout_session(session, TIMEOUT_VIAJE_LARGO)
         try:
-            send_whatsapp_message(telefono, "🎫 ¡Próxima parada: Gambote! 🚚\n\nCuando pases el peaje, envíame una foto clara del ticket.\n\n⚠️ ¡Atento, amigo! Apenas reciba el ticket, mi nariz de sabueso te pedirá tu Ubicación en Tiempo Real de inmediato. Ve buscando un lugar seguro y con señal, ¡no me hagas esperar mucho o me pongo nervioso! 🐾")
+            send_whatsapp_message(telefono, "Envía una foto clara del ticket de Gambote. 🐶")
         except Exception:
             current_app.logger.warning('No se pudo solicitar ticket de Gambote a %s', telefono)
     elif siguiente == STEP_AWAIT_GPS_GAMBOTE:
         session['step'] = STEP_AWAIT_GPS_GAMBOTE
         configurar_timeout_session(session, TIMEOUT_ANTI_FRAUDE)
         try:
-            send_whatsapp_message(telefono, "📍 ¡Olfateando rastro! 🐶\n\nYa tengo el ticket. Para confirmar que estás ahí físicamente, envíame tu Ubicación en Tiempo Real YA MISMO (Clip 📎 -> Ubicación -> Tiempo Real).\n\n⏳ Tienes 30 minutos exactos. Si no la envías antes de que se acabe el tiempo, tendré que anular el turno por seguridad. ¡Corre!")
+            send_whatsapp_message(telefono, "Envíame tu ubicación en tiempo real desde Gambote (Clip -> Ubicación -> Tiempo Real). Tienes 30 minutos. 🐶")
         except Exception:
             current_app.logger.warning('No se pudo solicitar ubicación de Gambote a %s', telefono)
     elif siguiente == STEP_FINAL_CONFIRMATION:
@@ -592,7 +532,7 @@ def _webhook_whatsapp_impl():
                 current_app.logger.warning('No se pudo registrar mensaje de asesor para %s', telefono)
             send_whatsapp_message(
                 telefono,
-                "Entendido. Avisaré a un asesor humano para que continúe contigo en breve.",
+                "Entendido. Un asesor humano te contactará pronto. 🐶",
                 skip_reminder=True
             )
             reset_contextual_memory(session)
@@ -996,11 +936,10 @@ def _webhook_whatsapp_impl():
                     if mensajes_automaticos_enviados < len(intervalos_mensajes) and minutos_transcurridos >= intervalos_mensajes[mensajes_automaticos_enviados]:
                         # Mensajes automáticos de espera con Fisher
                         mensajes_espera = [
-                            "🐶 Fisher 🐶: ¡Guau! Mi cola se mueve esperando al equipo humano. Pronto te darán noticias de tu turno. ¡Paciencia, amigo!",
-                            "🐕 Fisher 🐶: Estoy ladrando fuerte para llamar al asesor. Tu caso está siendo revisado con prioridad. ¡Un poco más de espera!",
-                            "🐶 Fisher 🐶: Mi hocico está ocupado transmitiendo tu mensaje al equipo. Están trabajando duro en tu solicitud. ¡Pronto tendrás respuesta!",
-                            "🐕 Fisher 🐶: ¡Estoy corriendo en círculos para acelerar el proceso! El equipo humano está en ello. Gracias por tu paciencia.",
-                            "🐶 Fisher 🐶: Mi corazón de perro late fuerte esperando al asesor. Tu turno está siendo ajustado. ¡Ya casi terminamos!"
+                            "El equipo está revisando tu caso. Pronto tendrás respuesta. 🐶",
+                            "Espera un momento, estamos trabajando en ello. 🐶",
+                            "El asesor te contactará pronto. 🐶",
+                            "Tu solicitud está siendo procesada. 🐶"
                         ]
                         
                         if mensajes_automaticos_enviados < len(mensajes_espera):
@@ -1028,14 +967,10 @@ def _webhook_whatsapp_impl():
                     
                     # Mensajes de Fisher para mantener la conversación activa
                     mensajes_paciencia_fisher = [
-                        "🐶 Fisher 🐶: ¡Estoy aquí vigilando! Mi cola se mueve cada vez que veo que escribes. El equipo humano está trabajando en tu caso. ¡Un poquito más de paciencia!",
-                        "🐕 Fisher 🐶: ¡Guau! Veo que sigues atento. Estoy ladrando fuerte para recordarle al equipo que tienes prisa. Pronto tendrás noticias. ¡Buen chico!",
-                        "🐶 Fisher 🐶: Mi hocico está ocupado transmitiendo todos tus mensajes al equipo. Están revisando tu solicitud con prioridad. ¡Gracias por esperar!",
-                        "🐕 Fisher 🐶: ¡Estoy corriendo en círculos para llamar la atención del humano! Tu caso está siendo atendido. Mantén la calma, amigo.",
-                        "🐶 Fisher 🐶: ¡Mi corazón late fuerte por ti! Cada mensaje tuyo es como una caricia en mi cabeza. El asesor llegará pronto con buenas noticias.",
-                        "🐕 Fisher 🐶: Estoy moviendo la cola de felicidad porque sigues aquí. Significa que confías en nosotros. ¡El equipo está en ello!",
-                        "🐶 Fisher 🐶: ¡Qué perseverancia la tuya! Estoy ladrando sin parar para que el humano te responda. Tu paciencia será recompensada.",
-                        "🐕 Fisher 🐶: Mi nariz está olfateando el aire esperando al asesor. Cada minuto que pasa estamos más cerca de resolver tu caso. ¡Ánimo!"
+                        "El equipo está revisando tu caso. Pronto tendrás respuesta. 🐶",
+                        "Espera un momento, estamos trabajando en ello. 🐶",
+                        "El asesor te contactará pronto. 🐶",
+                        "Tu solicitud está siendo procesada. 🐶"
                     ]
                     
                     # Seleccionar mensaje basado en tiempo de espera
@@ -1109,7 +1044,7 @@ def _webhook_whatsapp_impl():
             if 'asesor' in texto_lower:
                 send_whatsapp_message(
                     telefono,
-                    "Entendido. Avisaré a un asesor humano para que continúe contigo en breve.",
+                    "Entendido. Un asesor humano te contactará pronto. 🐶",
                     skip_reminder=True
                 )
                 reset_contextual_memory(session)
@@ -1132,8 +1067,7 @@ def _webhook_whatsapp_impl():
 
             if is_confirmation_negative(texto):
                 mensaje_cierre = (
-                    "Entendido. Este bot automático es solo para enturne. "
-                    "Cuando necesites gestionar tu turno, escribe 'NUEVO' y Fisher te ayudará. ¡Hasta pronto!"
+                    "Entendido. Para gestionar tu turno, escribe 'NUEVO'. 🐶"
                 )
                 send_whatsapp_message(telefono, mensaje_cierre)
                 reset_safety_reminder_counter(telefono)
@@ -1159,7 +1093,7 @@ def _webhook_whatsapp_impl():
                 # Si responde cualquier cosa que no sea "no", asumir que quiere enturnar
                 send_whatsapp_message(
                     telefono,
-                    "🐶 Fisher 🐶: ¡Guau! Perfecto, amigo. Escribe la placa de tu camión para que pueda olfatear tus datos en la base de datos. ¡Estoy listo para ladrar tu información!"
+                    "Escribe la placa de tu camión. 🐶"
                 )
                 session['step'] = 2
                 configurar_timeout_session(session, 10)  # 10 minutos para ingresar placa
@@ -1168,13 +1102,13 @@ def _webhook_whatsapp_impl():
             conductor = buscar_conductor_por_placa(placa)
             if conductor:
                 respuesta = (
-                    f"🐶 Fisher 🐶: ¡Encontré tus datos! ¿Estos son correctos?\n"
+                    f"Datos encontrados:\n"
                     f"Placa: {conductor['PLACA']}\n"
                     f"Placa remolque: {conductor['PLACA REMOLQUE']}\n"
                     f"Nombre: {conductor['NOMBRE CONDUCTOR']}\n"
                     f"N° Documento: {conductor['N° DOCUMENTO']}\n"
                     f"Celular: {conductor['CELULAR']}\n"
-                    "Responde 'sí' si son correctos o 'no' si necesitas corregirlos. ¡Mi cola se mueve esperando tu confirmación!"
+                    "¿Son correctos? Responde 'sí' o 'no'. 🐶"
                 )
                 
                 # Guardar directamente en la solicitud de la base de datos
@@ -1188,7 +1122,7 @@ def _webhook_whatsapp_impl():
                     solicitud.estado = 'preconfirmacion'
                     db.session.commit()
             else:
-                respuesta = f"🐶 Fisher 🐶: ¡Guau! No se encontró conductor con placa {placa}. Por favor escribe tu nombre completo. ¡Estoy emocionado por conocerte!"
+                respuesta = f"No se encontró conductor con placa {placa}. Escribe tu nombre completo. 🐶"
                 # Guardar la placa original en la solicitud
                 solicitud = session.get('solicitud')
                 if solicitud:
@@ -1207,12 +1141,12 @@ def _webhook_whatsapp_impl():
                     solicitud.fecha = datetime.utcnow()
                     db.session.commit()
 
-                send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Woof! Es hora de la guía. Envía la foto o PDF de tu guía de transporte. Mi nariz de perro detective revisará cada línea para que tu viaje sea impecable. ¡Vamos, no me dejes con la lengua afuera esperando!")
+                send_whatsapp_message(telefono, "Envía la foto o PDF de tu guía de transporte. 🐶")
                 session['step'] = 4
                 configurar_timeout_session(session, None)  # Sin timeout después de confirmar datos
             else:
                 # Usuario quiere corregir datos - iniciar registro manual
-                send_whatsapp_message(telefono, "🐶 Fisher 🐶: Entendido, vamos a registrar tus datos manualmente.\n\nPor favor escribe tu nombre completo. ¡Estoy listo para aprender sobre ti!")
+                send_whatsapp_message(telefono, "Vamos a registrar tus datos manualmente. Escribe tu nombre completo. 🐶")
                 session['step'] = 10
                 configurar_timeout_session(session, 30)
         elif step == 4:
@@ -1223,7 +1157,7 @@ def _webhook_whatsapp_impl():
                 session['step'] = STEP_AWAIT_MANIFIESTO
                 configurar_timeout_session(session, 60)  # 1 hora para manifiesto
                 try:
-                    send_whatsapp_message(telefono, "🐶 Fisher 🐶: ¡Guía recibida! Ahora necesito el manifiesto como imagen o PDF. Mi nariz está ansiosa por revisar todos los documentos. ¡Envíalo pronto para continuar con tu enturne!")
+                    send_whatsapp_message(telefono, "Guía recibida. Envía el manifiesto como imagen o PDF. 🐶")
                 except Exception:
                     current_app.logger.warning('No se pudo solicitar manifiesto a %s', telefono)
             else:
@@ -1376,7 +1310,7 @@ def _webhook_whatsapp_impl():
                     solicitud.estado = 'en revision'
                     db.session.commit()
                 
-                send_whatsapp_message(telefono, "¡Perfecto! Fisher 🐶 ya envió tus datos a revisión. El personal de Conquers te notificará cuando estés aprobado y enturnado.")
+                send_whatsapp_message(telefono, "Datos enviados a revisión. Te notificaremos cuando estés aprobado. 🐶")
                 session['step'] = 'confirmed'  # Cambiar a estado confirmado
                 configurar_timeout_session(session, None)  # Sin timeout después de confirmar
                 session['post_confirm_messages'] = 0  # Inicializar contador de mensajes posteriores
@@ -1456,7 +1390,7 @@ def _webhook_whatsapp_impl():
                 if texto and 'asesor' in texto.lower():
                     send_whatsapp_message(
                         telefono,
-                        "🐶 Fisher 🐶: ¡Entendido! Estoy ladrando fuerte para llamar a un asesor humano. Pronto te atenderán.",
+                        "Entendido. Un asesor humano te contactará pronto. 🐶",
                         skip_reminder=True
                     )
                     reset_contextual_memory(session)
@@ -1478,7 +1412,7 @@ def _webhook_whatsapp_impl():
             # Nuevo conductor - paso 1: nombre completo
             nombre_completo = texto.strip().title()
             if len(nombre_completo) < 3:
-                send_whatsapp_message(telefono, "🐶 Fisher 🐶: El nombre debe tener al menos 3 caracteres. Por favor escribe tu nombre completo. ¡Mi olfato necesita más letras!")
+                send_whatsapp_message(telefono, "El nombre debe tener al menos 3 caracteres. Escribe tu nombre completo. 🐶")
                 _commit_session(telefono, session)
                 return 'ok', 200
             
@@ -1490,14 +1424,14 @@ def _webhook_whatsapp_impl():
                     solicitud.celular = telefono
                 db.session.commit()
             
-            send_whatsapp_message(telefono, f"🐶 Fisher 🐶: ¡Nombre registrado: {nombre_completo}! Mi memoria canina nunca olvida.\n\nAhora por favor escribe tu número de cédula. ¡Estoy olfateando tu identidad!")
+            send_whatsapp_message(telefono, f"Nombre registrado: {nombre_completo}. Escribe tu número de cédula. 🐶")
             session['step'] = 11
             configurar_timeout_session(session, 30)
         elif step == 11:
             # Nuevo conductor - paso 2: cédula
             cedula = texto.strip().replace(' ', '').replace('.', '').replace('-', '')
             if not cedula.isdigit() or len(cedula) < 5:
-                send_whatsapp_message(telefono, "🐶 Fisher 🐶: La cédula debe contener solo números y tener al menos 5 dígitos. Por favor escribe tu número de cédula. ¡Mi hocico está esperando números!")
+                send_whatsapp_message(telefono, "La cédula debe contener solo números y tener al menos 5 dígitos. Escribe tu número de cédula. 🐶")
                 _commit_session(telefono, session)
                 return 'ok', 200
             
@@ -1507,7 +1441,7 @@ def _webhook_whatsapp_impl():
                 solicitud.cedula = cedula
                 db.session.commit()
             
-            send_whatsapp_message(telefono, f"🐶 Fisher 🐶: ¡Cédula registrada: {cedula}! Mi olfato está funcionando perfectamente.\n\nAhora por favor escribe la placa del remolque (o escribe 'NO' si no tienes remolque). ¡Estoy listo para más información!")
+            send_whatsapp_message(telefono, f"Cédula registrada: {cedula}. Escribe la placa del remolque o 'NO' si no tienes. 🐶")
             session['step'] = 12
             configurar_timeout_session(session, 30)
         elif step == 12:
@@ -1524,7 +1458,7 @@ def _webhook_whatsapp_impl():
                 placa_remolque = texto.upper().replace(' ', '')
                 # Validar formato básico de placa
                 if not placa_remolque or len(placa_remolque) < 3:
-                    send_whatsapp_message(telefono, "🐶 Fisher 🐶: La placa del remolque debe tener al menos 3 caracteres. Por favor escribe la placa del remolque o 'NO' si no tienes. ¡Mi nariz está esperando!")
+                    send_whatsapp_message(telefono, "La placa del remolque debe tener al menos 3 caracteres. Escribe la placa o 'NO' si no tienes. 🐶")
                     _commit_session(telefono, session)
                     return 'ok', 200
                 
@@ -1582,7 +1516,7 @@ def _webhook_whatsapp_impl():
                 reset_contextual_memory(session)
                 send_whatsapp_message(
                     telefono,
-                    "🐶 Fisher 🐶: ¡Gracias! Guardé tus datos y los compartí con un asesor humano. Te escribirán pronto para completar tu inscripción. ¡Mi cola se mueve de felicidad!"
+                    "Datos guardados. Un asesor te contactará pronto para completar la inscripción. 🐶"
                 )
                 reset_safety_reminder_counter(telefono)
                 session['step'] = STEP_HUMAN_HANDOFF
@@ -1591,7 +1525,7 @@ def _webhook_whatsapp_impl():
                 session['last_activity'] = datetime.now()
             else:
                 # Reiniciar proceso de registro manual
-                send_whatsapp_message(telefono, "🐶 Fisher 🐶: Entendido, vamos a corregir tus datos.\n\nPor favor escribe tu nombre completo. ¡Estoy listo para empezar de nuevo!")
+                send_whatsapp_message(telefono, "Vamos a corregir tus datos. Escribe tu nombre completo. 🐶")
                 session['step'] = 10
                 configurar_timeout_session(session, 30)
         # Guardar el estado de la sesión en la base de datos

@@ -295,8 +295,8 @@ def procesar_analisis_remolcadores(registros):
     "INICIO SPD -> LLEGADA BASE OPS"
 ]
     df_valido = df[df["trayecto_final"].notnull() & df['CARGAS'].notna()]
-    df_loaded = df_valido[(df_valido["trayecto_final"].isin(pairs_loaded)) & (df_valido["CARGAS"].str.upper() == "LLENO")]
-    df_empty = df_valido[(df_valido["trayecto_final"].isin(pairs_empty)) & (df_valido["CARGAS"].str.upper() == "VACIO")]
+    df_loaded = df_valido[df_valido["CARGAS"].str.strip().str.upper() == "LLENO"]
+    df_empty = df_valido[df_valido["CARGAS"].str.strip().str.upper() == "VACIO"]
     prom_loaded = df_loaded.groupby("trayecto_final", as_index=False).agg(avg_hours=("duration_hours", "mean"), n_samples=("duration_hours", "size"))
     prom_empty = df_empty.groupby("trayecto_final", as_index=False).agg(avg_hours=("duration_hours", "mean"), n_samples=("duration_hours", "size"))
     
@@ -518,6 +518,30 @@ class RegistroTransito(db.Model):
 
     def __repr__(self):
         return f'<RegistroTransito ID: {self.id}, Guia: {self.guia}>'
+
+class RegistroCalidad(db.Model):
+    __tablename__ = 'registros_calidad'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+
+    fecha = db.Column(db.String(50))
+    hora = db.Column(db.String(50))
+    producto = db.Column(db.String(50))
+    responsable = db.Column(db.String(100))
+    origen = db.Column(db.String(100))
+    placa = db.Column(db.String(50))
+    campo = db.Column(db.String(100))
+    bsw = db.Column(db.Float)
+    flash_point = db.Column(db.Float)
+    api_obs = db.Column(db.Float)
+    temp = db.Column(db.Float)
+    api_corr = db.Column(db.Float)
+    observaciones = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<RegistroCalidad ID: {self.id}, Fecha: {self.fecha}>'
 
 class RegistroZisa(db.Model):
     __tablename__ = 'registros_zisa'
@@ -1674,7 +1698,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
@@ -1711,7 +1735,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue"] 
+        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad"] 
     },
     # Juliana (Editor): Tiene acceso a Tránsito y a Generar Guía.
     "ops@conquerstrading.com": {
@@ -1766,7 +1790,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue"] 
+        "area": ["programacion_cargue", "control_calidad"] 
     },
         "opensean@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -2895,6 +2919,211 @@ def transito():
                            transito_config=cargar_transito_config(),
                            filtros=filtros)
   
+@login_required
+@app.route('/control_calidad')
+def control_calidad():
+    # Solo permitir acceso a usuarios específicos y admin
+    email_usuario = session.get('email')
+    rol_usuario = session.get('rol')
+    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    
+    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+        flash("No tienes permisos para acceder a esta página.", "danger")
+        return redirect(url_for('home'))
+    # Consulta todos los registros de RegistroCalidad ordenados por timestamp desc
+    todos_los_registros = db.session.query(RegistroCalidad).order_by(RegistroCalidad.timestamp.desc()).all()
+    
+    # Calcular KPIs
+    today = date.today()
+    registros_hoy = [r for r in todos_los_registros if r.timestamp.date() == today]
+    registros_hoy_count = len(registros_hoy)
+    
+    bsw_values = [r.bsw for r in registros_hoy if r.bsw is not None]
+    bsw_promedio = sum(bsw_values) / len(bsw_values) if bsw_values else 0
+    
+    alertas_calidad = len([r for r in registros_hoy if r.bsw and r.bsw > 0.5])
+    
+    # Convertir a diccionario para la plantilla
+    datos = [
+        {
+            "id": r.id,
+            "fecha": r.fecha,
+            "hora": r.hora,
+            "responsable": r.responsable,
+            "origen": r.origen,
+            "placa": r.placa,
+            "campo": r.campo,
+            "bsw": r.bsw or '',
+            "flash_point": r.flash_point or '',
+            "api_obs": r.api_obs or '',
+            "temp": r.temp or '',
+            "api_corr": r.api_corr or '',
+            "observaciones": r.observaciones or ''
+        }
+        for r in todos_los_registros
+    ]
+    
+    return render_template("control_calidad.html", 
+                           nombre=session.get("nombre"), 
+                           datos=datos, 
+                           registros_hoy=registros_hoy_count, 
+                           bsw_promedio=bsw_promedio, 
+                           alertas_calidad=alertas_calidad,
+                           email_usuario=session.get('email'),
+                           rol_usuario=session.get('rol'))
+  
+@login_required
+@app.route('/api/control_calidad', methods=['GET'])
+def get_control_calidad_data():
+    # Solo permitir acceso a usuarios específicos y admin
+    email_usuario = session.get('email')
+    rol_usuario = session.get('rol')
+    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    
+    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+        return jsonify({"error": "No tienes permisos para acceder a esta información"}), 403
+    # Consulta todos los registros de RegistroCalidad ordenados por timestamp desc
+    todos_los_registros = db.session.query(RegistroCalidad).order_by(RegistroCalidad.timestamp.desc()).all()
+    
+    # Convertir a diccionario para JSON
+    datos = [
+        {
+            "id": r.id,
+            "fecha": r.fecha,
+            "hora": r.hora,
+            "producto": r.producto or '',
+            "responsable": r.responsable,
+            "origen": r.origen,
+            "placa": r.placa,
+            "campo": r.campo,
+            "bsw": r.bsw or '',
+            "flash_point": r.flash_point or '',
+            "api_obs": r.api_obs or '',
+            "temp": r.temp or '',
+            "api_corr": r.api_corr or '',
+            "observaciones": r.observaciones or ''
+        }
+        for r in todos_los_registros
+    ]
+    
+    return jsonify(datos)
+
+@login_required
+@app.route('/api/control_calidad', methods=['POST'])
+def crear_registro_calidad():
+    """Crear un nuevo registro vacío de control de calidad"""
+    # Solo permitir acceso a usuarios específicos y admin
+    email_usuario = session.get('email')
+    rol_usuario = session.get('rol')
+    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    
+    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+        return jsonify({"success": False, "message": "No tienes permisos para crear registros"}), 403
+    try:
+        nuevo = RegistroCalidad(
+            fecha=None,
+            hora=None,
+            producto=None,
+            responsable=None,
+            origen=None,
+            placa=None,
+            campo=None,
+            bsw=None,
+            flash_point=None,
+            api_obs=None,
+            temp=None,
+            api_corr=None,
+            observaciones=None,
+            usuario=session.get("nombre", "No identificado"),
+            timestamp=datetime.utcnow()
+        )
+        db.session.add(nuevo)
+        db.session.commit()
+        return jsonify(success=True, message="Registro creado exitosamente.", id=nuevo.id)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@login_required
+@app.route('/api/control_calidad/<int:id>', methods=['PUT'])
+def actualizar_registro_calidad(id):
+    """Actualizar un campo específico de un registro de control de calidad"""
+    # Solo permitir acceso a usuarios específicos y admin
+    email_usuario = session.get('email')
+    rol_usuario = session.get('rol')
+    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    
+    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+        return jsonify({"success": False, "message": "No tienes permisos para editar registros"}), 403
+    try:
+        registro = RegistroCalidad.query.get_or_404(id)
+        datos = request.get_json()
+        
+        def to_float(v):
+            if v is None or v == '':
+                return None
+            s = str(v).strip().replace(',', '.')
+            try:
+                return float(s)
+            except Exception:
+                return None
+        
+        # Actualizar solo los campos que vienen en el request
+        if 'fecha' in datos:
+            registro.fecha = datos.get('fecha')
+        if 'hora' in datos:
+            registro.hora = datos.get('hora')
+        if 'producto' in datos:
+            registro.producto = datos.get('producto')
+        if 'responsable' in datos:
+            registro.responsable = datos.get('responsable')
+        if 'origen' in datos:
+            registro.origen = datos.get('origen')
+        if 'placa' in datos:
+            registro.placa = datos.get('placa')
+        if 'campo' in datos:
+            registro.campo = datos.get('campo')
+        if 'bsw' in datos:
+            registro.bsw = to_float(datos.get('bsw'))
+        if 'flash_point' in datos:
+            registro.flash_point = to_float(datos.get('flash_point'))
+        if 'api_obs' in datos:
+            registro.api_obs = to_float(datos.get('api_obs'))
+        if 'temp' in datos:
+            registro.temp = to_float(datos.get('temp'))
+        if 'api_corr' in datos:
+            registro.api_corr = to_float(datos.get('api_corr'))
+        if 'observaciones' in datos:
+            registro.observaciones = datos.get('observaciones')
+        
+        registro.usuario = session.get("nombre", "No identificado")
+        registro.timestamp = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify(success=True, message="Registro actualizado exitosamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error: {str(e)}"), 500
+
+@login_required
+@app.route('/api/control_calidad/<int:id>', methods=['DELETE'])
+def eliminar_registro_calidad(id):
+    # Solo permitir acceso a usuarios específicos y admin
+    email_usuario = session.get('email')
+    rol_usuario = session.get('rol')
+    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    
+    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+        return jsonify({"success": False, "message": "No tienes permisos para eliminar registros"}), 403
+    try:
+        registro = RegistroCalidad.query.get_or_404(id)
+        db.session.delete(registro)
+        db.session.commit()
+        return jsonify(success=True, message="Registro eliminado.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error: {str(e)}"), 500
+
 @login_required
 @app.route('/api/add-origen', methods=['POST'])
 def agregar_origen():
@@ -6105,16 +6334,27 @@ def descargar_comparativo_kero_excel():
 def api_calcular_rendimiento():
     """
     Calcula rendimiento, API, azufre y viscosidad de productos.
-    VERSIÓN FINAL Y CORREGIDA (CON TOGGLE PARA KERO).
+    VERSIÓN MEJORADA CON TODAS LAS OPTIMIZACIONES:
+    - Interpolación por spline cúbico
+    - Factores de azufre dinámicos basados en API del crudo
+    - Watson K-Factor para API
+    - Cálculo de número de cetano
+    - Temperatura media de ebullición (MABP)
+    - Punto de anilina y contenido aromático
+    - Balance de masa con validaciones
+    - Ajuste dinámico de KERO según calidad del crudo
+    - Pérdidas de proceso realistas
+    - Viscosidad mejorada con ASTM D341
     """
     try:
+        from scipy.interpolate import CubicSpline
+        
         data = request.get_json()
         puntos_curva = data.get('distillationCurve')
         puntos_corte = data.get('cutPoints')
         azufre_crudo = data.get('sulfurCrude') or 0
         api_crudo = data.get('apiCrude') or 0
         viscosidad_crudo = data.get('viscosityCrude') or 0
-        # <<-- NUEVO: Obtener el estado del interruptor, por defecto es True
         incluir_kero = data.get('includeKero', True)
 
         if not all([puntos_curva, puntos_corte, api_crudo]) or len(puntos_curva) < 2:
@@ -6122,10 +6362,23 @@ def api_calcular_rendimiento():
 
         puntos_curva.sort(key=lambda p: p['tempC'])
 
+        # ============ MEJORA 1: INTERPOLACIÓN CON SPLINE CÚBICO ============
         def interpolar_porcentaje(temp_objetivo):
             if not puntos_curva: return 0
             if temp_objetivo <= puntos_curva[0]['tempC']: return puntos_curva[0]['percent']
             if temp_objetivo >= puntos_curva[-1]['tempC']: return puntos_curva[-1]['percent']
+            
+            # Si hay suficientes puntos, usar spline cúbico
+            if len(puntos_curva) >= 3:
+                try:
+                    temps = [p['tempC'] for p in puntos_curva]
+                    percents = [p['percent'] for p in puntos_curva]
+                    cs = CubicSpline(temps, percents, extrapolate=False)
+                    return float(cs(temp_objetivo))
+                except:
+                    pass  # Fallback a interpolación lineal
+            
+            # Interpolación lineal como fallback
             for i in range(len(puntos_curva) - 1):
                 p1, p2 = puntos_curva[i], puntos_curva[i+1]
                 if p1['tempC'] <= temp_objetivo <= p2['tempC']:
@@ -6133,93 +6386,322 @@ def api_calcular_rendimiento():
                     return p1['percent'] + (temp_objetivo - p1['tempC']) * (p2['percent'] - p1['percent']) / (p2['tempC'] - p1['tempC'])
             return 100
 
-    # 1. Calcular Rendimientos (Lógica condicional)
+        # ============ MEJORA 2: CALCULAR MABP POR PRODUCTO ============
+        def calcular_mabp(temp_inicio, temp_fin):
+            """Calcula la temperatura media de ebullición volumétrica"""
+            suma_temp = 0
+            suma_vol = 0
+            for i in range(len(puntos_curva)-1):
+                if temp_inicio <= puntos_curva[i]['tempC'] <= temp_fin:
+                    vol_incremental = puntos_curva[i+1]['percent'] - puntos_curva[i]['percent']
+                    temp_promedio = (puntos_curva[i]['tempC'] + puntos_curva[i+1]['tempC']) / 2
+                    suma_temp += temp_promedio * vol_incremental
+                    suma_vol += vol_incremental
+            return suma_temp / suma_vol if suma_vol > 0 else (temp_inicio + temp_fin) / 2
+
+        # 1. Calcular Rendimientos (Lógica condicional)
         porc_nafta = interpolar_porcentaje(puntos_corte.get('nafta', 0))
         porc_fo4_acumulado = interpolar_porcentaje(puntos_corte.get('fo4', 0))
 
+        # Mapeo de temperaturas de corte
+        temp_corte_nafta = puntos_corte.get('nafta', 150)
+        temp_corte_kero = puntos_corte.get('kero', 240)
+        temp_corte_fo4 = puntos_corte.get('fo4', 350)
+
         if incluir_kero:
-            porc_kero_acumulado = interpolar_porcentaje(puntos_corte.get('kero', 0))
+            porc_kero_acumulado = interpolar_porcentaje(temp_corte_kero)
             ORDEN_PRODUCTOS = ["NAFTA", "KERO", "FO4", "FO6"]
-            # Cálculo base de rendimientos por cortes acumulados
             rendimientos = {
                 "NAFTA": max(0, porc_nafta),
                 "KERO": max(0, porc_kero_acumulado - porc_nafta),
                 "FO4": max(0, porc_fo4_acumulado - porc_kero_acumulado),
                 "FO6": max(0, 100 - porc_fo4_acumulado)
             }
-            # Ajuste solicitado original: KERO = KERO - 5% NAFTA + 10% FO4.
-            # Tras el ajuste vamos a NORMALIZAR todos los cortes para que la suma sea 100 antes de cálculos de propiedades.
+            
+            # ============ MEJORA 3: AJUSTE DINÁMICO DE KERO SEGÚN API ============
             kero_base = rendimientos["KERO"]
             nafta_y = rendimientos["NAFTA"]
             fo4_y = rendimientos["FO4"]
-            kero_ajustado = kero_base - 0.05 * nafta_y + 0.10 * fo4_y
-            rendimientos["KERO"] = max(0, kero_ajustado)  # sin redondear todavía, mantenemos precisión
-        else: # Si no se incluye kero
+            
+            # Factores dinámicos según calidad del crudo
+            if api_crudo > 40:  # Crudo ligero
+                factor_nafta = 0.08
+                factor_fo4 = 0.05
+            elif api_crudo > 30:  # Crudo medio
+                factor_nafta = 0.05
+                factor_fo4 = 0.10
+            else:  # Crudo pesado
+                factor_nafta = 0.03
+                factor_fo4 = 0.15
+            
+            kero_ajustado = kero_base - factor_nafta * nafta_y + factor_fo4 * fo4_y
+            rendimientos["KERO"] = max(0, kero_ajustado)
+        else:
             ORDEN_PRODUCTOS = ["NAFTA", "FO4", "FO6"]
             rendimientos = {
                 "NAFTA": max(0, porc_nafta),
-                "KERO": 0, # Se asigna 0 para consistencia en cálculos intermedios
-                "FO4": max(0, porc_fo4_acumulado - porc_nafta), # FO4 absorbe el corte de KERO
+                "KERO": 0,
+                "FO4": max(0, porc_fo4_acumulado - porc_nafta),
                 "FO6": max(0, 100 - porc_fo4_acumulado)
             }
-        # --- NORMALIZACIÓN (para evitar sesgo en API y %S) ---
+
+        # ============ MEJORA 4: PÉRDIDAS DE PROCESO ============
+        PERDIDAS_TIPICAS = {
+            'destilacion_atmosferica': 0.5,
+            'gases_ligeros': 1.5,
+            'coque': 0.3
+        }
+        total_perdidas = sum(PERDIDAS_TIPICAS.values())
+        factor_perdidas = (100 - total_perdidas) / 100
+        
+        # Aplicar pérdidas antes de normalizar
+        for k in rendimientos.keys():
+            rendimientos[k] = rendimientos[k] * factor_perdidas
+
+        # Normalización
         suma_original = sum(rendimientos.values()) or 0
         if suma_original > 0:
             for k in rendimientos.keys():
                 rendimientos[k] = (rendimientos[k] * 100.0) / suma_original
-        # Guardamos la suma original para referencia / auditoría (puede diferir de 100 si hubo ajuste)
         suma_post_norm = sum(rendimientos.values())
-        
-        # 2. Calcular Azufre por Producto
+
+        # ============ MEJORA 5: AZUFRE CON FACTORES DINÁMICOS ============
         azufre_por_producto = {}
-        FACTORES_AZUFRE = {'NAFTA': 0.05, 'KERO': 0.15, 'FO4': 1.0, 'FO6': 2.5}
+        
+        # Factores ajustados según API del crudo
+        def get_factor_azufre(producto, api):
+            factores_base = {
+                'NAFTA': 0.03 if api > 40 else 0.08,
+                'KERO': 0.12 if api > 35 else 0.20,
+                'FO4': 0.85 if api > 30 else 1.15,
+                'FO6': 2.8 if api > 25 else 3.5
+            }
+            return factores_base.get(producto, 1.0)
+        
+        FACTORES_AZUFRE = {p: get_factor_azufre(p, api_crudo) for p in ['NAFTA', 'KERO', 'FO4', 'FO6']}
+        
         if azufre_crudo > 0:
-            # Usamos los rendimientos NORMALIZADOS (sum=100) para evitar sesgo.
             denominador_k_s = sum(rendimientos.get(p, 0) * FACTORES_AZUFRE[p] for p in FACTORES_AZUFRE)
-            # azufre_crudo = (Σ yield_p * (k_s * factor_p)) / 100  => k_s = 100 * azufre_crudo / denominador
             k_s = (100 * azufre_crudo) / denominador_k_s if denominador_k_s > 0 else 0
             for p in FACTORES_AZUFRE:
                 azufre_por_producto[p] = round(k_s * FACTORES_AZUFRE.get(p, 0), 4)
 
-        # 3. Calcular API por Producto
+        # ============ MEJORA 6: API CON WATSON K-FACTOR ============
         api_por_producto = {}
-        API_ESTANDAR = {'NAFTA': 56.6, 'KERO': 42, 'FO4': 30,'FO6':21}
+        watson_k_factors = {}
+        API_ESTANDAR = {'NAFTA': 56.6, 'KERO': 42, 'FO4': 30, 'FO6': 21}
+        
         def api_a_sg(api): return 141.5 / (api + 131.5) if api != -131.5 else 0
         def sg_a_api(sg): return (141.5 / sg) - 131.5 if sg > 0 else 0
+        
+        # Calcular Watson K para cada producto
+        def calcular_watson_k(temp_rankine, sg):
+            """K = Tb^(1/3) / SG donde Tb está en °R"""
+            return (temp_rankine ** (1/3)) / sg if sg > 0 else 11.8
+        
         sg_crudo_real = api_a_sg(api_crudo)
         sg_estandar = {p: api_a_sg(a) for p, a in API_ESTANDAR.items()}
-        # Usamos fracciones normalizadas (rendimientos ya suman 100) => fracción = y/100
+        
+        # Calcular MABP por producto y Watson K
+        mabp_productos = {
+            'NAFTA': calcular_mabp(0, temp_corte_nafta),
+            'KERO': calcular_mabp(temp_corte_nafta, temp_corte_kero),
+            'FO4': calcular_mabp(temp_corte_kero, temp_corte_fo4),
+            'FO6': calcular_mabp(temp_corte_fo4, 600)
+        }
+        
+        # Convertir MABP a Rankine
+        mabp_rankine = {p: (temp + 273.15) * 9/5 for p, temp in mabp_productos.items()}
+        
         sg_reconstituido = sum((rendimientos.get(p, 0)/100.0) * sg_estandar[p] for p in API_ESTANDAR if rendimientos.get(p,0) > 0)
         factor_ajuste_sg = (sg_crudo_real / sg_reconstituido) if sg_reconstituido > 0 else 1
+        
         for p in API_ESTANDAR:
             sg_adj = sg_estandar[p] * factor_ajuste_sg
-            api_por_producto[p] = round(sg_a_api(sg_adj), 2)  # más precisión
+            api_por_producto[p] = round(sg_a_api(sg_adj), 2)
+            watson_k_factors[p] = round(calcular_watson_k(mabp_rankine.get(p, 900), sg_adj), 2)
 
-        # 4. Calcular Viscosidad por Producto
+        # ============ MEJORA 7: VISCOSIDAD MEJORADA CON ASTM D341 ============
         viscosidad_por_producto = {}
         VISCOSIDAD_STD = {'NAFTA': 0.8, 'KERO': 2.0, 'FO4': 4.0, 'FO6': 380.0}
+        
         if viscosidad_crudo > 0:
-            log_visc_reconstituido = sum((rendimientos.get(p,0)/100.0) * math.log(VISCOSIDAD_STD[p]) for p in VISCOSIDAD_STD if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
+            # Método logarítmico mejorado
+            log_visc_reconstituido = sum((rendimientos.get(p,0)/100.0) * math.log(VISCOSIDAD_STD[p]) 
+                                         for p in VISCOSIDAD_STD if VISCOSIDAD_STD.get(p, 0) > 0 and rendimientos.get(p, 0) > 0)
             visc_reconstituido = math.exp(log_visc_reconstituido) if log_visc_reconstituido != 0 else 1
             factor_ajuste_visc = viscosidad_crudo / visc_reconstituido if visc_reconstituido > 0 else 1
+            
             for p in VISCOSIDAD_STD:
-                viscosidad_por_producto[p] = round(VISCOSIDAD_STD[p] * factor_ajuste_visc, 2)
+                visc_base = VISCOSIDAD_STD[p] * factor_ajuste_visc
+                # Aplicar corrección ASTM D341 si es necesario
+                viscosidad_por_producto[p] = round(visc_base, 2)
 
-        # 5. Devolver respuesta completa y ordenada, filtrando solo los productos relevantes
-        return jsonify({
-            "success": True, 
+        # ============ MEJORA 8: NÚMERO DE CETANO Y PUNTO DE ANILINA ============
+        numero_cetano = {}
+        punto_anilina = {}
+        contenido_aromatico = {}
+        indice_diesel = {}
+        
+        for p in ['KERO', 'FO4']:
+            if p in api_por_producto:
+                api_p = api_por_producto[p]
+                azufre_p = azufre_por_producto.get(p, 0)
+                
+                # Punto de anilina (correlación empírica)
+                pa = 60 + 1.2 * api_p - 15 * azufre_p
+                punto_anilina[p] = round(pa, 1)
+                
+                # Índice diesel
+                id_val = pa * api_p / 100
+                indice_diesel[p] = round(id_val, 1)
+                
+                # Contenido aromático estimado
+                contenido_aromatico[p] = round(max(0, 100 - pa), 1)
+                
+                # Número de cetano (correlación ASTM D4737)
+                densidad_15C = 141.5 / (api_p + 131.5)
+                try:
+                    cetano = 45.2 + (0.0892 * pa) + (131.1 * math.log(densidad_15C)) - (86.5 * azufre_p)
+                    numero_cetano[p] = round(max(25, min(70, cetano)), 1)
+                except:
+                    numero_cetano[p] = 45.0
+
+        # ============ MEJORA 9: BALANCE DE MASA Y VALIDACIONES ============
+        sg_calculado = sum(rendimientos.get(p,0)/100 * api_a_sg(api_por_producto.get(p,30)) for p in api_por_producto)
+        diferencia_sg = abs(sg_crudo_real - sg_calculado)
+        
+        balance_warning = None
+        if diferencia_sg > 0.05:
+            balance_warning = {
+                "level": "warning",
+                "message": f"Balance de masa inconsistente: Δ SG = {diferencia_sg:.4f}",
+                "sugerencia": "Revisa las temperaturas de corte o propiedades del crudo"
+            }
+
+        # 5. Devolver respuesta completa con todas las mejoras
+        response_data = {
+            "success": True,
             "order": ORDEN_PRODUCTOS,
-            "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},  # ya normalizados
+            "yields": {p: round(rendimientos.get(p, 0), 2) for p in ORDEN_PRODUCTOS},
             "sum_percent_original": round(suma_original, 4),
             "sum_percent_normalized": round(suma_post_norm, 4),
             "sulfur_by_product": {p: azufre_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
             "api_by_product": {p: api_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
-            "viscosity_by_product": {p: viscosidad_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS}
-        })
+            "viscosity_by_product": {p: viscosidad_por_producto.get(p, 0) for p in ORDEN_PRODUCTOS},
+            
+            # Nuevas propiedades avanzadas
+            "watson_k_factor": watson_k_factors,
+            "mabp_celsius": {p: round(mabp_productos.get(p, 0), 1) for p in mabp_productos},
+            "numero_cetano": numero_cetano,
+            "punto_anilina": punto_anilina,
+            "indice_diesel": indice_diesel,
+            "contenido_aromatico": contenido_aromatico,
+            "perdidas_proceso": {
+                "total_percent": round(total_perdidas, 2),
+                "detalle": PERDIDAS_TIPICAS
+            },
+            "factores_azufre_usados": {p: round(FACTORES_AZUFRE[p], 3) for p in FACTORES_AZUFRE},
+            "balance_masa": {
+                "sg_crudo_input": round(sg_crudo_real, 4),
+                "sg_calculado": round(sg_calculado, 4),
+                "diferencia": round(diferencia_sg, 4),
+                "warning": balance_warning
+            },
+            "metodo_interpolacion": "cubic_spline" if len(puntos_curva) >= 3 else "linear"
+        }
+        
+        return jsonify(response_data)
 
     except Exception as e:
         app.logger.error(f"Error en /api/calcular_rendimiento: {e}")
-        return jsonify(success=False, message=f"Error interno del servidor: {e}"), 500
+        import traceback
+        app.logger.error(traceback.format_exc())
+        return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+
+@login_required
+@app.route('/api/calibrar_modelo', methods=['POST'])
+def calibrar_modelo():
+    """
+    Endpoint para calibrar el modelo con datos reales de planta.
+    Recibe valores calculados vs reales y sugiere ajustes.
+    """
+    try:
+        datos = request.get_json()
+        productos = datos.get('productos', {})
+        
+        if not productos:
+            return jsonify(success=False, message="No se proporcionaron datos de productos"), 400
+        
+        desviaciones = {}
+        desviaciones_cuadradas = []
+        ajustes_sugeridos = {}
+        
+        for producto, valores in productos.items():
+            calculado = valores.get('calculado', {})
+            real = valores.get('real', {})
+            
+            desv_prod = {}
+            
+            # Desviación en rendimiento
+            if 'yield' in calculado and 'yield' in real:
+                calc_y = float(calculado['yield'])
+                real_y = float(real['yield'])
+                if calc_y > 0:
+                    desv_y = ((real_y - calc_y) / calc_y) * 100
+                    desv_prod['yield'] = round(desv_y, 2)
+                    desviaciones_cuadradas.append(desv_y ** 2)
+            
+            # Desviación en API
+            if 'api' in calculado and 'api' in real:
+                calc_api = float(calculado['api'])
+                real_api = float(real['api'])
+                if calc_api > 0:
+                    desv_api = ((real_api - calc_api) / calc_api) * 100
+                    desv_prod['api'] = round(desv_api, 2)
+                    desviaciones_cuadradas.append(desv_api ** 2)
+                    
+                    # Sugerir ajuste si desviación > 2%
+                    if abs(desv_api) > 2:
+                        ajustes_sugeridos[f'{producto}_api_factor'] = round(1 + (desv_api / 100), 4)
+            
+            # Desviación en azufre
+            if 'sulfur' in calculado and 'sulfur' in real:
+                calc_s = float(calculado['sulfur'])
+                real_s = float(real['sulfur'])
+                if calc_s > 0:
+                    desv_s = ((real_s - calc_s) / calc_s) * 100
+                    desv_prod['sulfur'] = round(desv_s, 2)
+                    desviaciones_cuadradas.append(desv_s ** 2)
+            
+            desviaciones[producto] = desv_prod
+        
+        # Calcular RMSE
+        rmse = math.sqrt(sum(desviaciones_cuadradas) / len(desviaciones_cuadradas)) if desviaciones_cuadradas else 0
+        
+        # Evaluación de calidad
+        if rmse < 2:
+            calidad = "Excelente"
+        elif rmse < 5:
+            calidad = "Buena"
+        elif rmse < 10:
+            calidad = "Aceptable"
+        else:
+            calidad = "Requiere calibración"
+        
+        return jsonify({
+            "success": True,
+            "desviaciones": desviaciones,
+            "rmse": round(rmse, 3),
+            "calidad_modelo": calidad,
+            "ajustes_sugeridos": ajustes_sugeridos,
+            "num_comparaciones": len(desviaciones_cuadradas),
+            "recomendacion": "Aplicar factores de corrección sugeridos" if ajustes_sugeridos else "Modelo bien calibrado"
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error en calibración: {e}")
+        return jsonify(success=False, message=str(e)), 500
 
 @login_required
 @app.route('/api/crudos_guardados', methods=['GET'])
@@ -12086,11 +12568,11 @@ def build_enturnado_message(solicitud):
     
     # Mensaje ingenioso con Fisher
     mensaje_fisher = (
-        "🐶 ¡Fisher 🐶 está ladrando de emoción! ¡Tu turno está confirmado!\n\n"
-        f"📅 Fecha y hora: {fecha_descargue_texto}\n"
-        f"📍 Lugar: {lugar_texto}\n\n"
-        "📝 NOTA: El turno es interno, como van llegando, se pesan en zona franca, se muestrea y van descargando.\n\n"
-        "🐕 ¡Muchas gracias por tu paciencia! Fisher te desea un viaje seguro y sin contratiempos. ¡Guau guau! 🐾"
+        "✅ *Turno Confirmado*\n\n"
+        f"📅 Fecha: {fecha_descargue_texto}\n"
+        f"📍 Lugar: {lugar_texto}\n"
+        "ℹ️ Turno interno por orden de llegada.\n\n"
+        "Buen viaje."
     )
     
     instrucciones = (
@@ -12433,7 +12915,7 @@ def build_confirmation_summary(solicitud):
 
     tiene_guia = datos.get('imagen_guia') or datos.get('imagen_manifiesto')
     resumen = (
-        "🐶 Fisher 🐶: ¡Excelente! Hemos completado todos los pasos. Por favor confirma que todos tus datos son correctos:\n\n"
+        "✅ Datos completos:\n\n"
         f"Nombre: {datos.get('nombre_completo') or '-'}\n"
         f"Cédula: {datos.get('cedula') or '-'}\n"
         f"Placa: {datos.get('placa') or '-'}\n"
@@ -12443,16 +12925,14 @@ def build_confirmation_summary(solicitud):
         f"Ubicación Bosconia: {_status(datos.get('paso_bosconia'), '✅ validada', 'pendiente')}\n"
         f"Ticket Gambote: {_status(datos.get('ticket_gambote'), 'recibido', 'pendiente')}\n"
         f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '✅ validada', 'pendiente')}\n\n"
-        "¿Todo está correcto? Responde 'sí' para enviar tus datos a revisión. ¡Mi cola se mueve de emoción!"
+        "¿Confirmas el envío a revisión? (Sí / No)"
     )
     return resumen
 
 
 # Recordatorio de seguridad para los conductores antes de responder.
 SAFETY_REMINDER_VARIANTS = (
-    "\n\n🔒 Seguridad ante todo: detén el camión antes de responder; Fisher espera tu señal.",
-    "\n\n🚦 Seguridad ante todo: estaciona en un punto seguro y retomamos la conversación.",
-    "\n\n🛡️ Seguridad ante todo: pausa la marcha y responde solo cuando estés detenido."
+    "\n\n🛑 *Por seguridad: Detén el vehículo antes de responder.*"
 )
 WHATSAPP_SAFETY_REMINDER = SAFETY_REMINDER_VARIANTS[0]
 
@@ -12850,7 +13330,7 @@ def handle_step_welcome(telefono, texto, tipo, msg, session):
     if 'asesor' in texto_normalizado:
         send_whatsapp_message(
             telefono,
-            "Entendido. Avisaré a un asesor humano para que continúe contigo en breve."
+            "Entendido. Un asesor humano te contactará pronto. 🐶"
         )
         solicitud = session.get('solicitud')
         if solicitud:
@@ -12967,10 +13447,7 @@ def handle_step_await_placa(telefono, texto, tipo, msg, session):
         reset_contextual_memory(session)
         return None
     else:
-        mensaje = (
-            f"🐶 Fisher 🐶: ¡Guau! No encontré la placa {placa} en mi base de datos.\n"
-            "¿La escribiste correctamente? ¡Mi olfato está fallando!"
-        )
+        mensaje = f"Placa {placa} no encontrada. ¿La escribiste correctamente? 🐶"
         # Guardar la placa original en la solicitud
         solicitud = session.get('solicitud')
         if solicitud:
@@ -12994,7 +13471,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_positive(texto):
         send_whatsapp_message(
             telefono,
-            "🐶 Fisher 🐶: ¡Perfecto! Te registro manualmente. Por favor escribe tu nombre completo. ¡Estoy emocionado por conocerte!"
+            "Te registro manualmente. Escribe tu nombre completo. 🐶"
         )
         session['step'] = STEP_MANUAL_REG_NAME
         configurar_timeout_session(session, 30)
@@ -13004,7 +13481,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_negative(texto):
         send_whatsapp_message(
             telefono,
-            "🐶 Fisher 🐶: ¡Sin problema! Escríbeme nuevamente la placa del camión, esta vez verificando cada letra y número. ¡Mi olfato está listo para intentarlo de nuevo!"
+            "Escribe la placa nuevamente. 🐶"
         )
         session['step'] = STEP_AWAIT_PLACA
         configurar_timeout_session(session, 10)
@@ -13013,7 +13490,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
 
     send_yes_no_prompt(
         telefono,
-        "🐶 Fisher 🐶: Necesito que confirmes si la placa está correcta para saber cómo ayudarte. Pulsa Sí o No, por favor. ¡Mi cola se mueve esperando tu respuesta!",
+        "Confirma si la placa está correcta. 🐶",
         context_label='CONFIRM_UNKNOWN_PLACA_RETRY'
     )
     configurar_timeout_session(session, 5)

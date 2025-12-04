@@ -85,6 +85,7 @@
                         {% if 'control_remolcadores' in session.get('area', []) %}
                             {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores', 'life-preserver')) %}
                         {% endif %}
+                        {% if 'control_calidad' in session.get('area', []) %}{% set _ = user_planillas.append(('control_calidad', 'Reporte Análisis de Calidad', 'clipboard-check')) %}{% endif %}
                         {% if 'inventario_epp' in session.get('area', []) %}{% set _ = user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
                         {% endif %}
                         {% if 'modelo_optimizacion' in session.get('area', []) %}{% set _ = user_planillas.append(('modelo_optimizacion_page', 'Modelo Optimización', 'cpu')) %}{% endif %}
@@ -148,6 +149,7 @@
                                     <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i class="bi bi-calendar-check me-2"></i>Programación de Despachos</a></li>
                                     <li><a class="dropdown-item {% if request.endpoint == 'panel_enturnamiento' %}active{% endif %}" href="{{ url_for('panel_enturnamiento') }}"><i class="bi bi-list-check me-2"></i>Panel de Enturnamiento</a></li>
                                     <li><a class="dropdown-item" href="{{ url_for('control_remolcadores_page') }}"><i class="bi bi-life-preserver me-2"></i>Control Remolcadores</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('control_calidad') }}"><i class="bi bi-clipboard-check me-2"></i>Reporte Análisis de Calidad</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header">Utilidades</h6></li>
                                     <li><a class="dropdown-item" href="{{ url_for('aforos_page') }}"><i class="bi bi-list-columns me-2"></i>Tablas de Aforo</a></li>
