@@ -1746,7 +1746,7 @@ USUARIOS = {
     },
     # Samantha (Editor): Tiene acceso solo a Generar Guía.
     "logistic@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
+        "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
         "area": ["guia_transporte", "programacion_cargue"]
@@ -1790,7 +1790,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad"] 
+        "area": ["programacion_cargue", "control_calidad", "planta"] 
     },
         "opensean@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -2949,6 +2949,7 @@ def control_calidad():
             "id": r.id,
             "fecha": r.fecha,
             "hora": r.hora,
+            "producto": r.producto or '',
             "responsable": r.responsable,
             "origen": r.origen,
             "placa": r.placa,

@@ -514,8 +514,10 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                      row.querySelector('td[data-field="placa"]')?.textContent || 'N/A';
         const conductor = row.querySelector('td[data-field="nombre_conductor"] .cell-editor')?.textContent || 
                          row.querySelector('td[data-field="nombre_conductor"]')?.textContent || 'N/A';
-        const producto = row.querySelector('td[data-field="producto_a_cargar"] .cell-editor')?.textContent || 
-                        row.querySelector('td[data-field="producto_a_cargar"]')?.textContent || 'N/A';
+        // producto_a_cargar usa un input en lugar de cell-editor, necesitamos obtener su value
+        const productoInput = row.querySelector('td[data-field="producto_a_cargar"] .editable-input');
+        const producto = productoInput ? productoInput.value : 
+                        (row.querySelector('td[data-field="producto_a_cargar"]')?.textContent || 'N/A');
         const estado = row.querySelector('td[data-field="estado"] .cell-editor')?.textContent || 
                       row.querySelector('td[data-field="estado"]')?.textContent || 'PROGRAMADO';
 
