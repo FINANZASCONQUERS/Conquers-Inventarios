@@ -9067,23 +9067,43 @@ def exportar_asignaciones_epp(formato):
 @permiso_requerido('gestion_compras')
 @app.route('/gestion_compras')
 def gestion_compras():
-    # Obtener filtro de proveedor si existe
+    # Obtener filtros
     proveedor_filtro = request.args.get('proveedor', '')
+    producto_filtro = request.args.get('producto', '')
+    mes_filtro = request.args.get('mes', '')
 
     query = RegistroCompra.query
 
     if proveedor_filtro:
         query = query.filter(RegistroCompra.proveedor == proveedor_filtro)
+    
+    if producto_filtro:
+        query = query.filter(RegistroCompra.producto == producto_filtro)
+    
+    if mes_filtro:
+        query = query.filter(func.to_char(RegistroCompra.fecha, 'YYYY-MM') == mes_filtro)
 
     compras = query.order_by(RegistroCompra.fecha.desc()).all()
     
-    # Obtener lista de proveedores únicos para el filtro
+    # Obtener listas para los filtros
     proveedores = sorted([p[0] for p in db.session.query(RegistroCompra.proveedor).distinct().all() if p[0]])
+    productos = sorted([p[0] for p in db.session.query(RegistroCompra.producto).distinct().all() if p[0]])
+    meses = sorted([m[0] for m in db.session.query(func.to_char(RegistroCompra.fecha, 'YYYY-MM')).distinct().all() if m[0]], reverse=True)
+
+    # Calcular totales
+    total_bls = sum([c.cantidad_bls for c in compras if c.cantidad_bls])
+    total_usd = sum([c.total_neto for c in compras if c.total_neto])
+    precio_promedio = sum([c.price_compra_pond for c in compras if c.price_compra_pond]) / len(compras) if compras else 0
 
     return render_template('gestion_compras.html', 
                          compras=compras, 
                          proveedores=proveedores,
-                         filtros={'proveedor': proveedor_filtro})
+                         productos=productos,
+                         meses=meses,
+                         filtros={'proveedor': proveedor_filtro, 'producto': producto_filtro, 'mes': mes_filtro},
+                         total_bls=total_bls,
+                         total_usd=total_usd,
+                         precio_promedio=precio_promedio)
 
 @login_required
 @permiso_requerido('gestion_compras')
@@ -9099,42 +9119,50 @@ def cargar_compras_excel():
         return redirect(url_for('gestion_compras'))
 
     try:
-        # Leer el archivo Excel manteniendo los nombres originales de columnas
-        df = pd.read_excel(file, sheet_name='2025')
+        # Leer el archivo Excel saltando la primera fila (header=1 usa la segunda fila como encabezados)
+        df = pd.read_excel(file, sheet_name='2025', header=1)
+        
+        # ELIMINAR TODOS LOS DATOS ANTERIORES para evitar duplicados y discrepancias
+        registros_eliminados = RegistroCompra.query.delete()
+        db.session.commit()
+        
+        app.logger.info(f"Se eliminaron {registros_eliminados} registros anteriores")
         
         nuevas = 0
-        actualizadas = 0
 
         for _, row in df.iterrows():
-            # Buscar registro existente por campos clave
-            compra = RegistroCompra.query.filter_by(
-                fecha=pd.to_datetime(row['MES']).date(),
-                proveedor=row['PROVEEDOR'],
-                producto=row['PRODUCTO'],
-                cantidad_bls=row['CANTIDAD BLS']
-            ).first()
-
-            if not compra:
-                compra = RegistroCompra()
-                db.session.add(compra)
-                nuevas += 1
-
+            # Saltar filas donde falten campos críticos
+            if pd.isna(row['MES']) or pd.isna(row['Proveedor']) or pd.isna(row['Producto']):
+                continue
+            
+            # Convertir valores NaN a None para evitar errores de tipo
+            fecha = pd.to_datetime(row['MES']).date()
+            proveedor = row['Proveedor'] if pd.notna(row['Proveedor']) else None
+            producto = row['Producto'] if pd.notna(row['Producto']) else None
+            cantidad_bls = row['Cantidad BLS'] if pd.notna(row['Cantidad BLS']) else None
+            
+            # Crear nuevo registro (ya no buscamos duplicados porque eliminamos todo)
+            compra = RegistroCompra()
+            
             # Asignar valores directamente del Excel
-            compra.fecha = pd.to_datetime(row['MES']).date()
-            compra.proveedor = row['PROVEEDOR']
-            compra.tarifa = row['TARIFA'] if pd.notna(row['TARIFA']) else None
-            compra.producto = row['PRODUCTO']
-            compra.cantidad_bls = row['CANTIDAD BLS']
-            compra.cantidad_gln = row['CANITDAD GLN']
-            compra.brent = row['BRENT US$B']
-            compra.descuento = row['DESCUENTO US$B']
-            compra.precio_uni_bpozo = row['PRECIO UNI. B.POZO US$B']
-            compra.total_neto = row['TOTAL NETO US$B']
-            compra.price_compra_pond = row['PRICE COMPRA POND. US$/BL']
+            compra.fecha = fecha
+            compra.proveedor = proveedor
+            compra.tarifa = row['Tarifa'] if pd.notna(row['Tarifa']) else None
+            compra.producto = producto
+            compra.cantidad_bls = cantidad_bls
+            compra.cantidad_gln = row['Cantidad Gln'] if pd.notna(row['Cantidad Gln']) else None
+            compra.brent = row['Brent US$B'] if pd.notna(row['Brent US$B']) else None
+            compra.descuento = row['Descuento US$B'] if pd.notna(row['Descuento US$B']) else None
+            compra.precio_uni_bpozo = row['Precio Uni. B.Pozo US$B'] if pd.notna(row['Precio Uni. B.Pozo US$B']) else None
+            compra.total_neto = row['Total Neto US$B'] if pd.notna(row['Total Neto US$B']) else None
+            compra.price_compra_pond = row['Price Compra Pond. US$/BL'] if pd.notna(row['Price Compra Pond. US$/BL']) else None
             compra.fecha_carga = datetime.utcnow()
+            
+            db.session.add(compra)
+            nuevas += 1
         
         db.session.commit()
-        flash(f'Datos cargados: {nuevas} nuevos, {actualizadas} actualizados', 'success')
+        flash(f'Base de datos actualizada: {registros_eliminados} registros anteriores eliminados, {nuevas} registros nuevos cargados', 'success')
 
     except Exception as e:
         db.session.rollback()
@@ -9147,24 +9175,28 @@ def cargar_compras_excel():
 @permiso_requerido('gestion_compras')
 @app.route('/reporte_compras')
 def reporte_compras():
-    # Histórico de precios
+    # Histórico de precios agrupado por mes (filtrar meses con datos insignificantes)
     historico_precios_raw = db.session.query(
-        func.date(RegistroCompra.fecha).label('fecha'),
+        func.to_char(RegistroCompra.fecha, 'YYYY-MM').label('mes'),
         func.avg(RegistroCompra.price_compra_pond).label('precio_promedio')
-    ).group_by(func.date(RegistroCompra.fecha)).all()
+    ).filter(RegistroCompra.price_compra_pond.isnot(None))\
+     .group_by('mes').order_by('mes').all()
     historico_precios = [
-        {"mes": str(row[0]), "precio": float(row[1]) if row[1] is not None else 0}
+        {"mes": row[0], "precio": float(row[1])}
         for row in historico_precios_raw
+        if row[1] is not None and row[1] > 0
     ]
 
-    # Histórico de volúmenes
+    # Histórico de volúmenes agrupado por mes (filtrar meses con volúmenes insignificantes)
     historico_volumenes_raw = db.session.query(
-        func.date(RegistroCompra.fecha).label('fecha'),
+        func.to_char(RegistroCompra.fecha, 'YYYY-MM').label('mes'),
         func.sum(RegistroCompra.cantidad_bls).label('volumen_total')
-    ).group_by(func.date(RegistroCompra.fecha)).all()
+    ).filter(RegistroCompra.cantidad_bls.isnot(None))\
+     .group_by('mes').order_by('mes').all()
     historico_volumenes = [
-        {"mes": str(row[0]), "volumen": float(row[1]) if row[1] is not None else 0}
+        {"mes": row[0], "volumen": float(row[1])}
         for row in historico_volumenes_raw
+        if row[1] is not None and row[1] > 100  # Filtrar volúmenes menores a 100 barriles (probablemente errores)
     ]
 
     # Resumen mensual
@@ -9187,13 +9219,19 @@ def reporte_compras():
     proveedores = sorted([p[0] for p in db.session.query(RegistroCompra.proveedor).distinct().all() if p[0]])
     productos = sorted([p[0] for p in db.session.query(RegistroCompra.producto).distinct().all() if p[0]])
 
+    # Calcular estadísticas generales
+    total_barriles = sum([r['cantidad_bls'] for r in resumen_mensual])
+    precio_promedio = sum([p['precio'] for p in historico_precios]) / len(historico_precios) if historico_precios else 0
+
     return render_template(
         'reporte_compras.html',
         historico_precios=historico_precios,
         historico_volumenes=historico_volumenes,
         resumen_mensual=resumen_mensual,
         proveedores=proveedores,
-        productos=productos
+        productos=productos,
+        total_barriles=total_barriles,
+        precio_promedio=precio_promedio
     )
 
 @login_required

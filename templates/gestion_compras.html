@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <h3><i class="fas fa-shopping-cart me-2"></i>Gestión de Compras</h3>
         <div>
             <a href="{{ url_for('reporte_compras') }}" class="btn btn-success me-2">
@@ -16,62 +16,110 @@
         </div>
     </div>
 
-    <!-- Filtros -->
+    <!-- Filtros Mejorados -->
     <div class="card shadow-sm mb-4">
-    <div class="card-body">
-        <form method="GET" action="{{ url_for('gestion_compras') }}" class="row g-3 align-items-end">
-            <div class="col-md-8">
-                <label for="proveedor" class="form-label">Filtrar por Proveedor</label>
-                <select class="form-select" id="proveedor" name="proveedor">
-                    <option value="">Todos los proveedores</option>
-                    {% for p in proveedores %}
-                    <option value="{{ p }}" {% if filtros.proveedor == p %}selected{% endif %}>{{ p }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-secondary w-100">Filtrar</button>
-            </div>
-        </form>
+        <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de Búsqueda</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('gestion_compras') }}" id="filterForm">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="mes" class="form-label"><strong>Mes</strong></label>
+                        <select class="form-select" id="mes" name="mes">
+                            <option value="">Todos los meses</option>
+                            {% for m in meses %}
+                            <option value="{{ m }}" {% if filtros.mes == m %}selected{% endif %}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="proveedor" class="form-label"><strong>Proveedor</strong></label>
+                        <select class="form-select" id="proveedor" name="proveedor">
+                            <option value="">Todos los proveedores</option>
+                            {% for p in proveedores %}
+                            <option value="{{ p }}" {% if filtros.proveedor == p %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="producto" class="form-label"><strong>Producto</strong></label>
+                        <select class="form-select" id="producto" name="producto">
+                            <option value="">Todos los productos</option>
+                            {% for prod in productos %}
+                            <option value="{{ prod }}" {% if filtros.producto == prod %}selected{% endif %}>{{ prod }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label d-block">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-1"></i>Filtrar
+                        </button>
+                        <a href="{{ url_for('gestion_compras') }}" class="btn btn-outline-secondary w-100 mt-2">
+                            <i class="fas fa-undo me-1"></i>Limpiar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-<table class="table table-bordered table-hover">
-    <thead>
-        <tr>
-            <th>MES</th>
-            <th>PROVEEDOR</th>
-            <th>TARIFA</th>
-            <th>PRODUCTO</th>
-            <th>CANTIDAD BLS</th>
-            <th>CANTIDAD GLN</th>
-            <th>BRENT US$B</th>
-            <th>DESCUENTO US$B</th>
-            <th>PRECIO UNI. B.POZO US$B</th>
-            <th>TOTAL NETO US$B</th>
-            <th>PRICE COMPRA POND. US$/BL</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for compra in compras %}
-        <tr>
-            <td>{{ compra.fecha.strftime('%Y-%m-%d') if compra.fecha }}</td>
-            <td>{{ compra.proveedor }}</td>
-            <td>{{ compra.tarifa|round(2) if compra.tarifa is not none }}</td>
-            <td>{{ compra.producto }}</td>
-            <td>{{ compra.cantidad_bls|round(2) if compra.cantidad_bls is not none }}</td>
-            <td>{{ compra.cantidad_gln|round(2) if compra.cantidad_gln is not none }}</td>
-            <td>{{ compra.brent|round(2) if compra.brent is not none }}</td>
-            <td>{{ compra.descuento|round(2) if compra.descuento is not none }}</td>
-            <td>{{ compra.precio_uni_bpozo|round(2) if compra.precio_uni_bpozo is not none }}</td>
-            <td>{{ compra.total_neto|round(2) if compra.total_neto is not none }}</td>
-            <td>{{ compra.price_compra_pond|round(2) if compra.price_compra_pond is not none }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-</tbody>
-</table>
+    <!-- Tabla de Datos -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-table me-2"></i>Registros de Compras ({{ compras|length }})</h6>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 600px;">
+                <table class="table table-sm table-hover mb-0" style="font-size: 0.85rem;">
+                    <thead class="table-dark sticky-top">
+                        <tr>
+                            <th class="text-nowrap">MES</th>
+                            <th class="text-nowrap">PROVEEDOR</th>
+                            <th class="text-nowrap">TARIFA</th>
+                            <th class="text-nowrap">PRODUCTO</th>
+                            <th class="text-nowrap text-end">CANTIDAD BLS</th>
+                            <th class="text-nowrap text-end">CANTIDAD GLN</th>
+                            <th class="text-nowrap text-end">BRENT US$B</th>
+                            <th class="text-nowrap text-end">DESCUENTO US$B</th>
+                            <th class="text-nowrap text-end">PRECIO UNI. B.POZO US$B</th>
+                            <th class="text-nowrap text-end">TOTAL NETO US$B</th>
+                            <th class="text-nowrap text-end">PRICE COMPRA POND. US$/BL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if compras %}
+                            {% for compra in compras %}
+                            <tr>
+                                <td class="text-nowrap">{{ compra.fecha.strftime('%Y-%m-%d') if compra.fecha }}</td>
+                                <td>{{ compra.proveedor }}</td>
+                                <td class="text-end">{{ "{:.2f}".format(compra.tarifa) if compra.tarifa is not none else '-' }}</td>
+                                <td>{{ compra.producto }}</td>
+                                <td class="text-end">{{ "{:,.2f}".format(compra.cantidad_bls) if compra.cantidad_bls is not none else '-' }}</td>
+                                <td class="text-end">{{ "{:,.2f}".format(compra.cantidad_gln) if compra.cantidad_gln is not none else '-' }}</td>
+                                <td class="text-end">{{ "{:.2f}".format(compra.brent) if compra.brent is not none else '-' }}</td>
+                                <td class="text-end">{{ "{:.2f}".format(compra.descuento) if compra.descuento is not none else '-' }}</td>
+                                <td class="text-end">{{ "{:.2f}".format(compra.precio_uni_bpozo) if compra.precio_uni_bpozo is not none else '-' }}</td>
+                                <td class="text-end fw-bold text-success">{{ "{:,.2f}".format(compra.total_neto) if compra.total_neto is not none else '-' }}</td>
+                                <td class="text-end fw-bold">{{ "{:.2f}".format(compra.price_compra_pond) if compra.price_compra_pond is not none else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p class="mb-0">No hay registros que coincidan con los filtros seleccionados</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal para Cargar Excel -->
