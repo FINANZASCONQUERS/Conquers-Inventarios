@@ -68,6 +68,13 @@
         "API_Obs": "",
         "API_Cor": "",
         "UN": 1202
+    },
+    {
+        "PRODUCTO": "FUEL OIL (VLSFO)",
+        "TempF": "",
+        "API_Obs": "",
+        "API_Cor": "",
+        "UN": 1202
     }
 
 ]
