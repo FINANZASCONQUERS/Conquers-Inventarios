@@ -205,7 +205,7 @@
         .descripcion-producto, .volumen { font-weight: bold; }
         .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
         .lugar-fecha {position: relative;left: -75px; width: 10.5cm; height: 1.1cm; font-size: 14pt }
-        .planta-productor { position: relative;left: -75px; width: 8.8cm; height: 1cm;font-size: 14pt }
+        .planta-productor { position: relative;left: -83px; width: 8.8cm; height: 1cm;font-size: 14pt }
         .planta-productor input { text-align: left; padding-left: 0px; padding-right: 0px; }
         .factura-remision {position: relative;left: -40px; width: 3.5cm; height: 1cm;font-size: 16pt  }
         .despacho { width: 15cm; height: 1cm; font-size: 14pt }
@@ -256,6 +256,12 @@
     </button>
     <button type="button" id="btnEditarCliente" class="btn btn-outline-primary">
         <i class="bi bi-pencil-square me-1"></i> Editar Cliente
+    </button>
+    <button type="button" id="btnAbrirModalProducto" class="btn btn-outline-success">
+        <i class="bi bi-box-seam me-1"></i> Agregar Producto
+    </button>
+    <button type="button" id="btnEditarProducto" class="btn btn-outline-primary">
+        <i class="bi bi-pencil-square me-1"></i> Editar Producto
     </button>
     <button type="button" id="btnAbrirModalConductor" class="btn btn-outline-success">
         <i class="bi bi-person-plus-fill me-1"></i> Agregar Conductor
@@ -472,6 +478,63 @@
     </div>
 </div>
 
+            <!-- MODAL AGREGAR PRODUCTO -->
+            <div class="modal fade" id="modalAgregarProducto" tabindex="-1" aria-labelledby="modalLabelProducto" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalLabelProducto">Agregar Nuevo Producto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formAgregarProducto">
+                                    <div class="mb-3">
+                                            <label for="nombreNuevoProducto" class="form-label">Nombre del Producto</label>
+                                            <input type="text" class="form-control" id="nombreNuevoProducto" required>
+                                    </div>
+                                        <div class="mb-3">
+                                            <label for="unidadNuevoProducto" class="form-label">Unidad</label>
+                                            <input type="text" class="form-control" id="unidadNuevoProducto" placeholder="UN">
+                                        </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="btnGuardarProducto">Guardar Producto</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL EDITAR PRODUCTO -->
+            <div class="modal fade" id="modalEditarProducto" tabindex="-1" aria-labelledby="modalLabelEditarProducto" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalLabelEditarProducto">Editar Producto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formEditarProducto">
+                                    <input type="hidden" id="originalNombreProducto">
+                                    <div class="mb-3">
+                                            <label for="editarNombreProducto" class="form-label">Nombre del Producto</label>
+                                            <input type="text" class="form-control" id="editarNombreProducto" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="editarUnidadProducto" class="form-label">Unidad</label>
+                                        <input type="text" class="form-control" id="editarUnidadProducto" placeholder="UN">
+                                    </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="btnActualizarProducto">Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -545,6 +608,14 @@
                 datalist.insertAdjacentHTML('beforeend', `<option value="${e.NOMBRE_EMPRESA}"></option>`);
             });
         }
+    }
+
+    function actualizarDropdownProductos() {
+        const prodSel = document.getElementById('productoSelect');
+        if (!prodSel) return;
+        prodSel.innerHTML = '';
+        productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO || p.producto || p.PRODUCT}" >${p.PRODUCTO || p.producto || p.PRODUCT}</option>`));
+        prodSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_PRODUCTO" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO PRODUCTO</option>');
     }
     
     // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
@@ -780,6 +851,108 @@ if (Object.keys(datosGuia).length > 1) {
         } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
     });
 
+    // Eventos para PRODUCTOS
+    const modalElProducto = document.getElementById('modalAgregarProducto');
+    const modalProducto = modalElProducto ? new bootstrap.Modal(modalElProducto) : null;
+    const modalElEditarProducto = document.getElementById('modalEditarProducto');
+    const modalEditarProducto = modalElEditarProducto ? new bootstrap.Modal(modalElEditarProducto) : null;
+
+    document.getElementById('btnAbrirModalProducto').addEventListener('click', () => {
+        if (!modalProducto) return;
+        document.getElementById('formAgregarProducto').reset();
+        modalProducto.show();
+    });
+
+    document.getElementById('btnGuardarProducto').addEventListener('click', async () => {
+        const nombre = document.getElementById('nombreNuevoProducto').value.trim();
+        const unidad = document.getElementById('unidadNuevoProducto').value.trim();
+        if (!nombre) return Swal.fire({icon: 'warning', title: 'Campo vacío', text: 'Ingrese el nombre del producto.'});
+        const payload = { producto: nombre, unidad };
+        try {
+            const response = await fetch("{{ url_for('agregar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const result = await response.json();
+            if (response.ok) {
+                productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
+                actualizarDropdownProductos();
+                document.getElementById('productoSelect').value = result.nuevo_producto.PRODUCTO || result.nuevo_producto.producto || nombre;
+                document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+                modalProducto.hide();
+                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado.', timer: 2000, showConfirmButton: false });
+                return;
+            }
+        } catch (err) {
+            // fallback local update
+            console.warn('No se pudo llamar al endpoint agregar_producto_ajax, actualizando localmente', err);
+        }
+        // Local fallback: añadir al arreglo y actualizar select (solo PRODUCTO y UN)
+        productos.push({ PRODUCTO: nombre, UN: unidad });
+        actualizarDropdownProductos();
+        document.getElementById('productoSelect').value = nombre;
+        document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+        if (modalProducto) modalProducto.hide();
+        Swal.fire({ icon: 'success', title: 'Guardado (local)', text: 'Producto agregado localmente.', timer: 2000, showConfirmButton: false });
+    });
+
+    const btnEditarProducto = document.getElementById('btnEditarProducto');
+    if (btnEditarProducto && modalEditarProducto) {
+        btnEditarProducto.addEventListener('click', () => {
+            const select = document.getElementById('productoSelect');
+            const seleccionado = (select.value || '').trim();
+            if (!seleccionado || seleccionado === 'AGREGAR_PRODUCTO') {
+                Swal.fire({ icon: 'info', title: 'Selecciona un producto', text: 'Elige un producto de la lista para poder editarlo.' });
+                return;
+            }
+            const productoActual = productos.find(p => ((p.PRODUCTO||p.producto||'').toUpperCase() === seleccionado.toUpperCase()));
+            if (!productoActual) {
+                Swal.fire({ icon: 'error', title: 'Producto no encontrado', text: 'No pudimos cargar los datos de ese producto. Actualiza la página e inténtalo de nuevo.' });
+                return;
+            }
+            document.getElementById('originalNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+            document.getElementById('editarNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+            document.getElementById('editarUnidadProducto').value = productoActual.UN || productoActual.unidad || '';
+            modalEditarProducto.show();
+        });
+    }
+
+    const btnActualizarProducto = document.getElementById('btnActualizarProducto');
+    if (btnActualizarProducto && modalEditarProducto) {
+        btnActualizarProducto.addEventListener('click', async () => {
+            const original = document.getElementById('originalNombreProducto').value.trim();
+            const nombre = document.getElementById('editarNombreProducto').value.trim();
+            const unidad = document.getElementById('editarUnidadProducto').value.trim();
+            if (!original || !nombre) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa los campos antes de guardar.' });
+            const payload = { original_producto: original, producto: nombre, unidad };
+            try {
+                const response = await fetch("{{ url_for('actualizar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await response.json();
+                if (response.ok) {
+                    productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
+                    actualizarDropdownProductos();
+                    const select = document.getElementById('productoSelect');
+                    select.value = result.producto.PRODUCTO || result.producto.producto || nombre;
+                    select.dispatchEvent(new Event('change'));
+                    modalEditarProducto.hide();
+                    Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message || 'Producto actualizado.', timer: 2000, showConfirmButton: false });
+                    return;
+                }
+            } catch (err) {
+                console.warn('No se pudo llamar al endpoint actualizar_producto_ajax, actualizando localmente', err);
+            }
+            // Fallback local update
+            const idx = productos.findIndex(p => ((p.PRODUCTO||p.producto||'').toUpperCase() === original.toUpperCase()));
+            if (idx !== -1) {
+                productos[idx].PRODUCTO = nombre;
+                productos[idx].UN = unidad;
+            }
+            actualizarDropdownProductos();
+            const select = document.getElementById('productoSelect');
+            select.value = nombre;
+            select.dispatchEvent(new Event('change'));
+            modalEditarProducto.hide();
+            Swal.fire({ icon: 'success', title: 'Actualizado (local)', text: 'Producto actualizado localmente.', timer: 2000, showConfirmButton: false });
+        });
+    }
+
     // Actualiza el wrap al editar manualmente el campo
     const empresaInput = document.getElementById('empresaTransportadoraInput');
     if (empresaInput){
@@ -855,12 +1028,15 @@ if (Object.keys(datosGuia).length > 1) {
 
     function mostrarProducto(){
         const nom=document.getElementById('productoSelect').value;
-        const p=productos.find(x=>x.PRODUCTO===nom);
-        if(p){
-            document.getElementById('tempF').value=p.TempF;
-            document.getElementById('apiObs').value=p.API_Obs;
-            document.getElementById('apiCorr').value=p.API_Cor;
-            document.getElementById('unidadProducto').value=p.UN;
+        const p = productos.find(x => ((x.PRODUCTO||x.producto||'').toUpperCase() === (nom||'').toUpperCase()));
+        if (p) {
+            // Solo unidad (UN) es relevante ahora; limpiamos campos de temperatura/API para evitar confusión
+            document.getElementById('unidadProducto').value = p.UN || p.unidad || '';
+            document.getElementById('tempF').value = '';
+            document.getElementById('apiObs').value = '';
+            document.getElementById('apiCorr').value = '';
+        } else {
+            document.getElementById('unidadProducto').value = '';
         }
     }
 

@@ -7568,7 +7568,8 @@ def handle_programacion():
     if not mostrar_todas:
         registros = query.limit(10).all()
     else:
-        registros = query.all()
+        # Limitar historial a últimos 500 registros para evitar lentitud
+        registros = query.limit(500).all()
     # Convierte los datos a un formato JSON friendly
     data = []
     ahora = datetime.utcnow()
@@ -10309,6 +10310,13 @@ class Empresa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False, unique=True)
 
+
+class Producto(db.Model):
+    __tablename__ = 'productos'
+    id = db.Column(db.Integer, primary_key=True)
+    producto = db.Column(db.String(255), nullable=False, unique=True)
+    unidad = db.Column(db.String(64))
+
     # --- PANEL DE REVISIÓN DE SOLICITUDES DE ENTURNAMIENTO ---
     @login_required
     @app.route('/panel_enturnamiento')
@@ -12351,6 +12359,136 @@ def guardar_empresas(empresas):
     ruta_empresas = os.path.join(BASE_DIR, 'static', 'EmpresasTransportadoras.json')
     with open(ruta_empresas, 'w', encoding='utf-8') as f:
         json.dump(empresas, f, ensure_ascii=False, indent=4)        
+
+
+def cargar_productos():
+    """Carga `Producto.json` desde la carpeta static. Devuelve lista vacía si falla."""
+    try:
+        ruta_productos = os.path.join(BASE_DIR, 'static', 'Producto.json')
+        with open(ruta_productos, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def guardar_productos(productos):
+    """Guarda la lista de productos en `static/Producto.json`."""
+    ruta_productos = os.path.join(BASE_DIR, 'static', 'Producto.json')
+    with open(ruta_productos, 'w', encoding='utf-8') as f:
+        json.dump(productos, f, ensure_ascii=False, indent=4)
+
+
+@login_required
+@app.route('/agregar_producto_ajax', methods=['POST'])
+def agregar_producto_ajax():
+    data = request.get_json() or {}
+    nombre = (data.get('producto') or data.get('nombre') or '').strip()
+    unidad = (data.get('unidad') or '').strip()
+    tempF = (data.get('tempF') or data.get('temp') or '').strip()
+    api_obs = (data.get('api_obs') or data.get('API_OBS') or '').strip()
+
+    if not nombre:
+        return jsonify(success=False, message='El nombre del producto es obligatorio.'), 400
+
+    productos = cargar_productos()
+    if any(((p.get('PRODUCTO') or p.get('producto') or '').upper() == nombre.upper()) for p in productos):
+        return jsonify(success=False, message=f"El producto '{nombre}' ya existe."), 409
+
+    nuevo_producto = {
+        'PRODUCTO': nombre.upper(),
+        'UN': unidad.upper() if unidad else '',
+        'tempF': tempF,
+        'API_OBS': api_obs
+    }
+    productos.append(nuevo_producto)
+    productos.sort(key=lambda x: x.get('PRODUCTO', ''))
+    try:
+        guardar_productos(productos)
+    except Exception as e:
+        return jsonify(success=False, message=f'Error al guardar productos: {e}'), 500
+
+    # Guardar también en PostgreSQL si está configurado
+    try:
+        nombre_upper = nuevo_producto['PRODUCTO']
+        if 'Producto' in globals():
+            if not Producto.query.filter_by(producto=nombre_upper).first():
+                producto_db = Producto(
+                    producto=nombre_upper,
+                    unidad=nuevo_producto.get('UN') or None,
+                    tempF=nuevo_producto.get('tempF') or None,
+                    api_obs=nuevo_producto.get('API_OBS') or None
+                )
+                db.session.add(producto_db)
+                db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al guardar en la base de datos: {e}"), 500
+
+    return jsonify(success=True, message='Producto agregado exitosamente.', nuevo_producto=nuevo_producto)
+
+
+@login_required
+@app.route('/actualizar_producto_ajax', methods=['POST'])
+def actualizar_producto_ajax():
+    data = request.get_json() or {}
+    original = (data.get('original_producto') or '').strip()
+    nombre = (data.get('producto') or data.get('nombre') or '').strip()
+    unidad = (data.get('unidad') or '').strip()
+    tempF = (data.get('tempF') or data.get('temp') or '').strip()
+    api_obs = (data.get('api_obs') or data.get('API_OBS') or '').strip()
+
+    if not original or not nombre:
+        return jsonify(success=False, message='Campos obligatorios ausentes.'), 400
+
+    productos = cargar_productos()
+    original_upper = original.upper()
+    nombre_upper = nombre.upper()
+
+    idx = None
+    for i, p in enumerate(productos):
+        key = (p.get('PRODUCTO') or p.get('producto') or '').upper()
+        if key == original_upper:
+            idx = i
+            break
+
+    if idx is None:
+        return jsonify(success=False, message=f"No se encontró el producto '{original}'."), 404
+
+    # Verificar que no exista otro producto con el nuevo nombre
+    if nombre_upper != original_upper and any(((p.get('PRODUCTO') or p.get('producto') or '').upper() == nombre_upper) for p in productos):
+        return jsonify(success=False, message=f"Ya existe un producto con el nombre '{nombre}'."), 409
+
+    productos[idx]['PRODUCTO'] = nombre_upper
+    productos[idx]['UN'] = unidad.upper() if unidad else productos[idx].get('UN', '')
+    productos[idx]['tempF'] = tempF
+    productos[idx]['API_OBS'] = api_obs
+
+    productos.sort(key=lambda x: x.get('PRODUCTO', ''))
+    try:
+        guardar_productos(productos)
+    except Exception as e:
+        return jsonify(success=False, message=f'Error al actualizar productos: {e}'), 500
+
+    # Actualizar también en PostgreSQL si corresponde
+    try:
+        if 'Producto' in globals():
+            prod_db = Producto.query.filter_by(producto=original_upper).first()
+            if prod_db:
+                prod_db.producto = nombre_upper
+                prod_db.unidad = unidad.upper() if unidad else prod_db.unidad
+                prod_db.tempF = tempF or prod_db.tempF
+                prod_db.api_obs = api_obs or prod_db.api_obs
+            else:
+                # crear si no existe
+                prod_db = Producto(producto=nombre_upper, unidad=unidad.upper() if unidad else None, tempF=tempF or None, api_obs=api_obs or None)
+                db.session.add(prod_db)
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error al actualizar en la base de datos: {e}"), 500
+
+    actualizado = productos[idx]
+    return jsonify(success=True, message='Producto actualizado correctamente.', producto=actualizado)
 
 @login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])

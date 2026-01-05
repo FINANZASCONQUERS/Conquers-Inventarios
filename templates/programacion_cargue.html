@@ -61,15 +61,18 @@
                     </div>
                 </div>
                 <div class="col-md-6 text-end mt-3 mt-md-0">
-                    <div class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    <div class="d-flex justify-content-md-end align-items-center gap-2 flex-nowrap">
                         <span class="badge badge-modern badge-primary">
                             <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                         </span>
-                        <button id="btn-add-row" class="btn btn-sm btn-modern btn-outline-primary" type="button" title="Agregar nueva programación">
-                            <i class="fas fa-plus me-1"></i>Agregar
-                        </button>
                         <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-secondary" type="button">
                             <i class="fas fa-history me-1"></i>Ver historial
+                        </button>
+                        <button id="btn-sort-estado" class="btn btn-sm btn-modern btn-outline-secondary" type="button" title="Ordenar por estado">
+                            <i class="fas fa-sort-amount-down me-1"></i>Ordenar estados
+                        </button>
+                        <button id="btn-add-row" class="btn btn-sm btn-modern btn-primary" type="button" title="Agregar nueva programación">
+                            <i class="fas fa-plus me-1"></i>Agregar
                         </button>
                     </div>
                 </div>
@@ -304,7 +307,18 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         fetch(url)
             .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
             .then(data => {
+                // Guardar datos traídos desde el servidor
                 originalData = data;
+                // Si el usuario está editando (fila con clase editing-row o elemento activo dentro del tbody),
+                // no re-renderizamos para evitar perder datos en edición. Dejamos los datos en memoria para aplicar luego.
+                const currentlyEditing = tbody.querySelector('.editing-row') || tbody.contains(document.activeElement);
+                if (currentlyEditing) {
+                    // marcar que hay una actualización pendiente (se usa para que el usuario aplique el orden manualmente)
+                    const sortBtn = document.getElementById('btn-sort-estado');
+                    if (sortBtn) sortBtn.classList.add('btn-warning');
+                    return;
+                }
+
                 renderTable(data);
             })
             .catch(error => {
@@ -340,12 +354,23 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     function renderBody(data) {
         Array.from(despachadoLockTimers.keys()).forEach(cancelDespachadoTimer);
         tbody.innerHTML = '';
+        // Ordenar por estado: PROGRAMADO (blanco) arriba, CARGANDO (amarillo) segundo, DESPACHADO (verde) último
+        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'DESPACHADO': 2 };
+        const sortedData = data.slice().map((r, i) => ({ _origIndex: i, _row: r })).sort((a, b) => {
+            const ea = (a._row.estado || 'PROGRAMADO').toUpperCase();
+            const eb = (b._row.estado || 'PROGRAMADO').toUpperCase();
+            const oa = estadoOrder.hasOwnProperty(ea) ? estadoOrder[ea] : 3;
+            const ob = estadoOrder.hasOwnProperty(eb) ? estadoOrder[eb] : 3;
+            if (oa !== ob) return oa - ob;
+            // Mantener orden original entre mismos estados
+            return a._origIndex - b._origIndex;
+        }).map(x => x._row);
         if (data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="${allColumns.length + 2}" class="text-center py-4 text-muted">No hay programaciones que coincidan con los filtros.</td></tr>`;
             return;
         }
 
-        data.forEach((row, index) => {
+        sortedData.forEach((row, index) => {
             const despachadoDesdeAttr = row.despachado_bloqueado_desde || '';
             const despachadoBloqueadoAttr = row.despachado_bloqueado ? '1' : '0';
             let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" class="align-middle">`;
@@ -1161,18 +1186,71 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         });
     }
 
+    // Función para ordenar las filas ya cargadas en el DOM por estado (sin re-fetch)
+    function sortTableRows() {
+        const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+        if (rows.length === 0) return;
+        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'DESPACHADO': 2 };
+        rows.sort((a, b) => {
+            const ea = (a.dataset.estado || 'PROGRAMADO').toUpperCase();
+            const eb = (b.dataset.estado || 'PROGRAMADO').toUpperCase();
+            const oa = estadoOrder.hasOwnProperty(ea) ? estadoOrder[ea] : 3;
+            const ob = estadoOrder.hasOwnProperty(eb) ? estadoOrder[eb] : 3;
+            if (oa !== ob) return oa - ob;
+            // fallback: conservar orden actual
+            return 0;
+        });
+        // Reinserta en el tbody en el nuevo orden
+        rows.forEach(r => tbody.appendChild(r));
+        // Quitar indicador de pendiente
+        const sortBtn = document.getElementById('btn-sort-estado');
+        if (sortBtn) sortBtn.classList.remove('btn-warning');
+    }
+
+    // Conectar botón de ordenar
+    const btnSortEstado = document.getElementById('btn-sort-estado');
+    if (btnSortEstado) {
+        btnSortEstado.addEventListener('click', function() {
+            // Si hay datos en memoria (originalData) y no hay filas, renderizamos primero
+            const hasRows = tbody.querySelectorAll('tr[data-id]').length > 0;
+            if (!hasRows && originalData && originalData.length) {
+                renderTable(originalData);
+                return;
+            }
+            sortTableRows();
+        });
+    }
+
     // --- CARGA INICIAL ---
     fetchAndRender();
 
     // --- Botón para alternar historial ---
     toggleHistorialBtn.addEventListener('click', function() {
         mostrandoHistorialCompleto = !mostrandoHistorialCompleto;
-        fetchAndRender(mostrandoHistorialCompleto);
-        if (mostrandoHistorialCompleto) {
-            toggleHistorialBtn.innerHTML = '<i class="fas fa-list-ol me-1"></i> Ver solo recientes';
-        } else {
-            toggleHistorialBtn.innerHTML = '<i class="fas fa-history me-1"></i> Ver historial completo';
-        }
+        
+        // Deshabilitar botón y mostrar spinner
+        toggleHistorialBtn.disabled = true;
+        const originalHTML = toggleHistorialBtn.innerHTML;
+        toggleHistorialBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Cargando...';
+        
+        // Llamar a fetchAndRender y re-habilitar después
+        Promise.resolve(fetchAndRender(mostrandoHistorialCompleto))
+            .then(() => {
+                if (mostrandoHistorialCompleto) {
+                    toggleHistorialBtn.innerHTML = '<i class="fas fa-list-ol me-1"></i>Ver recientes';
+                    showToast('success', `Historial cargado: ${originalData.length} registros`);
+                } else {
+                    toggleHistorialBtn.innerHTML = '<i class="fas fa-history me-1"></i>Ver historial';
+                    showToast('info', `Mostrando registros recientes: ${originalData.length}`);
+                }
+            })
+            .catch(() => {
+                toggleHistorialBtn.innerHTML = originalHTML;
+                showToast('danger', 'Error al cargar historial');
+            })
+            .finally(() => {
+                toggleHistorialBtn.disabled = false;
+            });
     });
 
         // --- SUBIDA EXCEL ---
