@@ -1,2 +1,23 @@
+# --- Entornos Virtuales (La basura más pesada) ---
+venv/
+env/
+.venv/
+Scripts/
+Lib/
 
+# --- Python ---
+__pycache__/
+*.pyc
+
+# --- Base de Datos (Nunca se sube) ---
+*.sqlite3
+*.db
+
+# --- Archivos Multimedia Gigantes (Bloquéalos) ---
+*.mp4
+*.mov
+*.avi
+
+# --- Seguridad ---
 .env
+.venv-scipy/
