@@ -65,6 +65,10 @@
                         <span class="badge badge-modern badge-primary">
                             <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                         </span>
+                        <button id="toggle-activity-panel" class="btn btn-sm btn-modern btn-outline-info" type="button" title="Ver actividad en tiempo real">
+                            <i class="fas fa-users me-1"></i>
+                            <span class="badge bg-success rounded-circle" id="users-online-count" style="font-size: 0.6rem; padding: 0.2rem 0.4rem;">0</span>
+                        </button>
                         <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-secondary" type="button">
                             <i class="fas fa-history me-1"></i>Ver historial
                         </button>
@@ -91,6 +95,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Panel de Estado Refinery - Flotante -->
+    <div id="refinery-status-panel" class="refinery-status-panel">
+        <div class="refinery-panel-header">
+            <i class="fas fa-oil-can me-2"></i>
+            <span>Estado Refinery</span>
+            <button class="btn-close-panel" onclick="document.getElementById('refinery-status-panel').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="refinery-panel-body" id="refinery-panel-content">
+            <p class="text-muted text-center py-3">Cargando...</p>
+        </div>
+    </div>
+
+    <!-- Panel de Actividad en Tiempo Real -->
+    <div id="activity-panel" class="activity-panel" style="display: none;">
+        <div class="activity-panel-header">
+            <i class="fas fa-users me-2"></i>
+            <span>Usuarios Activos</span>
+            <button class="btn-close-panel" onclick="document.getElementById('activity-panel').style.display='none'">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="activity-panel-body" id="activity-panel-content">
+            <div id="active-users-list" class="active-users-list">
+                <p class="text-muted text-center py-3">Sin usuarios activos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón Flotante WhatsApp -->
+    <button id="btn-whatsapp-notify" class="btn-whatsapp-float" style="display: none;" title="Compartir por WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+        <span class="whatsapp-badge">0</span>
+    </button>
+
+    <!-- Botón Flotante para mostrar panel de estado -->
+    <button id="btn-toggle-refinery-panel" class="btn-refinery-panel-toggle" title="Ver estado Refinery">
+        <i class="fas fa-clipboard-check"></i>
+        <span class="refinery-panel-badge" style="display: none;">0</span>
+    </button>
 </div>
 
 <!-- Modal Upload Excel -->
@@ -120,6 +166,152 @@
             <div class="modal-footer">
                 <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button id="btn-upload-excel" class="btn btn-primary"><i class="fas fa-cloud-upload-alt me-1"></i>Subir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Historial Completo -->
+<div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-history me-3 fs-4"></i>
+                    <div>
+                        <h5 class="modal-title mb-0" id="historialModalLabel">Historial Completo de Programación</h5>
+                        <small class="opacity-75">Últimos 500 registros ordenados por fecha</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Barra de filtros -->
+                <div class="historial-filters-bar">
+                    <div class="container-fluid py-3">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">
+                                    <i class="fas fa-calendar-plus me-1"></i>Seleccionar Fechas
+                                </label>
+                                <div class="input-group input-group-sm">
+                                    <input type="date" id="filter-fecha-selector" class="form-control form-control-sm">
+                                    <button id="btn-add-fecha" class="btn btn-outline-primary btn-sm" type="button">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                                <div id="fechas-seleccionadas-container" class="mt-2 d-flex flex-wrap gap-1">
+                                    <!-- Aquí se agregarán los badges de fechas -->
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Estado</label>
+                                <select id="filter-estado" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    <option value="PROGRAMADO">Programado</option>
+                                    <option value="CARGANDO">Cargando</option>
+                                    <option value="DESPACHADO">Despachado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-semibold mb-1">Producto</label>
+                                <select id="filter-producto" class="form-select form-select-sm">
+                                    <option value="">Todos</option>
+                                    <option value="FUEL OIL 4">FUEL OIL 4</option>
+                                    <option value="FUEL OIL 6">FUEL OIL 6</option>
+                                    <option value="DILUYENTE">DILUYENTE</option>
+                                    <option value="MGO">MGO</option>
+                                    <option value="DIESEL MARINO">DIESEL MARINO</option>
+                                    <option value="VLSFO">VLSFO</option>
+                                    <option value="CRUDO">CRUDO</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Buscar Placa/Conductor</label>
+                                <input type="text" id="filter-search" class="form-control form-control-sm" placeholder="Buscar...">
+                            </div>
+                            <div class="col-md-2">
+                                <button id="btn-apply-historial-filters" class="btn btn-primary btn-sm w-100">
+                                    <i class="fas fa-filter me-1"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <div class="d-flex align-items-center gap-3">
+                                    <span class="badge bg-secondary" id="historial-total-badge">Total: 0 registros</span>
+                                    <button id="btn-clear-historial-filters" class="btn btn-link btn-sm text-decoration-none">
+                                        <i class="fas fa-times me-1"></i>Limpiar filtros
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenedor de tabla con scroll -->
+                <div class="historial-table-container">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover table-bordered mb-0">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th style="width: 100px;">Fecha Prog</th>
+                                    <th style="width: 120px;">Producto</th>
+                                    <th style="width: 80px;">Tipo Guía</th>
+                                    <th style="width: 90px;">Placa</th>
+                                    <th style="width: 150px;">Conductor</th>
+                                    <th style="width: 120px;">Cliente</th>
+                                    <th style="width: 100px;">Estado</th>
+                                    <th style="width: 90px;" class="text-end">Galones</th>
+                                    <th style="width: 90px;" class="text-end">Barriles</th>
+                                    <th style="width: 100px;">Fecha Desp</th>
+                                    <th style="width: 100px;">N° Guía</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historial-table-body">
+                                <tr>
+                                    <td colspan="12" class="text-center py-5">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">Cargando historial...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Paginación -->
+                <div class="historial-pagination-bar">
+                    <div class="container-fluid py-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <span class="text-muted small">Mostrando <span id="historial-showing-from">0</span>-<span id="historial-showing-to">0</span> de <span id="historial-showing-total">0</span></span>
+                            </div>
+                            <div class="col-md-8 text-end">
+                                <div class="btn-group" role="group">
+                                    <button id="btn-historial-first" class="btn btn-outline-secondary btn-sm" title="Primera página">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </button>
+                                    <button id="btn-historial-prev" class="btn btn-outline-secondary btn-sm" title="Página anterior">
+                                        <i class="fas fa-angle-left"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-sm" disabled>
+                                        Página <span id="historial-current-page">1</span> de <span id="historial-total-pages">1</span>
+                                    </button>
+                                    <button id="btn-historial-next" class="btn btn-outline-secondary btn-sm" title="Página siguiente">
+                                        <i class="fas fa-angle-right"></i>
+                                    </button>
+                                    <button id="btn-historial-last" class="btn btn-outline-secondary btn-sm" title="Última página">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -220,13 +412,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const despachadoLockTimers = new Map();
 
     const permissions = {
-        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'ops@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         // Ignacio ahora con todos los campos como Samantha/logistic
-        'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     };
 
@@ -235,7 +427,13 @@ document.addEventListener('DOMContentLoaded', function() {
         'producto_a_cargar': { 
             width: '120px', 
             type: 'datalist',
-            options: ['FUEL OIL 4','FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO']
+            options: ['FUEL OIL 4', 'FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO'],
+            normalize: true  // Activar normalización automática
+        },
+        'tipo_guia': { 
+            width: '100px', 
+            type: 'select', 
+            options: ['Física', 'Digital']
         },
         'cliente': { width: '180px' },
         'destino': { width: '150px' },
@@ -337,7 +535,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         let headerHtml = '<tr class="align-middle">';
         let filterHtml = '<tr id="filter-row" class="align-middle">';
         // Agregar columna de numeración
-        headerHtml += `<th style="width: 50px; min-width: 50px" class="text-center">#</th>`;
+        headerHtml += `<th style="width: 70px; min-width: 70px" class="text-center">#</th>`;
         filterHtml += '<th class="text-center">#</th>';
         allColumns.forEach(col => {
             const config = columnsConfig[col];
@@ -373,9 +571,55 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         sortedData.forEach((row, index) => {
             const despachadoDesdeAttr = row.despachado_bloqueado_desde || '';
             const despachadoBloqueadoAttr = row.despachado_bloqueado ? '1' : '0';
-            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" class="align-middle">`;
-            // Agregar número de fila
-            rowHtml += `<td class="text-center fw-bold text-primary" style="min-width: 50px; background: #f8f9fc; border-right: 2px solid #6c757d;">${index + 1}</td>`;
+            
+            // Calcular estado de completitud de Refinery
+            const refineriaCamposConfig = {
+                'estado': 'Estado',
+                'galones': 'Galones',
+                'barriles': 'Barriles',
+                'temperatura': 'Temperatura',
+                'api_obs': 'API Obs',
+                'api_corregido': 'API Corregido',
+                'precintos': 'Precintos',
+                'fecha_despacho': 'Fecha Despacho'
+            };
+            const refineriaCampos = Object.keys(refineriaCamposConfig);
+            const camposFaltantes = refineriaCampos.filter(campo => !row[campo] || row[campo] === '' || row[campo] === 0);
+            const camposCompletos = refineriaCampos.length - camposFaltantes.length;
+            const totalCampos = refineriaCampos.length;
+            const refineriaCompleto = camposFaltantes.length === 0;
+            
+            // Crear tooltip con campos faltantes
+            let tooltipText = '';
+            if (refineriaCompleto) {
+                tooltipText = '✅ Refinery completó todos sus campos';
+            } else if (camposFaltantes.length > 0) {
+                tooltipText = `⏳ Faltan ${camposFaltantes.length} campo(s):\n`;
+                camposFaltantes.forEach(campo => {
+                    tooltipText += `• ${refineriaCamposConfig[campo]}\n`;
+                });
+            }
+            
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" class="align-middle">`;
+            
+            // Agregar número de fila con badge discreto de Refinery
+            let refineryBadge = '';
+            if (refineriaCompleto) {
+                refineryBadge = '<span class="refinery-badge-complete" title="✅ Refinery completó todos sus campos"><i class="fas fa-check-circle"></i></span>';
+            } else if (camposFaltantes.length > 0) {
+                // Badge informativo con tooltip
+                refineryBadge = `<span class="refinery-badge-pending" data-bs-toggle="tooltip" data-bs-html="true" title="${tooltipText.replace(/\n/g, '<br>')}" data-bs-placement="right">
+                    <i class="fas fa-info-circle"></i>
+                    <span class="badge bg-warning text-dark badge-mini">${camposFaltantes.length}</span>
+                </span>`;
+            }
+            rowHtml += `<td class="text-center fw-bold number-cell" style="min-width: 70px; background: #f8f9fc; border-right: 2px solid #6c757d; position: relative;">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <span class="text-primary">${index + 1}</span>
+                                ${refineryBadge}
+                            </div>
+                        </td>`;
+            
             allColumns.forEach(col => {
                 const config = columnsConfig[col];
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
@@ -387,11 +631,25 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 if (config.type === 'datalist' && finalEditable) {
                     rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
                                     ${lockBadge}
-                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}">
+                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
+                                </td>`;
+                } else if (config.type === 'select' && finalEditable) {
+                    // Renderizar un SELECT para tipo_guia y otros campos select
+                    const options = config.options || [];
+                    let selectHtml = `<select class="form-select form-select-sm border-0 bg-transparent editable-select" data-col="${col}">`;
+                    selectHtml += `<option value="">Seleccionar...</option>`;
+                    options.forEach(opt => {
+                        const selected = value === opt ? 'selected' : '';
+                        selectHtml += `<option value="${opt}" ${selected}>${opt}</option>`;
+                    });
+                    selectHtml += '</select>';
+                    rowHtml += `<td data-field="${col}" data-type="select" class="position-relative">
+                                    ${lockBadge}
+                                    ${selectHtml}
                                 </td>`;
                 } else {
                     if(finalEditable){
-                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true">${formatCellValue(value, config)}</span></td>`;
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true" data-col="${col}">${formatCellValue(value, config)}</span></td>`;
                     } else {
                         rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
                     }
@@ -454,6 +712,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             'numero_guia': 'N° GUIA',
             'producto_a_cargar': 'PRODUCTO',
             'nombre_conductor': 'CONDUCTOR',
+            'tipo_guia': 'TIPO GUIA',
             'cedula_conductor': 'CÉDULA',
             'celular_conductor': 'CELULAR',
             'api_corregido': 'API CORR'
@@ -518,6 +777,14 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             liberarLock(td);
         }
     }, true);
+
+    // Guardar automáticamente cuando cambia un select (tipo_guia, estado, etc.)
+    tbody.addEventListener('change', function(e) {
+        if (e.target.classList.contains('editable-select')) {
+            const td = e.target.closest('td[data-field]');
+            autosaveCell(td);
+        }
+    });
 
     // Quitar resaltado de fila cuando se pierde el foco
     tbody.addEventListener('focusout', function(e) {
@@ -911,9 +1178,12 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         let value;
 
         const input = cell.querySelector('input.editable-input');
+        const select = cell.querySelector('select.editable-select');
         const span = cell.querySelector('.cell-editor');
         if (input) {
             value = input.value.trim();
+        } else if (select) {
+            value = select.value;
         } else if (span) {
             value = span.textContent.trim();
         } else {
@@ -1221,41 +1491,369 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         });
     }
 
+    // --- SISTEMA DE NOTIFICACIÓN REFINERY ---
+    function actualizarEstadoRefinery() {
+        const filasCompletas = [];
+        const tbody = document.getElementById('schedule-table-body');
+        const rows = tbody.querySelectorAll('tr[data-id]');
+        
+        rows.forEach(row => {
+            // Verificar el atributo data-refinery-completo del tr
+            const refineriaCompleto = row.dataset.refineriaCompleto === 'true';
+            if (refineriaCompleto) {
+                const id = row.dataset.id;
+                // Mejorar obtención de placa
+                const placaCell = row.querySelector('[data-field="placa"]');
+                const placa = placaCell?.querySelector('.cell-editor')?.textContent.trim() || 
+                             placaCell?.textContent.trim() || 'N/A';
+                
+                // Mejorar obtención de producto
+                const productoCell = row.querySelector('[data-field="producto_a_cargar"]');
+                const producto = productoCell?.querySelector('input')?.value || 
+                                productoCell?.querySelector('.cell-editor')?.textContent.trim() ||
+                                productoCell?.textContent.trim() || 'N/A';
+                
+                // Mejorar obtención de galones
+                const galonesCell = row.querySelector('[data-field="galones"]');
+                const galones = galonesCell?.querySelector('.cell-editor')?.textContent.trim() || 
+                               galonesCell?.textContent.trim() || '0';
+                filasCompletas.push({ id, placa, producto, galones });
+            }
+        });
+
+        console.log('Filas completas detectadas:', filasCompletas.length, filasCompletas);
+
+        // Actualizar badge del botón WhatsApp
+        const btnWhatsApp = document.getElementById('btn-whatsapp-notify');
+        const whatsappBadge = btnWhatsApp.querySelector('.whatsapp-badge');
+        
+        if (filasCompletas.length > 0) {
+            btnWhatsApp.style.display = 'flex';
+            whatsappBadge.textContent = filasCompletas.length;
+        } else {
+            btnWhatsApp.style.display = 'none';
+        }
+
+        // Actualizar badge del panel
+        const btnPanel = document.getElementById('btn-toggle-refinery-panel');
+        const panelBadge = btnPanel.querySelector('.refinery-panel-badge');
+        if (filasCompletas.length > 0) {
+            panelBadge.style.display = 'block';
+            panelBadge.textContent = filasCompletas.length;
+        } else {
+            panelBadge.style.display = 'none';
+        }
+
+        // Actualizar contenido del panel
+        actualizarPanelRefinery(filasCompletas);
+
+        // Guardar para uso en WhatsApp
+        window.refineryFilasCompletas = filasCompletas;
+    }
+
+    function actualizarPanelRefinery(filasCompletas) {
+        const panelContent = document.getElementById('refinery-panel-content');
+        
+        if (filasCompletas.length === 0) {
+            panelContent.innerHTML = '<p class="text-muted text-center py-3"><i class="fas fa-info-circle me-2"></i>No hay registros completados por Refinery</p>';
+            return;
+        }
+
+        let html = '<div class="refinery-items-list">';
+        filasCompletas.forEach((fila, index) => {
+            html += `
+                <div class="refinery-item">
+                    <div class="refinery-item-header">
+                        <span class="refinery-item-number">#${index + 1}</span>
+                        <span class="refinery-item-placa"><i class="fas fa-truck me-1"></i>${fila.placa}</span>
+                    </div>
+                    <div class="refinery-item-details">
+                        <div><strong>Producto:</strong> ${fila.producto}</div>
+                        <div><strong>Galones:</strong> ${fila.galones}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        panelContent.innerHTML = html;
+    }
+
+    function generarMensajeWhatsApp() {
+        const filasCompletas = window.refineryFilasCompletas || [];
+        
+        if (filasCompletas.length === 0) {
+            showToast('info', 'No hay registros completados para notificar');
+            return;
+        }
+
+        let mensaje = '🔔 *Notificación Programación de Cargue*\n\n';
+        mensaje += '✅ Refinery ha completado los siguientes registros:\n\n';
+        
+        filasCompletas.forEach((fila, index) => {
+            mensaje += `${index + 1}. 🚛 *Placa:* ${fila.placa}\n`;
+            mensaje += `   📦 *Producto:* ${fila.producto}\n`;
+            mensaje += `   ⛽ *Galones:* ${fila.galones}\n\n`;
+        });
+        
+        mensaje += `📊 *Total:* ${filasCompletas.length} vehículo(s) listo(s)\n`;
+        mensaje += `🕐 *Fecha:* ${new Date().toLocaleString('es-CO')}\n\n`;
+        mensaje += '_Sistema de Gestión Conquers Trading_';
+
+        // Codificar mensaje para URL
+        const mensajeCodificado = encodeURIComponent(mensaje);
+        
+        // Abrir WhatsApp Web con el mensaje pre-formateado
+        const whatsappUrl = `https://wa.me/?text=${mensajeCodificado}`;
+        window.open(whatsappUrl, '_blank');
+        
+        showToast('success', '¡Mensaje de WhatsApp preparado!');
+    }
+
+    // Event listener para botón de WhatsApp
+    document.getElementById('btn-whatsapp-notify').addEventListener('click', generarMensajeWhatsApp);
+
+    // Event listener para botón del panel
+    document.getElementById('btn-toggle-refinery-panel').addEventListener('click', function() {
+        const panel = document.getElementById('refinery-status-panel');
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    });
+
+    // Actualizar estado después de cada renderizado
+    const originalRenderBody = renderBody;
+    renderBody = function(data) {
+        originalRenderBody(data);
+        // Inicializar tooltips de Bootstrap
+        setTimeout(() => {
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+            actualizarEstadoRefinery();
+        }, 100);
+    };
+
     // --- CARGA INICIAL ---
     fetchAndRender();
 
-    // --- Botón para alternar historial ---
+    // --- MODAL DE HISTORIAL ---
+    let historialData = [];
+    let historialFiltered = [];
+    let historialCurrentPage = 1;
+    const historialPageSize = 50;
+
+    // Botón para alternar historial ahora abre el modal
     toggleHistorialBtn.addEventListener('click', function() {
-        mostrandoHistorialCompleto = !mostrandoHistorialCompleto;
-        
-        // Deshabilitar botón y mostrar spinner
-        toggleHistorialBtn.disabled = true;
-        const originalHTML = toggleHistorialBtn.innerHTML;
-        toggleHistorialBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Cargando...';
-        
-        // Llamar a fetchAndRender y re-habilitar después
-        Promise.resolve(fetchAndRender(mostrandoHistorialCompleto))
-            .then(() => {
-                if (mostrandoHistorialCompleto) {
-                    toggleHistorialBtn.innerHTML = '<i class="fas fa-list-ol me-1"></i>Ver recientes';
-                    showToast('success', `Historial cargado: ${originalData.length} registros`);
-                } else {
-                    toggleHistorialBtn.innerHTML = '<i class="fas fa-history me-1"></i>Ver historial';
-                    showToast('info', `Mostrando registros recientes: ${originalData.length}`);
-                }
-            })
-            .catch(() => {
-                toggleHistorialBtn.innerHTML = originalHTML;
-                showToast('danger', 'Error al cargar historial');
-            })
-            .finally(() => {
-                toggleHistorialBtn.disabled = false;
-            });
+        const modal = new bootstrap.Modal(document.getElementById('historialModal'));
+        modal.show();
+        cargarHistorialModal();
     });
 
-        // --- SUBIDA EXCEL ---
-        const btnUploadExcel = document.getElementById('btn-upload-excel');
-        btnUploadExcel.addEventListener('click', function(){
+    function cargarHistorialModal() {
+        const tbody = document.getElementById('historial-table-body');
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3 text-muted">Cargando historial...</p>
+        </td></tr>`;
+        
+        fetch("{{ url_for('handle_programacion') }}?all=1")
+            .then(res => res.json())
+            .then(data => {
+                historialData = data;
+                historialFiltered = data;
+                historialCurrentPage = 1;
+                renderHistorialTable();
+            })
+            .catch(error => {
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-3 text-danger">Error al cargar historial</td></tr>`;
+            });
+    }
+
+    function renderHistorialTable() {
+        const tbody = document.getElementById('historial-table-body');
+        const start = (historialCurrentPage - 1) * historialPageSize;
+        const end = start + historialPageSize;
+        const pageData = historialFiltered.slice(start, end);
+        
+        if (pageData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">No hay registros que coincidan con los filtros</td></tr>';
+        } else {
+            tbody.innerHTML = '';
+            pageData.forEach((row, index) => {
+                const globalIndex = start + index + 1;
+                const estadoClass = row.estado === 'DESPACHADO' ? 'bg-success-subtle' : 
+                                   row.estado === 'CARGANDO' ? 'bg-warning-subtle' : '';
+                const estadoBadge = row.estado === 'DESPACHADO' ? 'success' : 
+                                   row.estado === 'CARGANDO' ? 'warning' : 'secondary';
+                
+                const tr = document.createElement('tr');
+                tr.className = estadoClass;
+                tr.innerHTML = `
+                    <td class="text-center fw-bold">${globalIndex}</td>
+                    <td>${row.fecha_programacion ? new Date(row.fecha_programacion + 'T00:00:00').toLocaleDateString('es-CO') : '-'}</td>
+                    <td>${row.producto_a_cargar || '-'}</td>
+                    <td>${row.tipo_guia || '-'}</td>
+                    <td>${row.placa || '-'}</td>
+                    <td>${row.nombre_conductor || '-'}</td>
+                    <td>${row.cliente || '-'}</td>
+                    <td><span class="badge bg-${estadoBadge}">${row.estado || 'PROGRAMADO'}</span></td>
+                    <td class="text-end">${row.galones ? Number(row.galones).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td class="text-end">${row.barriles ? Number(row.barriles).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${row.fecha_despacho ? new Date(row.fecha_despacho + 'T00:00:00').toLocaleDateString('es-CO') : '-'}</td>
+                    <td>${row.numero_guia || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        // Actualizar controles de paginación
+        const totalPages = Math.ceil(historialFiltered.length / historialPageSize);
+        document.getElementById('historial-current-page').textContent = historialCurrentPage;
+        document.getElementById('historial-total-pages').textContent = totalPages;
+        document.getElementById('historial-showing-from').textContent = historialFiltered.length > 0 ? start + 1 : 0;
+        document.getElementById('historial-showing-to').textContent = Math.min(end, historialFiltered.length);
+        document.getElementById('historial-showing-total').textContent = historialFiltered.length;
+        document.getElementById('historial-total-badge').textContent = `Total: ${historialFiltered.length} registros`;
+        
+        // Habilitar/deshabilitar botones de paginación
+        document.getElementById('btn-historial-first').disabled = historialCurrentPage === 1;
+        document.getElementById('btn-historial-prev').disabled = historialCurrentPage === 1;
+        document.getElementById('btn-historial-next').disabled = historialCurrentPage === totalPages || totalPages === 0;
+        document.getElementById('btn-historial-last').disabled = historialCurrentPage === totalPages || totalPages === 0;
+    }
+
+    // Array para almacenar fechas seleccionadas
+    let fechasSeleccionadas = [];
+
+    // Agregar fecha al filtro
+    document.getElementById('btn-add-fecha').addEventListener('click', function() {
+        const fechaInput = document.getElementById('filter-fecha-selector');
+        const fecha = fechaInput.value;
+        
+        if (!fecha) {
+            showToast('warning', 'Selecciona una fecha');
+            return;
+        }
+        
+        if (fechasSeleccionadas.includes(fecha)) {
+            showToast('info', 'Esta fecha ya está seleccionada');
+            return;
+        }
+        
+        fechasSeleccionadas.push(fecha);
+        renderFechasSeleccionadas();
+        fechaInput.value = '';
+    });
+
+    // Enter en el input de fecha también agrega
+    document.getElementById('filter-fecha-selector').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('btn-add-fecha').click();
+        }
+    });
+
+    function renderFechasSeleccionadas() {
+        const container = document.getElementById('fechas-seleccionadas-container');
+        
+        if (fechasSeleccionadas.length === 0) {
+            container.innerHTML = '<small class="text-muted">Sin fechas seleccionadas</small>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        fechasSeleccionadas.forEach(fecha => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary d-flex align-items-center gap-1';
+            badge.style.fontSize = '0.75rem';
+            badge.innerHTML = `
+                ${new Date(fecha + 'T00:00:00').toLocaleDateString('es-CO')}
+                <i class="fas fa-times cursor-pointer" onclick="removeFecha('${fecha}')"></i>
+            `;
+            container.appendChild(badge);
+        });
+    }
+
+    // Función global para remover fecha
+    window.removeFecha = function(fecha) {
+        fechasSeleccionadas = fechasSeleccionadas.filter(f => f !== fecha);
+        renderFechasSeleccionadas();
+    };
+
+    // Aplicar filtros del historial
+    document.getElementById('btn-apply-historial-filters').addEventListener('click', function() {
+        const estado = document.getElementById('filter-estado').value;
+        const producto = document.getElementById('filter-producto').value;
+        const search = document.getElementById('filter-search').value.toLowerCase();
+        
+        historialFiltered = historialData.filter(row => {
+            let match = true;
+            
+            // Filtro por fechas seleccionadas (si hay alguna)
+            if (fechasSeleccionadas.length > 0 && row.fecha_programacion) {
+                match = match && fechasSeleccionadas.includes(row.fecha_programacion);
+            }
+            
+            if (estado) {
+                match = match && (row.estado || 'PROGRAMADO') === estado;
+            }
+            if (producto) {
+                match = match && row.producto_a_cargar === producto;
+            }
+            if (search) {
+                const placa = (row.placa || '').toLowerCase();
+                const conductor = (row.nombre_conductor || '').toLowerCase();
+                match = match && (placa.includes(search) || conductor.includes(search));
+            }
+            
+            return match;
+        });
+        
+        historialCurrentPage = 1;
+        renderHistorialTable();
+    });
+
+    // Limpiar filtros
+    document.getElementById('btn-clear-historial-filters').addEventListener('click', function() {
+        document.getElementById('filter-fecha-selector').value = '';
+        fechasSeleccionadas = [];
+        renderFechasSeleccionadas();
+        document.getElementById('filter-estado').value = '';
+        document.getElementById('filter-producto').value = '';
+        document.getElementById('filter-search').value = '';
+        historialFiltered = historialData;
+        historialCurrentPage = 1;
+        renderHistorialTable();
+    });
+
+    // Botones de paginación
+    document.getElementById('btn-historial-first').addEventListener('click', function() {
+        historialCurrentPage = 1;
+        renderHistorialTable();
+    });
+    
+    document.getElementById('btn-historial-prev').addEventListener('click', function() {
+        if (historialCurrentPage > 1) {
+            historialCurrentPage--;
+            renderHistorialTable();
+        }
+    });
+    
+    document.getElementById('btn-historial-next').addEventListener('click', function() {
+        const totalPages = Math.ceil(historialFiltered.length / historialPageSize);
+        if (historialCurrentPage < totalPages) {
+            historialCurrentPage++;
+            renderHistorialTable();
+        }
+    });
+    
+    document.getElementById('btn-historial-last').addEventListener('click', function() {
+        const totalPages = Math.ceil(historialFiltered.length / historialPageSize);
+        historialCurrentPage = totalPages;
+        renderHistorialTable();
+    });
+
+    // --- SUBIDA EXCEL ---
+    const btnUploadExcel = document.getElementById('btn-upload-excel');
+    btnUploadExcel.addEventListener('click', function(){
                 const form = document.getElementById('form-upload-programacion');
                 const fileInput = form.querySelector('input[type="file"]');
                 if(!fileInput.files.length){
@@ -1334,6 +1932,390 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 this.value = '';
             });
         });
+
+    // ==========================================
+    // SISTEMA DE PRESENCIA EN TIEMPO REAL
+    // ==========================================
+    
+    let activityPollingInterval = null;
+    let isUserEditing = false;
+    let currentEditingCell = null;
+    let activeUsers = {};  // {username: {editing_row: id, editing_column: col, last_seen: timestamp}}
+    
+    // Toggle del panel de actividad
+    const toggleActivityBtn = document.getElementById('toggle-activity-panel');
+    const activityPanel = document.getElementById('activity-panel');
+    
+    toggleActivityBtn.addEventListener('click', function() {
+        if (activityPanel.style.display === 'none' || !activityPanel.style.display) {
+            activityPanel.style.display = 'block';
+            updateActivityPanel();
+        } else {
+            activityPanel.style.display = 'none';
+        }
+    });
+    
+    // Prevenir edición de campos bloqueados
+    tbody.addEventListener('click', function(e) {
+        const td = e.target.closest('td');
+        if (td && td.classList.contains('cell-locked')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const lockedBy = td.getAttribute('data-locked-by');
+            const userName = Object.entries(activeUsers).find(([email, _]) => email === lockedBy)?.[1]?.name || 'Otro usuario';
+            showToast('warning', `🔒 ${userName} está editando este campo. Espera a que termine.`);
+            return false;
+        }
+    }, true);
+    
+    // Prevenir focus en campos bloqueados
+    tbody.addEventListener('focusin', function(e) {
+        const td = e.target.closest('td');
+        if (td && td.classList.contains('cell-locked')) {
+            e.preventDefault();
+            e.target.blur();
+            const lockedBy = td.getAttribute('data-locked-by');
+            const userName = Object.entries(activeUsers).find(([email, _]) => email === lockedBy)?.[1]?.name || 'Otro usuario';
+            showToast('warning', `🔒 ${userName} está editando este campo.`);
+            return false;
+        }
+    }, true);
+    
+    // Throttle para no enviar cada tecla
+    let presenceThrottle = null;
+    
+    // Detectar cuando el usuario está editando (evita actualizaciones)
+    tbody.addEventListener('focusin', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('cell-editor')) {
+            isUserEditing = true;
+            currentEditingCell = e.target;
+            
+            // Enviar presencia al servidor
+            const row = e.target.closest('tr');
+            const col = e.target.dataset.col || e.target.closest('td')?.dataset.field;
+            if (row && col) {
+                updatePresence(row.dataset.id, col);
+            }
+        }
+    });
+    
+    // Enviar contenido mientras se escribe (throttled a cada 300ms)
+    tbody.addEventListener('input', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('cell-editor')) {
+            const row = e.target.closest('tr');
+            const col = e.target.dataset.col || e.target.closest('td')?.dataset.field;
+            
+            if (row && col) {
+                // Cancelar throttle anterior
+                if (presenceThrottle) clearTimeout(presenceThrottle);
+                
+                // Enviar después de 300ms sin escribir
+                presenceThrottle = setTimeout(() => {
+                    let currentValue = '';
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        currentValue = e.target.value;
+                    } else if (e.target.classList.contains('cell-editor')) {
+                        currentValue = e.target.textContent;
+                    }
+                    updatePresence(row.dataset.id, col, currentValue);
+                }, 300);
+            }
+        }
+    });
+    
+    // También para cambios en select
+    tbody.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT' && e.target.classList.contains('editable-select')) {
+            const row = e.target.closest('tr');
+            const col = e.target.dataset.col || e.target.closest('td')?.dataset.field;
+            if (row && col) {
+                updatePresence(row.dataset.id, col, e.target.value);
+            }
+        }
+    });
+    
+    tbody.addEventListener('focusout', function(e) {
+        if (e.target === currentEditingCell) {
+            setTimeout(() => {
+                // Solo marcar como no editando si realmente salió del tbody
+                if (!tbody.contains(document.activeElement)) {
+                    isUserEditing = false;
+                    currentEditingCell = null;
+                    updatePresence(null, null);  // Clear presence
+                }
+            }, 100);
+        }
+    });
+    
+    // Enviar presencia al servidor con el contenido actual
+    function updatePresence(rowId, column, currentValue = null) {
+        const data = {
+            user: userName,
+            email: userEmail,
+            editing_row: rowId,
+            editing_column: column,
+            current_value: currentValue,
+            timestamp: Date.now()
+        };
+        
+        fetch('/api/programacion/presence', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).catch(err => console.log('Error updating presence:', err));
+    }
+    
+    // Obtener presencia de otros usuarios
+    function fetchPresence() {
+        // Solo actualizar si el usuario NO está editando
+        if (isUserEditing) {
+            return;
+        }
+        
+        fetch('/api/programacion/presence')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    activeUsers = data.users;
+                    updateOnlineCount();
+                    updateActivityPanel();
+                    updateCellIndicators();
+                }
+            })
+            .catch(err => console.log('Error fetching presence:', err));
+    }
+    
+    // Actualizar contador de usuarios en línea
+    function updateOnlineCount() {
+        const count = Object.keys(activeUsers).length;
+        const badge = document.getElementById('users-online-count');
+        if (badge) {
+            badge.textContent = count;
+            badge.className = count > 0 ? 'badge bg-success rounded-circle' : 'badge bg-secondary rounded-circle';
+        }
+    }
+    
+    // Actualizar panel de actividad
+    function updateActivityPanel() {
+        const container = document.getElementById('active-users-list');
+        if (!container) return;
+        
+        const users = Object.entries(activeUsers).filter(([email, _]) => email !== userEmail);
+        
+        if (users.length === 0) {
+            container.innerHTML = '<p class="text-muted text-center py-3">Sin usuarios activos</p>';
+            return;
+        }
+        
+        let html = '';
+        users.forEach(([email, info]) => {
+            const initials = info.name ? info.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
+            const editingText = info.editing_row && info.editing_column 
+                ? `Editando: ${formatColumnName(info.editing_column)}`
+                : 'Navegando';
+            
+            // NUEVO: Mostrar preview del contenido
+            const previewText = info.current_value && info.current_value.trim()
+                ? `<div class="user-preview" title="Contenido actual">\ud83d\udcdd "${info.current_value}"</div>`
+                : '';
+            
+            html += `
+                <div class="active-user-item">
+                    <div class="active-user-header">
+                        <div class="user-avatar">${initials}</div>
+                        <div class="user-info">
+                            <div class="user-name">${info.name || email}</div>
+                            <div class="user-editing">
+                                ${info.editing_row ? '<span class="editing-indicator"></span>' : ''}
+                                ${editingText}
+                            </div>
+                            ${previewText}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    // Actualizar indicadores en las celdas y filas
+    function updateCellIndicators() {
+        // Remover indicadores existentes
+        document.querySelectorAll('.cell-editing-indicator').forEach(el => el.remove());
+        document.querySelectorAll('.row-editor-badge').forEach(el => el.remove());
+        tbody.querySelectorAll('tr.row-being-edited').forEach(row => {
+            row.classList.remove('row-being-edited');
+        });
+        
+        // Primero desbloquear todas las celdas
+        tbody.querySelectorAll('td[data-locked-by]').forEach(td => {
+            td.removeAttribute('data-locked-by');
+            td.classList.remove('cell-locked');
+            const editableElement = td.querySelector('.cell-editor') || 
+                                  td.querySelector('input.editable-input') || 
+                                  td.querySelector('select.editable-select');
+            if (editableElement) {
+                if (editableElement.tagName === 'INPUT' || editableElement.tagName === 'TEXTAREA' || editableElement.tagName === 'SELECT') {
+                    editableElement.disabled = false;
+                } else if (editableElement.classList.contains('cell-editor')) {
+                    editableElement.contentEditable = 'true';
+                }
+                editableElement.style.cursor = '';
+                editableElement.style.opacity = '';
+                editableElement.style.color = '';
+                editableElement.style.fontWeight = '';
+            }
+        });
+        
+        // Agregar nuevos indicadores y bloqueos
+        Object.entries(activeUsers).forEach(([email, info]) => {
+            if (email === userEmail) return;  // No mostrar mi propia edición
+            if (!info.editing_row || !info.editing_column) return;
+            
+            const row = tbody.querySelector(`tr[data-id="${info.editing_row}"]`);
+            if (!row) return;
+            
+            // Marcar la fila completa como siendo editada
+            row.classList.add('row-being-edited');
+            
+            // Agregar badge con nombre del usuario en la primera celda
+            const firstCell = row.querySelector('td');
+            if (firstCell && !row.querySelector('.row-editor-badge')) {
+                const badge = document.createElement('div');
+                badge.className = 'row-editor-badge';
+                badge.innerHTML = `
+                    <i class="fas fa-pen"></i>
+                    <span>${info.name || 'Usuario'}</span>
+                    <small style="opacity: 0.8">· ${formatColumnName(info.editing_column)}</small>
+                `;
+                badge.title = `${info.name || email} está editando ${formatColumnName(info.editing_column)}`;
+                
+                firstCell.style.position = 'relative';
+                firstCell.appendChild(badge);
+            }
+            
+            // Buscar la celda específica que está siendo editada
+            const cell = row.querySelector(`[data-col="${info.editing_column}"]`);
+            let targetTd = null;
+            
+            if (!cell) {
+                targetTd = row.querySelector(`td[data-field="${info.editing_column}"]`);
+            } else {
+                targetTd = cell.closest('td');
+            }
+            
+            if (targetTd && !targetTd.querySelector('.cell-editing-indicator')) {
+                // Indicador de lápiz
+                const indicator = document.createElement('div');
+                indicator.className = 'cell-editing-indicator';
+                indicator.innerHTML = `<i class="fas fa-lock" style="font-size: 0.6rem;"></i>`;
+                indicator.title = `${info.name || email} está editando - Campo bloqueado`;
+                
+                targetTd.style.position = 'relative';
+                targetTd.appendChild(indicator);
+                
+                // BLOQUEO PREVENTIVO: Deshabilitar el campo para otros usuarios
+                targetTd.setAttribute('data-locked-by', email);
+                targetTd.classList.add('cell-locked');
+                
+                const editableElement = targetTd.querySelector('.cell-editor') || 
+                                      targetTd.querySelector('input.editable-input') || 
+                                      targetTd.querySelector('select.editable-select');
+                
+                if (editableElement) {
+                    // Deshabilitar el elemento
+                    if (editableElement.tagName === 'INPUT' || editableElement.tagName === 'TEXTAREA' || editableElement.tagName === 'SELECT') {
+                        editableElement.disabled = true;
+                        editableElement.title = `🔒 ${info.name || 'Otro usuario'} está editando este campo`;
+                    } else if (editableElement.classList.contains('cell-editor')) {
+                        editableElement.contentEditable = 'false';
+                        editableElement.title = `🔒 ${info.name || 'Otro usuario'} está editando este campo`;
+                    }
+                    editableElement.style.cursor = 'not-allowed';
+                    editableElement.style.opacity = '0.7';
+                    
+                    // Actualizar contenido en tiempo real
+                    if (info.current_value !== null && info.current_value !== undefined) {
+                        if (editableElement.tagName === 'INPUT' || editableElement.tagName === 'TEXTAREA') {
+                            editableElement.value = info.current_value;
+                        } else if (editableElement.tagName === 'SELECT') {
+                            editableElement.value = info.current_value;
+                        } else if (editableElement.classList.contains('cell-editor')) {
+                            editableElement.textContent = info.current_value;
+                        }
+                        editableElement.style.color = '#667eea';
+                        editableElement.style.fontWeight = '500';
+                    }
+                } else {
+                    // Si no hay elemento editable, marcar la celda como bloqueada
+                    targetTd.style.cursor = 'not-allowed';
+                    targetTd.style.opacity = '0.7';
+                    targetTd.title = `🔒 ${info.name || 'Otro usuario'} está editando este campo`;
+                    
+                    // Actualizar contenido visual
+                    if (info.current_value !== null && info.current_value !== undefined) {
+                        const existingContent = targetTd.textContent.trim();
+                        if (!targetTd.dataset.originalContent) {
+                            targetTd.dataset.originalContent = existingContent;
+                        }
+                        targetTd.style.color = '#667eea';
+                        targetTd.style.fontWeight = '500';
+                        const textNode = Array.from(targetTd.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                        if (textNode) {
+                            textNode.textContent = info.current_value;
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Restaurar contenido original de celdas que ya no están siendo editadas
+        tbody.querySelectorAll('td[data-original-content]').forEach(td => {
+            const isBeingEdited = Array.from(activeUsers.values()).some(info => {
+                const row = td.closest('tr');
+                return row && row.dataset.id === info.editing_row && 
+                       td.dataset.field === info.editing_column;
+            });
+            
+            if (!isBeingEdited) {
+                td.style.color = '';
+                td.style.fontWeight = '';
+                td.style.cursor = '';
+                td.style.opacity = '';
+                const textNode = Array.from(td.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                if (textNode && td.dataset.originalContent) {
+                    textNode.textContent = td.dataset.originalContent;
+                }
+                delete td.dataset.originalContent;
+            }
+        });
+    }
+    
+    // Iniciar polling inteligente (solo cuando el usuario NO esté editando)
+    function startPresencePolling() {
+        // Detener cualquier polling anterior
+        if (activityPollingInterval) {
+            clearInterval(activityPollingInterval);
+        }
+        
+        // Polling cada 5 segundos (no intrusivo)
+        activityPollingInterval = setInterval(() => {
+            fetchPresence();
+        }, 5000);
+        
+        // Primera carga inmediata
+        fetchPresence();
+    }
+    
+    // Iniciar sistema de presencia
+    startPresencePolling();
+    
+    // Limpiar presencia al salir de la página
+    window.addEventListener('beforeunload', function() {
+        updatePresence(null, null);
+    });
+
 });
 </script>
 
@@ -1712,6 +2694,24 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
     outline: none;
 }
 
+/* Select editable para tipo_guia */
+.editable-select {
+    width: 100%;
+    height: 100%;
+    background-color: transparent !important;
+    padding: 0.5rem 0.75rem;
+    border: none;
+    transition: all 0.2s ease;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.editable-select:focus {
+    background: rgba(11, 133, 82, 0.08) !important;
+    outline: 2px solid #0B8552;
+    outline-offset: -2px;
+}
+
 .editable-cell {
     background: rgba(11, 133, 82, 0.04);
     transition: all 0.2s ease;
@@ -1760,6 +2760,134 @@ td[data-field="precintos"] {
     font-family: 'Courier New', monospace;
     font-weight: 600;
     color: var(--dark-color);
+}
+
+/* ========================================
+   BADGE DISCRETO DE REFINERY - EN COLUMNA DE NÚMERO
+   ======================================== */
+.refinery-badge-complete {
+    color: #28a745;
+    font-size: 1.1rem;
+    animation: pulse-refinery 2s infinite;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes pulse-refinery {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.15);
+        opacity: 0.7;
+    }
+}
+
+.refinery-badge-complete:hover {
+    transform: scale(1.2);
+    cursor: help;
+}
+
+.refinery-badge-pending {
+    color: #ffc107;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: help;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.refinery-badge-pending:hover {
+    transform: scale(1.1);
+    color: #ff9800;
+}
+
+.refinery-badge-pending .badge-mini {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 50%;
+    min-width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.number-cell {
+    padding: 0.5rem !important;
+}
+
+/* ========================================
+   MODAL DE HISTORIAL COMPLETO
+   ======================================== */
+.historial-filters-bar {
+    background: #f8f9fc;
+    border-bottom: 2px solid #e3e6f0;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-pointer:hover {
+    opacity: 0.7;
+}
+
+#fechas-seleccionadas-container {
+    min-height: 28px;
+}
+
+#fechas-seleccionadas-container .badge {
+    padding: 0.4rem 0.6rem;
+    font-weight: 500;
+}
+
+#fechas-seleccionadas-container .badge i {
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+}
+
+.historial-table-container {
+    height: calc(100vh - 350px);
+    overflow-y: auto;
+    background: white;
+}
+
+.historial-table-container table {
+    font-size: 0.85rem;
+}
+
+.historial-table-container thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #2c3e50 !important;
+    color: white !important;
+    font-weight: 600;
+    border-color: #1a252f !important;
+}
+
+.historial-pagination-bar {
+    background: #f8f9fc;
+    border-top: 2px solid #e3e6f0;
+}
+
+.bg-success-subtle {
+    background-color: #d1f0dd !important;
+}
+
+.bg-warning-subtle {
+    background-color: #fff8e1 !important;
 }
 
 /* ========================================
@@ -2053,6 +3181,564 @@ td[data-field="precintos"] {
         left: 10px;
         min-width: auto;
         max-width: calc(100vw - 20px);
+    }
+}
+
+/* ========================================
+   SISTEMA DE NOTIFICACIÓN REFINERY
+   ======================================== */
+
+/* Badge de completitud de refinery */
+.badge-refinery-complete {
+    font-size: 0.7rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    animation: pulse-success 2s infinite;
+}
+
+@keyframes pulse-success {
+    0%, 100% { box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3); }
+    50% { box-shadow: 0 2px 12px rgba(40, 167, 69, 0.5); }
+}
+
+/* Botón flotante de WhatsApp */
+.btn-whatsapp-float {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 65px;
+    height: 65px;
+    background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    animation: bounce-whatsapp 2s infinite;
+}
+
+.btn-whatsapp-float:hover {
+    transform: scale(1.1);
+    box-shadow: 0 8px 25px rgba(37, 211, 102, 0.6);
+}
+
+@keyframes bounce-whatsapp {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}
+
+.whatsapp-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón flotante para panel de refinery */
+.btn-refinery-panel-toggle {
+    position: fixed;
+    bottom: 110px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, #0B8552 0%, #0ea06a 100%);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(11, 133, 82, 0.4);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 999;
+}
+
+.btn-refinery-panel-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(11, 133, 82, 0.6);
+}
+
+.refinery-panel-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ffc107;
+    color: #000;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Panel flotante de estado refinery */
+.refinery-status-panel {
+    position: fixed;
+    bottom: 30px;
+    right: 110px;
+    width: 380px;
+    max-height: 500px;
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    display: none;
+    z-index: 1001;
+    overflow: hidden;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.refinery-panel-header {
+    background: linear-gradient(135deg, #0B8552 0%, #0ea06a 100%);
+    color: white;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.btn-close-panel {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s;
+}
+
+.btn-close-panel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.refinery-panel-body {
+    padding: 1rem;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.refinery-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.refinery-item {
+    background: #f8f9fc;
+    border-left: 4px solid #28a745;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    transition: all 0.2s;
+}
+
+.refinery-item:hover {
+    background: #e9ecef;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.refinery-item-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.refinery-item-number {
+    background: #28a745;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.refinery-item-placa {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.refinery-item-details {
+    font-size: 0.85rem;
+    color: #6c757d;
+    padding-left: 2rem;
+}
+
+.refinery-item-details div {
+    margin-bottom: 0.25rem;
+}
+
+/* Panel de Actividad en Tiempo Real */
+.activity-panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 320px;
+    max-height: calc(100vh - 120px);
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    z-index: 1002;
+    overflow: hidden;
+    animation: slideInRight 0.3s ease;
+}
+
+.activity-panel-header {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.activity-panel-body {
+    padding: 1rem;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.active-users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.active-user-item {
+    background: #f8f9fc;
+    border-left: 4px solid #17a2b8;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    transition: all 0.2s;
+}
+
+.active-user-item:hover {
+    background: #e9ecef;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.active-user-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.user-editing {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+.user-preview {
+    font-size: 0.75rem;
+    color: #667eea;
+    margin-top: 0.35rem;
+    padding: 0.3rem 0.6rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-left: 2px solid #667eea;
+    border-radius: 0.25rem;
+    font-style: italic;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.editing-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #28a745;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+.cell-editing-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    background: #17a2b8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(23, 162, 184, 0.4);
+    cursor: help;
+    z-index: 10;
+}
+
+.cell-editing-indicator::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border: 2px solid #17a2b8;
+    border-radius: 50%;
+    animation: ripple 1.5s infinite;
+}
+
+/* Preview del contenido en tiempo real - Texto dentro de la celda */
+.cell-preview-value {
+    position: absolute;
+    top: 50%;
+    left: 30px;
+    transform: translateY(-50%);
+    color: #667eea;
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem;
+    z-index: 5;
+    animation: fadeIn 0.3s ease;
+    pointer-events: none;
+    max-width: calc(100% - 60px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Celda bloqueada por otro usuario */
+.cell-locked {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(102, 126, 234, 0.05),
+        rgba(102, 126, 234, 0.05) 10px,
+        rgba(102, 126, 234, 0.08) 10px,
+        rgba(102, 126, 234, 0.08) 20px
+    );
+    cursor: not-allowed !important;
+}
+
+.cell-locked * {
+    cursor: not-allowed !important;
+}
+
+.cell-locked input,
+.cell-locked select,
+.cell-locked textarea,
+.cell-locked .cell-editor {
+    pointer-events: none;
+    user-select: none;
+}
+
+.preview-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+    opacity: 0.9;
+}
+
+.preview-content {
+    font-size: 1rem;
+    font-weight: 500;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 0.5rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1.8);
+        opacity: 0;
+    }
+}
+
+/* Fila siendo editada por otro usuario */
+tr.row-being-edited {
+    background: linear-gradient(90deg, rgba(23, 162, 184, 0.08) 0%, rgba(23, 162, 184, 0.12) 50%, rgba(23, 162, 184, 0.08) 100%);
+    border-left: 4px solid #17a2b8;
+    animation: row-pulse 2s infinite;
+}
+
+@keyframes row-pulse {
+    0%, 100% {
+        border-left-color: #17a2b8;
+    }
+    50% {
+        border-left-color: #0d6efd;
+    }
+}
+
+/* Badge de usuario editando en la fila */
+.row-editor-badge {
+    position: absolute;
+    left: -4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+    color: white;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0 0.5rem 0.5rem 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(23, 162, 184, 0.4);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    z-index: 100;
+    white-space: nowrap;
+    animation: slideInLeft 0.3s ease;
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateY(-50%) translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+    }
+}
+
+.row-editor-badge i {
+    animation: typing 1.5s infinite;
+}
+
+@keyframes typing {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .btn-whatsapp-float {
+        bottom: 20px;
+        right: 20px;
+        width: 55px;
+        height: 55px;
+        font-size: 24px;
+    }
+    
+    .btn-refinery-panel-toggle {
+        bottom: 90px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+    
+    .refinery-status-panel {
+        right: 20px;
+        left: 20px;
+        width: auto;
+        bottom: 20px;
+    }
+    
+    .activity-panel {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        top: 70px;
     }
 }
 </style>

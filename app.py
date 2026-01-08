@@ -81,7 +81,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
 
 # --- Blueprint para WhatsApp ---
-from bot_whatsapp import bot_bp
+# TEMPORALMENTE DESHABILITADO por error de spacy
+# from bot_whatsapp import bot_bp
 
 # Utilidad simple de permiso admin
 def admin_required(f):
@@ -648,6 +649,9 @@ class ProgramacionCargue(db.Model):
     fecha_despacho = db.Column(db.Date, nullable=True)
     numero_guia = db.Column(db.String(100))
     
+    # Tipo de guía (Física o Digital)
+    tipo_guia = db.Column(db.String(20), default='Física')
+    
     # Imagen de la guía (base64)
     imagen_guia = db.Column(db.Text, nullable=True)
 
@@ -735,6 +739,24 @@ def _ensure_programacion_imagen_text():
 
 _ensure_programacion_imagen_text()
 
+# Asegurar que la columna tipo_guia existe
+def _ensure_tipo_guia_column():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'programacion_cargue' not in insp.get_table_names():
+            return
+        cols = [c['name'] for c in insp.get_columns('programacion_cargue')]
+        if 'tipo_guia' not in cols:
+            try:
+                with db.engine.begin() as con:
+                    con.execute(text("ALTER TABLE programacion_cargue ADD COLUMN tipo_guia VARCHAR(20) DEFAULT 'Física'"))
+                print("[INIT] Columna tipo_guia agregada exitosamente")
+            except Exception as e:
+                print("[INIT] No se pudo agregar columna tipo_guia:", e)
+
+_ensure_tipo_guia_column()
+
 # ---------------- EDICIONES EN VIVO (NO PERSISTIDAS) -----------------
 # Estructura en memoria para broadcast simple (clave: (registro_id,campo))
 LIVE_EDITS = {}
@@ -801,6 +823,128 @@ class RegistroCompra(db.Model):
 
     def __repr__(self):
         return f'<RegistroCompra {self.id} - {self.numero_factura}>'
+
+# ================== CONTROL CUPO SIZA MULTI-PRODUCTO ==================
+
+class ProductoSiza(db.Model):
+    """Catálogo de productos SIZA disponibles."""
+    __tablename__ = 'productos_siza'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+    color_badge = db.Column(db.String(20), default='primary')  # Para UI
+    orden = db.Column(db.Integer, default=0)  # Para ordenar en pantalla
+    
+    def __repr__(self):
+        return f'<ProductoSiza {self.codigo} - {self.nombre}>'
+
+class InventarioSizaDiario(db.Model):
+    """Inventario diario de cada producto SIZA."""
+    __tablename__ = 'inventario_siza_diario'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    producto_id = db.Column(db.Integer, db.ForeignKey('productos_siza.id'), nullable=False)
+    
+    # Volumen disponible del día
+    cupo_web = db.Column(db.Float, nullable=False, default=0.0)
+    
+    # Auditoría
+    usuario_actualizacion = db.Column(db.String(100), nullable=False)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relación
+    producto = db.relationship('ProductoSiza', backref='inventarios')
+    
+    # Índice compuesto para búsqueda rápida
+    __table_args__ = (
+        db.UniqueConstraint('fecha', 'producto_id', name='uix_fecha_producto'),
+    )
+    
+    def __repr__(self):
+        return f'<InventarioSizaDiario {self.fecha} - Producto {self.producto_id}: {self.cupo_web} BBL>'
+
+class RecargaSiza(db.Model):
+    """Historial de recargas de cupo para cada producto."""
+    __tablename__ = 'recargas_siza'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    producto_id = db.Column(db.Integer, db.ForeignKey('productos_siza.id'), nullable=False)
+    volumen_recargado = db.Column(db.Float, nullable=False)
+    observacion = db.Column(db.Text, nullable=True)
+    
+    # Auditoría
+    usuario_registro = db.Column(db.String(100), nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    usuario_edicion = db.Column(db.String(100), nullable=True)
+    fecha_edicion = db.Column(db.DateTime, nullable=True)
+    
+    # Relación
+    producto = db.relationship('ProductoSiza', backref='recargas')
+    
+    def __repr__(self):
+        return f'<RecargaSiza {self.fecha} - Producto {self.producto_id}: +{self.volumen_recargado} BBL>'
+
+class ConsumoSiza(db.Model):
+    """Historial de consumos/despachos de cupo para cada producto."""
+    __tablename__ = 'consumos_siza'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    producto_id = db.Column(db.Integer, db.ForeignKey('productos_siza.id'), nullable=False)
+    volumen_consumido = db.Column(db.Float, nullable=False)
+    observacion = db.Column(db.Text, nullable=True)
+    
+    # Auditoría
+    usuario_registro = db.Column(db.String(100), nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    usuario_edicion = db.Column(db.String(100), nullable=True)
+    fecha_edicion = db.Column(db.DateTime, nullable=True)
+    
+    # Relación
+    producto = db.relationship('ProductoSiza', backref='consumos')
+    
+    def __repr__(self):
+        return f'<ConsumoSiza {self.fecha} - Producto {self.producto_id}: -{self.volumen_consumido} BBL>'
+
+class PedidoSiza(db.Model):
+    """Pedidos de productos SIZA."""
+    __tablename__ = 'pedidos_siza'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    numero_pedido = db.Column(db.String(100), nullable=False, unique=True, index=True)
+    producto_id = db.Column(db.Integer, db.ForeignKey('productos_siza.id'), nullable=False)
+    volumen_solicitado = db.Column(db.Float, nullable=False)
+    observacion = db.Column(db.Text, nullable=True)
+    estado = db.Column(db.String(50), default='PENDIENTE', nullable=False, index=True)
+    # Estados posibles: PENDIENTE, APROBADO, RECHAZADO, COMPLETADO
+    
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    usuario_registro = db.Column(db.String(100), nullable=False)
+    fecha_gestion = db.Column(db.DateTime, nullable=True)
+    usuario_gestion = db.Column(db.String(100), nullable=True)
+    
+    # Relación
+    producto = db.relationship('ProductoSiza', backref='pedidos')
+    
+    def __repr__(self):
+        return f'<PedidoSiza {self.numero_pedido} - {self.estado}>'
+
+class CupoSizaConfig(db.Model):
+    """DEPRECADO: Mantenido por compatibilidad. Usar InventarioSizaDiario."""
+    __tablename__ = 'cupo_siza_config'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    cupo_web = db.Column(db.Float, nullable=False, default=0.0)
+    usuario_actualizacion = db.Column(db.String(100), nullable=False)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CupoSizaConfig {self.fecha} - {self.cupo_web} BBL>'
 
 # ================== DESPACHOS TK -> BARCAZA ==================
 class TrasiegoTKBarcaza(db.Model):
@@ -1737,33 +1881,55 @@ USUARIOS = {
         "rol": "editor",
         "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad"] 
     },
-    # Juliana (Editor): Tiene acceso a Tránsito y a Generar Guía.
+    # Juliana (Editor): Tiene acceso a Tránsito, Generar Guía y SIZA Solicitante.
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue"]
+        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante"]
     },
-    # Samantha (Editor): Tiene acceso solo a Generar Guía.
+    # Samantha (Editor): Tiene acceso a Generar Guía y SIZA Solicitante.
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["guia_transporte", "programacion_cargue"]
+        "area": ["guia_transporte", "programacion_cargue", "siza_solicitante"]
     },
 
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Daniela Cuadrado",
         "rol": "editor",
-        "area": ["zisa_inventory", "programacion_cargue"] 
+        "area": ["zisa_inventory", "programacion_cargue", "siza_solicitante", "siza_gestor"] 
     },
 
     "comexzf@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Shirli Diaz",
         "rol": "editor",
-        "area": ["programacion_cargue"] 
+        "area": ["programacion_cargue", "siza_solicitante", "siza_gestor"] 
+    },
+
+    # SIZA - Solicitantes (solo pueden ver y solicitar pedidos)
+    "carlos.baron@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Carlos Baron",
+        "rol": "editor",
+        "area": ["siza_solicitante"]
+    },
+
+    "juandiego.cuadros@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Cuadros",
+        "rol": "editor",
+        "area": ["siza_solicitante"]
+    },
+
+    "brando@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Brando",
+        "rol": "editor",
+        "area": ["siza_solicitante"]
     },
 
     "felipe.delavega@conquerstrading.com": {
@@ -2014,6 +2180,14 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         # ...
      return decorated_function
+
+
+def tiene_permiso(permiso_requerido):
+    """Función auxiliar para verificar si el usuario actual tiene un permiso específico."""
+    if session.get('rol') == 'admin':
+        return True
+    areas_del_usuario = session.get('area', [])
+    return permiso_requerido in areas_del_usuario
 
 
 def permiso_requerido(area_requerida):
@@ -4257,11 +4431,900 @@ def guia_transporte():
     )
 
 @login_required
-@permiso_requerido("zisa_inventory") # Usamos el permiso que le asignamos a Daniela
+@permiso_requerido("siza_solicitante")  # Permite ver a solicitantes y gestores
+@app.route('/dashboard-siza')
+def dashboard_siza():
+    """Dashboard de control de cupo SIZA multi-producto."""
+    try:
+        hoy = date.today()
+        
+        # Obtener todos los productos activos
+        productos = ProductoSiza.query.filter_by(activo=True).order_by(ProductoSiza.orden).all()
+        
+        # Inicializar productos por defecto si no existen
+        if not productos:
+            productos_default = [
+                ProductoSiza(codigo='F04', nombre='F04', color_badge='primary', orden=1),
+                ProductoSiza(codigo='DILUYENTE', nombre='DILUYENTE', color_badge='success', orden=2),
+                ProductoSiza(codigo='MGO', nombre='MGO', color_badge='warning', orden=3),
+                ProductoSiza(codigo='AGUA_RESIDUAL', nombre='AGUA RESIDUAL', color_badge='danger', orden=4)
+            ]
+            for p in productos_default:
+                db.session.add(p)
+            db.session.commit()
+            productos = productos_default
+        
+        # Calcular métricas por producto
+        inventario_productos = []
+        total_disponible = 0
+        total_comprometido = 0
+        alerta_global = False
+        
+        for producto in productos:
+            # Obtener inventario del día
+            inventario = InventarioSizaDiario.query.filter_by(
+                fecha=hoy,
+                producto_id=producto.id
+            ).first()
+            
+            if not inventario:
+                # Crear inventario inicial
+                inventario = InventarioSizaDiario(
+                    fecha=hoy,
+                    producto_id=producto.id,
+                    cupo_web=0.0,
+                    usuario_actualizacion='Sistema'
+                )
+                db.session.add(inventario)
+                db.session.commit()
+            
+            # Pedidos pendientes de este producto
+            pedidos_producto = PedidoSiza.query.filter_by(
+                producto_id=producto.id,
+                estado='PENDIENTE'
+            ).all()
+            
+            comprometido = sum(p.volumen_solicitado for p in pedidos_producto)
+            disponible = inventario.cupo_web - comprometido
+            
+            inventario_productos.append({
+                'producto': producto,
+                'inventario': inventario,
+                'comprometido': comprometido,
+                'disponible': disponible,
+                'alerta': disponible <= 0,
+                'pedidos_count': len(pedidos_producto)
+            })
+            
+            total_disponible += disponible
+            total_comprometido += comprometido
+            
+            if disponible <= 0:
+                alerta_global = True
+        
+        # Obtener pedidos pendientes (para la tabla principal)
+        pedidos_pendientes = PedidoSiza.query.filter_by(estado='PENDIENTE').order_by(PedidoSiza.fecha_registro).all()
+        
+        # Obtener pedidos pendientes y aprobados (para el modal de consumo)
+        todos_pedidos = PedidoSiza.query.filter(
+            (PedidoSiza.estado == 'PENDIENTE') | (PedidoSiza.estado == 'APROBADO')
+        ).order_by(PedidoSiza.fecha_registro).all()
+        
+        # Obtener historial de movimientos (recargas y consumos) de los últimos 30 días
+        fecha_limite = hoy - timedelta(days=30)
+        
+        recargas = RecargaSiza.query.filter(
+            RecargaSiza.fecha >= fecha_limite
+        ).order_by(RecargaSiza.fecha.desc(), RecargaSiza.fecha_registro.desc()).all()
+        
+        consumos = ConsumoSiza.query.filter(
+            ConsumoSiza.fecha >= fecha_limite
+        ).order_by(ConsumoSiza.fecha.desc(), ConsumoSiza.fecha_registro.desc()).all()
+        
+        # Combinar y ordenar movimientos
+        movimientos = []
+        for recarga in recargas:
+            movimientos.append({
+                'tipo': 'recarga',
+                'id': recarga.id,
+                'fecha': recarga.fecha,
+                'producto': recarga.producto,
+                'volumen': recarga.volumen_recargado,
+                'observacion': recarga.observacion,
+                'usuario': recarga.usuario_registro,
+                'fecha_registro': recarga.fecha_registro,
+                'editado': recarga.usuario_edicion is not None,
+                'usuario_edicion': recarga.usuario_edicion,
+                'fecha_edicion': recarga.fecha_edicion
+            })
+        
+        for consumo in consumos:
+            movimientos.append({
+                'tipo': 'consumo',
+                'id': consumo.id,
+                'fecha': consumo.fecha,
+                'producto': consumo.producto,
+                'volumen': consumo.volumen_consumido,
+                'observacion': consumo.observacion,
+                'usuario': consumo.usuario_registro,
+                'fecha_registro': consumo.fecha_registro,
+                'editado': consumo.usuario_edicion is not None,
+                'usuario_edicion': consumo.usuario_edicion,
+                'fecha_edicion': consumo.fecha_edicion
+            })
+        
+        # Ordenar por fecha descendente
+        movimientos.sort(key=lambda x: (x['fecha'], x['fecha_registro']), reverse=True)
+        
+        # Limitar a los últimos 15 para la vista principal
+        movimientos_recientes = movimientos[:15]
+        total_movimientos = len(movimientos)
+        
+        # Verificar si el usuario es gestor (puede aprobar/rechazar/recargar/consumir)
+        es_gestor = tiene_permiso('siza_gestor')
+        
+        return render_template(
+            'siza_dashboard.html',
+            inventario_productos=inventario_productos,
+            total_disponible=total_disponible,
+            total_comprometido=total_comprometido,
+            alerta_cupo=alerta_global,
+            pedidos=todos_pedidos,  # Todos los pedidos (PENDIENTE y APROBADO) para modales
+            pedidos_pendientes=pedidos_pendientes,  # Solo pendientes para tabla principal
+            productos=productos,
+            movimientos=movimientos_recientes,  # Solo los últimos 15
+            total_movimientos=total_movimientos,  # Total de movimientos disponibles
+            hoy=hoy,
+            es_gestor=es_gestor  # Permiso para mostrar/ocultar botones en template
+        )
+    except Exception as e:
+        flash(f'Error al cargar dashboard: {str(e)}', 'danger')
+        return redirect(url_for('home'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden actualizar inventario
+@app.route('/siza/actualizar-inventario', methods=['POST'])
+def actualizar_inventario_siza():
+    """Actualiza el inventario de un producto SIZA específico."""
+    try:
+        producto_id = int(request.form.get('producto_id'))
+        nuevo_cupo = float(request.form.get('nuevo_cupo', 0))
+        
+        if nuevo_cupo < 0:
+            return jsonify({'success': False, 'message': 'El cupo no puede ser negativo.'}), 400
+        
+        hoy = date.today()
+        
+        # Buscar o crear inventario del día
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=producto_id
+        ).first()
+        
+        if not inventario:
+            inventario = InventarioSizaDiario(
+                fecha=hoy,
+                producto_id=producto_id,
+                cupo_web=nuevo_cupo,
+                usuario_actualizacion=session.get('nombre', 'Sistema')
+            )
+            db.session.add(inventario)
+        else:
+            inventario.cupo_web = nuevo_cupo
+            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+            inventario.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        producto = ProductoSiza.query.get(producto_id)
+        flash(f'Inventario de {producto.nombre} actualizado: {nuevo_cupo:,.0f} Barriles', 'success')
+        
+    except ValueError:
+        flash('El valor del cupo debe ser numérico.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar inventario: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden recargar
+@app.route('/siza/recargar-producto', methods=['POST'])
+def recargar_producto_siza():
+    """Registra una recarga de inventario para un producto."""
+    try:
+        producto_id = int(request.form.get('producto_id'))
+        volumen_recarga = float(request.form.get('volumen_recarga', 0))
+        observacion = request.form.get('observacion', '').strip()
+        
+        if volumen_recarga <= 0:
+            flash('El volumen de recarga debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        hoy = date.today()
+        
+        # Registrar la recarga
+        recarga = RecargaSiza(
+            fecha=hoy,
+            producto_id=producto_id,
+            volumen_recargado=volumen_recarga,
+            observacion=observacion or None,
+            usuario_registro=session.get('nombre', 'Sistema')
+        )
+        db.session.add(recarga)
+        
+        # Actualizar el inventario del día
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=producto_id
+        ).first()
+        
+        if not inventario:
+            inventario = InventarioSizaDiario(
+                fecha=hoy,
+                producto_id=producto_id,
+                cupo_web=volumen_recarga,
+                usuario_actualizacion=session.get('nombre', 'Sistema')
+            )
+            db.session.add(inventario)
+        else:
+            inventario.cupo_web += volumen_recarga
+            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+            inventario.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        producto = ProductoSiza.query.get(producto_id)
+        flash(f'Recarga de {producto.nombre}: +{volumen_recarga:,.0f} Barriles. Nuevo total: {inventario.cupo_web:,.0f} BBL', 'success')
+        
+    except ValueError:
+        flash('El volumen debe ser un número válido.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al registrar recarga: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden consumir
+@app.route('/siza/registrar-consumo', methods=['POST'])
+def registrar_consumo_siza():
+    """Registra un consumo/despacho de inventario para un producto."""
+    try:
+        producto_id = int(request.form.get('producto_id'))
+        volumen_consumo = float(request.form.get('volumen_consumo', 0))
+        observacion = request.form.get('observacion', '').strip()
+        
+        if volumen_consumo <= 0:
+            flash('El volumen de consumo debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        hoy = date.today()
+        
+        # Verificar que haya suficiente inventario
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=producto_id
+        ).first()
+        
+        if not inventario or inventario.cupo_web < volumen_consumo:
+            producto = ProductoSiza.query.get(producto_id)
+            disponible = inventario.cupo_web if inventario else 0
+            flash(f'No hay suficiente inventario de {producto.nombre}. Disponible: {disponible:,.0f} BBL', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Registrar el consumo
+        consumo = ConsumoSiza(
+            fecha=hoy,
+            producto_id=producto_id,
+            volumen_consumido=volumen_consumo,
+            observacion=observacion or None,
+            usuario_registro=session.get('nombre', 'Sistema')
+        )
+        db.session.add(consumo)
+        
+        # Actualizar el inventario del día
+        inventario.cupo_web -= volumen_consumo
+        inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+        inventario.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        producto = ProductoSiza.query.get(producto_id)
+        flash(f'Consumo de {producto.nombre}: -{volumen_consumo:,.0f} BBL. Nuevo total: {inventario.cupo_web:,.0f} BBL', 'success')
+        
+    except ValueError:
+        flash('El volumen debe ser un número válido.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al registrar consumo: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden editar recargas
+@app.route('/siza/editar-recarga/<int:recarga_id>', methods=['POST'])
+def editar_recarga_siza(recarga_id):
+    """Edita una recarga existente."""
+    try:
+        recarga = RecargaSiza.query.get_or_404(recarga_id)
+        volumen_anterior = recarga.volumen_recargado
+        producto_id = recarga.producto_id
+        fecha_recarga = recarga.fecha
+        
+        nuevo_volumen = float(request.form.get('volumen_recargado', 0))
+        nueva_observacion = request.form.get('observacion', '').strip()
+        
+        if nuevo_volumen <= 0:
+            flash('El volumen debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Calcular diferencia
+        diferencia = nuevo_volumen - volumen_anterior
+        
+        # Actualizar la recarga
+        recarga.volumen_recargado = nuevo_volumen
+        recarga.observacion = nueva_observacion or None
+        recarga.usuario_edicion = session.get('nombre', 'Sistema')
+        recarga.fecha_edicion = datetime.utcnow()
+        
+        # Ajustar el inventario
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=fecha_recarga,
+            producto_id=producto_id
+        ).first()
+        
+        if inventario:
+            inventario.cupo_web += diferencia
+            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+            inventario.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        flash(f'Recarga editada exitosamente. Ajuste: {diferencia:+,.0f} BBL', 'success')
+        
+    except ValueError:
+        flash('El volumen debe ser un número válido.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al editar recarga: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden editar consumos
+@app.route('/siza/editar-consumo/<int:consumo_id>', methods=['POST'])
+def editar_consumo_siza(consumo_id):
+    """Edita un consumo existente."""
+    try:
+        consumo = ConsumoSiza.query.get_or_404(consumo_id)
+        volumen_anterior = consumo.volumen_consumido
+        producto_id = consumo.producto_id
+        fecha_consumo = consumo.fecha
+        
+        nuevo_volumen = float(request.form.get('volumen_consumido', 0))
+        nueva_observacion = request.form.get('observacion', '').strip()
+        
+        if nuevo_volumen <= 0:
+            flash('El volumen debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Calcular diferencia (invertida porque es consumo)
+        diferencia = volumen_anterior - nuevo_volumen
+        
+        # Actualizar el consumo
+        consumo.volumen_consumido = nuevo_volumen
+        consumo.observacion = nueva_observacion or None
+        consumo.usuario_edicion = session.get('nombre', 'Sistema')
+        consumo.fecha_edicion = datetime.utcnow()
+        
+        # Ajustar el inventario
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=fecha_consumo,
+            producto_id=producto_id
+        ).first()
+        
+        if inventario:
+            inventario.cupo_web += diferencia
+            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+            inventario.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        flash(f'Consumo editado exitosamente. Ajuste: {diferencia:+,.0f} BBL', 'success')
+        
+    except ValueError:
+        flash('El volumen debe ser un número válido.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al editar consumo: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden eliminar movimientos
+@app.route('/siza/eliminar-movimiento/<tipo>/<int:movimiento_id>', methods=['POST'])
+def eliminar_movimiento_siza(tipo, movimiento_id):
+    """Elimina una recarga o consumo."""
+    try:
+        if tipo == 'recarga':
+            registro = RecargaSiza.query.get_or_404(movimiento_id)
+            ajuste_inventario = -registro.volumen_recargado  # Restar lo que se había sumado
+            tipo_texto = 'Recarga'
+        elif tipo == 'consumo':
+            registro = ConsumoSiza.query.get_or_404(movimiento_id)
+            ajuste_inventario = registro.volumen_consumido  # Sumar lo que se había restado
+            tipo_texto = 'Consumo'
+        else:
+            flash('Tipo de movimiento inválido.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        producto_id = registro.producto_id
+        fecha_registro = registro.fecha
+        
+        # Ajustar inventario
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=fecha_registro,
+            producto_id=producto_id
+        ).first()
+        
+        if inventario:
+            inventario.cupo_web += ajuste_inventario
+            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+            inventario.fecha_actualizacion = datetime.utcnow()
+        
+        # Eliminar registro
+        db.session.delete(registro)
+        db.session.commit()
+        
+        flash(f'{tipo_texto} eliminado exitosamente. Inventario ajustado: {ajuste_inventario:+,.0f} BBL', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar movimiento: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("cupo_siza")
+@app.route('/siza/actualizar-cupo-web', methods=['POST'])
+def actualizar_cupo_web():
+    """DEPRECADO: Mantenido por compatibilidad. Usar actualizar_inventario_siza."""
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_solicitante")  # Solicitantes pueden crear pedidos
+@app.route('/siza/registrar-pedido', methods=['POST'])
+def registrar_pedido():
+    """Registra un nuevo pedido SIZA para un producto específico con validación inteligente."""
+    try:
+        numero_pedido = request.form.get('numero_pedido', '').strip()
+        producto_id = int(request.form.get('producto_id'))
+        volumen_solicitado = float(request.form.get('volumen_solicitado', 0))
+        observacion = request.form.get('observacion', '').strip()
+        
+        if not numero_pedido:
+            flash('Debe ingresar un número de pedido.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        if volumen_solicitado <= 0:
+            flash('El volumen debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Verificar si ya existe
+        existe = PedidoSiza.query.filter_by(numero_pedido=numero_pedido).first()
+        if existe:
+            flash(f'El pedido {numero_pedido} ya está registrado.', 'warning')
+            return redirect(url_for('dashboard_siza'))
+        
+        # VALIDACIÓN INTELIGENTE: Verificar disponibilidad de inventario
+        hoy = date.today()
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=producto_id
+        ).first()
+        
+        cupo_disponible = inventario.cupo_web if inventario else 0.0
+        
+        # Calcular lo ya comprometido por otros pedidos pendientes
+        pedidos_pendientes = PedidoSiza.query.filter_by(
+            producto_id=producto_id,
+            estado='PENDIENTE'
+        ).all()
+        total_comprometido = sum(p.volumen_solicitado for p in pedidos_pendientes)
+        disponible_real = cupo_disponible - total_comprometido
+        
+        # Crear el pedido de todas formas, pero con advertencia si excede disponibilidad
+        nuevo_pedido = PedidoSiza(
+            numero_pedido=numero_pedido,
+            producto_id=producto_id,
+            volumen_solicitado=volumen_solicitado,
+            observacion=observacion or None,
+            estado='PENDIENTE',
+            usuario_registro=session.get('nombre', 'Sistema')
+        )
+        
+        db.session.add(nuevo_pedido)
+        db.session.commit()
+        
+        producto = ProductoSiza.query.get(producto_id)
+        
+        # Mostrar mensaje según disponibilidad
+        if volumen_solicitado > disponible_real:
+            flash(
+                f'⚠️ ADVERTENCIA: Pedido {numero_pedido} registrado pero NO HAY CANTIDAD SUFICIENTE. '
+                f'Solicitado: {volumen_solicitado:,.0f} BBL | Disponible: {disponible_real:,.0f} BBL. '
+                f'Se requiere recarga de {producto.nombre} antes de aprobar este pedido.',
+                'warning'
+            )
+        else:
+            flash(
+                f'✅ Pedido {numero_pedido} registrado exitosamente para {producto.nombre}: '
+                f'{volumen_solicitado:,.0f} BBL. Disponible suficiente: {disponible_real:,.0f} BBL',
+                'success'
+            )
+        
+    except ValueError:
+        flash('Los valores numéricos deben ser válidos.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al registrar pedido: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_solicitante")  # Solicitantes pueden editar sus propios pedidos
+@app.route('/siza/editar-pedido/<int:pedido_id>', methods=['POST'])
+def editar_pedido_siza(pedido_id):
+    """Edita un pedido SIZA existente (estado, volumen, observación)."""
+    # Verificar permisos: gestores pueden editar todo, solicitantes solo sus pedidos
+    es_gestor = tiene_permiso('siza_gestor')
+    usuario_actual = session.get('nombre', 'Sistema')
+    try:
+        pedido = PedidoSiza.query.get_or_404(pedido_id)
+        
+        # Verificar si el usuario puede editar este pedido
+        if not es_gestor and pedido.usuario_registro != usuario_actual:
+            flash('No tienes permiso para editar este pedido. Solo puedes editar tus propios pedidos.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Permitir editar cualquier campo
+        nuevo_estado = request.form.get('estado', '').strip()
+        nuevo_volumen = request.form.get('volumen_solicitado', '').strip()
+        nueva_observacion = request.form.get('observacion', '').strip()
+        
+        cambios = []
+        
+        # Actualizar estado si se proporciona
+        if nuevo_estado and nuevo_estado != pedido.estado:
+            if nuevo_estado in ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'COMPLETADO']:
+                estado_anterior = pedido.estado
+                pedido.estado = nuevo_estado
+                cambios.append(f'Estado: {estado_anterior} → {nuevo_estado}')
+            else:
+                flash('Estado inválido.', 'danger')
+                return redirect(url_for('dashboard_siza'))
+        
+        # Actualizar volumen si se proporciona
+        if nuevo_volumen:
+            try:
+                volumen_nuevo = float(nuevo_volumen)
+                if volumen_nuevo <= 0:
+                    flash('El volumen debe ser mayor a cero.', 'danger')
+                    return redirect(url_for('dashboard_siza'))
+                if volumen_nuevo != pedido.volumen_solicitado:
+                    volumen_anterior = pedido.volumen_solicitado
+                    pedido.volumen_solicitado = volumen_nuevo
+                    cambios.append(f'Volumen: {volumen_anterior:,.0f} → {volumen_nuevo:,.0f} BBL')
+            except ValueError:
+                flash('Volumen inválido.', 'danger')
+                return redirect(url_for('dashboard_siza'))
+        
+        # Actualizar observación
+        if nueva_observacion != (pedido.observacion or ''):
+            pedido.observacion = nueva_observacion or None
+            cambios.append('Observación actualizada')
+        
+        # Registrar quién y cuándo editó
+        pedido.usuario_gestion = session.get('nombre', 'Sistema')
+        pedido.fecha_gestion = datetime.utcnow()
+        
+        db.session.commit()
+        
+        if cambios:
+            flash(f'Pedido {pedido.numero_pedido} editado: {" | ".join(cambios)}', 'success')
+        else:
+            flash('No se realizaron cambios.', 'info')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al editar pedido: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden consumir
+@app.route('/siza/consumir-pedidos', methods=['POST'])
+def consumir_pedidos_siza():
+    """Consume automáticamente los pedidos pendientes de un producto."""
+    try:
+        producto_id = int(request.form.get('producto_id'))
+        
+        # Obtener pedidos APROBADOS pendientes de consumo para este producto
+        pedidos_aprobados = PedidoSiza.query.filter_by(
+            producto_id=producto_id,
+            estado='APROBADO'
+        ).order_by(PedidoSiza.fecha_registro).all()
+        
+        if not pedidos_aprobados:
+            flash('No hay pedidos aprobados pendientes de consumo para este producto.', 'info')
+            return redirect(url_for('dashboard_siza'))
+        
+        hoy = date.today()
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=producto_id
+        ).first()
+        
+        if not inventario:
+            flash('No hay inventario registrado para este producto.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Procesar cada pedido aprobado
+        pedidos_consumidos = []
+        volumen_total_consumido = 0
+        
+        for pedido in pedidos_aprobados:
+            if inventario.cupo_web >= pedido.volumen_solicitado:
+                # Registrar el consumo
+                consumo = ConsumoSiza(
+                    fecha=hoy,
+                    producto_id=producto_id,
+                    volumen_consumido=pedido.volumen_solicitado,
+                    observacion=f"Consumo automático de pedido {pedido.numero_pedido}",
+                    usuario_registro=session.get('nombre', 'Sistema')
+                )
+                db.session.add(consumo)
+                
+                # Actualizar inventario
+                inventario.cupo_web -= pedido.volumen_solicitado
+                inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+                inventario.fecha_actualizacion = datetime.utcnow()
+                
+                # Marcar pedido como COMPLETADO
+                pedido.estado = 'COMPLETADO'
+                pedido.usuario_gestion = session.get('nombre', 'Sistema')
+                pedido.fecha_gestion = datetime.utcnow()
+                
+                pedidos_consumidos.append(pedido.numero_pedido)
+                volumen_total_consumido += pedido.volumen_solicitado
+            else:
+                # No hay suficiente inventario para este pedido
+                flash(
+                    f'⚠️ Pedido {pedido.numero_pedido} no pudo ser consumido. '
+                    f'Requiere: {pedido.volumen_solicitado:,.0f} BBL | Disponible: {inventario.cupo_web:,.0f} BBL',
+                    'warning'
+                )
+        
+        db.session.commit()
+        
+        producto = ProductoSiza.query.get(producto_id)
+        if pedidos_consumidos:
+            flash(
+                f'✅ Consumo exitoso de {producto.nombre}. '
+                f'Pedidos procesados: {len(pedidos_consumidos)} ({", ".join(pedidos_consumidos)}). '
+                f'Volumen total: {volumen_total_consumido:,.0f} BBL. '
+                f'Nuevo inventario: {inventario.cupo_web:,.0f} BBL',
+                'success'
+            )
+        else:
+            flash('No se pudieron consumir pedidos. Verifique el inventario disponible.', 'warning')
+        
+    except ValueError:
+        flash('Error en los valores proporcionados.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al consumir pedidos: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")  # Solo gestores pueden aprobar/rechazar
+@app.route('/siza/gestionar-pedido/<int:pedido_id>', methods=['POST'])
+def gestionar_pedido(pedido_id):
+    """Aprueba o rechaza un pedido SIZA."""
+    try:
+        accion = request.form.get('accion')  # 'aprobar' o 'rechazar'
+        
+        pedido = PedidoSiza.query.get_or_404(pedido_id)
+        
+        if pedido.estado != 'PENDIENTE':
+            flash(f'El pedido ya fue procesado anteriormente.', 'warning')
+            return redirect(url_for('dashboard_siza'))
+        
+        if accion == 'aprobar':
+            # Verificar si hay cupo disponible para este producto
+            hoy = date.today()
+            inventario = InventarioSizaDiario.query.filter_by(
+                fecha=hoy,
+                producto_id=pedido.producto_id
+            ).first()
+            
+            cupo_disponible = inventario.cupo_web if inventario else 0.0
+            
+            # Pedidos pendientes del mismo producto
+            pedidos_pendientes = PedidoSiza.query.filter_by(
+                producto_id=pedido.producto_id,
+                estado='PENDIENTE'
+            ).all()
+            
+            total_comprometido = sum(p.volumen_solicitado for p in pedidos_pendientes)
+            disponible_real = cupo_disponible - total_comprometido
+            
+            if disponible_real <= 0:
+                flash(f'No hay cupo disponible de {pedido.producto.nombre} para aprobar este pedido.', 'danger')
+                return redirect(url_for('dashboard_siza'))
+            
+            pedido.estado = 'APROBADO'
+            pedido.usuario_gestion = session.get('nombre', 'Sistema')
+            pedido.fecha_gestion = datetime.utcnow()
+            flash(f'Pedido {pedido.numero_pedido} ({pedido.producto.nombre}) APROBADO exitosamente.', 'success')
+            
+        elif accion == 'rechazar':
+            pedido.estado = 'RECHAZADO'
+            pedido.usuario_gestion = session.get('nombre', 'Sistema')
+            pedido.fecha_gestion = datetime.utcnow()
+            flash(f'Pedido {pedido.numero_pedido} ({pedido.producto.nombre}) RECHAZADO.', 'info')
+        
+        else:
+            flash('Acción no válida.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al gestionar pedido: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_solicitante")  # Todos pueden ver historial
+@app.route('/siza/historial-movimientos')
+def historial_movimientos_siza():
+    """Obtiene el historial completo de movimientos (recargas y consumos)."""
+    try:
+        # Parámetros de filtro
+        dias = int(request.args.get('dias', 90))  # Últimos 90 días por defecto
+        tipo_filtro = request.args.get('tipo', 'todos')  # todos, recarga, consumo
+        producto_id = request.args.get('producto_id', None)
+        
+        fecha_limite = date.today() - timedelta(days=dias)
+        
+        movimientos = []
+        
+        # Obtener recargas
+        if tipo_filtro in ['todos', 'recarga']:
+            query_recargas = RecargaSiza.query.filter(RecargaSiza.fecha >= fecha_limite)
+            if producto_id:
+                query_recargas = query_recargas.filter_by(producto_id=int(producto_id))
+            recargas = query_recargas.order_by(RecargaSiza.fecha.desc(), RecargaSiza.fecha_registro.desc()).all()
+            
+            for recarga in recargas:
+                movimientos.append({
+                    'tipo': 'recarga',
+                    'id': recarga.id,
+                    'fecha': recarga.fecha.strftime('%d/%m/%Y'),
+                    'fecha_registro': recarga.fecha_registro.strftime('%d/%m/%Y %H:%M'),
+                    'producto': recarga.producto.nombre,
+                    'producto_id': recarga.producto_id,
+                    'volumen': float(recarga.volumen_recargado),
+                    'observacion': recarga.observacion or '-',
+                    'usuario': recarga.usuario_registro,
+                    'editado': recarga.usuario_edicion is not None,
+                    'usuario_edicion': recarga.usuario_edicion,
+                    'fecha_edicion': recarga.fecha_edicion.strftime('%d/%m/%Y %H:%M') if recarga.fecha_edicion else None
+                })
+        
+        # Obtener consumos
+        if tipo_filtro in ['todos', 'consumo']:
+            query_consumos = ConsumoSiza.query.filter(ConsumoSiza.fecha >= fecha_limite)
+            if producto_id:
+                query_consumos = query_consumos.filter_by(producto_id=int(producto_id))
+            consumos = query_consumos.order_by(ConsumoSiza.fecha.desc(), ConsumoSiza.fecha_registro.desc()).all()
+            
+            for consumo in consumos:
+                movimientos.append({
+                    'tipo': 'consumo',
+                    'id': consumo.id,
+                    'fecha': consumo.fecha.strftime('%d/%m/%Y'),
+                    'fecha_registro': consumo.fecha_registro.strftime('%d/%m/%Y %H:%M'),
+                    'producto': consumo.producto.nombre,
+                    'producto_id': consumo.producto_id,
+                    'volumen': float(consumo.volumen_consumido),
+                    'observacion': consumo.observacion or '-',
+                    'usuario': consumo.usuario_registro,
+                    'editado': consumo.usuario_edicion is not None,
+                    'usuario_edicion': consumo.usuario_edicion,
+                    'fecha_edicion': consumo.fecha_edicion.strftime('%d/%m/%Y %H:%M') if consumo.fecha_edicion else None
+                })
+        
+        # Ordenar por fecha
+        movimientos.sort(key=lambda x: x['fecha_registro'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'movimientos': movimientos,
+            'total': len(movimientos)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@login_required
+@permiso_requerido("siza_solicitante")  # Todos pueden ver historial de pedidos
+@app.route('/siza/historial-pedidos')
+def historial_pedidos_siza():
+    """Obtiene el historial completo de pedidos con filtros."""
+    try:
+        # Parámetros de filtro
+        dias = int(request.args.get('dias', 90))  # Últimos 90 días por defecto
+        estado_filtro = request.args.get('estado', 'todos')  # todos, PENDIENTE, APROBADO, RECHAZADO, COMPLETADO
+        producto_id = request.args.get('producto_id', None)
+        
+        fecha_limite = date.today() - timedelta(days=dias)
+        
+        # Query base
+        query_pedidos = PedidoSiza.query.filter(PedidoSiza.fecha_registro >= fecha_limite)
+        
+        # Filtrar por estado
+        if estado_filtro != 'todos':
+            query_pedidos = query_pedidos.filter_by(estado=estado_filtro)
+        
+        # Filtrar por producto
+        if producto_id:
+            query_pedidos = query_pedidos.filter_by(producto_id=int(producto_id))
+        
+        # Obtener pedidos
+        pedidos = query_pedidos.order_by(PedidoSiza.fecha_registro.desc()).all()
+        
+        # Formatear resultados
+        pedidos_list = []
+        for pedido in pedidos:
+            pedidos_list.append({
+                'id': pedido.id,
+                'numero_pedido': pedido.numero_pedido,
+                'producto': pedido.producto.nombre,
+                'producto_id': pedido.producto_id,
+                'volumen_solicitado': float(pedido.volumen_solicitado),
+                'observacion': pedido.observacion or '-',
+                'estado': pedido.estado,
+                'fecha_registro': pedido.fecha_registro.strftime('%d/%m/%Y %H:%M'),
+                'usuario_registro': pedido.usuario_registro,
+                'fecha_gestion': pedido.fecha_gestion.strftime('%d/%m/%Y %H:%M') if pedido.fecha_gestion else None,
+                'usuario_gestion': pedido.usuario_gestion or '-'
+            })
+        
+        return jsonify({
+            'success': True,
+            'pedidos': pedidos_list,
+            'total': len(pedidos_list)
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@login_required
 @app.route('/inicio-siza')
 def home_siza():
-    """Página de inicio personalizada para el módulo de Inventario SIZA."""
-    return render_template('home_siza.html')
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
 
 @login_required
 @app.route('/reporte_barcaza')
@@ -6022,11 +7085,10 @@ def descargar_reporte_pdf():
                     headers={'Content-Disposition': 'attachment;filename=reporte_consumo.pdf'})
 
 @login_required
-@permiso_requerido('simulador_rendimiento')
 @app.route('/inicio-simulador')
 def home_simulador():
-    """Página de inicio para el área del simulador."""
-    return render_template('home_simulador.html')
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
 
 @login_required
 @permiso_requerido('simulador_rendimiento')
@@ -6799,11 +7861,10 @@ def delete_crudo(nombre_crudo):
         return jsonify(success=False, message="Crudo no encontrado."), 404
     
 @login_required
-@permiso_exclusivo('accountingzf@conquerstrading.com')
 @app.route('/inicio-contabilidad')
 def home_contabilidad():
-    """Página de inicio exclusiva para Contabilidad."""
-    return render_template('home_contabilidad.html')
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
     
 @login_required
 @permiso_requerido('accountingzf@conquerstrading.com')
@@ -7519,11 +8580,10 @@ def download_remolcadores_excel():
         return "Error al generar el archivo Excel.", 500
 
 @login_required
-@permiso_requerido('control_remolcadores')
 @app.route('/inicio-remolcadores')
 def home_remolcadores():
-    """Página de bienvenida exclusiva para el control de remolcadores."""
-    return render_template('home_remolcadores.html')
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
 
 @login_required
 @permiso_requerido('control_remolcadores')
@@ -7534,11 +8594,10 @@ def control_remolcadores():
     return render_template('control_remolcadores.html', rol_usuario=session.get('rol'))
 
 @login_required
-@permiso_requerido('programacion_cargue')
 @app.route('/home-programacion')
 def home_programacion():
-    """Página de inicio para usuarios que solo ven la programación de cargue."""
-    return render_template('home_programacion.html', nombre=session.get("nombre"))
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -7573,6 +8632,9 @@ def handle_programacion():
     # Convierte los datos a un formato JSON friendly
     data = []
     ahora = datetime.utcnow()
+    # Campos que refinery debe completar
+    campos_refineria = ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
+    
     for r in registros:
         fila = {}
         for c in r.__table__.columns:
@@ -7586,6 +8648,16 @@ def handle_programacion():
             fila['refineria_bloqueado'] = (ahora - r.refineria_completado_en) > timedelta(minutes=30)
         else:
             fila['refineria_bloqueado'] = False
+        
+        # Verificar si refinery completó todos sus campos
+        def valor_lleno(v):
+            return v not in (None, '')
+        try:
+            refinery_completo = all(valor_lleno(getattr(r, f)) for f in campos_refineria)
+            fila['refinery_completo'] = refinery_completo
+        except Exception:
+            fila['refinery_completo'] = False
+            
         data.append(fila)
     return jsonify(data)
 
@@ -7599,10 +8671,10 @@ def update_programacion(id):
     
     # La lógica de permisos no necesita cambios, está bien.
     permisos = {
-        'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
+        'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
@@ -7629,9 +8701,22 @@ def update_programacion(id):
 
         # --- INICIO DE LA CORRECCIÓN ---
         campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
+        
+        # Diccionario de normalización de productos
+        normalizacion_productos = {
+            'F04': 'FUEL OIL 4',
+            'FO4': 'FUEL OIL 4',
+            'F06': 'FUEL OIL 6',
+            'FO6': 'FUEL OIL 6'
+        }
 
         for campo, valor in data.items():
             if campo in campos_permitidos:
+                
+                # Normalización automática de productos
+                if campo == 'producto_a_cargar' and valor:
+                    valor_upper = str(valor).upper().strip()
+                    valor = normalizacion_productos.get(valor_upper, valor)
                 
                 # 1. Manejo específico para la fecha de programación
                 if campo == 'fecha_programacion'or campo == 'fecha_despacho':
@@ -7747,6 +8832,74 @@ def borrar_lock_programacion():
             return jsonify(success=True, message='Lock liberado')
         return jsonify(success=False, message='No puedes liberar lock de otro usuario'), 403
     return jsonify(success=True, message='No existe lock')
+
+# ==========================================
+# SISTEMA DE PRESENCIA EN TIEMPO REAL
+# ==========================================
+
+# Almacenamiento en memoria de usuarios activos (limpieza automática después de 30 segundos de inactividad)
+user_presence = {}  # {email: {name, editing_row, editing_column, last_seen}}
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/presence', methods=['POST'])
+def update_presence():
+    """Actualizar presencia del usuario actual"""
+    data = request.get_json() or {}
+    email = session.get('email')
+    
+    if not email:
+        return jsonify(success=False, message='No autenticado'), 401
+    
+    # Limpiar usuarios inactivos (más de 30 segundos)
+    current_time = datetime.utcnow().timestamp()
+    inactive_users = [
+        user_email for user_email, info in user_presence.items()
+        if current_time - info.get('last_seen', 0) > 30
+    ]
+    for user_email in inactive_users:
+        del user_presence[user_email]
+    
+    # Si no está editando (rowId y column son None), remover presencia
+    if not data.get('editing_row') and not data.get('editing_column'):
+        if email in user_presence:
+            del user_presence[email]
+        return jsonify(success=True)
+    
+    # Actualizar o crear presencia
+    user_presence[email] = {
+        'name': data.get('user', session.get('nombre', 'Usuario')),
+        'editing_row': data.get('editing_row'),
+        'editing_column': data.get('editing_column'),
+        'current_value': data.get('current_value'),  # NUEVO: Contenido actual
+        'last_seen': current_time
+    }
+    
+    return jsonify(success=True)
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/presence', methods=['GET'])
+def get_presence():
+    """Obtener presencia de todos los usuarios activos"""
+    current_email = session.get('email')
+    
+    # Limpiar usuarios inactivos antes de enviar
+    current_time = datetime.utcnow().timestamp()
+    inactive_users = [
+        user_email for user_email, info in user_presence.items()
+        if current_time - info.get('last_seen', 0) > 30
+    ]
+    for user_email in inactive_users:
+        del user_presence[user_email]
+    
+    # Filtrar para no incluir al usuario actual
+    active_users = {
+        email: info for email, info in user_presence.items()
+        if email != current_email
+    }
+    
+    return jsonify(success=True, users=active_users)
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -10143,53 +11296,38 @@ def home():
     if 'email' not in session:
         return redirect(url_for('login'))
     
-    user_areas = session.get('area', [])
     user_email = session.get('email')
 
-    # --- REGLA 1: Usuarios con roles o emails exclusivos ---
+    # --- REGLA 1: Administradores siempre al dashboard de reportes ---
     if session.get('rol') == 'admin':
         return redirect(url_for('dashboard_reportes'))
 
-    # ✅ REGLA PARA SAMANTHA: Si es ella, siempre va a su home de logística.
-    if user_email == 'logistic@conquerstrading.com':
-        return redirect(url_for('home_logistica'))
-    
-    if user_email == 'accountingzf@conquerstrading.com':
-        return redirect(url_for('home_contabilidad'))
+    # --- REGLA 2: Usuarios con acceso a reportes van al dashboard ---
+    if 'reportes' in session.get('area', []):
+        return redirect(url_for('dashboard_reportes'))
 
-
-    # --- EXCEPCIÓN PARA DANIELA, FELIPE Y ANA: Siempre dashboard general ---
+    # --- REGLA 3: Excepciones específicas por email ---
     if user_email in ['comex@conquerstrading.com', 'felipe.delavega@conquerstrading.com', 'amariagallo@conquerstrading.com']:
         return redirect(url_for('dashboard_reportes'))
 
-    # --- EXCEPCIÓN PARA SEBASTIAN: Siempre home de Inventario EPP ---
+    # --- REGLA 4: Usuario de inventario EPP exclusivo ---
     if user_email == 'safety@conquerstrading.com':
         return redirect(url_for('inventario_epp_home'))
 
-    # --- REGLA 2: Usuarios con un único permiso específico ---
-    if len(user_areas) == 1:
-        area_unica = user_areas[0]
-        if area_unica == 'programacion_cargue':
-            return redirect(url_for('home_programacion'))
-        if area_unica == 'control_remolcadores':
-            return redirect(url_for('home_remolcadores'))
-        if area_unica == 'simulador_rendimiento':
-            return redirect(url_for('home_simulador'))
-        if area_unica == 'guia_transporte':
-            return redirect(url_for('home_logistica'))
-        if area_unica == 'zisa_inventory':
-            return redirect(url_for('home_siza'))
-        if area_unica == 'inventario_epp':
-            return redirect(url_for('inventario_epp_home'))
-
-    return redirect(url_for('dashboard_reportes'))
+    # --- REGLA 5: Todos los demás usuarios van al home global ---
+    return redirect(url_for('home_global'))
 
 @login_required
-@permiso_requerido('guia_transporte')
 @app.route('/inicio-logistica')
 def home_logistica():
-    """Página de inicio simplificada para el área de logística."""
-    return render_template('home_logistica.html')
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
+
+@login_required
+@app.route('/home-global')
+def home_global():
+    """Página de inicio global unificada para todos los usuarios con permisos."""
+    return render_template('home_global.html')
 
 @app.route('/test')
 def test():
@@ -13730,7 +14868,8 @@ with app.app_context():
  db.create_all()
 
 # Registrar el Blueprint de WhatsApp
-app.register_blueprint(bot_bp)
+# TEMPORALMENTE DESHABILITADO por error de spacy
+# app.register_blueprint(bot_bp)
 
 # ===================================================================
 # --- INICIO: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---

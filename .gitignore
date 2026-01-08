@@ -2,16 +2,20 @@
 venv/
 env/
 .venv/
+.venv-scipy/
 Scripts/
 Lib/
 
 # --- Python ---
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # --- Base de Datos (Nunca se sube) ---
 *.sqlite3
 *.db
+instance/
 
 # --- Archivos Multimedia Gigantes (Bloquéalos) ---
 *.mp4
@@ -20,4 +24,17 @@ __pycache__/
 
 # --- Seguridad ---
 .env
-.venv-scipy/
+
+# --- Temporales y Cache ---
+tmp_modelo_excel/
+upload_modelo_temp.xlsx
+*.tmp
+*.log
+
+# --- IDEs ---
+.vscode/
+.idea/
+
+# --- Archivos de prueba (no subir) ---
+test_*.py
+*_test.py

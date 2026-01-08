@@ -1,0 +1,1459 @@
+{% extends "base.html" %}
+
+{% block title %}Control Cupo SIZA Multi-Producto{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+    
+    .product-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .product-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .product-volume {
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+        margin: 0.5rem 0;
+    }
+    
+    .product-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.9;
+        color: white;
+        font-weight: 600;
+    }
+    
+    .product-stats {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1rem;
+        gap: 0.5rem;
+    }
+    
+    .stat-box {
+        flex: 1;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 0.75rem 0.5rem;
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+    }
+    
+    .stat-label {
+        font-size: 0.7rem;
+        color: white;
+        opacity: 0.9;
+        margin-top: 0.25rem;
+    }
+    
+    .bg-f04 {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .bg-diluyente {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    
+    .bg-mgo {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+    
+    .bg-agua {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    }
+    
+    .bg-disponible-ok {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+    
+    .bg-disponible-alerta {
+        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        animation: pulse-alert 2s infinite;
+    }
+    
+    @keyframes pulse-alert {
+        0%, 100% { box-shadow: 0 4px 12px rgba(235, 51, 73, 0.4); }
+        50% { box-shadow: 0 8px 25px rgba(235, 51, 73, 0.7); }
+    }
+    
+    .quick-action-btn {
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        color: white;
+        border-radius: 8px;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.3s;
+        white-space: nowrap;
+    }
+    
+    .quick-action-btn:hover {
+        background: rgba(255, 255, 255, 0.4);
+        transform: scale(1.05);
+        color: white;
+    }
+    
+    .pedidos-table-modern {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .pedidos-table-modern thead {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .pedidos-table-modern th {
+        padding: 1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .pedidos-table-modern td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+    
+    .pedidos-table-modern tbody tr {
+        transition: all 0.2s;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .pedidos-table-modern tbody tr:hover {
+        background: linear-gradient(90deg, rgba(102, 126, 234, 0.05) 0%, transparent 100%);
+    }
+    
+    .badge-producto {
+        padding: 0.4rem 0.9rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 2rem 0 1.5rem 0;
+        padding-bottom: 0.75rem;
+        border-bottom: 3px solid #667eea;
+    }
+    
+    .section-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin: 0;
+    }
+    
+    .btn-new-pedido {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 0.75rem 2rem;
+        border-radius: 25px;
+        font-weight: 600;
+        font-size: 1rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        transition: all 0.3s;
+    }
+    
+    .btn-new-pedido:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        color: white;
+    }
+    
+    .modal-header-custom {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px 15px 0 0;
+    }
+    
+    .input-number-modern {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .input-number-modern:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .alert-global {
+        background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+        color: white;
+        border: none;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(235, 51, 73, 0.3);
+        animation: slideInDown 0.5s;
+    }
+    
+    @keyframes slideInDown {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <!-- Alerta Global -->
+    {% if alerta_cupo %}
+    <div class="alert alert-global d-flex align-items-center" role="alert">
+        <div class="me-3" style="font-size: 3rem;">⚠️</div>
+        <div>
+            <h4 class="alert-heading mb-2 fw-bold">¡ALERTA CRÍTICA DE INVENTARIO!</h4>
+            <p class="mb-0">Uno o más productos tienen cupo agotado. Revisa los productos en ROJO y recarga inventario antes de aprobar pedidos.</p>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Header -->
+    <div class="section-header">
+        <h1 class="section-title">
+            <i class="bi bi-shield-fill-check me-2"></i>
+            Control de Cupo SIZA Multi-Producto
+        </h1>
+        <button class="btn btn-new-pedido" data-bs-toggle="modal" data-bs-target="#modalNuevoPedido">
+            <i class="bi bi-plus-circle me-2"></i>Nuevo Pedido
+        </button>
+    </div>
+    
+    <!-- Tarjetas de Productos -->
+    <div class="row">
+        {% for item in inventario_productos %}
+        <div class="col-lg-6 col-xl-3">
+            <div class="product-card 
+                {% if item.producto.codigo == 'F04' %}bg-f04
+                {% elif item.producto.codigo == 'DILUYENTE' %}bg-diluyente
+                {% elif item.producto.codigo == 'MGO' %}bg-mgo
+                {% elif item.producto.codigo == 'AGUA_RESIDUAL' %}bg-agua
+                {% endif %}">
+                
+                <div class="product-header">
+                    <h3 class="product-title">{{ item.producto.nombre }}</h3>
+                    {% if es_gestor %}
+                    <div>
+                        <button class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#modalRecargar{{ item.producto.id }}" title="Recargar inventario">
+                            <i class="bi bi-arrow-repeat me-1"></i>Recargar
+                        </button>
+                        <button class="quick-action-btn bg-danger" data-bs-toggle="modal" data-bs-target="#modalConsumo{{ item.producto.id }}" title="Registrar consumo/despacho">
+                            <i class="bi bi-box-arrow-right me-1"></i>Consumo
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="product-label">Inventario Disponible</div>
+                <div class="product-volume">{{ "{:,.0f}".format(item.inventario.cupo_web) }} BBL</div>
+                
+                <div class="product-stats">
+                    <div class="stat-box">
+                        <div class="stat-value">{{ "{:,.0f}".format(item.comprometido) }}</div>
+                        <div class="stat-label">Comprometido</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ "{:,.0f}".format(item.disponible) }}</div>
+                        <div class="stat-label">Disponible</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ item.pedidos_count }}</div>
+                        <div class="stat-label">Pedidos</div>
+                    </div>
+                </div>
+                
+                {% if item.alerta %}
+                <div class="mt-2 text-center">
+                    <span class="badge bg-danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>AGOTADO
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Modal Recargar Producto -->
+        <div class="modal fade" id="modalRecargar{{ item.producto.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header modal-header-custom">
+                        <h5 class="modal-title">
+                            <i class="bi bi-arrow-repeat me-2"></i>Recargar {{ item.producto.nombre }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form action="{{ url_for('recargar_producto_siza') }}" method="POST">
+                        <div class="modal-body">
+                            <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+                            
+                            <div class="alert alert-info">
+                                <strong>Inventario Actual:</strong> {{ "{:,.0f}".format(item.inventario.cupo_web) }} Barriles
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Volumen a Recargar (Barriles) *</label>
+                                <input type="number" step="0.01" class="form-control input-number-modern" 
+                                       name="volumen_recarga" placeholder="Ej: 50000" required min="0">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Observación</label>
+                                <textarea class="form-control" name="observacion" rows="2" 
+                                          placeholder="Detalles de la recarga..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle me-2"></i>Registrar Recarga
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Registrar Consumo -->
+        <div class="modal fade" id="modalConsumo{{ item.producto.id }}" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-box-arrow-right me-2"></i>Registrar Consumo/Despacho - {{ item.producto.nombre }}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Información de Pedidos Aprobados -->
+                        {% set pedidos_aprobados = pedidos|selectattr('producto_id', 'equalto', item.producto.id)|selectattr('estado', 'equalto', 'APROBADO')|list %}
+                        {% if pedidos_aprobados|length > 0 %}
+                        <div class="alert alert-success mb-3">
+                            <h6 class="fw-bold mb-2">
+                                <i class="bi bi-check-circle-fill me-2"></i>Pedidos Aprobados Pendientes de Consumo: {{ pedidos_aprobados|length }}
+                            </h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-borderless mb-2">
+                                    <thead>
+                                        <tr>
+                                            <th>Nº Pedido</th>
+                                            <th class="text-end">Volumen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for pedido_apr in pedidos_aprobados[:5] %}
+                                        <tr>
+                                            <td class="fw-bold">{{ pedido_apr.numero_pedido }}</td>
+                                            <td class="text-end">{{ "{:,.0f}".format(pedido_apr.volumen_solicitado) }} BBL</td>
+                                        </tr>
+                                        {% endfor %}
+                                        {% if pedidos_aprobados|length > 5 %}
+                                        <tr>
+                                            <td colspan="2" class="text-muted"><small>...y {{ pedidos_aprobados|length - 5 }} más</small></td>
+                                        </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <form action="{{ url_for('consumir_pedidos_siza') }}" method="POST" class="mt-2">
+                                <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+                                <button type="submit" class="btn btn-success w-100" onclick="return confirm('¿Consumir automáticamente TODOS los pedidos aprobados de {{ item.producto.nombre }}?')">
+                                    <i class="bi bi-lightning-charge-fill me-2"></i>Consumir Automáticamente Todos los Pedidos Aprobados
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle me-2"></i>No hay pedidos aprobados pendientes de consumo para este producto.
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Separador -->
+                        <div class="text-center my-3">
+                            <hr>
+                            <strong class="text-muted">O REGISTRA UN CONSUMO MANUAL</strong>
+                            <hr>
+                        </div>
+                        
+                        <!-- Formulario de Consumo Manual -->
+                        <form action="{{ url_for('registrar_consumo_siza') }}" method="POST">
+                            <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+                            
+                            <div class="alert alert-warning">
+                                <strong>Inventario Disponible:</strong> {{ "{:,.0f}".format(item.inventario.cupo_web) }} BBL<br>
+                                <small>Este volumen será RESTADO del inventario</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Volumen Consumido/Despachado (Barriles) *</label>
+                                <input type="number" step="0.01" class="form-control input-number-modern" 
+                                       name="volumen_consumo" placeholder="Ej: 1500" required min="0" 
+                                       max="{{ item.inventario.cupo_web }}">
+                                <small class="form-text text-muted">Máximo disponible: {{ "{:,.0f}".format(item.inventario.cupo_web) }} BBL</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Observación *</label>
+                                <textarea class="form-control" name="observacion" rows="2" 
+                                          placeholder="Ej: Despacho a cliente X, Pedido #12345..." required></textarea>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Registrar Consumo Manual
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Resumen General -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="product-card {% if total_disponible > 0 %}bg-disponible-ok{% else %}bg-disponible-alerta{% endif %}">
+                <div class="product-label">TOTAL DISPONIBLE (Todos los Productos)</div>
+                <div class="product-volume">{{ "{:,.0f}".format(total_disponible) }} BBL</div>
+                {% if total_disponible > 0 %}
+                <p class="text-white mb-0 mt-2"><i class="bi bi-check-circle-fill me-2"></i>Cupo Global OK</p>
+                {% else %}
+                <p class="text-white mb-0 mt-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>CUPO CRÍTICO</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="product-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="product-label">TOTAL COMPROMETIDO</div>
+                <div class="product-volume">{{ "{:,.0f}".format(total_comprometido) }} BBL</div>
+                <p class="text-white mb-0 mt-2"><i class="bi bi-clock-history me-2"></i>{{ pedidos_pendientes|length }} pedidos pendientes de aprobación</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabla de Pedidos Pendientes -->
+    <div class="section-header mt-5">
+        <h2 class="section-title">
+            <i class="bi bi-list-check me-2"></i>Pedidos Pendientes de Aprobación
+        </h2>
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalHistorialPedidos">
+            <i class="bi bi-archive-fill me-2"></i>Ver Historial Completo de Pedidos
+        </button>
+    </div>
+    
+    <div class="pedidos-table-modern">
+        {% if pedidos_pendientes|length > 0 %}
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Número Pedido</th>
+                    <th>Producto</th>
+                    <th class="text-end">Volumen</th>
+                    <th>Observación</th>
+                    <th>Fecha Registro</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos_pendientes %}
+                <tr>
+                    <td class="fw-bold">{{ loop.index }}</td>
+                    <td class="fw-bold">{{ pedido.numero_pedido }}</td>
+                    <td>
+                        <span class="badge badge-producto bg-{{ pedido.producto.color_badge }}">
+                            {{ pedido.producto.nombre }}
+                        </span>
+                    </td>
+                    <td class="text-end">
+                        <span class="badge bg-primary" style="font-size: 0.95rem;">
+                            {{ "{:,.0f}".format(pedido.volumen_solicitado) }} BBL
+                        </span>
+                    </td>
+                    <td>{{ pedido.observacion or '-' }}</td>
+                    <td>{{ pedido.fecha_registro.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td class="text-center">
+                        {% set inv = namespace(encontrado=False) %}
+                        {% for item in inventario_productos %}
+                            {% if item.producto.id == pedido.producto_id %}
+                                {% set inv.disponible = item.disponible %}
+                                {% set inv.encontrado = True %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if es_gestor %}
+                        <form action="{{ url_for('gestionar_pedido', pedido_id=pedido.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="accion" value="aprobar">
+                            <button type="submit" class="btn btn-sm btn-success me-1" 
+                                    {% if not inv.encontrado or inv.disponible <= 0 %}disabled{% endif %}>
+                                <i class="bi bi-check-circle-fill"></i> Aprobar
+                            </button>
+                        </form>
+                        <form action="{{ url_for('gestionar_pedido', pedido_id=pedido.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="accion" value="rechazar">
+                            <button type="submit" class="btn btn-sm btn-danger me-1">
+                                <i class="bi bi-x-circle-fill"></i> Rechazar
+                            </button>
+                        </form>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-primary" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalEditarPedido{{ pedido.id }}"
+                                title="Editar pedido">
+                            <i class="bi bi-pencil-square"></i> Editar
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-5">
+            <div style="font-size: 4rem; opacity: 0.3;">✅</div>
+            <h4 class="text-muted mt-3">No hay pedidos pendientes</h4>
+            <p class="text-muted">Todos los pedidos han sido procesados</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sección: Historial de Movimientos -->
+<div class="card shadow-sm border-0 mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+        <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Historial de Movimientos Recientes (Últimos 15)</h5>
+        <div>
+            <span class="badge bg-light text-dark me-2">{{ movimientos|length }} de {{ total_movimientos }} movimientos</span>
+            <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalHistorialCompleto">
+                <i class="bi bi-eye-fill me-1"></i>Ver Historial Completo
+            </button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if movimientos %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background-color: #f8f9fa;">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Tipo</th>
+                        <th class="text-end">Volumen</th>
+                        <th>Observación</th>
+                        <th>Usuario</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in movimientos %}
+                    <tr>
+                        <td>
+                            <strong>{{ mov.fecha.strftime('%d/%m/%Y') }}</strong><br>
+                            <small class="text-muted">{{ mov.fecha_registro.strftime('%H:%M') }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ mov.producto.color_badge }}">
+                                {{ mov.producto.nombre }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if mov.tipo == 'recarga' %}
+                            <span class="badge bg-success">
+                                <i class="bi bi-arrow-up-circle"></i> RECARGA
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger">
+                                <i class="bi bi-arrow-down-circle"></i> CONSUMO
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if mov.tipo == 'recarga' %}
+                            <span class="text-success fw-bold">+{{ "{:,.0f}".format(mov.volumen) }} BBL</span>
+                            {% else %}
+                            <span class="text-danger fw-bold">-{{ "{:,.0f}".format(mov.volumen) }} BBL</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if mov.observacion %}
+                            <small>{{ mov.observacion[:50] }}{% if mov.observacion|length > 50 %}...{% endif %}</small>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ mov.usuario }}</small>
+                            {% if mov.editado %}
+                            <br><small class="text-warning"><i class="bi bi-pencil-fill"></i> Editado por {{ mov.usuario_edicion }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if mov.editado %}
+                            <span class="badge bg-warning text-dark" title="Editado el {{ mov.fecha_edicion.strftime('%d/%m/%Y %H:%M') }}">
+                                <i class="bi bi-pencil"></i> Editado
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary">Original</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if es_gestor %}
+                            <button class="btn btn-sm btn-outline-primary me-1" 
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#modalEditar{{ mov.tipo|capitalize }}{{ mov.id }}"
+                                    title="Editar registro">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="if(confirm('¿Está seguro de eliminar este movimiento? El inventario será ajustado automáticamente.')) { document.getElementById('formEliminar{{ mov.tipo }}{{ mov.id }}').submit(); }"
+                                    title="Eliminar registro">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <form id="formEliminar{{ mov.tipo }}{{ mov.id }}" 
+                                  action="{{ url_for('eliminar_movimiento_siza', tipo=mov.tipo, movimiento_id=mov.id) }}" 
+                                  method="POST" style="display:none;"></form>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div style="font-size: 4rem; opacity: 0.3;">📋</div>
+            <h4 class="text-muted mt-3">No hay movimientos registrados</h4>
+            <p class="text-muted">Los movimientos de recarga y consumo aparecerán aquí</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal: Nuevo Pedido -->
+<div class="modal fade" id="modalNuevoPedido" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title">
+                    <i class="bi bi-plus-circle me-2"></i>Registrar Nuevo Pedido
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('registrar_pedido') }}" method="POST" id="formNuevoPedido">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Número de Pedido *</label>
+                            <input type="text" class="form-control input-number-modern" name="numero_pedido" 
+                                   placeholder="Ej: PED-2026-001" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Producto *</label>
+                            <select class="form-select input-number-modern" name="producto_id" id="selectProductoPedido" required>
+                                <option value="">Seleccione un producto...</option>
+                                {% for producto in productos %}
+                                <option value="{{ producto.id }}" 
+                                        data-disponible="{{ inventario_productos|selectattr('producto.id', 'equalto', producto.id)|map(attribute='disponible')|first|default(0) }}">
+                                    {{ producto.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Alert dinámica de disponibilidad -->
+                    <div id="alertDisponibilidad" class="alert alert-info" style="display:none;"></div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Solicitado (Barriles) *</label>
+                        <input type="number" step="0.01" class="form-control input-number-modern" 
+                               name="volumen_solicitado" id="inputVolumenSolicitado" placeholder="Ej: 5000" required min="0">
+                        <div id="warningVolumen" class="mt-2" style="display:none;">
+                            <div class="alert alert-warning mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>⚠️ ADVERTENCIA:</strong> <span id="textoWarning"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="3" 
+                                  placeholder="Detalles adicionales del pedido..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        El pedido quedará en estado PENDIENTE hasta que sea aprobado o rechazado.
+                        <strong>Se puede registrar aunque no haya inventario suficiente, pero se mostrará una advertencia.</strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Pedido
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modales de Edición para Recargas -->
+{% for mov in movimientos %}
+    {% if mov.tipo == 'recarga' %}
+    <div class="modal fade" id="modalEditarRecarga{{ mov.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Recarga - {{ mov.producto.nombre }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('editar_recarga_siza', recarga_id=mov.id) }}" method="POST">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <strong>Fecha:</strong> {{ mov.fecha.strftime('%d/%m/%Y') }}<br>
+                            <strong>Registrado por:</strong> {{ mov.usuario }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Volumen Recargado (Barriles) *</label>
+                            <input type="number" step="0.01" class="form-control" 
+                                   name="volumen_recargado" value="{{ mov.volumen }}" required min="0">
+                            <small class="form-text text-muted">Actual: {{ "{:,.0f}".format(mov.volumen) }} BBL</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Observación</label>
+                            <textarea class="form-control" name="observacion" rows="2">{{ mov.observacion or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if mov.tipo == 'consumo' %}
+    <div class="modal fade" id="modalEditarConsumo{{ mov.id }}" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Consumo - {{ mov.producto.nombre }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('editar_consumo_siza', consumo_id=mov.id) }}" method="POST">
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <strong>Fecha:</strong> {{ mov.fecha.strftime('%d/%m/%Y') }}<br>
+                            <strong>Registrado por:</strong> {{ mov.usuario }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Volumen Consumido (Barriles) *</label>
+                            <input type="number" step="0.01" class="form-control" 
+                                   name="volumen_consumido" value="{{ mov.volumen }}" required min="0">
+                            <small class="form-text text-muted">Actual: {{ "{:,.0f}".format(mov.volumen) }} BBL</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Observación</label>
+                            <textarea class="form-control" name="observacion" rows="2">{{ mov.observacion or '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-save me-2"></i>Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<!-- Modal: Historial Completo de Movimientos -->
+<div class="modal fade" id="modalHistorialCompleto" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history me-2"></i>Historial Completo de Movimientos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Período</label>
+                                <select class="form-select" id="filtro_dias">
+                                    <option value="7">Últimos 7 días</option>
+                                    <option value="15">Últimos 15 días</option>
+                                    <option value="30">Últimos 30 días</option>
+                                    <option value="60">Últimos 60 días</option>
+                                    <option value="90" selected>Últimos 90 días</option>
+                                    <option value="180">Últimos 6 meses</option>
+                                    <option value="365">Último año</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Tipo de Movimiento</label>
+                                <select class="form-select" id="filtro_tipo">
+                                    <option value="todos">Todos</option>
+                                    <option value="recarga">Solo Recargas</option>
+                                    <option value="consumo">Solo Consumos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Producto</label>
+                                <select class="form-select" id="filtro_producto">
+                                    <option value="">Todos los productos</option>
+                                    {% for producto in productos %}
+                                    <option value="{{ producto.id }}">{{ producto.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="cargarHistorialCompleto()">
+                                    <i class="bi bi-funnel-fill me-2"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Resultados -->
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>Total de movimientos: <strong id="totalMovimientos">-</strong>
+                </div>
+                
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover table-sm">
+                        <thead class="sticky-top" style="background-color: #f8f9fa;">
+                            <tr>
+                                <th>#</th>
+                                <th>Fecha</th>
+                                <th>Producto</th>
+                                <th>Tipo</th>
+                                <th class="text-end">Volumen</th>
+                                <th>Observación</th>
+                                <th>Usuario</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialCompleto">
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Haz clic en "Filtrar" para cargar movimientos</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales para Editar Pedidos -->
+{% for pedido in pedidos_pendientes %}
+<div class="modal fade" id="modalEditarPedido{{ pedido.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>Editar Pedido - {{ pedido.numero_pedido }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('editar_pedido_siza', pedido_id=pedido.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Producto:</strong> {{ pedido.producto.nombre }}<br>
+                        <strong>Registrado por:</strong> {{ pedido.usuario_registro }}<br>
+                        <strong>Fecha:</strong> {{ pedido.fecha_registro.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select class="form-select" name="estado">
+                            <option value="PENDIENTE" {% if pedido.estado == 'PENDIENTE' %}selected{% endif %}>PENDIENTE</option>
+                            <option value="APROBADO" {% if pedido.estado == 'APROBADO' %}selected{% endif %}>APROBADO</option>
+                            <option value="RECHAZADO" {% if pedido.estado == 'RECHAZADO' %}selected{% endif %}>RECHAZADO</option>
+                            <option value="COMPLETADO" {% if pedido.estado == 'COMPLETADO' %}selected{% endif %}>COMPLETADO</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Solicitado (BBL)</label>
+                        <input type="number" step="0.01" class="form-control" name="volumen_solicitado" 
+                               value="{{ pedido.volumen_solicitado }}" min="0">
+                        <small class="form-text text-muted">Actual: {{ "{:,.0f}".format(pedido.volumen_solicitado) }} BBL</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="2">{{ pedido.observacion or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modal: Historial Completo de Pedidos -->
+<div class="modal fade" id="modalHistorialPedidos" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                <h5 class="modal-title">
+                    <i class="bi bi-archive-fill me-2"></i>Historial Completo de Pedidos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Filtros -->
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Período</label>
+                                <select class="form-select" id="filtro_pedidos_dias">
+                                    <option value="7">Últimos 7 días</option>
+                                    <option value="15">Últimos 15 días</option>
+                                    <option value="30">Últimos 30 días</option>
+                                    <option value="60">Últimos 60 días</option>
+                                    <option value="90" selected>Últimos 90 días</option>
+                                    <option value="180">Últimos 6 meses</option>
+                                    <option value="365">Último año</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold">Estado</label>
+                                <select class="form-select" id="filtro_pedidos_estado">
+                                    <option value="todos">Todos</option>
+                                    <option value="PENDIENTE">Pendientes</option>
+                                    <option value="APROBADO">Aprobados</option>
+                                    <option value="RECHAZADO">Rechazados</option>
+                                    <option value="COMPLETADO">Completados</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Producto</label>
+                                <select class="form-select" id="filtro_pedidos_producto">
+                                    <option value="">Todos los productos</option>
+                                    {% for producto in productos %}
+                                    <option value="{{ producto.id }}">{{ producto.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="cargarHistorialPedidos()">
+                                    <i class="bi bi-funnel-fill me-2"></i>Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Resultados -->
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>Total de pedidos: <strong id="totalPedidos">-</strong>
+                </div>
+                
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover table-sm">
+                        <thead class="sticky-top" style="background-color: #f8f9fa;">
+                            <tr>
+                                <th>#</th>
+                                <th>Nº Pedido</th>
+                                <th>Producto</th>
+                                <th>Estado</th>
+                                <th class="text-end">Volumen</th>
+                                <th>Observación</th>
+                                <th>Registrado</th>
+                                <th>Gestionado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialPedidos">
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Haz clic en "Filtrar" para cargar pedidos</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales para Editar Pedidos Históricos -->
+{% set pedidos_historicos = pedidos|selectattr('estado', 'in', ['APROBADO', 'RECHAZADO', 'COMPLETADO'])|list %}
+{% for pedido in pedidos_historicos %}
+<div class="modal fade" id="modalEditarPedidoHistorico{{ pedido.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>Editar Pedido - {{ pedido.numero_pedido }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('editar_pedido_siza', pedido_id=pedido.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Producto:</strong> {{ pedido.producto.nombre }}<br>
+                        <strong>Registrado por:</strong> {{ pedido.usuario_registro }}<br>
+                        <strong>Fecha:</strong> {{ pedido.fecha_registro.strftime('%d/%m/%Y %H:%M') }}<br>
+                        <strong>Estado Actual:</strong> <span class="badge 
+                            {% if pedido.estado == 'APROBADO' %}bg-success
+                            {% elif pedido.estado == 'RECHAZADO' %}bg-danger
+                            {% elif pedido.estado == 'COMPLETADO' %}bg-info
+                            {% endif %}">{{ pedido.estado }}</span>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select class="form-select" name="estado">
+                            <option value="PENDIENTE" {% if pedido.estado == 'PENDIENTE' %}selected{% endif %}>PENDIENTE</option>
+                            <option value="APROBADO" {% if pedido.estado == 'APROBADO' %}selected{% endif %}>APROBADO</option>
+                            <option value="RECHAZADO" {% if pedido.estado == 'RECHAZADO' %}selected{% endif %}>RECHAZADO</option>
+                            <option value="COMPLETADO" {% if pedido.estado == 'COMPLETADO' %}selected{% endif %}>COMPLETADO</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Solicitado (BBL)</label>
+                        <input type="number" step="0.01" class="form-control" name="volumen_solicitado" 
+                               value="{{ pedido.volumen_solicitado }}" min="0">
+                        <small class="form-text text-muted">Actual: {{ "{:,.0f}".format(pedido.volumen_solicitado) }} BBL</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="2">{{ pedido.observacion or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modales para Editar Pedidos -->
+{% for pedido in pedidos_pendientes %}
+<div class="modal fade" id="modalEditarPedido{{ pedido.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>Editar Pedido - {{ pedido.numero_pedido }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('editar_pedido_siza', pedido_id=pedido.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Producto:</strong> {{ pedido.producto.nombre }}<br>
+                        <strong>Registrado por:</strong> {{ pedido.usuario_registro }}<br>
+                        <strong>Fecha:</strong> {{ pedido.fecha_registro.strftime('%d/%m/%Y %H:%M') }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <select class="form-select" name="estado">
+                            <option value="PENDIENTE" {% if pedido.estado == 'PENDIENTE' %}selected{% endif %}>PENDIENTE</option>
+                            <option value="APROBADO" {% if pedido.estado == 'APROBADO' %}selected{% endif %}>APROBADO</option>
+                            <option value="RECHAZADO" {% if pedido.estado == 'RECHAZADO' %}selected{% endif %}>RECHAZADO</option>
+                            <option value="COMPLETADO" {% if pedido.estado == 'COMPLETADO' %}selected{% endif %}>COMPLETADO</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Solicitado (BBL)</label>
+                        <input type="number" step="0.01" class="form-control" name="volumen_solicitado" 
+                               value="{{ pedido.volumen_solicitado }}" min="0">
+                        <small class="form-text text-muted">Actual: {{ "{:,.0f}".format(pedido.volumen_solicitado) }} BBL</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="2">{{ pedido.observacion or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Confirmación antes de aprobar/rechazar
+    document.querySelectorAll('form[action*="gestionar-pedido"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const accion = this.querySelector('input[name="accion"]').value;
+            const mensaje = accion === 'aprobar' 
+                ? '¿Confirmar APROBACIÓN de este pedido?' 
+                : '¿Confirmar RECHAZO de este pedido?';
+            if (!confirm(mensaje)) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // Validación en tiempo real del modal de nuevo pedido
+    const selectProducto = document.getElementById('selectProductoPedido');
+    const inputVolumen = document.getElementById('inputVolumenSolicitado');
+    const alertDisponibilidad = document.getElementById('alertDisponibilidad');
+    const warningVolumen = document.getElementById('warningVolumen');
+    const textoWarning = document.getElementById('textoWarning');
+    
+    function validarDisponibilidad() {
+        const productoOption = selectProducto.options[selectProducto.selectedIndex];
+        const volumenSolicitado = parseFloat(inputVolumen.value) || 0;
+        
+        if (productoOption && productoOption.value) {
+            const disponible = parseFloat(productoOption.dataset.disponible) || 0;
+            const nombreProducto = productoOption.text;
+            
+            // Mostrar información de disponibilidad
+            alertDisponibilidad.style.display = 'block';
+            alertDisponibilidad.innerHTML = `
+                <strong>${nombreProducto}:</strong> Disponible actualmente: <strong>${disponible.toLocaleString('es-CO')} BBL</strong>
+            `;
+            
+            // Validar si excede disponibilidad
+            if (volumenSolicitado > 0) {
+                if (volumenSolicitado > disponible) {
+                    const faltante = volumenSolicitado - disponible;
+                    warningVolumen.style.display = 'block';
+                    textoWarning.innerHTML = `
+                        El volumen solicitado (${volumenSolicitado.toLocaleString('es-CO')} BBL) EXCEDE el disponible (${disponible.toLocaleString('es-CO')} BBL).
+                        <br>Faltante: <strong>${faltante.toLocaleString('es-CO')} BBL</strong>.
+                        <br>El pedido se puede registrar, pero NO se podrá aprobar hasta que haya suficiente inventario.
+                    `;
+                    alertDisponibilidad.className = 'alert alert-warning';
+                } else {
+                    warningVolumen.style.display = 'none';
+                    alertDisponibilidad.className = 'alert alert-success';
+                    alertDisponibilidad.innerHTML = `
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>${nombreProducto}:</strong> Disponible: <strong>${disponible.toLocaleString('es-CO')} BBL</strong>
+                        <br>✅ Hay inventario suficiente para este pedido.
+                    `;
+                }
+            } else {
+                warningVolumen.style.display = 'none';
+            }
+        } else {
+            alertDisponibilidad.style.display = 'none';
+            warningVolumen.style.display = 'none';
+        }
+    }
+    
+    if (selectProducto && inputVolumen) {
+        selectProducto.addEventListener('change', validarDisponibilidad);
+        inputVolumen.addEventListener('input', validarDisponibilidad);
+    }
+    
+    // Cargar historial completo en modal
+    window.cargarHistorialCompleto = function() {
+        const dias = document.getElementById('filtro_dias').value || 90;
+        const tipo = document.getElementById('filtro_tipo').value || 'todos';
+        const producto_id = document.getElementById('filtro_producto').value || '';
+        
+        fetch(`{{ url_for('historial_movimientos_siza') }}?dias=${dias}&tipo=${tipo}&producto_id=${producto_id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const tbody = document.getElementById('tablaHistorialCompleto');
+                    tbody.innerHTML = '';
+                    
+                    if (data.movimientos.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-muted">No hay movimientos en el período seleccionado</td></tr>';
+                        return;
+                    }
+                    
+                    data.movimientos.forEach((mov, index) => {
+                        const tr = document.createElement('tr');
+                        const badgeClass = mov.tipo === 'recarga' ? 'bg-success' : 'bg-danger';
+                        const icon = mov.tipo === 'recarga' ? 'arrow-up-circle' : 'arrow-down-circle';
+                        const signo = mov.tipo === 'recarga' ? '+' : '-';
+                        const colorTexto = mov.tipo === 'recarga' ? 'text-success' : 'text-danger';
+                        
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>
+                                <strong>${mov.fecha}</strong><br>
+                                <small class="text-muted">${mov.fecha_registro}</small>
+                            </td>
+                            <td>${mov.producto}</td>
+                            <td><span class="badge ${badgeClass}"><i class="bi bi-${icon}"></i> ${mov.tipo.toUpperCase()}</span></td>
+                            <td class="text-end"><span class="${colorTexto} fw-bold">${signo}${mov.volumen.toLocaleString('es-CO')} BBL</span></td>
+                            <td><small>${mov.observacion}</small></td>
+                            <td><small>${mov.usuario}${mov.editado ? '<br><span class="text-warning"><i class="bi bi-pencil-fill"></i> ' + mov.usuario_edicion + '</span>' : ''}</small></td>
+                            <td>${mov.editado ? '<span class="badge bg-warning text-dark">Editado</span>' : '<span class="badge bg-secondary">Original</span>'}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    document.getElementById('totalMovimientos').textContent = data.total;
+                } else {
+                    alert('Error al cargar historial: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cargar el historial completo');
+            });
+    };
+    
+    // Cargar historial completo de pedidos
+    window.cargarHistorialPedidos = function() {
+        const dias = document.getElementById('filtro_pedidos_dias').value || 90;
+        const estado = document.getElementById('filtro_pedidos_estado').value || 'todos';
+        const producto_id = document.getElementById('filtro_pedidos_producto').value || '';
+        
+        fetch(`{{ url_for('historial_pedidos_siza') }}?dias=${dias}&estado=${estado}&producto_id=${producto_id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const tbody = document.getElementById('tablaHistorialPedidos');
+                    tbody.innerHTML = '';
+                    
+                    if (data.pedidos.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">No hay pedidos en el período seleccionado</td></tr>';
+                        return;
+                    }
+                    
+                    data.pedidos.forEach((pedido, index) => {
+                        const tr = document.createElement('tr');
+                        let estadoBadge = '';
+                        if (pedido.estado === 'PENDIENTE') estadoBadge = '<span class="badge bg-warning text-dark">PENDIENTE</span>';
+                        else if (pedido.estado === 'APROBADO') estadoBadge = '<span class="badge bg-success">APROBADO</span>';
+                        else if (pedido.estado === 'RECHAZADO') estadoBadge = '<span class="badge bg-danger">RECHAZADO</span>';
+                        else if (pedido.estado === 'COMPLETADO') estadoBadge = '<span class="badge bg-info">COMPLETADO</span>';
+                        
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td class="fw-bold">${pedido.numero_pedido}</td>
+                            <td>${pedido.producto}</td>
+                            <td>${estadoBadge}</td>
+                            <td class="text-end"><span class="badge bg-primary">${pedido.volumen_solicitado.toLocaleString('es-CO')} BBL</span></td>
+                            <td><small>${pedido.observacion}</small></td>
+                            <td><small>${pedido.fecha_registro}<br><span class="text-muted">${pedido.usuario_registro}</span></small></td>
+                            <td><small>${pedido.fecha_gestion || '-'}<br><span class="text-muted">${pedido.usuario_gestion}</span></small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editarPedidoModal(${pedido.id}, '${pedido.numero_pedido}', ${pedido.producto_id}, '${pedido.producto}', ${pedido.volumen_solicitado}, '${pedido.estado}', '${pedido.observacion}')">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    
+                    document.getElementById('totalPedidos').textContent = data.total;
+                } else {
+                    alert('Error al cargar pedidos: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cargar el historial de pedidos');
+            });
+    };
+    
+    // Función para editar pedido desde el historial (abre un modal dinámico)
+    window.editarPedidoModal = function(id, numero, productoId, productoNombre, volumen, estado, observacion) {
+        // Crear modal dinámico para editar
+        const modalHtml = `
+            <div class="modal fade" id="modalEditarPedidoDinamico" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-pencil-square me-2"></i>Editar Pedido - ${numero}
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <form action="{{ url_for('editar_pedido_siza', pedido_id=0) }}".replace('/0', '/${id}') method="POST">
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <strong>Producto:</strong> ${productoNombre}<br>
+                                    <strong>Estado Actual:</strong> ${estado}
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Estado</label>
+                                    <select class="form-select" name="estado">
+                                        <option value="PENDIENTE" ${estado === 'PENDIENTE' ? 'selected' : ''}>PENDIENTE</option>
+                                        <option value="APROBADO" ${estado === 'APROBADO' ? 'selected' : ''}>APROBADO</option>
+                                        <option value="RECHAZADO" ${estado === 'RECHAZADO' ? 'selected' : ''}>RECHAZADO</option>
+                                        <option value="COMPLETADO" ${estado === 'COMPLETADO' ? 'selected' : ''}>COMPLETADO</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Volumen Solicitado (BBL)</label>
+                                    <input type="number" step="0.01" class="form-control" name="volumen_solicitado" 
+                                           value="${volumen}" min="0">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Observación</label>
+                                    <textarea class="form-control" name="observacion" rows="2">${observacion !== '-' ? observacion : ''}</textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-2"></i>Guardar Cambios
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal anterior si existe
+        const existingModal = document.getElementById('modalEditarPedidoDinamico');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Agregar nuevo modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarPedidoDinamico'));
+        modal.show();
+        
+        // Limpiar modal al cerrar
+        document.getElementById('modalEditarPedidoDinamico').addEventListener('hidden.bs.modal', function () {
+            this.remove();
+        });
+    };
+    
+    // Auto-cerrar alertas después de 8 segundos
+    setTimeout(() => {
+        document.querySelectorAll('.alert:not(.alert-global)').forEach(alert => {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+            bsAlert.close();
+        });
+    }, 8000);
+});
+</script>
+{% endblock %}

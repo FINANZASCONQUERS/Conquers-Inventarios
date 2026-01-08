@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Sistema de Gestión | Conquers Trading{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado de Bienvenida -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+            ¡Bienvenido, {{ session.get('nombre', 'Usuario') }}! 👋
+        </h1>
+        <p class="lead text-muted">Accede rápidamente a tus módulos y herramientas</p>
+    </div>
+
+    <!-- Cards de Acceso Rápido -->
+    <div class="row g-4">
+        <!-- 📦 INVENTARIOS -->
+        {% if 'zisa_inventory' in session.get('area', []) or 'siza_solicitante' in session.get('area', []) or 'siza_gestor' in session.get('area', []) or 'inventario_epp' in session.get('area', []) %}
+        <div class="col-12">
+            <h3 class="mb-3"><i class="bi bi-box-seam-fill me-2 text-primary"></i>Inventarios</h3>
+        </div>
+        {% if 'zisa_inventory' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-box-seam text-info"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Inventario SIZA</h5>
+                    <p class="card-text text-muted">Gestión de inventario de productos SIZA</p>
+                    <a href="{{ url_for('inventario_zisa') }}" class="btn btn-info btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'inventario_epp' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-hard-hat text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Inventario EPP</h5>
+                    <p class="card-text text-muted">Control de equipo de protección personal</p>
+                    <a href="{{ url_for('inventario_epp_home') }}" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'siza_solicitante' in session.get('area', []) or 'siza_gestor' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-shield-check text-warning"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Control Cupo SIZA</h5>
+                    <p class="card-text text-muted">Gestión de pedidos y consumo de cupo SIZA</p>
+                    <a href="{{ url_for('dashboard_siza') }}" class="btn btn-warning btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- 🚢 BARCAZAS -->
+        {% set allowed_trasiegos = [
+            'production@conquerstrading.com',
+            'ignacio@conquerstrading.com',
+            'refinery.control@conquerstrading.com',
+            'qualitycontrol@conquerstrading.com',
+            'quality.manager@conquerstrading.com'
+        ] %}
+        {% if 'barcaza_orion' in session.get('area', []) or 'barcaza_bita' in session.get('area', []) or 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in allowed_trasiegos %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-water me-2 text-primary"></i>Barcazas</h3>
+        </div>
+        {% if 'barcaza_orion' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-water text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Planilla Orion</h5>
+                    <p class="card-text text-muted">Control de operaciones barcaza Orion</p>
+                    <a href="{{ url_for('barcaza_orion') }}" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'barcaza_bita' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-tsunami text-info"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Planilla BITA</h5>
+                    <p class="card-text text-muted">Control de operaciones barcaza BITA</p>
+                    <a href="{{ url_for('barcaza_bita') }}" class="btn btn-info btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in allowed_trasiegos %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-arrow-left-right text-secondary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Trasiegos TK→Barcaza</h5>
+                    <p class="card-text text-muted">Gestión de trasiegos de tanques a barcazas</p>
+                    <a href="{{ url_for('trasiegos_page') }}" class="btn btn-secondary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- 🏭 PRODUCCIÓN -->
+        {% if 'planta' in session.get('area', []) or 'simulador_rendimiento' in session.get('area', []) or 'control_calidad' in session.get('area', []) %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-buildings-fill me-2 text-danger"></i>Producción</h3>
+        </div>
+        {% if 'planta' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-buildings-fill text-danger"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Planilla Planta</h5>
+                    <p class="card-text text-muted">Gestión de operaciones de planta</p>
+                    <a href="{{ url_for('planta') }}" class="btn btn-danger btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'simulador_rendimiento' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-droplet-fill text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Simulador Rendimiento</h5>
+                    <p class="card-text text-muted">Simulación de rendimientos de crudo</p>
+                    <a href="{{ url_for('simulador_rendimiento') }}" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'control_calidad' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-clipboard-check text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Control de Calidad</h5>
+                    <p class="card-text text-muted">Análisis y reportes de calidad</p>
+                    <a href="{{ url_for('control_calidad') }}" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- 🚛 LOGÍSTICA -->
+        {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
+        {% if 'transito' in session.get('area', []) or 'guia_transporte' in session.get('area', []) or 'programacion_cargue' in session.get('area', []) or session.get('email', '').lower() in panel_allowed %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-truck me-2 text-success"></i>Logística</h3>
+        </div>
+        {% if 'transito' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-cone-striped text-warning"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Planilla Tránsito</h5>
+                    <p class="card-text text-muted">Control de tránsito y despachos</p>
+                    <a href="{{ url_for('transito') }}" class="btn btn-warning btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'guia_transporte' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-truck text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Generar Guía</h5>
+                    <p class="card-text text-muted">Generación de guías de transporte</p>
+                    <a href="{{ url_for('guia_transporte') }}" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'programacion_cargue' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-calendar-check text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Programación de Despachos</h5>
+                    <p class="card-text text-muted">Programación y control de cargues</p>
+                    <a href="{{ url_for('programacion_cargue') }}" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if session.get('email', '').lower() in panel_allowed %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-list-check text-info"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Panel de Enturnamiento</h5>
+                    <p class="card-text text-muted">Control de turnos y enturnamiento</p>
+                    <a href="{{ url_for('panel_enturnamiento') }}" class="btn btn-info btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- 🚢 REMOLCADORES -->
+        {% if 'control_remolcadores' in session.get('area', []) %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-life-preserver me-2 text-danger"></i>Remolcadores</h3>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-life-preserver text-danger"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Control Remolcadores</h5>
+                    <p class="card-text text-muted">Gestión y control de remolcadores</p>
+                    <a href="{{ url_for('control_remolcadores_page') }}" class="btn btn-danger btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 💰 FINANZAS -->
+        {% if 'planilla_precios' in session.get('area', []) or 'flujo_efectivo' in session.get('area', []) %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-cash-stack me-2 text-success"></i>Finanzas</h3>
+        </div>
+        {% if 'planilla_precios' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-currency-exchange text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Planilla Precios</h5>
+                    <p class="card-text text-muted">Gestión de precios y cotizaciones</p>
+                    <a href="{{ url_for('planilla_precios') }}" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% if 'flujo_efectivo' in session.get('area', []) %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-cash-coin text-warning"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Flujo de Efectivo</h5>
+                    <p class="card-text text-muted">Control y proyección de flujo de caja</p>
+                    <a href="{{ url_for('flujo_efectivo') }}" class="btn btn-warning btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <!-- 🔧 OPTIMIZACIÓN -->
+        {% if 'modelo_optimizacion' in session.get('area', []) %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-cpu me-2 text-info"></i>Optimización</h3>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-cpu text-info"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Modelo Optimización</h5>
+                    <p class="card-text text-muted">Optimización de procesos y recursos</p>
+                    <a href="{{ url_for('modelo_optimizacion_page') }}" class="btn btn-info btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 📊 REPORTES -->
+        {% if 'reportes' in session.get('area', []) %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Reportes</h3>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-bar-chart-fill text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Dashboard Reportes</h5>
+                    <p class="card-text text-muted">Visualización de reportes y análisis</p>
+                    <a href="{{ url_for('dashboard_reportes') }}" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 🛒 COMPRAS -->
+        {% if session.get('email') == 'amariagallo@conquerstrading.com' %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-cart-check me-2 text-success"></i>Compras</h3>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-cart-check text-success"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Gestión de Compras</h5>
+                    <p class="card-text text-muted">Control de compras y proveedores</p>
+                    <a href="{{ url_for('gestion_compras') }}" class="btn btn-success btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 📝 CONTABILIDAD -->
+        {% if session.get('email') == 'accountingzf@conquerstrading.com' %}
+        <div class="col-12 mt-4">
+            <h3 class="mb-3"><i class="bi bi-calculator me-2 text-primary"></i>Contabilidad</h3>
+        </div>
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 border-0 shadow-sm hover-card">
+                <div class="card-body text-center p-4">
+                    <div class="mb-3" style="font-size: 3rem;">
+                        <i class="bi bi-file-earmark-spreadsheet text-primary"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Consolidar Facturas</h5>
+                    <p class="card-text text-muted">Consolidación de facturas contables</p>
+                    <a href="{{ url_for('consolidar_facturas') }}" class="btn btn-primary btn-lg w-100 mt-3">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Acceder
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .hover-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .hover-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+    }
+    
+    .hover-card .btn {
+        transition: all 0.3s ease;
+    }
+    
+    .hover-card:hover .btn {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
