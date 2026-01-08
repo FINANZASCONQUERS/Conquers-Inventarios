@@ -933,6 +933,22 @@ class PedidoSiza(db.Model):
     def __repr__(self):
         return f'<PedidoSiza {self.numero_pedido} - {self.estado}>'
 
+class VolumenPendienteDian(db.Model):
+    """Volumen pendiente de aprobación DIAN (general, no por producto)."""
+    __tablename__ = 'volumen_pendiente_dian'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
+    volumen_pendiente = db.Column(db.Float, nullable=False, default=0.0)
+    observacion = db.Column(db.Text, nullable=True)
+    
+    # Auditoría
+    usuario_actualizacion = db.Column(db.String(100), nullable=False)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<VolumenPendienteDian {self.fecha}: {self.volumen_pendiente} BBL>'
+
 class CupoSizaConfig(db.Model):
     """DEPRECADO: Mantenido por compatibilidad. Usar InventarioSizaDiario."""
     __tablename__ = 'cupo_siza_config'
@@ -1958,9 +1974,9 @@ USUARIOS = {
         "rol": "refineria",
         "area": ["programacion_cargue", "control_calidad", "planta"] 
     },
-        "opensean@conquerstrading.com": {
+        "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
-        "nombre": "Opensean", 
+        "nombre": "Opensea", 
         "rol": "operador_remolcador", 
         "area": ["control_remolcadores"]
     },
@@ -3927,7 +3943,7 @@ def eliminar_evento_remolcador(id):
     usuario_puede_eliminar = (
         session.get('rol') == 'admin' or 
         session.get('email') == 'ops@conquerstrading.com' or
-        session.get('email') == 'opensean@conquerstrading.com'
+        session.get('email') == 'opensea@conquerstrading.com'
     )
 
     if not usuario_puede_eliminar:
@@ -4563,6 +4579,30 @@ def dashboard_siza():
         # Verificar si el usuario es gestor (puede aprobar/rechazar/recargar/consumir)
         es_gestor = tiene_permiso('siza_gestor')
         
+        # Obtener volumen pendiente DIAN
+        volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
+        if not volumen_dian:
+            # Crear registro inicial
+            volumen_dian = VolumenPendienteDian(
+                fecha=hoy,
+                volumen_pendiente=0.0,
+                usuario_actualizacion='Sistema'
+            )
+            db.session.add(volumen_dian)
+            db.session.commit()
+        
+        # Verificar si el usuario puede editar volumen DIAN (solo Daniela y Shirley)
+        usuario_email = session.get('email', '')
+        puede_editar_dian = usuario_email in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
+        
+        # Verificar si el usuario puede ver volumen DIAN (Juan Diego, Carlos, Brando, Samantha + editores)
+        puede_ver_dian = puede_editar_dian or usuario_email in [
+            'carlos.baron@conquerstrading.com',
+            'juandiego.cuadros@conquerstrading.com', 
+            'brando@conquerstrading.com',
+            'logistic@conquerstrading.com'
+        ]
+        
         return render_template(
             'siza_dashboard.html',
             inventario_productos=inventario_productos,
@@ -4575,7 +4615,10 @@ def dashboard_siza():
             movimientos=movimientos_recientes,  # Solo los últimos 15
             total_movimientos=total_movimientos,  # Total de movimientos disponibles
             hoy=hoy,
-            es_gestor=es_gestor  # Permiso para mostrar/ocultar botones en template
+            es_gestor=es_gestor,  # Permiso para mostrar/ocultar botones en template
+            volumen_dian=volumen_dian,  # Volumen pendiente DIAN
+            puede_editar_dian=puede_editar_dian,  # Permiso para editar volumen DIAN
+            puede_ver_dian=puede_ver_dian  # Permiso para ver volumen DIAN
         )
     except Exception as e:
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
@@ -4636,12 +4679,36 @@ def recargar_producto_siza():
         producto_id = int(request.form.get('producto_id'))
         volumen_recarga = float(request.form.get('volumen_recarga', 0))
         observacion = request.form.get('observacion', '').strip()
+        descontar_de_dian = request.form.get('descontar_de_dian') == 'on'  # Checkbox
         
         if volumen_recarga <= 0:
             flash('El volumen de recarga debe ser mayor a cero.', 'danger')
             return redirect(url_for('dashboard_siza'))
         
         hoy = date.today()
+        
+        # Si se debe descontar del volumen DIAN
+        if descontar_de_dian:
+            volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
+            
+            if not volumen_dian:
+                flash('No hay volumen pendiente DIAN registrado para hoy.', 'warning')
+            elif volumen_dian.volumen_pendiente < volumen_recarga:
+                flash(f'El volumen a recargar ({volumen_recarga:,.0f} BBL) excede el disponible en DIAN ({volumen_dian.volumen_pendiente:,.0f} BBL).', 'danger')
+                return redirect(url_for('dashboard_siza'))
+            else:
+                # Descontar del volumen DIAN
+                volumen_dian.volumen_pendiente -= volumen_recarga
+                volumen_dian.usuario_actualizacion = session.get('nombre', 'Sistema')
+                volumen_dian.fecha_actualizacion = datetime.utcnow()
+                
+                # Actualizar observación indicando la distribución
+                producto = ProductoSiza.query.get(producto_id)
+                obs_dian = f"Distribuido {volumen_recarga:,.0f} BBL a {producto.nombre}"
+                if volumen_dian.observacion:
+                    volumen_dian.observacion += f" | {obs_dian}"
+                else:
+                    volumen_dian.observacion = obs_dian
         
         # Registrar la recarga
         recarga = RecargaSiza(
@@ -4675,7 +4742,12 @@ def recargar_producto_siza():
         db.session.commit()
         
         producto = ProductoSiza.query.get(producto_id)
-        flash(f'Recarga de {producto.nombre}: +{volumen_recarga:,.0f} Barriles. Nuevo total: {inventario.cupo_web:,.0f} BBL', 'success')
+        mensaje = f'Recarga de {producto.nombre}: +{volumen_recarga:,.0f} Barriles. Nuevo total: {inventario.cupo_web:,.0f} BBL'
+        if descontar_de_dian:
+            volumen_dian_actual = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
+            if volumen_dian_actual:
+                mensaje += f' | Descontado de DIAN. Pendiente DIAN: {volumen_dian_actual.volumen_pendiente:,.0f} BBL'
+        flash(mensaje, 'success')
         
     except ValueError:
         flash('El volumen debe ser un número válido.', 'danger')
@@ -4882,6 +4954,49 @@ def eliminar_movimiento_siza(tipo, movimiento_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error al eliminar movimiento: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@app.route('/siza/actualizar-volumen-dian', methods=['POST'])
+def actualizar_volumen_dian():
+    """Actualiza el volumen pendiente de aprobación DIAN. Solo accesible por Daniela y Shirley."""
+    try:
+        # Verificar permisos
+        usuario_email = session.get('email', '')
+        if usuario_email not in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']:
+            flash('No tienes permiso para actualizar el volumen pendiente DIAN.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        hoy = date.today()
+        volumen_pendiente = float(request.form.get('volumen_pendiente', 0))
+        observacion = request.form.get('observacion', '').strip()
+        
+        # Buscar o crear registro
+        volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
+        
+        if not volumen_dian:
+            volumen_dian = VolumenPendienteDian(
+                fecha=hoy,
+                volumen_pendiente=volumen_pendiente,
+                observacion=observacion,
+                usuario_actualizacion=session.get('nombre', 'Usuario')
+            )
+            db.session.add(volumen_dian)
+        else:
+            volumen_dian.volumen_pendiente = volumen_pendiente
+            volumen_dian.observacion = observacion
+            volumen_dian.usuario_actualizacion = session.get('nombre', 'Usuario')
+            volumen_dian.fecha_actualizacion = datetime.utcnow()
+        
+        db.session.commit()
+        flash(f'Volumen pendiente DIAN actualizado: {volumen_pendiente:,.0f} BBL', 'success')
+        
+    except ValueError:
+        flash('El volumen debe ser un número válido.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al actualizar volumen DIAN: {str(e)}', 'danger')
     
     return redirect(url_for('dashboard_siza'))
 
@@ -8079,10 +8194,10 @@ def upload_remolcadores_excel():
 def update_maniobra_details(maniobra_id):
     """Actualiza la barcaza y las MT para todos los eventos de una maniobra."""
     
-    # #{ CAMBIO 1 } - Se añade el email 'opensean@conquerstrading.com' a la lista de permisos.
+    # #{ CAMBIO 1 } - Se añade el email 'opensea@conquerstrading.com' a la lista de permisos.
     if not (session.get('rol') == 'admin' or 
             session.get('email') == 'ops@conquerstrading.com' or 
-            session.get('email') == 'opensean@conquerstrading.com'):
+            session.get('email') == 'opensea@conquerstrading.com'):
         return jsonify(success=False, message="Permiso denegado."), 403
 
     data = request.get_json()
@@ -8097,7 +8212,7 @@ def update_maniobra_details(maniobra_id):
             registro.nombre_barco = nombre_barco
             
             # #{ CAMBIO 2 } - Se añade una condición para que solo admin y ops@conquerstrading.com
-            # puedan modificar las MT Entregadas. El usuario 'opensean' no podrá hacerlo.
+            # puedan modificar las MT Entregadas. El usuario 'opensea' no podrá hacerlo.
             if session.get('rol') == 'admin' or session.get('email') == 'ops@conquerstrading.com':
                 if 'mt_entregadas' in data:
                     mt_entregadas_str = data.get('mt_entregadas')
@@ -8118,7 +8233,7 @@ def eliminar_maniobra(maniobra_id):
     
     if not (session.get('rol') == 'admin' or 
             session.get('email') == 'ops@conquerstrading.com' or 
-            session.get('email') == 'opensean@conquerstrading.com'):
+            session.get('email') == 'opensea@conquerstrading.com'):
         return jsonify(success=False, message="Permiso denegado."), 403
 
     try:
@@ -8196,7 +8311,7 @@ def get_registros_remolcadores():
         # --- ✅ FIN DE LA LÓGICA DE CÁLCULO ---
 
         data = []
-        es_opensean = session.get('email') == 'opensean@conquerstrading.com'
+        es_opensea = session.get('email') == 'opensea@conquerstrading.com'
         for r in registros:
             registro_data = {
                 "id": r.id,
@@ -8211,7 +8326,7 @@ def get_registros_remolcadores():
                 "carga_estado": r.carga_estado,
                 "total_horas": duraciones_totales.get(r.maniobra_id, "")
             }
-            if not es_opensean:
+            if not es_opensea:
                 registro_data["mt_entregadas"] = float(r.mt_entregadas) if r.mt_entregadas is not None else ''
 
             data.append(registro_data)
@@ -8258,11 +8373,11 @@ def crear_registro_remolcador():
             usuario_actualizacion=session.get('nombre')
         )
 
-        # --- CORRECIÓN 2: Permisos actualizados para opensean ---
+        # --- CORRECIÓN 2: Permisos actualizados para opensea ---
         usuario_puede_gestionar = (
             session.get('rol') == 'admin' or 
             session.get('email') == 'ops@conquerstrading.com' or
-            session.get('email') == 'opensean@conquerstrading.com'
+            session.get('email') == 'opensea@conquerstrading.com'
         )
         if usuario_puede_gestionar:
             nuevo_registro.barcaza = data.get('barcaza')
@@ -8298,7 +8413,7 @@ def update_registro_remolcador(id):
 
     estados_carga_permitidos = ["LLENO", "VACIO", "N/A"]
     
-    # Valores permitidos para opensean
+    # Valores permitidos para opensea
     eventos_anteriores_permitidos = [
         "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
         "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR", "INICIO FONDEO", "INICIO PUERTO BAHIA", "INICIO SPRC",
@@ -8315,8 +8430,8 @@ def update_registro_remolcador(id):
     ]
 
     try:
-        # El usuario opensean solo puede modificar los campos permitidos
-        if session.get('email') == 'opensean@conquerstrading.com':
+        # El usuario opensea solo puede modificar los campos permitidos
+        if session.get('email') == 'opensea@conquerstrading.com':
 
             if 'carga_estado' in data and data['carga_estado'] not in estados_carga_permitidos:
                 return jsonify(success=False, message="Estado de carga no permitido"), 400

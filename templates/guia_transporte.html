@@ -15,8 +15,10 @@
         html, body { 
             margin: 0; padding: 0;
             font: 12pt ARIAL, sans-serif;
-            width: 100%; height: 100%;
-            overflow: hidden;
+            width: 100%; 
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
             line-height: 1.2;
             position: relative;
         }
@@ -25,9 +27,127 @@
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: url("{{ url_for('static', filename='Fondo.webp') }}") no-repeat center center;
-            background-size: 1590px 900px;
+            background-size: cover; /* Cambiado de px fijos a cover para mejor escalado */
+            background-attachment: fixed;
             opacity: 0.50;
             z-index: -1;
+            pointer-events: none; /* Para que no interfiera con interacciones */
+        }
+        /* Controles de Zoom */
+        #controles-zoom {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1002;
+            background: rgba(0, 64, 128, 0.95);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #controles-zoom button {
+            background: white;
+            border: none;
+            color: #004080;
+            font-weight: bold;
+            font-size: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #controles-zoom button:hover {
+            background: #e6f2ff;
+            transform: scale(1.1);
+        }
+        #nivel-zoom {
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        /* Panel de Impresión Parcial */
+        #panel-impresion-parcial {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            z-index: 1003;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            max-width: 350px;
+            max-height: 80vh;
+            overflow-y: auto;
+            display: none;
+        }
+        #panel-impresion-parcial.activo {
+            display: block;
+        }
+        #panel-impresion-parcial h4 {
+            margin-top: 0;
+            color: #004080;
+            font-size: 16px;
+            border-bottom: 2px solid #004080;
+            padding-bottom: 10px;
+        }
+        .campo-checkbox {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .campo-checkbox:hover {
+            background: #f0f8ff;
+        }
+        .campo-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .campo-checkbox label {
+            cursor: pointer;
+            margin: 0;
+            font-size: 13px;
+            font-weight: normal;
+            text-transform: none;
+        }
+        .botones-panel {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .botones-panel button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .btn-imprimir-seleccion {
+            background: #28a745;
+            color: white;
+        }
+        .btn-imprimir-seleccion:hover {
+            background: #218838;
+        }
+        .btn-cancelar-parcial {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-cancelar-parcial:hover {
+            background: #5a6268;
         }
         /* Contenedor de acciones (id histórico) */
         #acciones { 
@@ -115,8 +235,13 @@
         display: none !important;
     }
 
-            #acciones, #boton-logout { display: none !important; }
+            #acciones, #boton-logout, #controles-zoom { display: none !important; }
             body::before { display: none; }
+            /* RESETEAR ZOOM PARA IMPRESIÓN - CRÍTICO */
+            #contenedor-guia {
+                transform: none !important;
+                transform-origin: initial !important;
+            }
             .campo, .hoja { border: none !important; }
             select { background: transparent !important; border: none !important; }
             body { transform: rotate(0deg) !important; }
@@ -126,6 +251,18 @@
             @page { size: letter; margin: 0; }
              body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
             #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
+            
+            /* Impresión Parcial - Ocultar campos no seleccionados */
+            body.impresion-parcial .campo:not(.imprimir-este) input,
+            body.impresion-parcial .campo:not(.imprimir-este) select,
+            body.impresion-parcial .campo:not(.imprimir-este) textarea,
+            body.impresion-parcial .campo:not(.imprimir-este) .empresa-transportadora-wrap,
+            body.impresion-parcial .campo:not(.imprimir-este) .destino-wrap,
+            body.impresion-parcial .campo:not(.imprimir-este) label,
+            body.impresion-parcial .campo:not(.imprimir-este) .grupo-producto,
+            body.impresion-parcial .campo:not(.imprimir-este) div {
+                visibility: hidden !important;
+            }
 
             /* Empresa transportadora: envolver texto largo en dos líneas dentro del mismo cuadro */
             .empresa-transportadora input { display: none !important; }
@@ -181,9 +318,17 @@
             /* El margen superior negativo de dirección hace saltos; anúlalo en pantalla */
             .direccion { margin-top: 0 !important; }
             /* Ajuste opcional para que acciones no tape el formulario en pantallas pequeñas */
-            #contenedor-guia { margin-top: 3.0cm; }
+            #contenedor-guia { 
+                margin-top: 3.0cm;
+                transform-origin: top center;
+                transition: transform 0.3s ease;
+            }
             /* La caja de volumen no tenía ancho válido; define uno solo para pantalla */
             .volumen { width: 8.6cm; }
+            /* Mejorar scroll en pantalla */
+            body {
+                padding-bottom: 80px; /* Espacio para controles de zoom */
+            }
         }
         #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 2.2cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
         .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
@@ -278,62 +423,90 @@
     <button onclick="window.print()" class="btn btn-primary">
         <i class="bi bi-printer"></i> Imprimir Guía
     </button>
+    <button onclick="abrirImpresionParcial()" class="btn btn-warning" style="background: #ffc107; border-color: #ffc107;">
+        <i class="bi bi-printer-fill"></i> Imprimir Solo Campos
+    </button>
     <a id="boton-logout" href="{{ url_for('logout') }}" class="btn btn-danger">
         <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
     </a>
 </div>
+
+<!-- Panel de Impresión Parcial -->
+<div id="panel-impresion-parcial" class="no-print">
+    <h4><i class="bi bi-check2-square"></i> Seleccionar Campos a Imprimir</h4>
+    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
+        Marca solo los campos que olvidaste y necesitas reimprimir:
+    </p>
+    <div id="lista-campos-seleccionables"></div>
+    <div class="botones-panel">
+        <button class="btn-imprimir-seleccion" onclick="imprimirSeleccion()">
+            <i class="bi bi-printer"></i> Imprimir
+        </button>
+        <button class="btn-cancelar-parcial" onclick="cerrarImpresionParcial()">
+            Cancelar
+        </button>
+    </div>
+</div>
+
+<!-- Controles de Zoom -->
+<div id="controles-zoom" class="no-print">
+    <button onclick="ajustarZoom(-10)" title="Alejar">−</button>
+    <span id="nivel-zoom">100%</span>
+    <button onclick="ajustarZoom(10)" title="Acercar">+</button>
+    <button onclick="resetearZoom()" title="Restablecer" style="width: auto; padding: 0 10px;">⟲</button>
+</div>
 <div id="contenedor-guia">
   <div class="hoja">
     <div class="fila">
-      <div class="campo lugar-fecha sin-borde"><input id="fechaExpEDICION" readonly></div>
-      <div class="campo planta-productor sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
-      <div class="campo factura-remision sin-borde"><input id="facturaRemision" placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
+      <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
+      <div class="campo planta-productor sin-borde" data-campo="planta"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+      <div class="campo factura-remision sin-borde" data-campo="factura"><input id="facturaRemision" placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
     </div>
     <div class="fila">
-      <div class="campo despacho sin-borde">
+      <div class="campo despacho sin-borde" data-campo="cliente">
         <select id="clienteSelect" onchange="autocompletarCliente()" class="sin-borde">
           <option value="">SELECCIONE UN CLIENTE</option>
           </select>
       </div>
-      <div class="campo codigo-sicom sin-borde"><input placeholder="CÓDIGO SICOM"></div>
+      <div class="campo codigo-sicom sin-borde" data-campo="sicom"><input placeholder="CÓDIGO SICOM"></div>
     </div>
     <div class="fila">
-      <div class="campo direccion sin-borde"><textarea id="direccionCliente" placeholder="DIRECCIÓN"></textarea></div>
-      <div class="campo ciudad sin-borde"><input id="ciudadCliente" placeholder="CIUDAD"></div>
+      <div class="campo direccion sin-borde" data-campo="direccion"><textarea id="direccionCliente" placeholder="DIRECCIÓN"></textarea></div>
+      <div class="campo ciudad sin-borde" data-campo="ciudad"><input id="ciudadCliente" placeholder="CIUDAD"></div>
     </div>
     <div class="fila pequeno">
-      <div class="campo nombre-conductor sin-borde">
+      <div class="campo nombre-conductor sin-borde" data-campo="conductor">
         <input id="conductorSelect" list="listaConductores" placeholder="NOMBRE DEL CONDUCTOR">
         <datalist id="listaConductores"></datalist>
       </div>
-      <div class="campo cedula sin-borde">
+      <div class="campo cedula sin-borde" data-campo="cedula">
         <input id="cedulaConductor" list="listaCedulas" placeholder="CÉDULA DEL CONDUCTOR">
         <datalist id="listaCedulas"></datalist>
       </div>
     </div>
     <div class="fila">
-      <div class="campo empresa-transportadora sin-borde">
+      <div class="campo empresa-transportadora sin-borde" data-campo="empresa">
     <input id="empresaTransportadoraInput" list="listaEmpresas" placeholder="EMPRESA TRANSPORTADORA">
     <div class="empresa-transportadora-wrap" aria-hidden="true"></div>
     <datalist id="listaEmpresas"></datalist>
 </div>
-      <div class="campo placa-cabezote sin-borde"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
-    <div class="campo placa-tanque sin-borde"><input id="placaTanque" placeholder="PLACA DEL TANQUE"></div>
+      <div class="campo placa-cabezote sin-borde" data-campo="placaCabezote"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
+    <div class="campo placa-tanque sin-borde" data-campo="placaTanque"><input id="placaTanque" placeholder="PLACA DEL TANQUE"></div>
     </div>
     <div class="fila">
-      <div class="campo lugar-origen sin-borde"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
-      <div class="campo fecha-hora-salida sin-borde"><input id="fechaHoraSalida" readonly></div>
-      <div class="campo hora sin-borde"><input id="horaSalida"></div>
+      <div class="campo lugar-origen sin-borde" data-campo="origen"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+      <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida" readonly></div>
+      <div class="campo hora sin-borde" data-campo="horaSalida"><input id="horaSalida"></div>
     </div>
     <div class="fila">
-            <div class="campo lugar-destino sin-borde">
+            <div class="campo lugar-destino sin-borde" data-campo="destino">
                 <input id="destinoDireccion" placeholder="DESTINO">
                 <div class="destino-wrap" aria-hidden="true"></div>
             </div>
-      <div class="campo horas-vigencia sin-borde"><input placeholder="HORAS DE VIGENCIA"></div>
+      <div class="campo horas-vigencia sin-borde" data-campo="horasVigencia"><input placeholder="HORAS DE VIGENCIA"></div>
     </div>
     <div class="fila muy-pequeno">
-      <div class="campo descripcion-producto sin-borde">
+      <div class="campo descripcion-producto sin-borde" data-campo="producto">
         <div class="grupo-producto">
           <select id="productoSelect" class="select-producto" onchange="mostrarProducto()"></select>
           <div class="datos-producto">
@@ -344,13 +517,13 @@
           </div>
         </div>
       </div>
-      <div class="campo volumen sin-borde">
+      <div class="campo volumen sin-borde" data-campo="volumen">
         <div><label for="barriles" style="display:inline; font-weight:bold; font-size:12pt;">BBL NSV:</label> <input id="barriles" readonly style="width:3cm; border:none; display:inline; text-align:left;"></div>
         <div><label for="galones" style="display:inline; font-weight:bold; font-size:12pt;">GAL NETOS:</label> <input id="galones" oninput="convertirABarriles()" style="width:3cm; border:none; display:inline; text-align:left;"></div>  
       </div>
     </div>
     <div class="fila" style="position: relative;">
-      <div class="campo observaciones">
+      <div class="campo observaciones" data-campo="observaciones">
         <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
             <textarea class="sin-borde" style="height: 70%; padding-top: 18px;"></textarea>
             <div style="margin-top:12px; display:flex; align-items:center; width:100%;">
@@ -961,7 +1134,20 @@ if (Object.keys(datosGuia).length > 1) {
     }
 
     // Asegurar sincronización antes de imprimir
-    window.addEventListener('beforeprint', () => { syncEmpresaTransportadoraWrap(); syncDestinoWrap(); });
+    window.addEventListener('beforeprint', () => { 
+        syncEmpresaTransportadoraWrap(); 
+        syncDestinoWrap();
+        // RESETEAR ZOOM ANTES DE IMPRIMIR
+        const contenedor = document.getElementById('contenedor-guia');
+        if (contenedor) {
+            contenedor.style.transform = 'none';
+        }
+    });
+
+    // Restaurar zoom después de imprimir
+    window.addEventListener('afterprint', () => {
+        aplicarZoom();
+    });
 
     // Actualiza el wrap de DESTINO al editar manualmente
     const destinoInput = document.getElementById('destinoDireccion');
@@ -990,6 +1176,9 @@ if (Object.keys(datosGuia).length > 1) {
 
     // Configurar campo Sellos (formato y límite)
     configurarCampoSellos();
+
+    // Cargar zoom guardado
+    cargarZoomGuardado();
 
 });
     function configurarEventosConductores() {
@@ -1093,6 +1282,155 @@ if (Object.keys(datosGuia).length > 1) {
             document.execCommand('insertText', false, formatear(text));
         });
     }
+
+    // Sistema de Zoom para mejorar la usabilidad
+    let nivelZoomActual = 100;
+    
+    // Cargar zoom guardado al iniciar
+    function cargarZoomGuardado() {
+        const zoomGuardado = localStorage.getItem('guiaTransporteZoom');
+        if (zoomGuardado) {
+            nivelZoomActual = parseInt(zoomGuardado);
+            aplicarZoom();
+        }
+    }
+    
+    function ajustarZoom(cambio) {
+        nivelZoomActual = Math.max(50, Math.min(200, nivelZoomActual + cambio));
+        aplicarZoom();
+        guardarZoom();
+    }
+    
+    function resetearZoom() {
+        nivelZoomActual = 100;
+        aplicarZoom();
+        guardarZoom();
+    }
+    
+    function aplicarZoom() {
+        const contenedor = document.getElementById('contenedor-guia');
+        if (contenedor) {
+            const escala = nivelZoomActual / 100;
+            contenedor.style.transform = `scale(${escala})`;
+            document.getElementById('nivel-zoom').textContent = nivelZoomActual + '%';
+            
+            // Ajustar el scroll para mantener el contenido visible
+            if (nivelZoomActual > 100) {
+                document.body.style.overflowY = 'auto';
+            }
+        }
+    }
+    
+    function guardarZoom() {
+        localStorage.setItem('guiaTransporteZoom', nivelZoomActual);
+    }
+    
+    // Soporte para zoom con Ctrl + Rueda del mouse
+    document.addEventListener('wheel', function(e) {
+        if (e.ctrlKey) {
+            e.preventDefault();
+            const cambio = e.deltaY > 0 ? -10 : 10;
+            ajustarZoom(cambio);
+        }
+    }, { passive: false });
+    
+    // Atajos de teclado para zoom
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey) {
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                ajustarZoom(10);
+            } else if (e.key === '-') {
+                e.preventDefault();
+                ajustarZoom(-10);
+            } else if (e.key === '0') {
+                e.preventDefault();
+                resetearZoom();
+            }
+        }
+    });
+    
+    // ============ SISTEMA DE IMPRESIÓN PARCIAL ============
+    
+    const camposDisponibles = [
+        { id: 'factura', nombre: 'Factura o Remisión' },
+        { id: 'cliente', nombre: 'Cliente' },
+        { id: 'sicom', nombre: 'Código SICOM' },
+        { id: 'direccion', nombre: 'Dirección' },
+        { id: 'ciudad', nombre: 'Ciudad' },
+        { id: 'conductor', nombre: 'Nombre del Conductor' },
+        { id: 'cedula', nombre: 'Cédula del Conductor' },
+        { id: 'empresa', nombre: 'Empresa Transportadora' },
+        { id: 'placaCabezote', nombre: 'Placa del Cabezote' },
+        { id: 'placaTanque', nombre: 'Placa del Tanque' },
+        { id: 'horaSalida', nombre: 'Hora de Salida' },
+        { id: 'destino', nombre: 'Destino' },
+        { id: 'horasVigencia', nombre: 'Horas de Vigencia' },
+        { id: 'producto', nombre: 'Producto' },
+        { id: 'volumen', nombre: 'Volumen (BBL/GAL)' },
+        { id: 'observaciones', nombre: 'Observaciones y Sellos' }
+    ];
+    
+    function abrirImpresionParcial() {
+        const panel = document.getElementById('panel-impresion-parcial');
+        const lista = document.getElementById('lista-campos-seleccionables');
+        
+        // Generar checkboxes
+        lista.innerHTML = camposDisponibles.map(campo => `
+            <div class="campo-checkbox">
+                <input type="checkbox" id="check_${campo.id}" value="${campo.id}">
+                <label for="check_${campo.id}">${campo.nombre}</label>
+            </div>
+        `).join('');
+        
+        panel.classList.add('activo');
+    }
+    
+    function cerrarImpresionParcial() {
+        document.getElementById('panel-impresion-parcial').classList.remove('activo');
+    }
+    
+    function imprimirSeleccion() {
+        const checkboxes = document.querySelectorAll('#lista-campos-seleccionables input[type="checkbox"]:checked');
+        
+        if (checkboxes.length === 0) {
+            alert('Por favor, selecciona al menos un campo para imprimir');
+            return;
+        }
+        
+        // Obtener IDs de los campos seleccionados
+        const camposSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+        
+        // Marcar los campos seleccionados
+        document.querySelectorAll('.campo[data-campo]').forEach(campo => {
+            const campoid = campo.getAttribute('data-campo');
+            if (camposSeleccionados.includes(campoid)) {
+                campo.classList.add('imprimir-este');
+            } else {
+                campo.classList.remove('imprimir-este');
+            }
+        });
+        
+        // Activar modo impresión parcial
+        document.body.classList.add('impresion-parcial');
+        
+        // Cerrar panel
+        cerrarImpresionParcial();
+        
+        // Imprimir
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    }
+    
+    // Limpiar modo impresión parcial después de imprimir
+    window.addEventListener('afterprint', () => {
+        document.body.classList.remove('impresion-parcial');
+        document.querySelectorAll('.campo').forEach(campo => {
+            campo.classList.remove('imprimir-este');
+        });
+        aplicarZoom(); // Restaurar zoom
+    });
 </script>
 </body>
 </html>

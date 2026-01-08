@@ -4,53 +4,66 @@
 
 {% block extra_css %}
 <style>
+    body {
+        background: #f5f7fa;
+    }
+    
     .product-card {
-        border-radius: 15px;
-        padding: 1.5rem;
+        border-radius: 12px;
+        padding: 1.25rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
         position: relative;
         overflow: hidden;
     }
     
+    .product-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.5);
+    }
+    
     .product-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
     }
     
     .product-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
         margin-bottom: 1rem;
         padding-bottom: 0.75rem;
         border-bottom: 2px solid rgba(255, 255, 255, 0.3);
     }
     
     .product-title {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 700;
         margin: 0;
         color: white;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
     }
     
     .product-volume {
         font-size: 2rem;
-        font-weight: 800;
+        font-weight: 700;
         color: white;
         margin: 0.5rem 0;
+        line-height: 1.1;
     }
     
     .product-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         opacity: 0.9;
         color: white;
         font-weight: 600;
+        margin-bottom: 0.25rem;
     }
     
     .product-stats {
@@ -64,22 +77,31 @@
         flex: 1;
         background: rgba(255, 255, 255, 0.2);
         border-radius: 8px;
-        padding: 0.75rem 0.5rem;
+        padding: 0.5rem;
         text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-box:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
     }
     
     .stat-value {
-        font-size: 1.25rem;
+        font-size: 1.2rem;
         font-weight: 700;
         color: white;
         margin: 0;
     }
     
     .stat-label {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         color: white;
         opacity: 0.9;
         margin-top: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        font-weight: 600;
     }
     
     .bg-f04 {
@@ -114,20 +136,29 @@
     
     .quick-action-btn {
         background: rgba(255, 255, 255, 0.25);
-        border: 2px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.4);
         color: white;
         border-radius: 8px;
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        transition: all 0.3s;
-        white-space: nowrap;
+        transition: all 0.3s ease;
     }
     
     .quick-action-btn:hover {
-        background: rgba(255, 255, 255, 0.4);
-        transform: scale(1.05);
+        background: rgba(255, 255, 255, 0.35);
+        transform: scale(1.02);
         color: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .quick-action-btn.bg-danger {
+        background: rgba(220, 53, 69, 0.3);
+        border-color: rgba(220, 53, 69, 0.5);
+    }
+    
+    .quick-action-btn.bg-danger:hover {
+        background: rgba(220, 53, 69, 0.5);
     }
     
     .pedidos-table-modern {
@@ -175,33 +206,43 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin: 2rem 0 1.5rem 0;
-        padding-bottom: 0.75rem;
-        border-bottom: 3px solid #667eea;
+        margin: 1.5rem 0 1rem 0;
+        padding: 1rem;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     }
     
     .section-title {
-        font-size: 1.75rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: #2d3748;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .section-title i {
+        font-size: 1.3rem;
+        color: #667eea;
     }
     
     .btn-new-pedido {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
         color: white;
-        padding: 0.75rem 2rem;
-        border-radius: 25px;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
         font-weight: 600;
-        font-size: 1rem;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        transition: all 0.3s;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s ease;
     }
     
     .btn-new-pedido:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
         color: white;
     }
     
@@ -228,21 +269,26 @@
         background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
         color: white;
         border: none;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 15px rgba(235, 51, 73, 0.3);
-        animation: slideInDown 0.5s;
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 4px 12px rgba(235, 51, 73, 0.25);
+        border-left: 4px solid rgba(255, 255, 255, 0.5);
     }
     
-    @keyframes slideInDown {
-        from {
-            transform: translateY(-20px);
-            opacity: 0;
+    .alert-global .alert-heading {
+        font-size: 1.2rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    @keyframes pulse-alert {
+        0%, 100% { 
+            box-shadow: 0 4px 12px rgba(235, 51, 73, 0.3); 
         }
-        to {
-            transform: translateY(0);
-            opacity: 1;
+        50% { 
+            box-shadow: 0 6px 16px rgba(235, 51, 73, 0.5); 
         }
     }
 </style>
@@ -253,9 +299,9 @@
     <!-- Alerta Global -->
     {% if alerta_cupo %}
     <div class="alert alert-global d-flex align-items-center" role="alert">
-        <div class="me-3" style="font-size: 3rem;">⚠️</div>
+        <div class="me-3" style="font-size: 2rem;">⚠️</div>
         <div>
-            <h4 class="alert-heading mb-2 fw-bold">¡ALERTA CRÍTICA DE INVENTARIO!</h4>
+            <h4 class="alert-heading mb-1 fw-bold">¡ALERTA CRÍTICA DE INVENTARIO!</h4>
             <p class="mb-0">Uno o más productos tienen cupo agotado. Revisa los productos en ROJO y recarga inventario antes de aprobar pedidos.</p>
         </div>
     </div>
@@ -285,16 +331,6 @@
                 
                 <div class="product-header">
                     <h3 class="product-title">{{ item.producto.nombre }}</h3>
-                    {% if es_gestor %}
-                    <div>
-                        <button class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#modalRecargar{{ item.producto.id }}" title="Recargar inventario">
-                            <i class="bi bi-arrow-repeat me-1"></i>Recargar
-                        </button>
-                        <button class="quick-action-btn bg-danger" data-bs-toggle="modal" data-bs-target="#modalConsumo{{ item.producto.id }}" title="Registrar consumo/despacho">
-                            <i class="bi bi-box-arrow-right me-1"></i>Consumo
-                        </button>
-                    </div>
-                    {% endif %}
                 </div>
                 
                 <div class="product-label">Inventario Disponible</div>
@@ -317,9 +353,22 @@
                 
                 {% if item.alerta %}
                 <div class="mt-2 text-center">
-                    <span class="badge bg-danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                    <span class="badge bg-danger" style="font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 12px;">
                         <i class="bi bi-exclamation-triangle-fill me-1"></i>AGOTADO
                     </span>
+                </div>
+                {% endif %}
+                
+                {% if es_gestor %}
+                <div class="mt-3 pt-3" style="border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <div class="d-grid gap-2">
+                        <button class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#modalRecargar{{ item.producto.id }}">
+                            <i class="bi bi-arrow-repeat me-2"></i>Recargar Inventario
+                        </button>
+                        <button class="quick-action-btn bg-danger" data-bs-toggle="modal" data-bs-target="#modalConsumo{{ item.producto.id }}">
+                            <i class="bi bi-box-arrow-right me-2"></i>Registrar Consumo
+                        </button>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -327,38 +376,98 @@
         
         <!-- Modal Recargar Producto -->
         <div class="modal fade" id="modalRecargar{{ item.producto.id }}" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header modal-header-custom">
-                        <h5 class="modal-title">
-                            <i class="bi bi-arrow-repeat me-2"></i>Recargar {{ item.producto.nombre }}
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+                    <div class="modal-header modal-header-custom text-white" style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border: none; padding: 1.5rem;">
+                        <h5 class="modal-title fw-bold" style="font-size: 1.4rem; letter-spacing: 0.5px;">
+                            <i class="bi bi-arrow-repeat me-3" style="font-size: 1.8rem;"></i>Recargar {{ item.producto.nombre }}
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
-                    <form action="{{ url_for('recargar_producto_siza') }}" method="POST">
-                        <div class="modal-body">
+                    <form action="{{ url_for('recargar_producto_siza') }}" method="POST" onsubmit="return validarRecargaDian({{ item.producto.id }})">
+                        <div class="modal-body" style="padding: 2rem;">
                             <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
                             
-                            <div class="alert alert-info">
-                                <strong>Inventario Actual:</strong> {{ "{:,.0f}".format(item.inventario.cupo_web) }} Barriles
+                            <!-- Inventario Actual Card -->
+                            <div class="mb-4 p-4" style="background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); border-radius: 15px; border-left: 5px solid #00897b;">
+                                <div class="row align-items-center">
+                                    <div class="col-auto">
+                                        <i class="bi bi-bar-chart-fill" style="font-size: 3rem; color: #00695c;"></i>
+                                    </div>
+                                    <div class="col">
+                                        <h6 class="mb-1" style="color: #00695c; font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Inventario Actual</h6>
+                                        <div style="font-size: 2.2rem; font-weight: 800; color: #004d40;">{{ "{:,.0f}".format(item.inventario.cupo_web) }} BBL</div>
+                                    </div>
+                                </div>
                             </div>
                             
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Volumen a Recargar (Barriles) *</label>
+                            {% if puede_editar_dian and volumen_dian and volumen_dian.volumen_pendiente > 0 %}
+                            <!-- Volumen DIAN Disponible Card -->
+                            <div class="mb-4 p-4" style="background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%); border-radius: 15px; border-left: 5px solid #fbc02d;">
+                                <div class="row align-items-center mb-3">
+                                    <div class="col-auto">
+                                        <i class="bi bi-building" style="font-size: 3rem; color: #f57f17;"></i>
+                                    </div>
+                                    <div class="col">
+                                        <h6 class="mb-1" style="color: #f57f17; font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">
+                                            <i class="bi bi-file-earmark-check me-1"></i>Volumen Pendiente DIAN
+                                        </h6>
+                                        <div style="font-size: 2.2rem; font-weight: 800; color: #f57f17;">{{ "{:,.0f}".format(volumen_dian.volumen_pendiente) }} BBL</div>
+                                        <small style="color: #f57f17; opacity: 0.9;">Disponible para distribuir a productos</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Checkbox Descontar DIAN -->
+                                <div class="form-check p-3" style="background: rgba(255, 255, 255, 0.6); border-radius: 10px;">
+                                    <input class="form-check-input" type="checkbox" name="descontar_de_dian" 
+                                           id="descontar_dian_{{ item.producto.id }}" value="1"
+                                           style="width: 1.5rem; height: 1.5rem;">
+                                    <label class="form-check-label ms-2 fw-bold" for="descontar_dian_{{ item.producto.id }}" 
+                                           style="font-size: 1.1rem; color: #f57f17; cursor: pointer;">
+                                        <i class="bi bi-arrow-down-circle-fill me-2"></i>Descontar de Volumen Pendiente DIAN
+                                    </label>
+                                    <small class="d-block mt-2" style="color: #f57f17; margin-left: 2.5rem;">
+                                        El volumen se descontará automáticamente del total pendiente DIAN
+                                    </small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Input Volumen -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333; margin-bottom: 0.75rem;">
+                                    <i class="bi bi-calculator me-2" style="color: #43cea2;"></i>Volumen a Recargar (Barriles) *
+                                </label>
                                 <input type="number" step="0.01" class="form-control input-number-modern" 
-                                       name="volumen_recarga" placeholder="Ej: 50000" required min="0">
+                                       id="volumenRecarga{{ item.producto.id }}"
+                                       name="volumen_recarga" placeholder="Ej: 50000" required min="0.01"
+                                       {% if puede_editar_dian and volumen_dian %}max="{{ volumen_dian.volumen_pendiente }}"{% endif %}
+                                       style="font-size: 1.4rem; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 12px; font-weight: 700;">
+                                {% if puede_editar_dian and volumen_dian and volumen_dian.volumen_pendiente > 0 %}
+                                <div class="form-text mt-2" style="font-size: 0.95rem;">
+                                    <i class="bi bi-info-circle me-1"></i>Máximo disponible en DIAN: <strong>{{ "{:,.0f}".format(volumen_dian.volumen_pendiente) }} BBL</strong>
+                                </div>
+                                {% endif %}
                             </div>
                             
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Observación</label>
-                                <textarea class="form-control" name="observacion" rows="2" 
-                                          placeholder="Detalles de la recarga..."></textarea>
+                            <!-- Observación -->
+                            <div class="mb-4">
+                                <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333; margin-bottom: 0.75rem;">
+                                    <i class="bi bi-chat-left-text me-2" style="color: #43cea2;"></i>Observación
+                                </label>
+                                <textarea class="form-control" name="observacion" rows="3" 
+                                          placeholder="Detalles de la recarga (Ej: Recarga por aprobación DIAN, Reposición de inventario...)"
+                                          style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem;"></textarea>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-plus-circle me-2"></i>Registrar Recarga
+                        <div class="modal-footer" style="border: none; padding: 1.5rem 2rem; background: #f8f9fa;">
+                            <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal"
+                                    style="border-radius: 12px; padding: 0.75rem 2rem; font-weight: 600;">
+                                <i class="bi bi-x-circle me-2"></i>Cancelar
+                            </button>
+                            <button type="submit" class="btn btn-lg text-white fw-bold" 
+                                    style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border: none; border-radius: 12px; padding: 0.75rem 2.5rem; box-shadow: 0 4px 15px rgba(67, 206, 162, 0.4);">
+                                <i class="bi bi-check-circle-fill me-2" style="font-size: 1.3rem;"></i>Registrar Recarga
                             </button>
                         </div>
                     </form>
@@ -467,26 +576,134 @@
     </div>
     
     <!-- Resumen General -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="product-card {% if total_disponible > 0 %}bg-disponible-ok{% else %}bg-disponible-alerta{% endif %}">
-                <div class="product-label">TOTAL DISPONIBLE (Todos los Productos)</div>
-                <div class="product-volume">{{ "{:,.0f}".format(total_disponible) }} BBL</div>
-                {% if total_disponible > 0 %}
-                <p class="text-white mb-0 mt-2"><i class="bi bi-check-circle-fill me-2"></i>Cupo Global OK</p>
-                {% else %}
-                <p class="text-white mb-0 mt-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>CUPO CRÍTICO</p>
-                {% endif %}
+    <div class="row mt-3">
+        <div class="col-md-6 mb-3">
+            <div class="product-card {% if total_disponible > 0 %}bg-disponible-ok{% else %}bg-disponible-alerta{% endif %}" 
+                 style="{% if total_disponible <= 0 %}animation: pulse-alert 2s infinite;{% endif %}">
+                <div class="text-center">
+                    <div class="product-label mb-2">
+                        <i class="bi bi-speedometer2 me-1"></i>TOTAL DISPONIBLE
+                    </div>
+                    <div class="product-volume" style="font-size: 2.5rem;">
+                        {{ "{:,.0f}".format(total_disponible) }} BBL
+                    </div>
+                    
+                    <div class="mt-3 p-2" style="background: rgba(255, 255, 255, 0.2); border-radius: 8px;">
+                        {% if total_disponible > 0 %}
+                        <div class="text-white" style="font-weight: 600; font-size: 0.9rem;">
+                            <i class="bi bi-check-circle-fill me-1"></i>Cupo Global OK
+                        </div>
+                        {% else %}
+                        <div class="text-white" style="font-weight: 600; font-size: 0.9rem;">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>CUPO CRÍTICO
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 mb-3">
             <div class="product-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="product-label">TOTAL COMPROMETIDO</div>
-                <div class="product-volume">{{ "{:,.0f}".format(total_comprometido) }} BBL</div>
-                <p class="text-white mb-0 mt-2"><i class="bi bi-clock-history me-2"></i>{{ pedidos_pendientes|length }} pedidos pendientes de aprobación</p>
+                <div class="text-center">
+                    <div class="product-label mb-2">
+                        <i class="bi bi-hourglass-split me-1"></i>TOTAL COMPROMETIDO
+                    </div>
+                    <div class="product-volume" style="font-size: 2.5rem;">
+                        {{ "{:,.0f}".format(total_comprometido) }} BBL
+                    </div>
+                    
+                    <div class="mt-3 p-2" style="background: rgba(255, 255, 255, 0.2); border-radius: 8px;">
+                        <div class="text-white" style="font-weight: 600; font-size: 0.9rem;">
+                            <i class="bi bi-clock-history me-1"></i>{{ pedidos_pendientes|length }} Pedidos Pendientes
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+    
+    <!-- Volumen Pendiente DIAN -->
+    {% if puede_ver_dian %}
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="product-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="product-label mb-1">
+                            <i class="bi bi-shield-check me-1"></i>Control DIAN
+                        </div>
+                        <h3 class="product-title" style="font-size: 1.1rem;">
+                            Volumen Pendiente Aprobación DIAN
+                        </h3>
+                    </div>
+                    {% if puede_editar_dian %}
+                    <button class="quick-action-btn" data-bs-toggle="modal" data-bs-target="#modalVolumenDian">
+                        <i class="bi bi-pencil-square me-1"></i>Actualizar
+                    </button>
+                    {% endif %}
+                </div>
+                
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <div class="text-center p-2" style="background: rgba(255, 255, 255, 0.2); border-radius: 10px;">
+                            <div class="product-label mb-1" style="font-size: 0.7rem;">Volumen Pendiente</div>
+                            <div class="product-volume" style="font-size: 2.2rem;">
+                                {{ "{:,.0f}".format(volumen_dian.volumen_pendiente) }} BBL
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div class="p-2">
+                            {% if volumen_dian.volumen_pendiente > 0 %}
+                            <div class="alert mb-0" style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 8px; padding: 0.75rem;">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-info-circle-fill me-2" style="font-size: 1.5rem; color: white;"></i>
+                                    <div style="color: white; font-size: 0.85rem;">
+                                        <strong>Distribución Disponible:</strong> Puede distribuir este volumen a los productos mediante "Recargar Inventario"
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert mb-0" style="background: rgba(40, 167, 69, 0.3); border: 1px solid rgba(40, 167, 69, 0.5); border-radius: 8px; padding: 0.75rem;">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-check-circle-fill me-2" style="font-size: 1.5rem; color: white;"></i>
+                                    <div style="color: white; font-size: 0.85rem;">
+                                        <strong>Volumen Completamente Distribuido</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if volumen_dian.observacion %}
+                            <div class="mt-3 p-3" style="background: rgba(0, 0, 0, 0.1); border-radius: 12px; border-left: 4px solid rgba(255, 255, 255, 0.5);">
+                                <p class="text-white mb-1" style="font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <i class="bi bi-clock-history me-2"></i>Historial de Distribución
+                                </p>
+                                <p class="text-white mb-0" style="font-size: 0.9rem; opacity: 0.95; line-height: 1.6;">
+                                    {{ volumen_dian.observacion }}
+                                </p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3 pt-3" style="border-top: 1px solid rgba(255, 255, 255, 0.2);">
+                    <small class="text-white d-flex align-items-center justify-content-center" style="opacity: 0.85; gap: 0.5rem;">
+                        <i class="bi bi-person-circle"></i>
+                        <span>Actualizado por: <strong>{{ volumen_dian.usuario_actualizacion }}</strong></span>
+                        {% if volumen_dian.fecha_actualizacion %}
+                        <span style="opacity: 0.7;">|</span>
+                        <i class="bi bi-calendar-check"></i>
+                        <span>{{ volumen_dian.fecha_actualizacion.strftime('%d/%m/%Y %H:%M') }}</span>
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Tabla de Pedidos Pendientes -->
     <div class="section-header mt-5">
@@ -1195,6 +1412,50 @@
 </div>
 {% endfor %}
 
+<!-- Modal para Actualizar Volumen Pendiente DIAN -->
+{% if puede_editar_dian %}
+<div class="modal fade" id="modalVolumenDian" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-check me-2"></i>Actualizar Volumen Pendiente DIAN
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('actualizar_volumen_dian') }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>Volumen Actual:</strong> {{ "{:,.0f}".format(volumen_dian.volumen_pendiente) }} Barriles
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Pendiente de Aprobación DIAN (Barriles) *</label>
+                        <input type="number" step="0.01" class="form-control input-number-modern" 
+                               name="volumen_pendiente" placeholder="Ej: 100000" required min="0"
+                               value="{{ volumen_dian.volumen_pendiente }}">
+                        <small class="form-text text-muted">Este volumen será distribuido entre los productos (F04, DILUYENTE, MGO)</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="3" 
+                                  placeholder="Detalles de la actualización...">{{ volumen_dian.observacion or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-2"></i>Guardar Actualización
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
@@ -1454,6 +1715,30 @@ document.addEventListener('DOMContentLoaded', function() {
             bsAlert.close();
         });
     }, 8000);
+    
+    // Validación para recargas desde volumen DIAN
+    document.querySelectorAll('form[action*="recargar-producto"]').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            const checkbox = this.querySelector('input[name="descontar_de_dian"]');
+            const volumenInput = this.querySelector('input[name="volumen_recarga"]');
+            
+            if (checkbox && checkbox.checked && volumenInput) {
+                const volumenRecarga = parseFloat(volumenInput.value) || 0;
+                const maxDian = parseFloat(volumenInput.getAttribute('max')) || 0;
+                
+                if (volumenRecarga > maxDian) {
+                    alert(`El volumen a recargar (${volumenRecarga.toLocaleString('es-CO')} BBL) excede el disponible en DIAN (${maxDian.toLocaleString('es-CO')} BBL).`);
+                    e.preventDefault();
+                    return false;
+                }
+                
+                if (!confirm(`¿Confirmar recarga de ${volumenRecarga.toLocaleString('es-CO')} BBL descontando del volumen pendiente DIAN?`)) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+        });
+    });
 });
 </script>
 {% endblock %}

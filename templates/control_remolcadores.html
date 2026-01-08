@@ -443,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
     "REUBICACION BARCAZAS", "TANQUEO",
     ];
     const esAdminOJuliana = "{{ session.rol }}" === 'admin' || userEmail === 'ops@conquerstrading.com';
-    const esOperadorOpensean = userEmail === 'opensean@conquerstrading.com';
+    const esOperadorOpensea = userEmail === 'opensea@conquerstrading.com';
     
     const contenedor = document.getElementById('contenedor-maniobras');
     const btnLimpiarFiltro = document.getElementById('btn-limpiar-filtro');
@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function renderizarFila(r, esUltimoEvento = false) {
-    const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensean && camposEditablesOperador.includes(campo));
+    const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensea && camposEditablesOperador.includes(campo));
     
     const datalistAnteriorId = 'eventoAnteriorList';
     const datalistActualId = 'eventoActualList';
@@ -579,7 +579,7 @@ document.addEventListener('input', function(e) {
             grupoDiv.dataset.maniobraId = maniobra_id;
             
             const barcazaOptions = barcazas.map(b => `<option value="${b}" ${b === eventos[0].barcaza ? 'selected' : ''}>${b}</option>`).join('');
-            const puedeEditarHeader = esAdminOJuliana || esOperadorOpensean;
+            const puedeEditarHeader = esAdminOJuliana || esOperadorOpensea;
             
             let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
                 <div class="col-12 col-md-auto"><h5><i class="fas fa-anchor me-2"></i>Maniobra #${maniobra_id}</h5></div>
