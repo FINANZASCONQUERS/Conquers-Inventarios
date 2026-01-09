@@ -259,19 +259,30 @@
                                     <th style="width: 100px;">Fecha Prog</th>
                                     <th style="width: 120px;">Producto</th>
                                     <th style="width: 80px;">Tipo Guía</th>
+                                    <th style="width: 150px;">Empresa Trans.</th>
                                     <th style="width: 90px;">Placa</th>
+                                    <th style="width: 80px;">Tanque</th>
                                     <th style="width: 150px;">Conductor</th>
+                                    <th style="width: 120px;">Cédula</th>
+                                    <th style="width: 120px;">Celular</th>
+                                    <th style="width: 70px;">Hora Llegada</th>
+                                    <th style="width: 150px;">Destino</th>
                                     <th style="width: 120px;">Cliente</th>
                                     <th style="width: 100px;">Estado</th>
                                     <th style="width: 90px;" class="text-end">Galones</th>
                                     <th style="width: 90px;" class="text-end">Barriles</th>
+                                    <th style="width: 90px;" class="text-end">Temperatura</th>
+                                    <th style="width: 90px;" class="text-end">API Obs</th>
+                                    <th style="width: 90px;" class="text-end">API Corregido</th>
+                                    <th style="width: 150px;">Precintos</th>
                                     <th style="width: 100px;">Fecha Desp</th>
-                                    <th style="width: 100px;">N° Guía</th>
+                                    <th style="width: 120px;">N° Guía</th>
+                                    <th style="width: 150px;" class="sticky-right">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="historial-table-body">
                                 <tr>
-                                    <td colspan="12" class="text-center py-5">
+                                    <td colspan="23" class="text-center py-5">
                                         <div class="spinner-border text-primary" role="status">
                                             <span class="visually-hidden">Cargando...</span>
                                         </div>
@@ -613,9 +624,13 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                     <span class="badge bg-warning text-dark badge-mini">${camposFaltantes.length}</span>
                 </span>`;
             }
+            
+            // Determinar qué número mostrar: si viene del historial, usar ese número, sino usar índice+1
+            const numeroMostrar = row._numeroFilaHistorial || (index + 1);
+            
             rowHtml += `<td class="text-center fw-bold number-cell" style="min-width: 70px; background: #f8f9fc; border-right: 2px solid #6c757d; position: relative;">
                             <div class="d-flex align-items-center justify-content-center gap-2">
-                                <span class="text-primary">${index + 1}</span>
+                                <span class="text-primary">${numeroMostrar}</span>
                                 ${refineryBadge}
                             </div>
                         </td>`;
@@ -1675,7 +1690,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         const pageData = historialFiltered.slice(start, end);
         
         if (pageData.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="12" class="text-center py-4 text-muted">No hay registros que coincidan con los filtros</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="23" class="text-center py-4 text-muted">No hay registros que coincidan con los filtros</td></tr>';
         } else {
             tbody.innerHTML = '';
             pageData.forEach((row, index) => {
@@ -1685,21 +1700,61 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                 const estadoBadge = row.estado === 'DESPACHADO' ? 'success' : 
                                    row.estado === 'CARGANDO' ? 'warning' : 'secondary';
                 
+                // Permitir editar todos los estados (PROGRAMADO, CARGANDO y DESPACHADO)
+                const isEditable = true;
+                
                 const tr = document.createElement('tr');
                 tr.className = estadoClass;
+                tr.dataset.id = row.id;
                 tr.innerHTML = `
                     <td class="text-center fw-bold">${globalIndex}</td>
                     <td>${row.fecha_programacion ? new Date(row.fecha_programacion + 'T00:00:00').toLocaleDateString('es-CO') : '-'}</td>
                     <td>${row.producto_a_cargar || '-'}</td>
                     <td>${row.tipo_guia || '-'}</td>
+                    <td>${row.empresa_transportadora || '-'}</td>
                     <td>${row.placa || '-'}</td>
+                    <td>${row.tanque || '-'}</td>
                     <td>${row.nombre_conductor || '-'}</td>
+                    <td>${row.cedula_conductor || '-'}</td>
+                    <td>${row.celular_conductor || '-'}</td>
+                    <td>${row.hora_llegada_estimada || '-'}</td>
+                    <td>${row.destino || '-'}</td>
                     <td>${row.cliente || '-'}</td>
                     <td><span class="badge bg-${estadoBadge}">${row.estado || 'PROGRAMADO'}</span></td>
                     <td class="text-end">${row.galones ? Number(row.galones).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
                     <td class="text-end">${row.barriles ? Number(row.barriles).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td class="text-end">${row.temperatura ? Number(row.temperatura).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td class="text-end">${row.api_obs ? Number(row.api_obs).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td class="text-end">${row.api_corregido ? Number(row.api_corregido).toLocaleString('es-CO', {minimumFractionDigits:2}) : '-'}</td>
+                    <td>${row.precintos || '-'}</td>
                     <td>${row.fecha_despacho ? new Date(row.fecha_despacho + 'T00:00:00').toLocaleDateString('es-CO') : '-'}</td>
                     <td>${row.numero_guia || '-'}</td>
+                    <td class="sticky-right">
+                        <div class="btn-group btn-group-sm" role="group">
+                            ${isEditable ? `
+                                <button class="btn btn-outline-primary btn-edit-historial" data-id="${row.id}" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-outline-info btn-print-guide-historial" data-id="${row.id}" title="Imprimir Guía">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            ${row.imagen_guia ? `
+                                <button class="btn btn-outline-success btn-view-image-historial" data-id="${row.id}" title="Ver archivo">
+                                    <i class="fas fa-image"></i>
+                                </button>
+                            ` : `
+                                <button class="btn btn-outline-secondary btn-upload-image-historial" data-id="${row.id}" title="Subir archivo">
+                                    <i class="fas fa-upload"></i>
+                                </button>
+                            `}
+                            ${canDelete ? `
+                                <button class="btn btn-outline-danger btn-delete-historial" data-id="${row.id}" title="Eliminar">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            ` : ''}
+                        </div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1851,6 +1906,165 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
         renderHistorialTable();
     });
 
+    // --- EVENT LISTENERS PARA BOTONES DEL HISTORIAL ---
+    document.getElementById('historial-table-body').addEventListener('click', function(e) {
+        // Botón Editar desde historial
+        const btnEdit = e.target.closest('.btn-edit-historial');
+        if (btnEdit) {
+            const registroId = btnEdit.dataset.id;
+            
+            // Obtener información visual del registro desde el historial
+            const filaHistorial = btnEdit.closest('tr');
+            const numeroFila = filaHistorial ? filaHistorial.querySelector('td:first-child').textContent : '';
+            
+            // Cerrar el modal de historial y limpiar backdrop inmediatamente
+            const historialModalEl = document.getElementById('historialModal');
+            let historialModal = bootstrap.Modal.getInstance(historialModalEl);
+            if (!historialModal) {
+                historialModal = new bootstrap.Modal(historialModalEl);
+            }
+            historialModal.hide();
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+
+            // Buscar el registro en los datos del historial (ya cargados)
+            const registro = historialData.find(r => r.id == registroId);
+            
+            if (!registro) {
+                showToast('warning', 'No se encontró el registro');
+                return;
+            }
+
+            // Agregar el número de fila original al registro para mostrarlo
+            registro._numeroFilaHistorial = numeroFila;
+            
+            // Mostrar SOLO la fila que se quiere editar
+            originalData = [registro];
+            
+            // Re-renderizar la tabla con solo ese registro
+            renderTable(originalData);
+            
+            // Scroll al inicio de la página
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Mensaje informativo
+            const producto = registro.producto_a_cargar || 'Sin producto';
+            const placa = registro.placa || 'Sin placa';
+            const cliente = registro.cliente || 'Sin cliente';
+            showToast('info', `📝 Editando fila #${numeroFila}: ${producto} - ${placa} - ${cliente}`, 4000);
+            
+            return;
+        }
+
+        // Botón Imprimir Guía desde historial
+        const btnPrint = e.target.closest('.btn-print-guide-historial');
+        if (btnPrint) {
+            const registroId = btnPrint.dataset.id;
+            const row = historialData.find(r => r.id == registroId);
+            if (!row) return;
+            
+            const url = new URL("{{ url_for('guia_transporte') }}", window.location.href);
+            allColumns.forEach(field => {
+                let value = row[field] || '';
+                if (value && value !== '-') {
+                    url.searchParams.append(field, value);
+                    if (field === 'tanque') {
+                        url.searchParams.append('placa_tanque', value);
+                    }
+                }
+            });
+            window.location.href = url.href;
+            return;
+        }
+
+        // Botón Ver imagen desde historial
+        const btnViewImg = e.target.closest('.btn-view-image-historial');
+        if (btnViewImg) {
+            const registroId = btnViewImg.dataset.id;
+            fetch(`/api/programacion/${registroId}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const viewer = document.getElementById('modal-viewer');
+                        const downloadBtn = document.getElementById('btn-download-image');
+                        viewer.innerHTML = '';
+                        
+                        const src = data.imagen;
+                        const mimeType = (data.mime || '').toLowerCase();
+                        
+                        let extension = 'png';
+                        if (mimeType.includes('pdf')) extension = 'pdf';
+                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+                        else if (mimeType.includes('gif')) extension = 'gif';
+                        
+                        downloadBtn.href = src;
+                        downloadBtn.download = `guia_transporte_${registroId}.${extension}`;
+                        
+                        if (mimeType.includes('pdf')) {
+                            const embed = document.createElement('embed');
+                            embed.type = 'application/pdf';
+                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
+                            embed.style.width = '100%';
+                            embed.style.height = '70vh';
+                            embed.style.border = '0';
+                            viewer.appendChild(embed);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = src;
+                            img.alt = 'Imagen de guía';
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '70vh';
+                            img.style.borderRadius = '8px';
+                            viewer.appendChild(img);
+                        }
+                        
+                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                        imageModal.show();
+                    } else {
+                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error al cargar el archivo'));
+            return;
+        }
+
+        // Botón Subir imagen desde historial
+        const btnUploadImg = e.target.closest('.btn-upload-image-historial');
+        if (btnUploadImg) {
+            const registroId = btnUploadImg.dataset.id;
+            const hiddenInput = document.getElementById('hidden-image-input');
+            hiddenInput.dataset.registroId = registroId;
+            hiddenInput.dataset.fromHistorial = 'true';
+            hiddenInput.click();
+            return;
+        }
+
+        // Botón Eliminar desde historial
+        const btnDeleteHist = e.target.closest('.btn-delete-historial');
+        if (btnDeleteHist) {
+            if (!canDelete) return;
+            const registroId = btnDeleteHist.dataset.id;
+            if (confirm('¿Seguro que deseas eliminar esta programación?')) {
+                fetch(`/api/programacion/${registroId}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Fila eliminada correctamente');
+                            // Recargar historial
+                            cargarHistorialModal();
+                            // Recargar tabla principal
+                            fetchAndRender();
+                        } else {
+                            showToast('danger', 'Error al eliminar: ' + (data.message || ''));
+                        }
+                    })
+                    .catch(() => showToast('danger', 'Error de conexión'));
+            }
+            return;
+        }
+    });
+
     // --- SUBIDA EXCEL ---
     const btnUploadExcel = document.getElementById('btn-upload-excel');
     btnUploadExcel.addEventListener('click', function(){
@@ -1922,6 +2136,10 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
                     showToast('success', 'Imagen subida correctamente');
                     // Recargar la tabla para mostrar el botón de ver imagen
                     fetchAndRender();
+                    // Si se subió desde el historial, recargar también el historial
+                    if (this.dataset.fromHistorial === 'true') {
+                        cargarHistorialModal();
+                    }
                 } else {
                     showToast('danger', 'Error al subir: ' + (data.message || ''));
                 }
@@ -1930,6 +2148,7 @@ document.getElementById('btn-generate-report').addEventListener('click', functio
             .finally(() => {
                 // Limpiar el input para permitir subir la misma imagen de nuevo
                 this.value = '';
+                delete this.dataset.fromHistorial;
             });
         });
 
@@ -2923,6 +3142,19 @@ td[data-field="precintos"] {
 
 .tbody-modern tr:hover .sticky-col {
     background: #f0f2f5 !important;
+}
+
+/* Sticky column para el historial */
+.sticky-right {
+    position: sticky;
+    right: 0;
+    z-index: 10;
+    background-color: #f8f9fa !important;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+}
+
+.table-dark .sticky-right {
+    background-color: #212529 !important;
 }
 
 /* ========================================

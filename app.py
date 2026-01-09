@@ -8740,7 +8740,7 @@ def handle_programacion():
     mostrar_todas = request.args.get('all', '0') == '1'
     query = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc())
     if not mostrar_todas:
-        registros = query.limit(10).all()
+        registros = query.limit(20).all()
     else:
         # Limitar historial a últimos 500 registros para evitar lentitud
         registros = query.limit(500).all()
