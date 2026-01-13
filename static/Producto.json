@@ -39,7 +39,7 @@
         "TempF": "",
         "API_Obs": "",
         "API_Cor": "",
-        "UN": ""
+        "UN": "1202"
     },
     {
         "PRODUCTO": "FUEL OIL 6",
@@ -68,5 +68,12 @@
         "API_Obs": "",
         "API_Cor": "",
         "UN": ""
+    },
+    {
+        "PRODUCTO": "FUEL OIL (VLSFO)",
+        "TempF": "",
+        "API_Obs": "",
+        "API_Cor": "",
+        "UN": "1999"
     }
 ]

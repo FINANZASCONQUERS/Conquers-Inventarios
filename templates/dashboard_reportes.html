@@ -17,16 +17,20 @@
             </ul>
             <h1 class="mb-2"><i class="bi bi-speedometer2 me-2 text-primary"></i>Panel de Control</h1>
             <div class="page-header-meta">
-                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-calendar-check"></i><span id="current-date">{{ current_date }}</span></span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-calendar-check"></i><span
+                        id="current-date">{{ current_date }}</span></span>
                 <span class="vr"></span>
-                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-activity"></i>Estado consolidado</span>
+                <span class="d-inline-flex align-items-center gap-2"><i class="bi bi-activity"></i>Estado
+                    consolidado</span>
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-soft-primary btn-icon" data-loading="false" id="refreshDashboard" data-bs-toggle="tooltip" data-bs-title="Actualizar datos">
+            <button class="btn btn-soft-primary btn-icon" data-loading="false" id="refreshDashboard"
+                data-bs-toggle="tooltip" data-bs-title="Actualizar datos">
                 <i class="bi bi-arrow-clockwise"></i>
             </button>
-            <a href="{{ url_for('home') }}" class="btn btn-outline-primary d-flex align-items-center gap-2"><i class="bi bi-house"></i><span>Inicio</span></a>
+            <a href="{{ url_for('home') }}" class="btn btn-outline-primary d-flex align-items-center gap-2"><i
+                    class="bi bi-house"></i><span>Inicio</span></a>
         </div>
     </div>
 </div>
@@ -56,7 +60,8 @@
                 </div>
             </div>
             <div class="dash-btn mt-3">
-                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_planta') }}">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2"
+                    href="{{ url_for('reporte_planta') }}">
                     <span>Acceder al Reporte</span>
                     <i class="bi bi-arrow-right-circle"></i>
                 </a>
@@ -86,7 +91,8 @@
                 </div>
             </div>
             <div class="dash-btn mt-3">
-                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_transito') }}">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2"
+                    href="{{ url_for('reporte_transito') }}">
                     <span>Acceder al Reporte</span>
                     <i class="bi bi-arrow-right-circle"></i>
                 </a>
@@ -116,7 +122,8 @@
                 </div>
             </div>
             <div class="dash-btn mt-3">
-                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_barcaza') }}">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2"
+                    href="{{ url_for('reporte_barcaza') }}">
                     <span>Acceder al Reporte</span>
                     <i class="bi bi-arrow-right-circle"></i>
                 </a>
@@ -146,7 +153,8 @@
                 </div>
             </div>
             <div class="dash-btn mt-3">
-                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2" href="{{ url_for('reporte_barcaza_bita') }}">
+                <a class="btn btn-accent text-white w-100 d-flex align-items-center justify-content-center gap-2"
+                    href="{{ url_for('reporte_barcaza_bita') }}">
                     <span>Acceder al Reporte</span>
                     <i class="bi bi-arrow-right-circle"></i>
                 </a>
@@ -163,33 +171,40 @@
     .hover-lift {
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    
+
     .hover-lift:hover {
         transform: translateY(-8px);
         box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
     }
-    
+
     .pulse-on-hover {
         transition: transform 0.3s ease;
     }
-    
+
     .hover-lift:hover .pulse-on-hover {
         transform: scale(1.1);
         animation: pulse 1.5s infinite;
     }
-    
+
     @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.8; }
+
+        0%,
+        100% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.8;
+        }
     }
-    
+
     .dash-card {
         border-radius: 16px;
         border: 1px solid rgba(0, 0, 0, 0.08);
         display: flex;
         flex-direction: column;
     }
-    
+
     .dash-icon {
         font-size: 2.5rem;
         width: 70px;
@@ -200,63 +215,137 @@
         border-radius: 14px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     }
-    
+
     /* Colores específicos para cada tema */
-    .theme-planta .dash-icon { 
+    .theme-planta .dash-icon {
         background: linear-gradient(135deg, #FFE8D1 0%, #FFD4A3 100%);
         color: #FF8C42;
     }
-    .theme-transito .dash-icon { 
+
+    .theme-transito .dash-icon {
         background: linear-gradient(135deg, #FFF4CC 0%, #FFE699 100%);
         color: #FFB800;
     }
-    .theme-orion .dash-icon { 
+
+    .theme-orion .dash-icon {
         background: linear-gradient(135deg, #E8D4FF 0%, #D4B3FF 100%);
         color: #9B59B6;
     }
-    .theme-bita .dash-icon { 
+
+    .theme-bita .dash-icon {
         background: linear-gradient(135deg, #C8F0E9 0%, #9FE2D4 100%);
         color: #10A37F;
     }
-    
-    .text-planta { color: #FF8C42 !important; }
-    .text-transito { color: #FFB800 !important; }
-    .text-orion { color: #9B59B6 !important; }
-    .text-bita { color: #10A37F !important; }
-    
-    .border-planta { border-color: #FF8C42 !important; }
-    .border-transito { border-color: #FFB800 !important; }
-    .border-orion { border-color: #9B59B6 !important; }
-    .border-bita { border-color: #10A37F !important; }
-    
+
+    .text-planta {
+        color: #FF8C42 !important;
+    }
+
+    .text-transito {
+        color: #FFB800 !important;
+    }
+
+    .text-orion {
+        color: #9B59B6 !important;
+    }
+
+    .text-bita {
+        color: #10A37F !important;
+    }
+
+    .border-planta {
+        border-color: #FF8C42 !important;
+    }
+
+    .border-transito {
+        border-color: #FFB800 !important;
+    }
+
+    .border-orion {
+        border-color: #9B59B6 !important;
+    }
+
+    .border-bita {
+        border-color: #10A37F !important;
+    }
+
     /* Botones con colores específicos */
     .theme-planta .btn-accent {
         background: linear-gradient(135deg, #FF8C42 0%, #FF6B1A 100%);
         border: none;
     }
+
     .theme-transito .btn-accent {
         background: linear-gradient(135deg, #FFB800 0%, #FF9F00 100%);
         border: none;
     }
+
     .theme-orion .btn-accent {
         background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
         border: none;
     }
+
     .theme-bita .btn-accent {
         background: linear-gradient(135deg, #10A37F 0%, #0D8B6C 100%);
         border: none;
     }
-    
+
     .btn-accent {
         transition: all 0.3s ease;
         font-weight: 600;
         padding: 0.625rem 1.25rem;
         border-radius: 10px;
     }
-    
+
     .btn-accent:hover {
         transform: scale(1.02);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Dark Mode Adjustments */
+    html.dark-mode .dash-card {
+        background-color: #1e293b;
+        /* Slate-800 */
+        border-color: #334155;
+    }
+
+    html.dark-mode .text-muted {
+        color: #cbd5e1 !important;
+        /* Slate-300 - Much lighter for better contrast */
+    }
+
+    html.dark-mode .dash-title {
+        color: #f1f5f9;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    html.dark-mode .theme-planta .dash-icon {
+        background: rgba(255, 140, 66, 0.15);
+        color: #FF8C42;
+        box-shadow: 0 0 15px rgba(255, 140, 66, 0.1);
+    }
+
+    html.dark-mode .theme-transito .dash-icon {
+        background: rgba(255, 184, 0, 0.15);
+        color: #FFB800;
+        box-shadow: 0 0 15px rgba(255, 184, 0, 0.1);
+    }
+
+    html.dark-mode .theme-orion .dash-icon {
+        background: rgba(155, 89, 182, 0.15);
+        color: #9B59B6;
+        box-shadow: 0 0 15px rgba(155, 89, 182, 0.1);
+    }
+
+    html.dark-mode .theme-bita .dash-icon {
+        background: rgba(16, 163, 127, 0.15);
+        color: #10A37F;
+        box-shadow: 0 0 15px rgba(16, 163, 127, 0.1);
+    }
+
+    html.dark-mode .badge.bg-light {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border-width: 1px !important;
     }
 </style>
 
@@ -270,12 +359,12 @@
         const refreshBtn = document.getElementById('refreshDashboard');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
-                refreshBtn.setAttribute('data-loading','true');
+                refreshBtn.setAttribute('data-loading', 'true');
                 try {
                     // Aquí podrías hacer un fetch a un endpoint para refrescar KPIs
-                    await new Promise(r=>setTimeout(r,1200));
+                    await new Promise(r => setTimeout(r, 1200));
                 } finally {
-                    refreshBtn.setAttribute('data-loading','false');
+                    refreshBtn.setAttribute('data-loading', 'false');
                 }
             });
         }
