@@ -1898,7 +1898,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "siza_solicitante"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "siza_solicitante", "reportes"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
@@ -4666,13 +4666,9 @@ def dashboard_siza():
         usuario_email = session.get('email', '')
         puede_editar_dian = usuario_email in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
         
-        # Verificar si el usuario puede ver volumen DIAN (Admins + Juan Diego, Carlos, Brando, Samantha + editores)
-        puede_ver_dian = session.get('rol') == 'admin' or puede_editar_dian or usuario_email in [
-            'carlos.baron@conquerstrading.com',
-            'juandiego.cuadros@conquerstrading.com', 
-            'brando@conquerstrading.com',
-            'logistic@conquerstrading.com'
-        ]
+        # Verificar si el usuario puede ver volumen DIAN (Admins + Gestores + Solicitantes)
+        areas_usuario = session.get('area', [])
+        puede_ver_dian = session.get('rol') == 'admin' or puede_editar_dian or 'siza_solicitante' in areas_usuario or 'siza_gestor' in areas_usuario
         
         return render_template(
             'siza_dashboard.html',
