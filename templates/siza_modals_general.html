@@ -1,0 +1,291 @@
+{# Modales Generales - Nuevo Pedido, Volumen DIAN, etc. #}
+
+{# Modal Nuevo Pedido #}
+<div class="modal fade" id="modalNuevoPedido" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header text-white"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 1.5rem;">
+                <h5 class="modal-title fw-bold" style="font-size: 1.4rem;">
+                    <i class="bi bi-plus-circle me-2"></i>Registrar Nuevo Pedido
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('registrar_pedido') }}" method="POST">
+                <div class="modal-body" style="padding: 2rem;">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333;">
+                            <i class="bi bi-hash me-2" style="color: #667eea;"></i>Número de Pedido *
+                        </label>
+                        <input type="text" class="form-control" name="numero_pedido" placeholder="Ej: PED-2026-001"
+                            required
+                            style="font-size: 1.1rem; padding: 0.875rem; border: 2px solid #e0e0e0; border-radius: 12px;">
+                        <small class="form-text text-muted">
+                            <i class="bi bi-info-circle me-1"></i>Debe ser único e identificable
+                        </small>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333;">
+                            <i class="bi bi-box-seam me-2" style="color: #667eea;"></i>Producto *
+                        </label>
+                        <select class="form-select" name="producto_id" required
+                            style="font-size: 1.1rem; padding: 0.875rem; border: 2px solid #e0e0e0; border-radius: 12px;">
+                            <option value="">Seleccione un producto...</option>
+                            {% for item in inventario_productos %}
+                            <option value="{{ item.producto.id }}">
+                                {{ item.producto.nombre }} - Disponible: {{ "{:,.3f}".format(item.disponible) }} BBL
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333;">
+                            <i class="bi bi-calculator me-2" style="color: #667eea;"></i>Volumen Solicitado (Barriles) *
+                        </label>
+                        <input type="number" step="0.001" class="form-control" name="volumen_solicitado"
+                            placeholder="Ej: 1000" required min="0.01"
+                            style="font-size: 1.4rem; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 12px; font-weight: 700;">
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333;">
+                            <i class="bi bi-chat-left-text me-2" style="color: #667eea;"></i>Observación
+                        </label>
+                        <textarea class="form-control" name="observacion" rows="3"
+                            placeholder="Detalles del pedido (cliente, destino, notas especiales...)"
+                            style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border: none; padding: 1.5rem 2rem; background: #f8f9fa;">
+                    <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal"
+                        style="border-radius: 12px; padding: 0.75rem 2rem; font-weight: 600;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-lg text-white fw-bold"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 12px; padding: 0.75rem 2.5rem; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                        <i class="bi bi-check-circle-fill me-2" style="font-size: 1.3rem;"></i>Registrar Pedido
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Modal Actualizar Volumen DIAN #}
+{% if puede_editar_dian %}
+<div class="modal fade" id="modalVolumenDian" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header text-white"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; padding: 1.5rem;">
+                <h5 class="modal-title fw-bold" style="font-size: 1.4rem;">
+                    <i class="bi bi-shield-check me-2"></i>Gestión de Volumen DIAN
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('actualizar_volumen_dian') }}" method="POST">
+                <div class="modal-body" style="padding: 2rem;">
+                    <!-- Explicación del Flujo -->
+                    <div class="alert mb-4"
+                        style="background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); border-left: 5px solid #00897b; border-radius: 12px;">
+                        <h6 class="fw-bold mb-2" style="color: #00695c;">
+                            <i class="bi bi-info-circle-fill me-2"></i>Flujo de Aprobación DIAN
+                        </h6>
+                        <ol class="mb-0" style="color: #00695c; font-size: 0.9rem;">
+                            <li><strong>Paso 1:</strong> Cuando DIAN apruebe un volumen, ingréselo en "Agregar Nueva
+                                Aprobación"</li>
+                            <li><strong>Paso 2:</strong> El volumen se SUMARÁ automáticamente al "Total Aprobado
+                                Acumulado"</li>
+                            <li><strong>Paso 3:</strong> Al recargar productos, el volumen se descontará automáticamente
+                                del total aprobado</li>
+                        </ol>
+                    </div>
+
+                    <!-- Grid de 3 Columnas -->
+                    <div class="row">
+                        <!-- Columna 1: Agregar Nueva Aprobación -->
+                        <div class="col-md-4 mb-4">
+                            <div class="p-4"
+                                style="background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-radius: 16px; border-left: 5px solid #43a047; height: 100%;">
+                                <div class="text-center mb-3">
+                                    <i class="bi bi-plus-circle-fill" style="font-size: 3rem; color: #2e7d32;"></i>
+                                </div>
+                                <h6 class="text-center fw-bold mb-3"
+                                    style="color: #2e7d32; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem;">
+                                    ➕ Agregar Aprobación
+                                </h6>
+                                <p class="text-center mb-3" style="color: #2e7d32; font-size: 0.8rem;">
+                                    Ingrese el volumen que <strong>DIAN acaba de aprobar</strong>
+                                </p>
+
+                                <label class="form-label fw-bold" style="font-size: 0.95rem; color: #2e7d32;">
+                                    <i class="bi bi-calculator me-2"></i>Nueva Aprobación (BBL)
+                                </label>
+                                <input type="number" step="0.001" class="form-control mb-2" name="agregar_aprobacion"
+                                    value="0" min="0"
+                                    style="font-size: 1.6rem; padding: 1rem; border: 3px solid #43a047; border-radius: 12px; font-weight: 800; text-align: center; background: white;">
+
+                                <small class="d-block text-center mt-2" style="color: #2e7d32; font-weight: 600;">
+                                    <i class="bi bi-arrow-right-circle me-1"></i>Se sumará al total →
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Columna 2: Total Aprobado Acumulado (Solo Lectura) -->
+                        <div class="col-md-4 mb-4">
+                            <div class="p-4"
+                                style="background: linear-gradient(135deg, #fff9c4 0%, #fff59d 100%); border-radius: 16px; border-left: 5px solid #fbc02d; height: 100%;">
+                                <div class="text-center mb-3">
+                                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #f57f17;"></i>
+                                </div>
+                                <h6 class="text-center fw-bold mb-3"
+                                    style="color: #f57f17; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem;">
+                                    ✅ Total Aprobado
+                                </h6>
+                                <p class="text-center mb-3" style="color: #f57f17; font-size: 0.8rem;">
+                                    Volumen <strong>total acumulado</strong> aprobado por DIAN
+                                </p>
+
+                                <label class="form-label fw-bold" style="font-size: 0.95rem; color: #f57f17;">
+                                    <i class="bi bi-database-fill me-2"></i>Total Acumulado (BBL)
+                                </label>
+                                <div class="form-control mb-2"
+                                    style="font-size: 1.6rem; padding: 1rem; border: 3px solid #fbc02d; border-radius: 12px; font-weight: 800; text-align: center; background: #fffef7; color: #f57f17;">
+                                    {{ "{:,.3f}".format(volumen_dian.volumen_pendiente if volumen_dian else 0) }}
+                                </div>
+                                <input type="hidden" name="volumen_pendiente"
+                                    value="{{ volumen_dian.volumen_pendiente if volumen_dian else 0 }}">
+
+                                <small class="d-block text-center mt-2" style="color: #f57f17; font-weight: 600;">
+                                    <i class="bi bi-info-circle me-1"></i>Se actualiza automáticamente
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Columna 3: Por Aprobar (Trámite) -->
+                        <div class="col-md-4 mb-4">
+                            <div class="p-4"
+                                style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-radius: 16px; border-left: 5px solid #1976d2; height: 100%;">
+                                <div class="text-center mb-3">
+                                    <i class="bi bi-hourglass-split" style="font-size: 3rem; color: #1565c0;"></i>
+                                </div>
+                                <h6 class="text-center fw-bold mb-3"
+                                    style="color: #1565c0; text-transform: uppercase; letter-spacing: 1px; font-size: 0.85rem;">
+                                    ⏳ Por Aprobar
+                                </h6>
+                                <p class="text-center mb-3" style="color: #1565c0; font-size: 0.8rem;">
+                                    Volumen solicitado <strong>en trámite</strong> con DIAN
+                                </p>
+
+                                <label class="form-label fw-bold" style="font-size: 0.95rem; color: #1565c0;">
+                                    <i class="bi bi-clock-history me-2"></i>En Trámite (BBL)
+                                </label>
+                                <input type="number" step="0.001" class="form-control mb-2" name="volumen_por_aprobar"
+                                    value="{{ volumen_dian.volumen_por_aprobar if volumen_dian and volumen_dian.volumen_por_aprobar else 0 }}"
+                                    min="0"
+                                    style="font-size: 1.6rem; padding: 1rem; border: 3px solid #1976d2; border-radius: 12px; font-weight: 800; text-align: center; background: white;">
+
+                                <small class="d-block text-center mt-2" style="color: #1565c0; font-weight: 600;">
+                                    <i class="bi bi-arrow-left-circle me-1"></i>Esperando aprobación
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold" style="font-size: 1.1rem; color: #333;">
+                            <i class="bi bi-chat-left-text me-2" style="color: #667eea;"></i>Observaciones
+                        </label>
+                        <textarea class="form-control" name="observacion" rows="3"
+                            placeholder="Ej: Aprobación recibida el 14/01/2026, Resolución DIAN #12345, etc."
+                            style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem;">{{ volumen_dian.observacion if volumen_dian else '' }}</textarea>
+                    </div>
+
+                    <!-- Ejemplo Visual -->
+                    <div class="alert alert-light border" style="border-radius: 12px;">
+                        <h6 class="fw-bold mb-2">
+                            <i class="bi bi-lightbulb-fill me-2 text-warning"></i>Ejemplo de Uso:
+                        </h6>
+                        <p class="mb-1" style="font-size: 0.9rem;">
+                            <strong>Día 1:</strong> DIAN aprobó 5,000 BBL → Ingreso <span
+                                class="badge bg-success">5,000</span> en "Agregar" → Total Aprobado: <span
+                                class="badge bg-warning">5,000</span>
+                        </p>
+                        <p class="mb-1" style="font-size: 0.9rem;">
+                            <strong>Día 5:</strong> DIAN aprobó otros 3,000 BBL → Ingreso <span
+                                class="badge bg-success">3,000</span> en "Agregar" → Total Aprobado: <span
+                                class="badge bg-warning">8,000</span>
+                        </p>
+                        <p class="mb-0" style="font-size: 0.9rem;">
+                            <strong>Recarga:</strong> Distribuyo 2,000 BBL a F04 → Total Aprobado queda en: <span
+                                class="badge bg-warning">6,000</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border: none; padding: 1.5rem 2rem; background: #f8f9fa;">
+                    <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal"
+                        style="border-radius: 12px; padding: 0.75rem 2rem; font-weight: 600;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-lg text-white fw-bold"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; border-radius: 12px; padding: 0.75rem 2.5rem; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
+                        <i class="bi bi-check-circle-fill me-2" style="font-size: 1.3rem;"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{# Modales para Despachar Pedidos Aprobados #}
+{% for pedido in pedidos_aprobados %}
+<div class="modal fade" id="modalDespachar{{ pedido.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header bg-success text-white" style="border: none; padding: 1.5rem;">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-send-fill me-2"></i>Despachar Pedido
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 2rem;">
+                <div class="alert alert-success mb-3">
+                    <h6 class="fw-bold mb-2">Información del Pedido</h6>
+                    <p class="mb-1"><strong>Número:</strong> {{ pedido.numero_pedido }}</p>
+                    <p class="mb-1"><strong>Producto:</strong> {{ pedido.producto.nombre }}</p>
+                    <p class="mb-1"><strong>Volumen:</strong> {{ "{:,.3f}".format(pedido.volumen_solicitado) }} BBL</p>
+                    <p class="mb-0"><strong>Solicitante:</strong> {{ pedido.usuario_registro }}</p>
+                </div>
+
+                <form action="{{ url_for('despachar_pedido_siza', pedido_id=pedido.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observaciones del Despacho</label>
+                        <textarea class="form-control" name="observacion_despacho" rows="3"
+                            placeholder="Detalles del despacho (vehículo, conductor, hora...)"></textarea>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>Atención:</strong> Al despachar, el pedido se marcará como COMPLETADO y el volumen se
+                        descontará del inventario.
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg"
+                            onclick="return confirm('¿Confirmar despacho de este pedido?')">
+                            <i class="bi bi-check-circle-fill me-2"></i>Confirmar Despacho
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}

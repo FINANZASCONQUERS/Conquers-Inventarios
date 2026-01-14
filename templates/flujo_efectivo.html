@@ -1,56 +1,267 @@
 {% extends 'base.html' %}git addgit add
 {% block head %}
-    <title>Reporte de Flujo de Efectivo</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="/static/css/professional-theme.css" rel="stylesheet">
-    <style>
-        :root { --brand-primary:#0d6efd; --brand-primary-rgb:13,110,253; --brand-bg:linear-gradient(135deg,#f4f7f9 0%,#e3eafc 100%); --card-radius:18px; --transition:.25s cubic-bezier(.4,0,.2,1); }
-        body { background: var(--brand-bg); font-size:.92rem; }
-        .dashboard-wrapper { max-width:1700px; }
-        .main-card { border-radius: var(--card-radius); box-shadow:0 6px 24px rgba(0,0,0,.06); border:1px solid #e2e8f0; background:#fff; }
-        .uploader { border:2px dashed rgba(var(--brand-primary-rgb),.5); background:#f8fafd; border-radius:14px; transition:var(--transition); }
-        .uploader:hover { border-color:var(--brand-primary); background:#f0f6ff; }
-        .table-responsive { max-height: 600px; }
-        .spinner-border { width:3rem; height:3rem; }
-        .diff-pos { color:#198754 !important; }
-        .diff-neg { color:#dc3545 !important; }
-        .filter-label { color:var(--brand-primary); font-weight:600; font-size:.7rem; letter-spacing:.5px; text-transform:uppercase; }
-        .filter-select { border-radius:10px; border:1px solid #cfd9e6; font-size:.8rem; }
-        .filter-select:focus { border-color:var(--brand-primary); box-shadow:0 0 0 3px rgba(var(--brand-primary-rgb),.15); }
-        .card { border:1px solid #e2e8f0; border-radius:16px; }
-        .card-header { background:#f8fafc; border-bottom:1px solid #e2e8f0; border-radius:16px 16px 0 0; }
-        .card-header h5,.card-header h6 { font-weight:600; }
-        .card:hover { box-shadow:0 6px 20px -4px rgba(0,0,0,.08); transition:box-shadow var(--transition); }
-        .table thead th { background:#eef3fb; color:#0d47a1; font-weight:600; font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; }
-        .table tfoot td { background:#f4f7f9; font-weight:600; }
-        .section-title { color:#0d47a1; font-weight:700; letter-spacing:1px; display:flex; align-items:center; gap:.5rem; }
-        .section-title:before { content:""; width:6px; height:24px; background:linear-gradient(180deg,var(--brand-primary),#4dabf7); border-radius:4px; }
-        .dashboard-toolbar { background:rgba(255,255,255,.85); backdrop-filter:blur(6px); border:1px solid #e2e8f0; border-radius:18px; padding:1rem 1.25rem; margin-bottom:1.25rem; box-shadow:0 4px 16px -4px rgba(0,0,0,.06); }
-        .dashboard-toolbar .toolbar-actions { gap:.75rem; }
-        #toggle-view-btn { font-weight:600; display:inline-flex; align-items:center; gap:.35rem; }
+<title>Reporte de Flujo de Efectivo</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="/static/css/professional-theme.css" rel="stylesheet">
+<style>
+    :root {
+        --brand-primary: #0d6efd;
+        --brand-primary-rgb: 13, 110, 253;
+        --brand-bg: linear-gradient(135deg, #f4f7f9 0%, #e3eafc 100%);
+        --card-radius: 18px;
+        --transition: .25s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    body {
+        background: var(--brand-bg);
+        font-size: .92rem;
+    }
+
+    .dashboard-wrapper {
+        max-width: 1700px;
+    }
+
+    .main-card {
+        border-radius: var(--card-radius);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, .06);
+        border: 1px solid #e2e8f0;
+        background: #fff;
+    }
+
+    .uploader {
+        border: 2px dashed rgba(var(--brand-primary-rgb), .5);
+        background: #f8fafd;
+        border-radius: 14px;
+        transition: var(--transition);
+    }
+
+    .uploader:hover {
+        border-color: var(--brand-primary);
+        background: #f0f6ff;
+    }
+
+    .table-responsive {
+        max-height: 600px;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    .diff-pos {
+        color: #198754 !important;
+    }
+
+    .diff-neg {
+        color: #dc3545 !important;
+    }
+
+    .filter-label {
+        color: var(--brand-primary);
+        font-weight: 600;
+        font-size: .7rem;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+    }
+
+    .filter-select {
+        border-radius: 10px;
+        border: 1px solid #cfd9e6;
+        font-size: .8rem;
+    }
+
+    .filter-select:focus {
+        border-color: var(--brand-primary);
+        box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb), .15);
+    }
+
+    .card {
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+    }
+
+    .card-header {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .card-header h5,
+    .card-header h6 {
+        font-weight: 600;
+    }
+
+    .card:hover {
+        box-shadow: 0 6px 20px -4px rgba(0, 0, 0, .08);
+        transition: box-shadow var(--transition);
+    }
+
+    .table thead th {
+        background: #eef3fb;
+        color: #0d47a1;
+        font-weight: 600;
+        font-size: .65rem;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+    }
+
+    .table tfoot td {
+        background: #f4f7f9;
+        font-weight: 600;
+    }
+
+    .section-title {
+        color: #0d47a1;
+        font-weight: 700;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+    }
+
+    .section-title:before {
+        content: "";
+        width: 6px;
+        height: 24px;
+        background: linear-gradient(180deg, var(--brand-primary), #4dabf7);
+        border-radius: 4px;
+    }
+
+    .dashboard-toolbar {
+        background: rgba(255, 255, 255, .85);
+        backdrop-filter: blur(6px);
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 4px 16px -4px rgba(0, 0, 0, .06);
+    }
+
+    .dashboard-toolbar .toolbar-actions {
+        gap: .75rem;
+    }
+
+    #toggle-view-btn {
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+
     /* Botones estilo icon square */
-    .btn-icon-square{position:relative;display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:2px;width:64px;height:64px;padding:.35rem;border-radius:16px;font-size:.6rem;font-weight:600;letter-spacing:.5px;text-transform:uppercase;line-height:1.05;border:1px solid #d0dae6;background:#fff;transition:all .25s cubic-bezier(.4,0,.2,1);}
-    .btn-icon-square i{font-size:1.25rem;}
-    .btn-icon-square:hover{box-shadow:0 6px 18px -4px rgba(0,0,0,.12);transform:translateY(-2px);}
-    .btn-icon-square.btn-primary{background:linear-gradient(135deg,#0d6efd,#3e8ef7);color:#fff;border:none;}
-    .btn-icon-square.btn-outline-primary{background:#f5f9ff;color:#0d6efd;border:1px solid #c4dcff;}
-    .btn-icon-square.btn-outline-success{background:#f4fff7;color:#198754;border:1px solid #b7e7c9;}
-    .btn-icon-square.btn-outline-secondary{background:#f5f6f8;color:#495057;border:1px solid #d6d9de;}
-    .btn-icon-square.btn-outline-danger{background:#fff5f5;color:#d63344;border:1px solid #f5c2c7;}
-    .btn-icon-square small{font-weight:600;}
-    @media (max-width:992px){.btn-icon-square{width:56px;height:56px;font-size:.55rem;}}
-        #resumen-directo .card { position:relative; overflow:hidden; }
-        #resumen-directo .card:after { content:""; position:absolute; width:120px; height:120px; top:-40px; right:-40px; background:radial-gradient(circle at center, rgba(255,255,255,.4), transparent 70%); }
-        #resumen-directo .card .small { font-size:.6rem; letter-spacing:.5px; }
-        .badge-soft { background:rgba(var(--brand-primary-rgb),.15); color:var(--brand-primary); font-weight:500; font-size:.6rem; }
-        @media (max-width:992px){ .dashboard-toolbar{padding:.85rem .9rem;} }
-    </style>
+    .btn-icon-square {
+        position: relative;
+        display: inline-flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 2px;
+        width: 64px;
+        height: 64px;
+        padding: .35rem;
+        border-radius: 16px;
+        font-size: .6rem;
+        font-weight: 600;
+        letter-spacing: .5px;
+        text-transform: uppercase;
+        line-height: 1.05;
+        border: 1px solid #d0dae6;
+        background: #fff;
+        transition: all .25s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .btn-icon-square i {
+        font-size: 1.25rem;
+    }
+
+    .btn-icon-square:hover {
+        box-shadow: 0 6px 18px -4px rgba(0, 0, 0, .12);
+        transform: translateY(-2px);
+    }
+
+    .btn-icon-square.btn-primary {
+        background: linear-gradient(135deg, #0d6efd, #3e8ef7);
+        color: #fff;
+        border: none;
+    }
+
+    .btn-icon-square.btn-outline-primary {
+        background: #f5f9ff;
+        color: #0d6efd;
+        border: 1px solid #c4dcff;
+    }
+
+    .btn-icon-square.btn-outline-success {
+        background: #f4fff7;
+        color: #198754;
+        border: 1px solid #b7e7c9;
+    }
+
+    .btn-icon-square.btn-outline-secondary {
+        background: #f5f6f8;
+        color: #495057;
+        border: 1px solid #d6d9de;
+    }
+
+    .btn-icon-square.btn-outline-danger {
+        background: #fff5f5;
+        color: #d63344;
+        border: 1px solid #f5c2c7;
+    }
+
+    .btn-icon-square small {
+        font-weight: 600;
+    }
+
+    @media (max-width:992px) {
+        .btn-icon-square {
+            width: 56px;
+            height: 56px;
+            font-size: .55rem;
+        }
+    }
+
+    #resumen-directo .card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    #resumen-directo .card:after {
+        content: "";
+        position: absolute;
+        width: 120px;
+        height: 120px;
+        top: -40px;
+        right: -40px;
+        background: radial-gradient(circle at center, rgba(255, 255, 255, .4), transparent 70%);
+    }
+
+    #resumen-directo .card .small {
+        font-size: .6rem;
+        letter-spacing: .5px;
+    }
+
+    .badge-soft {
+        background: rgba(var(--brand-primary-rgb), .15);
+        color: var(--brand-primary);
+        font-weight: 500;
+        font-size: .6rem;
+    }
+
+    @media (max-width:992px) {
+        .dashboard-toolbar {
+            padding: .85rem .9rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid dashboard-wrapper py-4">
-    <div class="dashboard-toolbar d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center">
+    <div
+        class="dashboard-toolbar d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center">
         <div class="mb-3 mb-lg-0">
             <h1 class="h3 section-title mb-1">Reporte de Flujo de Efectivo</h1>
             <div class="text-muted small d-flex align-items-center gap-2">
@@ -62,20 +273,31 @@
         <div class="toolbar-actions d-flex flex-wrap align-items-end">
             <div class="d-flex flex-column me-3" style="min-width:200px;">
                 <label for="file-upload" class="filter-label mb-1">Excel Bancos</label>
-                <input type="file" id="file-upload" class="form-control form-control-sm filter-select" accept=".xlsx, .xls">
+                <input type="file" id="file-upload" class="form-control form-control-sm filter-select"
+                    accept=".xlsx, .xls">
             </div>
             <div class="d-flex flex-column me-3" style="min-width:200px;">
                 <label for="file-facturacion" class="filter-label mb-1">Facturación</label>
-                <input type="file" id="file-facturacion" class="form-control form-control-sm filter-select" accept=".xlsx, .xls">
+                <input type="file" id="file-facturacion" class="form-control form-control-sm filter-select"
+                    accept=".xlsx, .xls">
             </div>
             <div class="d-flex flex-column">
                 <label class="filter-label mb-1">Acciones</label>
                 <div class="d-flex flex-wrap gap-2">
-                    <button id="btn-cargar-guardado" class="btn btn-outline-success btn-icon-square" title="Cargar último dataset guardado"><i class="bi bi-cloud-download"></i><small>Cargar</small></button>
-                    <button id="toggle-view-btn" class="btn btn-outline-primary btn-icon-square" title="Alternar vista tablas / gráficos"><i class="bi bi-graph-up"></i><small>Vista</small></button>
-                    <button id="btn-toggle-filtros" class="btn btn-outline-secondary btn-icon-square" title="Mostrar/Ocultar filtros avanzados"><i class="bi bi-funnel"></i><small>Filtros</small></button>
-                    <button id="btn-guardar-dataset" class="btn btn-primary btn-icon-square" title="Información guardado" disabled><i class="bi bi-save"></i><small>Info</small></button>
-                    <button id="btn-eliminar-datos" class="btn btn-outline-danger btn-icon-square" title="Eliminar todos los datos cargados"><i class="bi bi-trash"></i><small>Vaciar</small></button>
+                    <button id="btn-cargar-guardado" class="btn btn-outline-success btn-icon-square"
+                        title="Cargar último dataset guardado"><i
+                            class="bi bi-cloud-download"></i><small>Cargar</small></button>
+                    <button id="toggle-view-btn" class="btn btn-outline-primary btn-icon-square"
+                        title="Alternar vista tablas / gráficos"><i
+                            class="bi bi-graph-up"></i><small>Vista</small></button>
+                    <button id="btn-toggle-filtros" class="btn btn-outline-secondary btn-icon-square"
+                        title="Mostrar/Ocultar filtros avanzados"><i
+                            class="bi bi-funnel"></i><small>Filtros</small></button>
+                    <button id="btn-guardar-dataset" class="btn btn-primary btn-icon-square"
+                        title="Información guardado" disabled><i class="bi bi-save"></i><small>Info</small></button>
+                    <button id="btn-eliminar-datos" class="btn btn-outline-danger btn-icon-square"
+                        title="Eliminar todos los datos cargados"><i
+                            class="bi bi-trash"></i><small>Vaciar</small></button>
                 </div>
             </div>
         </div>
@@ -104,8 +326,10 @@
                 <input type="month" id="mes-completo" class="form-control form-control-sm filter-select" />
             </div>
             <div class="col-12 col-md-3 d-flex gap-2 justify-content-md-end">
-                <button id="btn-reset-filtros" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-                <button id="btn-hide-filtros" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle"></i> Aplicar</button>
+                <button id="btn-reset-filtros" class="btn btn-outline-secondary btn-sm"><i
+                        class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                <button id="btn-hide-filtros" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle"></i>
+                    Aplicar</button>
             </div>
         </div>
     </div>
@@ -136,7 +360,12 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-striped mb-0">
-                            <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Débito</th></tr></thead>
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tipo Flujo</th>
+                                    <th class="text-end">Total Débito</th>
+                                </tr>
+                            </thead>
                             <tbody id="tbody-breakdown-ingresos"></tbody>
                         </table>
                     </div>
@@ -168,7 +397,12 @@
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-striped mb-0">
-                            <thead class="table-light"><tr><th>Tipo Flujo</th><th class="text-end">Total Crédito</th></tr></thead>
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Tipo Flujo</th>
+                                    <th class="text-end">Total Crédito</th>
+                                </tr>
+                            </thead>
                             <tbody id="tbody-breakdown-egresos"></tbody>
                         </table>
                     </div>
@@ -210,21 +444,37 @@
                 <div id="facturas-cliente-panel" class="mt-3 d-none">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="mb-0 text-primary" id="facturas-cliente-titulo">Facturas</h6>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('facturas-cliente-panel').classList.add('d-none');">Cerrar</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                            onclick="document.getElementById('facturas-cliente-panel').classList.add('d-none');">Cerrar</button>
                     </div>
                     <div class="table-responsive" style="max-height:260px;">
                         <table class="table table-sm table-striped align-middle mb-0">
                             <thead class="table-light">
-                                <tr><th>Número</th><th>Fecha</th><th class="text-end">COP$</th><th class="text-end">Gln</th><th class="text-end">Bbl</th><th class="text-end">Ton</th></tr>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Fecha</th>
+                                    <th class="text-end">COP$</th>
+                                    <th class="text-end">Gln</th>
+                                    <th class="text-end">Bbl</th>
+                                    <th class="text-end">Ton</th>
+                                </tr>
                             </thead>
                             <tbody id="facturas-cliente-tbody"></tbody>
                             <tfoot class="table-secondary">
-                                <tr><th>Total</th><th></th><th class="text-end" id="facturas-cliente-total-cop"></th><th class="text-end" id="facturas-cliente-total-gln"></th><th class="text-end" id="facturas-cliente-total-bbl"></th><th class="text-end" id="facturas-cliente-total-ton"></th></tr>
+                                <tr>
+                                    <th>Total</th>
+                                    <th></th>
+                                    <th class="text-end" id="facturas-cliente-total-cop"></th>
+                                    <th class="text-end" id="facturas-cliente-total-gln"></th>
+                                    <th class="text-end" id="facturas-cliente-total-bbl"></th>
+                                    <th class="text-end" id="facturas-cliente-total-ton"></th>
+                                </tr>
                             </tfoot>
                         </table>
                     </div>
                 </div>
-                <div class="text-end mt-2"><small class="text-muted">Aplica mismos filtros de Empresa y Tiempo + filtros internos de Clase/Sub Clase.</small></div>
+                <div class="text-end mt-2"><small class="text-muted">Aplica mismos filtros de Empresa y Tiempo + filtros
+                        internos de Clase/Sub Clase.</small></div>
             </div>
         </div>
         <!-- Resumen global de facturación -->
@@ -237,11 +487,24 @@
                 <div class="table-responsive" style="max-height:260px;">
                     <table class="table table-sm table-striped mb-0" id="facturacion-global-table">
                         <thead class="table-light" id="facturacion-global-thead">
-                            <tr id="facturacion-global-head-row"><th>Cliente</th><th class="text-end">Facturas</th><th class="text-end">Total COP$</th><th class="text-end">Total Gln</th><th class="text-end">Total Bbl</th><th class="text-end">Total Ton</th></tr>
+                            <tr id="facturacion-global-head-row">
+                                <th>Cliente</th>
+                                <th class="text-end">Facturas</th>
+                                <th class="text-end">Total COP$</th>
+                                <th class="text-end">Total Gln</th>
+                                <th class="text-end">Total Bbl</th>
+                                <th class="text-end">Total Ton</th>
+                            </tr>
                         </thead>
                         <tbody id="facturacion-global-tbody"></tbody>
                         <tfoot class="table-secondary" id="facturacion-global-tfoot">
-                            <tr id="facturacion-global-foot-row"><th colspan="2" class="text-end">Gran Total:</th><th class="text-end" id="facturacion-global-total-cop"></th><th class="text-end" id="facturacion-global-total-gln"></th><th class="text-end" id="facturacion-global-total-bbl"></th><th class="text-end" id="facturacion-global-total-ton"></th></tr>
+                            <tr id="facturacion-global-foot-row">
+                                <th colspan="2" class="text-end">Gran Total:</th>
+                                <th class="text-end" id="facturacion-global-total-cop"></th>
+                                <th class="text-end" id="facturacion-global-total-gln"></th>
+                                <th class="text-end" id="facturacion-global-total-bbl"></th>
+                                <th class="text-end" id="facturacion-global-total-ton"></th>
+                            </tr>
                         </tfoot>
                     </table>
                 </div>
@@ -256,7 +519,8 @@
             <div class="card-body">
                 <div class="row g-2 mb-3 align-items-end">
                     <div class="col-12 col-md-3">
-                        <label class="form-label small text-primary mb-1" for="prov-tf-filter">Tipo Flujo Efectivo:</label>
+                        <label class="form-label small text-primary mb-1" for="prov-tf-filter">Tipo Flujo
+                            Efectivo:</label>
                         <select id="prov-tf-filter" class="form-select form-select-sm">
                             <option value="">(Operación + Inversión)</option>
                             <option value="OPERACION">Operación</option>
@@ -277,7 +541,8 @@
                     </div>
                 </div>
                 <canvas id="chartTopProveedoresEgresos" height="140"></canvas>
-                <div class="text-end mt-2"><small class="text-muted">Filtrado por Empresa / Tiempo + Tipo Flujo (Operación/Inversión) + Clase/Sub Clase.</small></div>
+                <div class="text-end mt-2"><small class="text-muted">Filtrado por Empresa / Tiempo + Tipo Flujo
+                        (Operación/Inversión) + Clase/Sub Clase.</small></div>
             </div>
         </div>
         <!-- NUEVAS GRAFICAS: TOP TERCEROS INGRESOS / EGRESOS CON FILTRO DE TIPO DE FLUJO -->
@@ -330,130 +595,138 @@
 
 {% block scripts %}
 <script>
-    document.getElementById('file-upload').addEventListener('change', handleFile, false);
-    document.getElementById('file-facturacion').addEventListener('change', handleFacturacion, false);
-        const btnGuardar = document.getElementById('btn-guardar-dataset');
-    const btnCargarGuardado = document.getElementById('btn-cargar-guardado');
-    const btnEliminarDatos = document.getElementById('btn-eliminar-datos');
-
-    // Mostrar alertas flotantes
-    function pushAlert(tipo, mensaje, timeout=4000){
-        const zone = document.getElementById('alert-zone');
-        const id = 'al_'+Date.now()+Math.random().toString(16).slice(2);
-        const div = document.createElement('div');
-        div.id = id;
-        div.className = `alert alert-${tipo} shadow-sm border mb-2 py-2 px-3 fade show`;
-        div.innerHTML = `<div class='d-flex justify-content-between align-items-start'><span class='small'>${mensaje}</span><button type='button' class='btn-close btn-close-white ms-2' data-bs-dismiss='alert'></button></div>`;
-        zone.appendChild(div);
-        if(timeout){ setTimeout(()=>{ div.classList.remove('show'); setTimeout(()=> div.remove(), 400); }, timeout); }
-    }
-
-    async function cargarGuardado(auto=false){
-        try{
-            const resp = await fetch('/api/flujo_efectivo_cached');
-            const data = await resp.json();
-            if(!data.success){ if(!auto) pushAlert('warning', data.message||'No hay datos guardados'); return; }
-            displayReport(data);
-            pushAlert('success', 'Datos cargados desde base de datos');
-            // Ya están guardados; desactivar botón guardar hasta nueva carga de archivo
-            if(btnGuardar) btnGuardar.disabled = true;
-        }catch(e){ if(!auto) pushAlert('danger','Error cargando guardado: '+e.message); }
-    }
-    if(btnCargarGuardado){ btnCargarGuardado.addEventListener('click', ()=> cargarGuardado(false)); }
-        // Modal confirmación eliminación
-        const deleteModalHtml = `
-        <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-danger text-white">
-                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>Confirmar limpieza</h6>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+    // Modal de confirmación de actualización (Análisis previo)
+    const updateModalHtml = `
+    <div class="modal fade" id="modalConfirmUpdate" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h6 class="modal-title"><i class="bi bi-search me-1"></i>Análisis del Archivo</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small mb-2">Se encontraron los siguientes periodos en el archivo. Solo se actualizarán (eliminarán y volverán a insertar) los marcados:</p>
+                    <div id="analysis-results" class="mb-3" style="max-height:300px; overflow-y:auto;">
+                        <!-- Checkboxes dinámicos -->
                     </div>
-                    <div class="modal-body">
-                        <p class="mb-2">Vas a eliminar <strong>todos</strong> los datos actuales del Flujo de Efectivo (bancos y Odoo).</p>
-                        <ul class="small text-muted mb-3">
-                            <li>La acción no se puede deshacer.</li>
-                            <li>Luego podrás subir un nuevo archivo consolidado.</li>
-                        </ul>
-                        <div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle me-1"></i>Recomendado: asegúrate de tener el Excel completo antes de vaciar.</div>
-                    </div>
-                    <div class="modal-footer justify-content-between">
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" id="confirm-delete-all" class="btn btn-danger"><i class="bi bi-trash"></i> Vaciar datos</button>
-                    </div>
+                    <div class="alert alert-info py-2 small mb-0"><i class="bi bi-info-circle me-1"></i>Los periodos NO listados (ej. otros años) permanecerán intactos en el sistema.</div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" id="btn-process-confirmed" class="btn btn-primary fw-bold">Confirmar Actualización</button>
                 </div>
             </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', deleteModalHtml);
-        let deleteModalInstance = null;
-        if(btnEliminarDatos){
-                btnEliminarDatos.addEventListener('click', ()=>{
-                        if(!deleteModalInstance){ deleteModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmDelete')); }
-                        deleteModalInstance.show();
-                });
-                document.addEventListener('click', async (ev)=>{
-                        if(ev.target && ev.target.id === 'confirm-delete-all'){
-                                const btn = ev.target; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Eliminando';
-                                try{
-                                        const resp = await fetch('/api/flujo_efectivo_delete_all', {method:'DELETE'});
-                                        const data = await resp.json();
-                                        if(!data.success){ pushAlert('danger', data.message||'Error eliminando'); }
-                                        else {
-                                                pushAlert('success', 'Datos eliminados: Bancos '+data.eliminados_bancos+' | Odoo '+data.eliminados_odoo);
-                                                globalReportData = null;
-                                                document.getElementById('report-output').innerHTML = '<div class="alert alert-info">No hay datos. Sube un nuevo archivo para iniciar.</div>';
-                                                document.getElementById('report-output').classList.remove('d-none');
-                                                document.getElementById('charts-view').classList.add('d-none');
-                                                document.getElementById('resumen-directo').classList.add('d-none');
-                                        }
-                                }catch(e){ pushAlert('danger','Error: '+e.message); }
-                                finally {
-                                        btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash"></i> Vaciar datos';
-                                        if(deleteModalInstance) deleteModalInstance.hide();
-                                }
-                        }
-                });
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', updateModalHtml);
+    let updateModalInstance = null;
+    let pendingUploadFile = null;
+
+    document.getElementById('file-upload').addEventListener('change', handleFile, false);
+    document.getElementById('file-facturacion').addEventListener('change', handleFacturacion, false);
+    const btnGuardar = document.getElementById('btn-guardar-dataset');
+
+    // Listener para botón confirmar actualización
+    document.addEventListener('click', (ev) => {
+        if (ev.target && ev.target.id === 'btn-process-confirmed') {
+            if (!pendingUploadFile) return;
+            const checks = document.querySelectorAll('.period-check:checked');
+            if (checks.length === 0) {
+                alert('Selecciona al menos un periodo para procesar.');
+                return;
+            }
+            const selected = [];
+            checks.forEach(c => {
+                const [y, m] = c.value.split('-').map(Number);
+                selected.push([y, m]);
+            });
+            processFile(pendingUploadFile, selected);
+            if (updateModalInstance) updateModalInstance.hide();
         }
-    // Auto al cargar página
-    document.addEventListener('DOMContentLoaded', ()=> cargarGuardado(true));
-
-    // Guardar: en este flujo ya se guarda automáticamente al subir, así que solo feedback
-    if(btnGuardar){
-        btnGuardar.addEventListener('click', ()=>{
-            pushAlert('info','El archivo ya se guarda automáticamente al subir. Vuelve a subir un archivo actualizado para persistir nuevos datos.');
-        });
-    }
-    (function(){
-        const panel = document.getElementById('panel-filtros-avanzados');
-        const btnToggle = document.getElementById('btn-toggle-filtros');
-        const btnHide = document.getElementById('btn-hide-filtros');
-        const btnReset = document.getElementById('btn-reset-filtros');
-        if(btnToggle){ btnToggle.addEventListener('click', ()=>{ panel.style.display = (panel.style.display==='none'||panel.style.display==='')?'block':'none'; }); }
-        if(btnHide){ btnHide.addEventListener('click', ()=> panel.style.display='none'); }
-        if(btnReset){ btnReset.addEventListener('click', ()=>{
-            globalEmpresaSeleccionada=''; globalTipoBancoSeleccionado=''; globalFechaInicio=''; globalFechaFin='';
-            ['empresa-filter','banco-filter','fecha-inicio','fecha-fin'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-            renderReport(globalReportData);
-            updateBancoFilter(globalReportData);
-        }); }
-    })();
-
-    const currencyFormatter = new Intl.NumberFormat('es-CO', {
-        style: 'currency', currency: 'COP', minimumFractionDigits: 2
     });
 
     async function handleFile(e) {
         const file = e.target.files[0];
         if (!file) return;
+        pendingUploadFile = file;
+
+        // Reset inputs
+        e.target.value = '';
 
         const loadingSpinner = document.getElementById('loading-spinner');
+        loadingSpinner.classList.remove('d-none');
+        document.getElementById('report-output').classList.add('d-none');
+
+        const formData = new FormData();
+        formData.append('archivo_excel', file);
+
+        try {
+            // Paso 1: Analizar
+            loadingSpinner.innerHTML = '<div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-primary fw-bold">Analizando archivo...</div>';
+
+            const resp = await fetch('/api/analyze_flujo_file', { method: 'POST', body: formData });
+            const result = await resp.json();
+
+            if (!result.success) throw new Error(result.message);
+
+            // Paso 2: Mostrar Modal
+            const container = document.getElementById('analysis-results');
+            container.innerHTML = '';
+
+            // Construir árbol
+            const periods = result.found_periods || {};
+            const years = Object.keys(periods).sort();
+
+            if (years.length === 0) {
+                container.innerHTML = '<div class="text-muted small">No se encontraron fechas válidas en el archivo (Bancos/Odoo).</div>';
+            } else {
+                years.forEach(year => {
+                    const months = periods[year];
+                    const div = document.createElement('div');
+                    div.className = 'card mb-2 border-light bg-light';
+                    div.innerHTML = `
+                        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
+                             <strong>${year}</strong>
+                        </div>
+                        <div class="card-body p-2 d-flex flex-wrap gap-2">
+                            ${months.map(m => {
+                        const mName = new Date(year, m - 1, 1).toLocaleString('es-CO', { month: 'short' }).toUpperCase();
+                        return `
+                                    <div class="form-check form-check-inline m-0 border bg-white rounded px-2 py-1">
+                                        <input class="form-check-input period-check" type="checkbox" id="chk-${year}-${m}" value="${year}-${m}" checked>
+                                        <label class="form-check-label small fw-bold" for="chk-${year}-${m}">${mName}</label>
+                                    </div>
+                                `;
+                    }).join('')}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+
+            loadingSpinner.classList.add('d-none');
+            if (!updateModalInstance) updateModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmUpdate'));
+            updateModalInstance.show();
+
+        } catch (error) {
+            loadingSpinner.classList.add('d-none');
+            pushAlert('danger', `Error: ${error.message}`);
+        }
+    }
+
+    async function processFile(file, selectedPeriods) {
+        const loadingSpinner = document.getElementById('loading-spinner');
         const reportOutput = document.getElementById('report-output');
+        loadingSpinner.innerHTML = '<div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-primary fw-bold">Procesando y Guardando...</div>';
         loadingSpinner.classList.remove('d-none');
         reportOutput.classList.add('d-none');
         reportOutput.innerHTML = '';
 
         const formData = new FormData();
         formData.append('archivo_excel', file);
+        if (selectedPeriods) {
+            formData.append('selected_periods', JSON.stringify(selectedPeriods));
+        }
 
         try {
             const response = await fetch('/api/procesar_flujo_efectivo', { method: 'POST', body: formData });
@@ -462,6 +735,7 @@
 
             displayReport(result);
             reportOutput.classList.remove('d-none');
+            pushAlert('success', 'Datos actualizados exitosamente.');
         } catch (error) {
             reportOutput.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
             reportOutput.classList.remove('d-none');
@@ -469,10 +743,163 @@
             loadingSpinner.classList.add('d-none');
         }
     }
-    
+    const btnCargarGuardado = document.getElementById('btn-cargar-guardado');
+    const btnEliminarDatos = document.getElementById('btn-eliminar-datos');
+
+    // Mostrar alertas flotantes
+    function pushAlert(tipo, mensaje, timeout = 4000) {
+        const zone = document.getElementById('alert-zone');
+        const id = 'al_' + Date.now() + Math.random().toString(16).slice(2);
+        const div = document.createElement('div');
+        div.id = id;
+        div.className = `alert alert-${tipo} shadow-sm border mb-2 py-2 px-3 fade show`;
+        div.innerHTML = `<div class='d-flex justify-content-between align-items-start'><span class='small'>${mensaje}</span><button type='button' class='btn-close btn-close-white ms-2' data-bs-dismiss='alert'></button></div>`;
+        zone.appendChild(div);
+        if (timeout) { setTimeout(() => { div.classList.remove('show'); setTimeout(() => div.remove(), 400); }, timeout); }
+    }
+
+    async function cargarGuardado(auto = false) {
+        try {
+            const resp = await fetch('/api/flujo_efectivo_cached');
+            const data = await resp.json();
+            if (!data.success) { if (!auto) pushAlert('warning', data.message || 'No hay datos guardados'); return; }
+            displayReport(data);
+            pushAlert('success', 'Datos cargados desde base de datos');
+            // Ya están guardados; desactivar botón guardar hasta nueva carga de archivo
+            if (btnGuardar) btnGuardar.disabled = true;
+        } catch (e) { if (!auto) pushAlert('danger', 'Error cargando guardado: ' + e.message); }
+    }
+    if (btnCargarGuardado) { btnCargarGuardado.addEventListener('click', () => cargarGuardado(false)); }
+    // Modal confirmación eliminación
+    // Modal dinámico de eliminación (Año vs Todo)
+    const deleteModalHtml = `
+        <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-danger text-white">
+                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>Opciones de Limpieza</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-3">Selecciona qué datos deseas eliminar del sistema:</p>
+                        <div id="delete-years-options" class="d-grid gap-2 mb-3">
+                            <!-- Botones insertados dinámicamente -->
+                        </div>
+                        <div class="alert alert-warning py-2 small mb-0"><i class="bi bi-info-circle me-1"></i> "Vaciar Todo" borrará absolutamente todos los registros.</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', deleteModalHtml);
+    let deleteModalInstance = null;
+
+    if (btnEliminarDatos) {
+        btnEliminarDatos.addEventListener('click', () => {
+            // Detectar años disponibles
+            const container = document.getElementById('delete-years-options');
+            container.innerHTML = '';
+            const years = new Set();
+
+            if (globalReportData && globalReportData.daily_comparison) {
+                globalReportData.daily_comparison.forEach(r => {
+                    if (r.fecha && r.fecha.length >= 4) years.add(r.fecha.substring(0, 4));
+                });
+            }
+
+            // Botones por año
+            const sortedYears = [...years].sort();
+            sortedYears.forEach(y => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-outline-danger text-start';
+                btn.innerHTML = `<i class="bi bi-calendar-x me-2"></i>Eliminar solo <strong>${y}</strong>`;
+                btn.onclick = () => executeDelete(y);
+                container.appendChild(btn);
+            });
+
+            // Botón Eliminar Todo (siempre presente)
+            const btnAll = document.createElement('button');
+            btnAll.className = 'btn btn-danger text-start fw-bold mt-2';
+            btnAll.innerHTML = `<i class="bi bi-trash-fill me-2"></i>Vaciar TODO (Reset Completo)`;
+            btnAll.onclick = () => executeDelete(null); // null = borrar todo
+            container.appendChild(btnAll);
+
+            if (!deleteModalInstance) { deleteModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmDelete')); }
+            deleteModalInstance.show();
+        });
+    }
+
+    async function executeDelete(year) {
+        const originalText = document.activeElement.innerHTML;
+        document.activeElement.disabled = true;
+        document.activeElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
+
+        try {
+            const headers = { 'Content-Type': 'application/json' };
+            const body = year ? JSON.stringify({ year: year }) : '{}';
+
+            const resp = await fetch('/api/flujo_efectivo_delete_all', {
+                method: 'DELETE',
+                headers: headers,
+                body: body
+            });
+            const data = await resp.json();
+
+            if (!data.success) {
+                pushAlert('danger', data.message || 'Error eliminando');
+            } else {
+                pushAlert('success', data.message);
+                if (data.mode === 'all') {
+                    // Reset total
+                    globalReportData = null;
+                    document.getElementById('report-output').innerHTML = '<div class="alert alert-info">No hay datos. Sube un nuevo archivo para iniciar.</div>';
+                    document.getElementById('report-output').classList.remove('d-none');
+                    document.getElementById('charts-view').classList.add('d-none');
+                    document.getElementById('resumen-directo').classList.add('d-none');
+                } else {
+                    // Reset parcial: volver a cargar datos para refrescar la vista
+                    cargarGuardado(true);
+                }
+            }
+        } catch (e) { pushAlert('danger', 'Error: ' + e.message); }
+        finally {
+            if (deleteModalInstance) deleteModalInstance.hide();
+        }
+    }
+    // Auto al cargar página
+    document.addEventListener('DOMContentLoaded', () => cargarGuardado(true));
+
+    // Guardar: en este flujo ya se guarda automáticamente al subir, así que solo feedback
+    if (btnGuardar) {
+        btnGuardar.addEventListener('click', () => {
+            pushAlert('info', 'El archivo ya se guarda automáticamente al subir. Vuelve a subir un archivo actualizado para persistir nuevos datos.');
+        });
+    }
+    (function () {
+        const panel = document.getElementById('panel-filtros-avanzados');
+        const btnToggle = document.getElementById('btn-toggle-filtros');
+        const btnHide = document.getElementById('btn-hide-filtros');
+        const btnReset = document.getElementById('btn-reset-filtros');
+        if (btnToggle) { btnToggle.addEventListener('click', () => { panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none'; }); }
+        if (btnHide) { btnHide.addEventListener('click', () => panel.style.display = 'none'); }
+        if (btnReset) {
+            btnReset.addEventListener('click', () => {
+                globalEmpresaSeleccionada = ''; globalTipoBancoSeleccionado = ''; globalFechaInicio = ''; globalFechaFin = '';
+                ['empresa-filter', 'banco-filter', 'fecha-inicio', 'fecha-fin'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+                renderReport(globalReportData);
+                updateBancoFilter(globalReportData);
+            });
+        }
+    })();
+
+    const currencyFormatter = new Intl.NumberFormat('es-CO', {
+        style: 'currency', currency: 'COP', minimumFractionDigits: 2
+    });
+
+
+
     function createComparisonTable(data) {
         if (!data || data.length === 0) return '';
-        
+
         // Totales acumulados
         let totalIngresosBancos = 0;
         let totalIngresosOdoo = 0;
@@ -582,26 +1009,26 @@
     let globalFilteredOutflowsByType = null;
     // Flag primera carga para limpiar filtros siempre
     let firstCargaFlujo = true;
-    function resetInternalFilters(){
+    function resetInternalFilters() {
         const ids = [
-            'chart-clase-filter','chart-subclase-filter',
-            'prov-tf-filter','prov-clase-filter','prov-subclase-filter',
-            'tf-tercero-filter','tf-tercero-clase-filter',
-            'filtro-clase-ingresos','filtro-subclase-ingresos',
-            'filtro-clase-egresos','filtro-subclase-egresos'
+            'chart-clase-filter', 'chart-subclase-filter',
+            'prov-tf-filter', 'prov-clase-filter', 'prov-subclase-filter',
+            'tf-tercero-filter', 'tf-tercero-clase-filter',
+            'filtro-clase-ingresos', 'filtro-subclase-ingresos',
+            'filtro-clase-egresos', 'filtro-subclase-egresos'
         ];
-        ids.forEach(id=>{ const el=document.getElementById(id); if(el){ el.value=''; } });
+        ids.forEach(id => { const el = document.getElementById(id); if (el) { el.value = ''; } });
         // Forzar recálculo de charts si estamos en vista charts
-        if(currentView==='charts'){
+        if (currentView === 'charts') {
             recomputeTopClientesEXWFiltered();
             recomputeTopProveedoresEgresosFiltered();
             recomputeIngresoEgresoFlujoCharts();
         }
         // Si breakdowns visibles, refrescar sin filtros internos
-        ['ingresos','egresos'].forEach(t=>{
-            const row = document.getElementById('breakdown-'+t);
-            if(row && !row.classList.contains('d-none')){
-                if(t==='ingresos') showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, true);
+        ['ingresos', 'egresos'].forEach(t => {
+            const row = document.getElementById('breakdown-' + t);
+            if (row && !row.classList.contains('d-none')) {
+                if (t === 'ingresos') showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, true);
                 else showBreakdown('egresos', globalFilteredOutflowsByType || globalReportData.outflows_by_type, true);
             }
         });
@@ -620,34 +1047,34 @@
         if (globalEmpresaSeleccionada) {
             select.value = globalEmpresaSeleccionada;
         }
-        select.onchange = function() {
+        select.onchange = function () {
             globalEmpresaSeleccionada = select.value;
             renderReport(globalReportData);
             updateBancoFilter(globalReportData); // refrescar lista de bancos dependiente de empresa
         };
     }
 
-    function updateBancoFilter(data){
+    function updateBancoFilter(data) {
         const container = document.getElementById('banco-filter-container');
         const select = document.getElementById('banco-filter');
-        if(!data || !Array.isArray(data.daily_comparison) || data.daily_comparison.length===0){
-            container.style.display='none';
+        if (!data || !Array.isArray(data.daily_comparison) || data.daily_comparison.length === 0) {
+            container.style.display = 'none';
             return;
         }
         // Filtrar set de bancos según empresa seleccionada (para relevancia)
         let rows = data.daily_comparison;
-        if (globalEmpresaSeleccionada){
+        if (globalEmpresaSeleccionada) {
             rows = rows.filter(r => (r.empresa || r.Empresa) === globalEmpresaSeleccionada);
         }
-        const bancos = [...new Set(rows.map(r => (r.tipo_banco||'').trim()).filter(x=>x))].sort();
-        select.innerHTML = '<option value="">(Todos)</option>' + bancos.map(b=>`<option value="${b}">${b}</option>`).join('');
-        container.style.display='';
-        if(globalTipoBancoSeleccionado){
+        const bancos = [...new Set(rows.map(r => (r.tipo_banco || '').trim()).filter(x => x))].sort();
+        select.innerHTML = '<option value="">(Todos)</option>' + bancos.map(b => `<option value="${b}">${b}</option>`).join('');
+        container.style.display = '';
+        if (globalTipoBancoSeleccionado) {
             // Si la selección ya no existe (cambio de empresa) limpiar
-            if(!bancos.includes(globalTipoBancoSeleccionado)) globalTipoBancoSeleccionado='';
+            if (!bancos.includes(globalTipoBancoSeleccionado)) globalTipoBancoSeleccionado = '';
             select.value = globalTipoBancoSeleccionado;
         }
-        select.onchange = function(){
+        select.onchange = function () {
             globalTipoBancoSeleccionado = select.value;
             renderReport(globalReportData);
         };
@@ -659,37 +1086,37 @@
         const fechaFinInput = document.getElementById('fecha-fin');
         const mesCompletoInput = document.getElementById('mes-completo');
         if (!data || !data.daily_comparison || data.daily_comparison.length === 0) return;
-        document.getElementById('fecha-inicio-wrapper').style.display='block';
-        document.getElementById('fecha-fin-wrapper').style.display='block';
-        document.getElementById('mes-completo-wrapper').style.display='block';
-        function syncDateRange(){
+        document.getElementById('fecha-inicio-wrapper').style.display = 'block';
+        document.getElementById('fecha-fin-wrapper').style.display = 'block';
+        document.getElementById('mes-completo-wrapper').style.display = 'block';
+        function syncDateRange() {
             globalFechaInicio = fechaInicioInput.value;
             globalFechaFin = fechaFinInput.value;
-            if(mesCompletoInput && (fechaInicioInput.value==='' && fechaFinInput.value==='')){
-                mesCompletoInput.value=''; // limpiar mes si el usuario borra manualmente las fechas
+            if (mesCompletoInput && (fechaInicioInput.value === '' && fechaFinInput.value === '')) {
+                mesCompletoInput.value = ''; // limpiar mes si el usuario borra manualmente las fechas
             }
             renderReport(globalReportData);
         }
-        if(fechaInicioInput) fechaInicioInput.onchange = syncDateRange;
-        if(fechaFinInput) fechaFinInput.onchange = syncDateRange;
-        if(mesCompletoInput) mesCompletoInput.onchange = function(){
+        if (fechaInicioInput) fechaInicioInput.onchange = syncDateRange;
+        if (fechaFinInput) fechaFinInput.onchange = syncDateRange;
+        if (mesCompletoInput) mesCompletoInput.onchange = function () {
             const val = mesCompletoInput.value; // formato YYYY-MM
-            if(!val){
-                globalFechaInicio='';
-                globalFechaFin='';
-                if(fechaInicioInput) fechaInicioInput.value='';
-                if(fechaFinInput) fechaFinInput.value='';
+            if (!val) {
+                globalFechaInicio = '';
+                globalFechaFin = '';
+                if (fechaInicioInput) fechaInicioInput.value = '';
+                if (fechaFinInput) fechaFinInput.value = '';
                 renderReport(globalReportData);
                 return;
             }
             const [yy, mm] = val.split('-');
-            const first = yy+'-'+mm+'-01';
+            const first = yy + '-' + mm + '-01';
             const lastDay = new Date(Number(yy), Number(mm), 0).getDate(); // mes siguiente día 0
-            const last = yy+'-'+mm+'-'+String(lastDay).padStart(2,'0');
+            const last = yy + '-' + mm + '-' + String(lastDay).padStart(2, '0');
             globalFechaInicio = first;
             globalFechaFin = last;
-            if(fechaInicioInput) fechaInicioInput.value = first;
-            if(fechaFinInput) fechaFinInput.value = last;
+            if (fechaInicioInput) fechaInicioInput.value = first;
+            if (fechaFinInput) fechaFinInput.value = last;
             renderReport(globalReportData);
         };
     }
@@ -778,19 +1205,19 @@
 
         // NUEVA LÓGICA: Siempre calcular ingresos / egresos desde la hoja de Bancos (movimientos clasificados)
         let ingresos = 0; let egresos = 0; let egresosGMF = 0;
-        if(movimientos.length){
+        if (movimientos.length) {
             const movsOper = movimientos.filter(m => {
                 if (empresasSet.size && !empresasSet.has(m.empresa)) return false;
                 if (globalFechaInicio && m.fecha < globalFechaInicio) return false;
                 if (globalFechaFin && m.fecha > globalFechaFin) return false;
-                if (globalTipoBancoSeleccionado && (m.tipo_banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+                if (globalTipoBancoSeleccionado && (m.tipo_banco || '').trim() !== globalTipoBancoSeleccionado) return false;
                 return true;
             });
             movsOper.forEach(m => {
-                const clasif = (m.clasificacion||'').toLowerCase();
-                if (clasif === 'ingreso') ingresos += (m.monto||0);
-                else if (clasif === 'egreso') egresos += Math.abs(m.monto||0);
-                else if (clasif === 'egreso_gmf') egresosGMF += Math.abs(m.monto||0);
+                const clasif = (m.clasificacion || '').toLowerCase();
+                if (clasif === 'ingreso') ingresos += (m.monto || 0);
+                else if (clasif === 'egreso') egresos += Math.abs(m.monto || 0);
+                else if (clasif === 'egreso_gmf') egresosGMF += Math.abs(m.monto || 0);
             });
         }
 
@@ -815,12 +1242,12 @@
         const outputDiv = document.getElementById('report-output');
         if (!data) return;
         let filtered = filterDataByEmpresaYTiempo(data, globalEmpresaSeleccionada, globalYear, globalMonth, globalDay);
-            outputDiv.innerHTML = `
+        outputDiv.innerHTML = `
                 ${createComparisonTable(filtered.daily_comparison)}`;
         // Guardar referencia global para exportación
         window.lastConciliacionFiltered = filtered.daily_comparison || [];
         const exportBtn = document.getElementById('btn-export-conciliacion');
-        if(exportBtn){
+        if (exportBtn) {
             exportBtn.addEventListener('click', exportConciliacionExcel);
         }
         // Activar toggles
@@ -842,64 +1269,64 @@
             filtered.inflows_by_type,
             filtered.outflows_by_type
         );
-    // Guardar breakdowns filtrados para usarlos en el modal/tabla de detalle
-    globalFilteredInflowsByType = filtered.inflows_by_type;
-    globalFilteredOutflowsByType = filtered.outflows_by_type;
-    // Guardar detalle filtrado para drill-down
-    window.globalFilteredDetalleFlujo = filtered.detalle_filtrado || [];
+        // Guardar breakdowns filtrados para usarlos en el modal/tabla de detalle
+        globalFilteredInflowsByType = filtered.inflows_by_type;
+        globalFilteredOutflowsByType = filtered.outflows_by_type;
+        // Guardar detalle filtrado para drill-down
+        window.globalFilteredDetalleFlujo = filtered.detalle_filtrado || [];
         renderResumenDirecto(resumenFiltered, true);
         // Si los breakdowns están visibles, refrescarlos en caliente
         const ingresosRow = document.getElementById('breakdown-ingresos');
-        if(ingresosRow && !ingresosRow.classList.contains('d-none')){
+        if (ingresosRow && !ingresosRow.classList.contains('d-none')) {
             showBreakdown('ingresos', globalFilteredInflowsByType || globalReportData.inflows_by_type, true);
         }
         const egresosRow = document.getElementById('breakdown-egresos');
-        if(egresosRow && !egresosRow.classList.contains('d-none')){
+        if (egresosRow && !egresosRow.classList.contains('d-none')) {
             showBreakdown('egresos', globalFilteredOutflowsByType || globalReportData.outflows_by_type, true);
         }
-        if(currentView==='charts'){
+        if (currentView === 'charts') {
             recomputeTopClientesEXWFiltered();
             recomputeTopProveedoresEgresosFiltered();
             recomputeIngresoEgresoFlujoCharts();
         }
     }
 
-    function exportConciliacionExcel(){
+    function exportConciliacionExcel() {
         const data = window.lastConciliacionFiltered || [];
-        if(!data.length){ pushAlert('warning','No hay datos para exportar'); return; }
+        if (!data.length) { pushAlert('warning', 'No hay datos para exportar'); return; }
         // Construir contenido TSV compatible con Excel
         let tsv = 'Fecha\tEmpresa\tTipo Banco\tIngresos Bancos\tIngresos Odoo\tDiferencia Ingresos\tEgresos Bancos\tEgresos Odoo\tDiferencia Egresos\n';
-        let totIB=0, totIO=0, totEB=0, totEO=0, totDI=0, totDE=0;
-        data.forEach(r=>{
-            tsv += [r.fecha, (r.empresa||r.Empresa||''), (r.tipo_banco||''), r.ingresos_bancos, r.ingresos_odoo, r.diferencia_ingresos, r.egresos_bancos, r.egresos_odoo, r.diferencia_egresos].join('\t')+'\n';
+        let totIB = 0, totIO = 0, totEB = 0, totEO = 0, totDI = 0, totDE = 0;
+        data.forEach(r => {
+            tsv += [r.fecha, (r.empresa || r.Empresa || ''), (r.tipo_banco || ''), r.ingresos_bancos, r.ingresos_odoo, r.diferencia_ingresos, r.egresos_bancos, r.egresos_odoo, r.diferencia_egresos].join('\t') + '\n';
             totIB += r.ingresos_bancos; totIO += r.ingresos_odoo; totDI += r.diferencia_ingresos; totEB += r.egresos_bancos; totEO += r.egresos_odoo; totDE += r.diferencia_egresos;
         });
-        tsv += ['TOTALES','', '', totIB, totIO, totDI, totEB, totEO, totDE].join('\t')+'\n';
-        const blob = new Blob([tsv], {type:'application/vnd.ms-excel'});
+        tsv += ['TOTALES', '', '', totIB, totIO, totDI, totEB, totEO, totDE].join('\t') + '\n';
+        const blob = new Blob([tsv], { type: 'application/vnd.ms-excel' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const fecha = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+        const fecha = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
         a.href = url; a.download = `conciliacion_diaria_${fecha}.xls`;
         document.body.appendChild(a); a.click();
-        setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 500);
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
     }
 
     function displayReport(data) {
         // Normalizar daily_comparison para asegurar 'empresa'
         if (Array.isArray(data.daily_comparison)) {
-            data.daily_comparison = data.daily_comparison.map(r => ({...r, empresa: r.empresa || r.Empresa || ''}));
+            data.daily_comparison = data.daily_comparison.map(r => ({ ...r, empresa: r.empresa || r.Empresa || '' }));
         }
         globalReportData = data;
-    updateEmpresaFilter(data.todas_las_empresas);
-    updateBancoFilter(data);
+        updateEmpresaFilter(data.todas_las_empresas);
+        updateBancoFilter(data);
         updateTimeFilters(data);
         // Limpiar filtros sólo en la primera carga para que no haya selección predeterminada
-        if(firstCargaFlujo){
-            globalEmpresaSeleccionada='';
-            globalTipoBancoSeleccionado='';
-            globalFechaInicio='';
-            globalFechaFin='';
-            ['empresa-filter','banco-filter','fecha-inicio','fecha-fin','mes-completo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+        if (firstCargaFlujo) {
+            globalEmpresaSeleccionada = '';
+            globalTipoBancoSeleccionado = '';
+            globalFechaInicio = '';
+            globalFechaFin = '';
+            ['empresa-filter', 'banco-filter', 'fecha-inicio', 'fecha-fin', 'mes-completo'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             resetInternalFilters();
             firstCargaFlujo = false;
         }
@@ -907,8 +1334,8 @@
         document.getElementById('report-output').classList.remove('d-none');
         // Primera render sin filtros usa resumen_directo original
         renderResumenDirecto(data.resumen_directo, false);
-    // Preparar gráfico inicial (oculto hasta que se cambie vista)
-    precomputeBaseEXW();
+        // Preparar gráfico inicial (oculto hasta que se cambie vista)
+        precomputeBaseEXW();
     }
     function renderResumenDirecto(resumen, filtered) {
         const cont = document.getElementById('resumen-directo');
@@ -917,8 +1344,8 @@
             <div class="col-12 col-sm-6 col-xl-2">
                 <div class="card text-white bg-primary h-100 shadow-sm">
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Saldo Inicial${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_inicial||0)}</div>
+                        <div class="small fw-semibold">Saldo Inicial${filtered ? ' (F)' : ''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_inicial || 0)}</div>
                     </div>
                 </div>
             </div>
@@ -926,16 +1353,16 @@
                 <div class="card text-white bg-success h-100 shadow-sm position-relative">
                     <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-1" data-breakdown="ingresos" title="Ver detalle">+</button>
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Ingresos${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.ingresos||0)}</div>
+                        <div class="small fw-semibold">Ingresos${filtered ? ' (F)' : ''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.ingresos || 0)}</div>
                     </div>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card text-white bg-info h-100 shadow-sm">
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Saldo Antes de Egresos${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_antes_egresos||0)}</div>
+                        <div class="small fw-semibold">Saldo Antes de Egresos${filtered ? ' (F)' : ''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_antes_egresos || 0)}</div>
                     </div>
                 </div>
             </div>
@@ -943,16 +1370,16 @@
                 <div class="card text-white bg-danger h-100 shadow-sm position-relative">
                     <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-1" data-breakdown="egresos" title="Ver detalle">+</button>
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Egresos (+GMF)${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format((resumen.egresos_total!=null)?resumen.egresos_total: (resumen.egresos||0)+(resumen.egresos_gmf||0))}</div>
+                        <div class="small fw-semibold">Egresos (+GMF)${filtered ? ' (F)' : ''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format((resumen.egresos_total != null) ? resumen.egresos_total : (resumen.egresos || 0) + (resumen.egresos_gmf || 0))}</div>
                     </div>
                 </div>
             </div>
             <div class="col-12 col-sm-6 col-xl-3">
                 <div class="card text-white bg-dark h-100 shadow-sm">
                     <div class="card-body p-3">
-                        <div class="small fw-semibold">Saldo Final${filtered?' (F)':''}</div>
-                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_final||0)}</div>
+                        <div class="small fw-semibold">Saldo Final${filtered ? ' (F)' : ''}</div>
+                        <div class="fs-6 fw-bold">${currencyFormatter.format(resumen.saldo_final || 0)}</div>
                     </div>
                 </div>
             </div>`;
@@ -986,65 +1413,65 @@
         const tbody = document.getElementById(`tbody-breakdown-${tipo}`);
         if (!nested || !tbody) return;
         const detalle = window.globalFilteredDetalleFlujo || [];
-        const isIngresos = (tipo==='ingresos');
+        const isIngresos = (tipo === 'ingresos');
         const valorKey = isIngresos ? 'debito' : 'credito';
         // Filtros internos
         const claseSelect = document.getElementById(`filtro-clase-${tipo}`);
         const subclaseSelect = document.getElementById(`filtro-subclase-${tipo}`);
         // Construir universo para opciones (solo registros con valor >0 segun tipo)
-        const universo = detalle.filter(r => Number(r[valorKey])>0);
+        const universo = detalle.filter(r => Number(r[valorKey]) > 0);
         const setClases = new Set();
-        universo.forEach(r=>{ if(r.clase) setClases.add(r.clase.toUpperCase()); });
+        universo.forEach(r => { if (r.clase) setClases.add(r.clase.toUpperCase()); });
         // Mantener selección previa
         const prevClase = claseSelect ? claseSelect.value.toUpperCase() : '';
-        if(claseSelect){
-            claseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setClases).sort().map(c=>`<option value="${c}">${c}</option>`).join('');
-            if(prevClase && setClases.has(prevClase)) claseSelect.value = prevClase; else claseSelect.value='';
+        if (claseSelect) {
+            claseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setClases).sort().map(c => `<option value="${c}">${c}</option>`).join('');
+            if (prevClase && setClases.has(prevClase)) claseSelect.value = prevClase; else claseSelect.value = '';
         }
         // Subclases según clase seleccionada (si hay)
         let setSub = new Set();
-        const claseFiltro = claseSelect ? (claseSelect.value||'').toUpperCase() : '';
-        universo.forEach(r=>{
-            if(!claseFiltro || (r.clase||'').toUpperCase()===claseFiltro){ if(r.subclase) setSub.add(r.subclase.toUpperCase()); }
+        const claseFiltro = claseSelect ? (claseSelect.value || '').toUpperCase() : '';
+        universo.forEach(r => {
+            if (!claseFiltro || (r.clase || '').toUpperCase() === claseFiltro) { if (r.subclase) setSub.add(r.subclase.toUpperCase()); }
         });
         const prevSub = subclaseSelect ? subclaseSelect.value.toUpperCase() : '';
-        if(subclaseSelect){
-            subclaseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setSub).sort().map(s=>`<option value="${s}">${s}</option>`).join('');
-            if(prevSub && setSub.has(prevSub)) subclaseSelect.value = prevSub; else subclaseSelect.value='';
+        if (subclaseSelect) {
+            subclaseSelect.innerHTML = '<option value="">(Todas)</option>' + Array.from(setSub).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+            if (prevSub && setSub.has(prevSub)) subclaseSelect.value = prevSub; else subclaseSelect.value = '';
         }
-        const subFiltro = subclaseSelect ? (subclaseSelect.value||'').toUpperCase() : '';
+        const subFiltro = subclaseSelect ? (subclaseSelect.value || '').toUpperCase() : '';
         // Reattach change events (idempotente)
-        if(claseSelect && !claseSelect.dataset.bound){
-            claseSelect.addEventListener('change', ()=> showBreakdown(tipo, nested, true));
-            claseSelect.dataset.bound='1';
+        if (claseSelect && !claseSelect.dataset.bound) {
+            claseSelect.addEventListener('change', () => showBreakdown(tipo, nested, true));
+            claseSelect.dataset.bound = '1';
         }
-        if(subclaseSelect && !subclaseSelect.dataset.bound){
-            subclaseSelect.addEventListener('change', ()=> showBreakdown(tipo, nested, true));
-            subclaseSelect.dataset.bound='1';
+        if (subclaseSelect && !subclaseSelect.dataset.bound) {
+            subclaseSelect.addEventListener('change', () => showBreakdown(tipo, nested, true));
+            subclaseSelect.dataset.bound = '1';
         }
         const rows = Object.keys(nested)
             .filter(flow => !/gmf/i.test(flow))
             .sort()
             .map(flow => {
-                const total = Object.values(nested[flow]).reduce((a,b)=>a+b,0);
+                const total = Object.values(nested[flow]).reduce((a, b) => a + b, 0);
                 // Detalle filtrado para este flow
-                const detalleFlow = detalle.filter(r => (r.tipo_flujo||'').toUpperCase() === flow.toUpperCase())
-                    .filter(r => Number(r[valorKey])>0)
-                    .filter(r => !claseFiltro || (r.clase||'').toUpperCase()===claseFiltro)
-                    .filter(r => !subFiltro || (r.subclase||'').toUpperCase()===subFiltro)
-                    .sort((a,b)=> (a.clase||'').localeCompare(b.clase||'') || (a.subclase||'').localeCompare(b.subclase||'') || a.fecha.localeCompare(b.fecha));
+                const detalleFlow = detalle.filter(r => (r.tipo_flujo || '').toUpperCase() === flow.toUpperCase())
+                    .filter(r => Number(r[valorKey]) > 0)
+                    .filter(r => !claseFiltro || (r.clase || '').toUpperCase() === claseFiltro)
+                    .filter(r => !subFiltro || (r.subclase || '').toUpperCase() === subFiltro)
+                    .sort((a, b) => (a.clase || '').localeCompare(b.clase || '') || (a.subclase || '').localeCompare(b.subclase || '') || a.fecha.localeCompare(b.fecha));
                 const detalleHTML = detalleFlow.length ? `
                     <div class='table-responsive mt-2'>
                         <table class='table table-sm table-bordered mb-0'>
                             <thead class='table-light'>
-                                <tr><th style=\"width:90px;\">Fecha</th><th>Clase</th><th>Sub Clase</th><th>Tercero</th><th class='text-end'>${isIngresos?'Débito':'Crédito'}</th></tr>
+                                <tr><th style=\"width:90px;\">Fecha</th><th>Clase</th><th>Sub Clase</th><th>Tercero</th><th class='text-end'>${isIngresos ? 'Débito' : 'Crédito'}</th></tr>
                             </thead>
                             <tbody>
-                                ${detalleFlow.map(d=>`<tr><td>${d.fecha||''}</td><td>${(d.clase||'').toUpperCase()}</td><td>${(d.subclase||'').toUpperCase()}</td><td>${(d.tercero||'').toUpperCase()}</td><td class='text-end'>${currencyFormatter.format(Number(d[valorKey])||0)}</td></tr>`).join('')}
+                                ${detalleFlow.map(d => `<tr><td>${d.fecha || ''}</td><td>${(d.clase || '').toUpperCase()}</td><td>${(d.subclase || '').toUpperCase()}</td><td>${(d.tercero || '').toUpperCase()}</td><td class='text-end'>${currencyFormatter.format(Number(d[valorKey]) || 0)}</td></tr>`).join('')}
                             </tbody>
                         </table>
                     </div>` : `<div class='text-muted small mt-2'>Sin movimientos</div>`;
-                const id = 'flow_det_'+tipo+'_'+btoa(encodeURIComponent(flow)).replace(/=/g,'');
+                const id = 'flow_det_' + tipo + '_' + btoa(encodeURIComponent(flow)).replace(/=/g, '');
                 return `
                 <tr class='align-middle'>
                     <td>
@@ -1057,19 +1484,19 @@
             }).join('');
         tbody.innerHTML = rows || '<tr><td colspan="2" class="text-center text-muted">Sin datos</td></tr>';
         // Eventos expandir/colapsar
-        tbody.querySelectorAll('.flow-expand-btn').forEach(btn=>{
-            btn.addEventListener('click', ()=>{
+        tbody.querySelectorAll('.flow-expand-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
                 const targetId = btn.getAttribute('data-target');
                 const detailRow = document.getElementById(targetId);
-                if(!detailRow) return;
+                if (!detailRow) return;
                 const hidden = detailRow.classList.contains('d-none');
                 detailRow.classList.toggle('d-none');
                 btn.textContent = hidden ? '-' : '+';
             });
         });
         row.classList.remove('d-none');
-        if(!skipScroll){
-            row.scrollIntoView({behavior:'smooth', block:'center'});
+        if (!skipScroll) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
@@ -1078,106 +1505,106 @@
     let baseEXW = null; // datos base sin filtros (estructura clientes/subclases)
     let chartClaseSelect = null;
     let chartSubclaseSelect = null;
-    const ALLOWED_CLASSES = ['ANTICIPO VENTAS FOB CTG','VENTAS EXW CTG'];
+    const ALLOWED_CLASSES = ['ANTICIPO VENTAS FOB CTG', 'VENTAS EXW CTG'];
     // Configuración para proveedores (egresos)
     // Para proveedores (egresos) detectaremos dinámicamente las clases presentes (excluyendo clases de ventas)
-    const SALES_CLASSES = ['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'];
+    const SALES_CLASSES = ['VENTAS EXW CTG', 'ANTICIPO VENTAS FOB CTG'];
     let proveedoresChart = null;
     let ingresosFlujoChart = null;
     let egresosFlujoChart = null;
     let provTfSelect = null, provClaseSelect = null, provSubclaseSelect = null;
-    const EXCLUDE_KEYWORDS = ['RENTA','UVA','MGO'];
+    const EXCLUDE_KEYWORDS = ['RENTA', 'UVA', 'MGO'];
     let facturasData = [];
     let facturasPorClienteBase = new Map(); // sin filtros de tiempo
     let facturasPorCliente = new Map(); // filtrado actual
-    function aplicarFiltrosFacturas(){
+    function aplicarFiltrosFacturas() {
         facturasPorCliente = new Map();
-        facturasPorClienteBase.forEach((lista, cli)=>{
-            const filtradas = lista.filter(f=>{
+        facturasPorClienteBase.forEach((lista, cli) => {
+            const filtradas = lista.filter(f => {
                 // Prioridad: rango de fechas si está definido
-                if(globalFechaInicio && (!f.fecha || f.fecha < globalFechaInicio)) return false;
-                if(globalFechaFin && (!f.fecha || f.fecha > globalFechaFin)) return false;
+                if (globalFechaInicio && (!f.fecha || f.fecha < globalFechaInicio)) return false;
+                if (globalFechaFin && (!f.fecha || f.fecha > globalFechaFin)) return false;
                 // Compatibilidad con filtros antiguos (año/mes/día) sólo si no se usa rango
-                if(!globalFechaInicio && !globalFechaFin){
-                    if(globalYear && !(f.fecha||'').startsWith(globalYear)) return false;
-                    if(globalMonth && (f.fecha||'').slice(5,7)!==globalMonth) return false;
-                    if(globalDay && (f.fecha||'').slice(8,10)!==globalDay) return false;
+                if (!globalFechaInicio && !globalFechaFin) {
+                    if (globalYear && !(f.fecha || '').startsWith(globalYear)) return false;
+                    if (globalMonth && (f.fecha || '').slice(5, 7) !== globalMonth) return false;
+                    if (globalDay && (f.fecha || '').slice(8, 10) !== globalDay) return false;
                 }
                 return true;
             });
-            if(filtradas.length){
-                filtradas.sort((a,b)=> (b.valor||0)-(a.valor||0));
+            if (filtradas.length) {
+                filtradas.sort((a, b) => (b.valor || 0) - (a.valor || 0));
                 facturasPorCliente.set(cli, filtradas);
             }
         });
     }
 
-    function updateProvClaseSubOptions(detalleElegible){
-        if(!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
-        if(!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
-        if(!provClaseSelect || !provSubclaseSelect) return;
-        if(!detalleElegible || detalleElegible.length===0){
+    function updateProvClaseSubOptions(detalleElegible) {
+        if (!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
+        if (!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
+        if (!provClaseSelect || !provSubclaseSelect) return;
+        if (!detalleElegible || detalleElegible.length === 0) {
             provClaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
             provSubclaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
             return;
         }
         // Detectar clases distintas de ventas (para egresos) presentes realmente
-        const clasesDisp = Array.from(new Set(detalleElegible.map(r=> (r.clase||'').toUpperCase()).filter(c=> c && !SALES_CLASSES.includes(c))));
+        const clasesDisp = Array.from(new Set(detalleElegible.map(r => (r.clase || '').toUpperCase()).filter(c => c && !SALES_CLASSES.includes(c))));
         const clasesFiltradas = clasesDisp.sort();
-        const prev = (provClaseSelect.value||'').toUpperCase();
-        provClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c=>`<option value="${c}">${c}</option>`).join('');
+        const prev = (provClaseSelect.value || '').toUpperCase();
+        provClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c => `<option value="${c}">${c}</option>`).join('');
         let selected = prev && clasesFiltradas.includes(prev) ? prev : '';
         provClaseSelect.value = selected;
         let subclases = [];
-        if(selected){
-            subclases = Array.from(new Set(detalleElegible.filter(r=> (r.clase||'').toUpperCase()===selected).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+        if (selected) {
+            subclases = Array.from(new Set(detalleElegible.filter(r => (r.clase || '').toUpperCase() === selected).map(r => (r.subclase || 'SIN SUBCLASE')))).sort();
         } else {
-            subclases = Array.from(new Set(detalleElegible.filter(r=> clasesFiltradas.includes((r.clase||'').toUpperCase())).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+            subclases = Array.from(new Set(detalleElegible.filter(r => clasesFiltradas.includes((r.clase || '').toUpperCase())).map(r => (r.subclase || 'SIN SUBCLASE')))).sort();
         }
         const prevSub = provSubclaseSelect.value;
-        provSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s=>`<option value="${s}">${s}</option>`).join('');
-        if(prevSub && subclases.includes(prevSub)) provSubclaseSelect.value = prevSub; else provSubclaseSelect.value='';
+        provSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (prevSub && subclases.includes(prevSub)) provSubclaseSelect.value = prevSub; else provSubclaseSelect.value = '';
     }
 
-    function attachProveedorFilters(){
-        if(!provTfSelect) provTfSelect = document.getElementById('prov-tf-filter');
-        if(!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
-        if(!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
-        if(!provTfSelect || provTfSelect.dataset.eventsBound) return;
+    function attachProveedorFilters() {
+        if (!provTfSelect) provTfSelect = document.getElementById('prov-tf-filter');
+        if (!provClaseSelect) provClaseSelect = document.getElementById('prov-clase-filter');
+        if (!provSubclaseSelect) provSubclaseSelect = document.getElementById('prov-subclase-filter');
+        if (!provTfSelect || provTfSelect.dataset.eventsBound) return;
         provTfSelect.addEventListener('change', recomputeTopProveedoresEgresosFiltered);
-        provClaseSelect.addEventListener('change', ()=>{ recomputeTopProveedoresEgresosFiltered(); });
+        provClaseSelect.addEventListener('change', () => { recomputeTopProveedoresEgresosFiltered(); });
         provSubclaseSelect.addEventListener('change', recomputeTopProveedoresEgresosFiltered);
-        provTfSelect.dataset.eventsBound='1';
+        provTfSelect.dataset.eventsBound = '1';
     }
 
-    function recomputeTopProveedoresEgresosFiltered(){
-        if(!globalReportData || !globalReportData.odoo_detalle){ renderTopProveedoresEgresos(null); return; }
-        const detalle = globalReportData.odoo_detalle.filter(r=>{
-            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+    function recomputeTopProveedoresEgresosFiltered() {
+        if (!globalReportData || !globalReportData.odoo_detalle) { renderTopProveedoresEgresos(null); return; }
+        const detalle = globalReportData.odoo_detalle.filter(r => {
+            if (globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
             // Filtro por rango de fechas prioritario
-            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
-            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            if (globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if (globalFechaFin && r.fecha > globalFechaFin) return false;
             // Compatibilidad con filtros antiguos sólo si no hay rango
-            if(!globalFechaInicio && !globalFechaFin){
-                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            if (!globalFechaInicio && !globalFechaFin) {
+                if (globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if (globalQuarter) { const qm = quarterMonths(globalQuarter); if (!qm.includes(r.fecha.slice(5, 7))) return false; }
+                else if (globalMonth && r.fecha.slice(5, 7) !== globalMonth) return false;
+                if (globalDay && r.fecha.slice(8, 10) !== globalDay) return false;
             }
             // Filtro de banco (tipo de banco)
-            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+            if (globalTipoBancoSeleccionado && (r.banco || '').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         // Primero filtrar sólo registros de egresos verdaderos (egresos en Odoo suelen ser crédito > 0)
-        const potencialesEgresos = detalle.filter(r=> (Number(r.credito)||0) > 0 || (Number(r.debito)||0) < 0);
+        const potencialesEgresos = detalle.filter(r => (Number(r.credito) || 0) > 0 || (Number(r.debito) || 0) < 0);
         const tfSel = (provTfSelect && provTfSelect.value) ? provTfSelect.value.toUpperCase() : '';
         // Filtrar por tipo flujo (operación / inversión) si aplica
-        const egresosTipo = potencialesEgresos.filter(r=>{
-            const tipoFlujo = (r.tipo_flujo||'').toUpperCase();
+        const egresosTipo = potencialesEgresos.filter(r => {
+            const tipoFlujo = (r.tipo_flujo || '').toUpperCase();
             const esOper = /OPERACION|OPERACIÓN/.test(tipoFlujo);
             const esInv = /INVERSION|INVERSI[ÓO]N/.test(tipoFlujo);
-            if(tfSel==='OPERACION') return esOper;
-            if(tfSel==='INVERSION') return esInv;
+            if (tfSel === 'OPERACION') return esOper;
+            if (tfSel === 'INVERSION') return esInv;
             // Auto: incluir solo operación o inversión
             return esOper || esInv;
         });
@@ -1186,120 +1613,120 @@
         attachProveedorFilters();
         const claseSel = (provClaseSelect && provClaseSelect.value) ? provClaseSelect.value.toUpperCase() : '';
         const subSel = (provSubclaseSelect && provSubclaseSelect.value) ? provSubclaseSelect.value.toUpperCase() : '';
-        const filtrado = egresosTipo.filter(r=>{
-            const claseDato = (r.clase||'').toUpperCase();
-            const subDato = (r.subclase||'SIN SUBCLASE').toUpperCase();
-            if(claseSel && claseDato!==claseSel) return false;
-            if(subSel && subDato!==subSel) return false;
+        const filtrado = egresosTipo.filter(r => {
+            const claseDato = (r.clase || '').toUpperCase();
+            const subDato = (r.subclase || 'SIN SUBCLASE').toUpperCase();
+            if (claseSel && claseDato !== claseSel) return false;
+            if (subSel && subDato !== subSel) return false;
             // Excluir keywords
-            if(EXCLUDE_KEYWORDS.some(k=> claseDato.includes(k) || subDato.includes(k))) return false;
+            if (EXCLUDE_KEYWORDS.some(k => claseDato.includes(k) || subDato.includes(k))) return false;
             return true;
         });
-        if(filtrado.length===0){ renderTopProveedoresEgresos({proveedores:[], total_general:0}); return; }
+        if (filtrado.length === 0) { renderTopProveedoresEgresos({ proveedores: [], total_general: 0 }); return; }
         const mapProv = new Map(); // proveedor -> total credito
-        filtrado.forEach(r=>{
+        filtrado.forEach(r => {
             const prov = (r.tercero || 'SIN PROVEEDOR') || 'SIN PROVEEDOR';
-            const val = Number(r.credito||0) > 0 ? Number(r.credito||0) : ( (Number(r.debito)||0) < 0 ? Math.abs(Number(r.debito)||0) : 0 );
-            mapProv.set(prov, (mapProv.get(prov)||0)+val);
+            const val = Number(r.credito || 0) > 0 ? Number(r.credito || 0) : ((Number(r.debito) || 0) < 0 ? Math.abs(Number(r.debito) || 0) : 0);
+            mapProv.set(prov, (mapProv.get(prov) || 0) + val);
         });
-        let arrProv = Array.from(mapProv.entries()).map(([proveedor,total])=>({proveedor,total}));
-        arrProv.sort((a,b)=>b.total-a.total);
-        arrProv = arrProv.slice(0,10);
-        renderTopProveedoresEgresos({proveedores:arrProv, total_general: arrProv.reduce((a,c)=>a+c.total,0)});
+        let arrProv = Array.from(mapProv.entries()).map(([proveedor, total]) => ({ proveedor, total }));
+        arrProv.sort((a, b) => b.total - a.total);
+        arrProv = arrProv.slice(0, 10);
+        renderTopProveedoresEgresos({ proveedores: arrProv, total_general: arrProv.reduce((a, c) => a + c.total, 0) });
     }
 
-    function renderTopProveedoresEgresos(payload){
+    function renderTopProveedoresEgresos(payload) {
         const canvas = document.getElementById('chartTopProveedoresEgresos');
-        if(!canvas) return;
+        if (!canvas) return;
         const containerInfo = document.getElementById('total-proveedores-egresos');
-    if(!payload || !payload.proveedores || payload.proveedores.length===0){
+        if (!payload || !payload.proveedores || payload.proveedores.length === 0) {
             containerInfo.textContent = 'Sin datos';
-            if(proveedoresChart){ proveedoresChart.destroy(); proveedoresChart=null; }
+            if (proveedoresChart) { proveedoresChart.destroy(); proveedoresChart = null; }
             return;
         }
-    containerInfo.textContent = 'Total filtrado: '+currencyFormatter.format(payload.total_general||0);
-    const labels = payload.proveedores.map(p=>p.proveedor);
-    const dataVals = payload.proveedores.map(p=>p.total);
-        const colors = labels.map((_,i)=> ['#dc3545','#fd7e14','#ffc107','#198754','#0dcaf0','#6c757d','#343a40','#0d6efd','#6610f2','#6f42c1'][i%10]);
+        containerInfo.textContent = 'Total filtrado: ' + currencyFormatter.format(payload.total_general || 0);
+        const labels = payload.proveedores.map(p => p.proveedor);
+        const dataVals = payload.proveedores.map(p => p.total);
+        const colors = labels.map((_, i) => ['#dc3545', '#fd7e14', '#ffc107', '#198754', '#0dcaf0', '#6c757d', '#343a40', '#0d6efd', '#6610f2', '#6f42c1'][i % 10]);
         const ctx = canvas.getContext('2d');
-        if(proveedoresChart) proveedoresChart.destroy();
+        if (proveedoresChart) proveedoresChart.destroy();
         proveedoresChart = new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Crédito', data: dataVals, backgroundColor: colors }] },
             options: {
-                plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=> 'Crédito: '+currencyFormatter.format(c.parsed.y||0) } } },
-                scales:{
-                    x:{
-                        ticks:{
-                            autoSkip:false,
-                            maxRotation:0,
-                            minRotation:0,
-                            callback:function(val){
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => 'Crédito: ' + currencyFormatter.format(c.parsed.y || 0) } } },
+                scales: {
+                    x: {
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function (val) {
                                 const label = this.getLabelForValue ? this.getLabelForValue(val) : '';
-                                const maxChars=14; const words=label.split(' ');
-                                const lines=[]; let line='';
-                                words.forEach(w=>{
-                                    if((line+w).length>maxChars){ if(line) lines.push(line.trim()); line=w+' '; } else { line+=w+' '; }
+                                const maxChars = 14; const words = label.split(' ');
+                                const lines = []; let line = '';
+                                words.forEach(w => {
+                                    if ((line + w).length > maxChars) { if (line) lines.push(line.trim()); line = w + ' '; } else { line += w + ' '; }
                                 });
-                                if(line) lines.push(line.trim());
-                                return lines.length>3 ? lines.slice(0,2).concat('…') : lines;
+                                if (line) lines.push(line.trim());
+                                return lines.length > 3 ? lines.slice(0, 2).concat('…') : lines;
                             }
                         }
                     },
-                    y:{ ticks:{ callback:v=>currencyFormatter.format(v) } }
+                    y: { ticks: { callback: v => currencyFormatter.format(v) } }
                 },
-                responsive:true,
-                interaction:{ mode:'index', intersect:false }
+                responsive: true,
+                interaction: { mode: 'index', intersect: false }
             }
         });
     }
 
-    function updateChartClaseSubclaseOptions(detalle){
-        if(!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
-        if(!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
-        if(!chartClaseSelect || !chartSubclaseSelect) return;
-        if(!detalle || detalle.length===0){
+    function updateChartClaseSubclaseOptions(detalle) {
+        if (!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
+        if (!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
+        if (!chartClaseSelect || !chartSubclaseSelect) return;
+        if (!detalle || detalle.length === 0) {
             chartClaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
             chartSubclaseSelect.innerHTML = '<option value="">(Sin datos)</option>';
             return;
         }
-    const clasesDisponiblesSet = new Set(detalle.map(r=> (r.clase||'').toUpperCase()));
-    const clasesFiltradas = ALLOWED_CLASSES.filter(c=> clasesDisponiblesSet.has(c));
-        const prevClase = (chartClaseSelect.value||'').toUpperCase();
+        const clasesDisponiblesSet = new Set(detalle.map(r => (r.clase || '').toUpperCase()));
+        const clasesFiltradas = ALLOWED_CLASSES.filter(c => clasesDisponiblesSet.has(c));
+        const prevClase = (chartClaseSelect.value || '').toUpperCase();
         // Construir opciones mostrando solo las permitidas presentes (sin auto-seleccionar)
-        chartClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c=>`<option value="${c}">${c}</option>`).join('');
+        chartClaseSelect.innerHTML = '<option value="">(Auto)</option>' + clasesFiltradas.map(c => `<option value="${c}">${c}</option>`).join('');
         // Mantener si el usuario ya eligió; si no, dejar vacío
         chartClaseSelect.value = (prevClase && clasesFiltradas.includes(prevClase)) ? prevClase : '';
         // Subclases derivadas
         let subclases = [];
-        if(chartClaseSelect.value){
+        if (chartClaseSelect.value) {
             const sel = chartClaseSelect.value.toUpperCase();
-            subclases = Array.from(new Set(detalle.filter(r=> (r.clase||'').toUpperCase()===sel).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+            subclases = Array.from(new Set(detalle.filter(r => (r.clase || '').toUpperCase() === sel).map(r => (r.subclase || 'SIN SUBCLASE')))).sort();
         } else {
-            subclases = Array.from(new Set(detalle.filter(r=> ALLOWED_CLASSES.includes((r.clase||'').toUpperCase())).map(r=> (r.subclase||'SIN SUBCLASE')))).sort();
+            subclases = Array.from(new Set(detalle.filter(r => ALLOWED_CLASSES.includes((r.clase || '').toUpperCase())).map(r => (r.subclase || 'SIN SUBCLASE')))).sort();
         }
         const prevSub = chartSubclaseSelect.value;
-        chartSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s=>`<option value="${s}">${s}</option>`).join('');
-        if(prevSub && subclases.includes(prevSub)) chartSubclaseSelect.value = prevSub; else chartSubclaseSelect.value='';
+        chartSubclaseSelect.innerHTML = '<option value="">(Todas)</option>' + subclases.map(s => `<option value="${s}">${s}</option>`).join('');
+        if (prevSub && subclases.includes(prevSub)) chartSubclaseSelect.value = prevSub; else chartSubclaseSelect.value = '';
     }
 
-    function attachChartInternalFilters(){
-        if(!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
-        if(!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
-        if(!chartClaseSelect || !chartSubclaseSelect) return;
-        if(chartClaseSelect.dataset.eventsBound) return;
-        chartClaseSelect.addEventListener('change', ()=>{
-            if(globalReportData && globalReportData.odoo_detalle){
-                const detalleFiltrado = globalReportData.odoo_detalle.filter(r=>{
-                    if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
-                    if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
-                    if(globalFechaFin && r.fecha > globalFechaFin) return false;
-                    if(!globalFechaInicio && !globalFechaFin){
-                        if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-                        if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-                        if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+    function attachChartInternalFilters() {
+        if (!chartClaseSelect) chartClaseSelect = document.getElementById('chart-clase-filter');
+        if (!chartSubclaseSelect) chartSubclaseSelect = document.getElementById('chart-subclase-filter');
+        if (!chartClaseSelect || !chartSubclaseSelect) return;
+        if (chartClaseSelect.dataset.eventsBound) return;
+        chartClaseSelect.addEventListener('change', () => {
+            if (globalReportData && globalReportData.odoo_detalle) {
+                const detalleFiltrado = globalReportData.odoo_detalle.filter(r => {
+                    if (globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+                    if (globalFechaInicio && r.fecha < globalFechaInicio) return false;
+                    if (globalFechaFin && r.fecha > globalFechaFin) return false;
+                    if (!globalFechaInicio && !globalFechaFin) {
+                        if (globalYear && !r.fecha.startsWith(globalYear)) return false;
+                        if (globalMonth && r.fecha.slice(5, 7) !== globalMonth) return false;
+                        if (globalDay && r.fecha.slice(8, 10) !== globalDay) return false;
                     }
-                    if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+                    if (globalTipoBancoSeleccionado && (r.banco || '').trim() !== globalTipoBancoSeleccionado) return false;
                     return true;
                 });
                 updateChartClaseSubclaseOptions(detalleFiltrado);
@@ -1307,35 +1734,35 @@
             recomputeTopClientesEXWFiltered();
             renderFacturacionGlobal();
         });
-        chartSubclaseSelect.addEventListener('change', ()=> recomputeTopClientesEXWFiltered());
-        chartClaseSelect.dataset.eventsBound='1';
+        chartSubclaseSelect.addEventListener('change', () => recomputeTopClientesEXWFiltered());
+        chartClaseSelect.dataset.eventsBound = '1';
     }
-    function renderTopClientesEXW(payload){
+    function renderTopClientesEXW(payload) {
         const chartsView = document.getElementById('charts-view');
-        if(currentView!=='charts') return; // sólo dibujar si vista activa
-        if(!payload || !payload.clientes || payload.clientes.length===0){
+        if (currentView !== 'charts') return; // sólo dibujar si vista activa
+        if (!payload || !payload.clientes || payload.clientes.length === 0) {
             chartsView.classList.remove('d-none');
             document.getElementById('chartTopClientesEXW').replaceWith(document.getElementById('chartTopClientesEXW').cloneNode(true));
             return;
         }
         chartsView.classList.remove('d-none');
-        document.getElementById('total-exw-general').textContent = 'Total filtrado: ' + currencyFormatter.format(payload.total_general||0);
-        const labels = payload.clientes.map(c=>c.cliente);
+        document.getElementById('total-exw-general').textContent = 'Total filtrado: ' + currencyFormatter.format(payload.total_general || 0);
+        const labels = payload.clientes.map(c => c.cliente);
         // Obtener todas las subclases únicas
         const subSet = new Set();
-        payload.clientes.forEach(c=> (c.subclases||[]).forEach(s=> subSet.add(s.subclase)) );
+        payload.clientes.forEach(c => (c.subclases || []).forEach(s => subSet.add(s.subclase)));
         const subclases = Array.from(subSet).sort();
         // Construir datasets apilados
         const colors = [
-            '#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107',
-            '#198754','#20c997','#0dcaf0','#6c757d','#343a40'
+            '#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107',
+            '#198754', '#20c997', '#0dcaf0', '#6c757d', '#343a40'
         ];
-        const datasets = subclases.map((sub,idx)=>{
+        const datasets = subclases.map((sub, idx) => {
             return {
                 label: sub,
-                data: labels.map(cli=> {
-                    const clienteObj = payload.clientes.find(c=>c.cliente===cli);
-                    const subObj = (clienteObj.subclases||[]).find(s=>s.subclase===sub);
+                data: labels.map(cli => {
+                    const clienteObj = payload.clientes.find(c => c.cliente === cli);
+                    const subObj = (clienteObj.subclases || []).find(s => s.subclase === sub);
                     return subObj ? subObj.total : 0;
                 }),
                 backgroundColor: colors[idx % colors.length],
@@ -1343,10 +1770,10 @@
             };
         });
         const ctx = document.getElementById('chartTopClientesEXW').getContext('2d');
-        if(topClientesChart){ topClientesChart.destroy(); }
-    const claseActual = chartClaseSelect ? (chartClaseSelect.value||'').toUpperCase() : '';
-    // Mostrar facturas para EXW y FOB
-    const facturasHabilitadas = ['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'].includes(claseActual);
+        if (topClientesChart) { topClientesChart.destroy(); }
+        const claseActual = chartClaseSelect ? (chartClaseSelect.value || '').toUpperCase() : '';
+        // Mostrar facturas para EXW y FOB
+        const facturasHabilitadas = ['VENTAS EXW CTG', 'ANTICIPO VENTAS FOB CTG'].includes(claseActual);
         topClientesChart = new Chart(ctx, {
             type: 'bar',
             data: { labels, datasets },
@@ -1356,37 +1783,37 @@
                 plugins: {
                     tooltip: {
                         callbacks: {
-                            label: function(context){
-                                const val = context.parsed.y||0;
-                                if(!val) return null; // omitir líneas con 0
-                                return context.dataset.label+': '+currencyFormatter.format(val);
+                            label: function (context) {
+                                const val = context.parsed.y || 0;
+                                if (!val) return null; // omitir líneas con 0
+                                return context.dataset.label + ': ' + currencyFormatter.format(val);
                             },
-                            afterBody: function(items){
-                                if(!facturasHabilitadas) return;
-                                if(!items || !items.length) return;
+                            afterBody: function (items) {
+                                if (!facturasHabilitadas) return;
+                                if (!items || !items.length) return;
                                 const cli = items[0].label;
                                 const arr = facturasPorCliente.get(cli.toUpperCase());
-                                if(!arr || !arr.length) return;
-                                const totalCop = arr.reduce((a,f)=> a + (f.valor||0), 0);
-                                const totalBbl = arr.reduce((a,f)=> a + (f.bbl||0), 0);
-                                const totalGln = arr.reduce((a,f)=> a + (f.gln||0), 0);
-                                const totalTon = arr.reduce((a,f)=> a + (f.ton||0), 0);
+                                if (!arr || !arr.length) return;
+                                const totalCop = arr.reduce((a, f) => a + (f.valor || 0), 0);
+                                const totalBbl = arr.reduce((a, f) => a + (f.bbl || 0), 0);
+                                const totalGln = arr.reduce((a, f) => a + (f.gln || 0), 0);
+                                const totalTon = arr.reduce((a, f) => a + (f.ton || 0), 0);
                                 const result = [`Total COP$: ${currencyFormatter.format(totalCop)}`];
-                                if(totalBbl) result.push(`Total Bbl: ${totalBbl.toLocaleString('es-CO')}`);
-                                if(totalGln) result.push(`Total Gln: ${totalGln.toLocaleString('es-CO')}`);
-                                if(totalTon) result.push(`Total Ton: ${totalTon.toLocaleString('es-CO')}`);
+                                if (totalBbl) result.push(`Total Bbl: ${totalBbl.toLocaleString('es-CO')}`);
+                                if (totalGln) result.push(`Total Gln: ${totalGln.toLocaleString('es-CO')}`);
+                                if (totalTon) result.push(`Total Ton: ${totalTon.toLocaleString('es-CO')}`);
                                 return result;
                             }
                         }
                     },
                     legend: { position: 'bottom' }
                 },
-                onClick: (evt, elements)=>{
-                    if(!facturasHabilitadas) return; // solo mostrar panel cuando clase permitida
-                    if(!elements || !elements.length) return;
+                onClick: (evt, elements) => {
+                    if (!facturasHabilitadas) return; // solo mostrar panel cuando clase permitida
+                    if (!elements || !elements.length) return;
                     const idx = elements[0].index;
                     const cli = topClientesChart.data.labels[idx];
-                    const arr = facturasPorCliente.get(cli.toUpperCase())||[];
+                    const arr = facturasPorCliente.get(cli.toUpperCase()) || [];
                     const panel = document.getElementById('facturas-cliente-panel');
                     const tbody = document.getElementById('facturas-cliente-tbody');
                     const tit = document.getElementById('facturas-cliente-titulo');
@@ -1394,153 +1821,153 @@
                     const panelTable = panel.querySelector('table');
                     const thead = panelTable.querySelector('thead');
                     const tfoot = panelTable.querySelector('tfoot');
-                    if(claseActual==='ANTICIPO VENTAS FOB CTG'){
+                    if (claseActual === 'ANTICIPO VENTAS FOB CTG') {
                         thead.innerHTML = `<tr><th>Número</th><th>Etiqueta</th><th>Fecha</th><th class='text-end'>COP$</th><th class='text-end'>Bbl</th><th class='text-end'>Gln</th><th class='text-end'>Ton</th></tr>`;
                         tfoot.innerHTML = `<tr><th colspan='3'>Total</th><th class='text-end' id='facturas-cliente-total-cop'></th><th class='text-end' id='facturas-cliente-total-bbl'></th><th class='text-end' id='facturas-cliente-total-gln'></th><th class='text-end' id='facturas-cliente-total-ton'></th></tr>`;
                     } else {
                         thead.innerHTML = `<tr><th>Número</th><th>Fecha</th><th class='text-end'>COP$</th><th class='text-end'>Bbl</th><th class='text-end'>Gln</th><th class='text-end'>Ton</th></tr>`;
                         tfoot.innerHTML = `<tr><th colspan='2'>Total</th><th class='text-end' id='facturas-cliente-total-cop'></th><th class='text-end' id='facturas-cliente-total-bbl'></th><th class='text-end' id='facturas-cliente-total-gln'></th><th class='text-end' id='facturas-cliente-total-ton'></th></tr>`;
                     }
-                    if(!panel) return;
-                    tit.textContent = 'Facturas de '+cli;
-                    if(!arr.length){
-                        const colSpan = (claseActual==='ANTICIPO VENTAS FOB CTG')?7:6;
+                    if (!panel) return;
+                    tit.textContent = 'Facturas de ' + cli;
+                    if (!arr.length) {
+                        const colSpan = (claseActual === 'ANTICIPO VENTAS FOB CTG') ? 7 : 6;
                         tbody.innerHTML = `<tr><td colspan='${colSpan}' class='text-muted text-center'>Sin facturas cargadas</td></tr>`;
-                        document.getElementById('facturas-cliente-total-cop').textContent='';
-                        document.getElementById('facturas-cliente-total-bbl').textContent='';
-                        document.getElementById('facturas-cliente-total-gln').textContent='';
-                        document.getElementById('facturas-cliente-total-ton').textContent='';
+                        document.getElementById('facturas-cliente-total-cop').textContent = '';
+                        document.getElementById('facturas-cliente-total-bbl').textContent = '';
+                        document.getElementById('facturas-cliente-total-gln').textContent = '';
+                        document.getElementById('facturas-cliente-total-ton').textContent = '';
                     } else {
-                        let totalCop=0, totalBbl=0, totalGln=0, totalTon=0, hasBbl=false, hasGln=false, hasTon=false;
-                        tbody.innerHTML = arr.map(f=>{
-                            totalCop += f.valor||0; 
-                            totalBbl += f.bbl||0; if(f.bbl) hasBbl=true;
-                            totalGln += f.gln||0; if(f.gln) hasGln=true;
-                            totalTon += f.ton||0; if(f.ton) hasTon=true;
-                            
-                            if(claseActual==='ANTICIPO VENTAS FOB CTG'){
+                        let totalCop = 0, totalBbl = 0, totalGln = 0, totalTon = 0, hasBbl = false, hasGln = false, hasTon = false;
+                        tbody.innerHTML = arr.map(f => {
+                            totalCop += f.valor || 0;
+                            totalBbl += f.bbl || 0; if (f.bbl) hasBbl = true;
+                            totalGln += f.gln || 0; if (f.gln) hasGln = true;
+                            totalTon += f.ton || 0; if (f.ton) hasTon = true;
+
+                            if (claseActual === 'ANTICIPO VENTAS FOB CTG') {
                                 return `<tr>
                                     <td>${f.factura}</td>
-                                    <td>${f.etiqueta||''}</td>
-                                    <td>${f.fecha||''}</td>
-                                    <td class='text-end'>${currencyFormatter.format(f.valor||0)}</td>
-                                    <td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO') : ''}</td>
-                                    <td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO') : ''}</td>
-                                    <td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO') : ''}</td>
+                                    <td>${f.etiqueta || ''}</td>
+                                    <td>${f.fecha || ''}</td>
+                                    <td class='text-end'>${currencyFormatter.format(f.valor || 0)}</td>
+                                    <td class='text-end'>${f.bbl ? f.bbl.toLocaleString('es-CO') : ''}</td>
+                                    <td class='text-end'>${f.gln ? f.gln.toLocaleString('es-CO') : ''}</td>
+                                    <td class='text-end'>${f.ton ? f.ton.toLocaleString('es-CO') : ''}</td>
                                 </tr>`;
                             }
                             return `<tr>
                                 <td>${f.factura}</td>
-                                <td>${f.fecha||''}</td>
-                                <td class='text-end'>${currencyFormatter.format(f.valor||0)}</td>
-                                <td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO') : ''}</td>
-                                <td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO') : ''}</td>
-                                <td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO') : ''}</td>
+                                <td>${f.fecha || ''}</td>
+                                <td class='text-end'>${currencyFormatter.format(f.valor || 0)}</td>
+                                <td class='text-end'>${f.bbl ? f.bbl.toLocaleString('es-CO') : ''}</td>
+                                <td class='text-end'>${f.gln ? f.gln.toLocaleString('es-CO') : ''}</td>
+                                <td class='text-end'>${f.ton ? f.ton.toLocaleString('es-CO') : ''}</td>
                             </tr>`;
                         }).join('');
-                        
+
                         document.getElementById('facturas-cliente-total-cop').textContent = currencyFormatter.format(totalCop);
                         document.getElementById('facturas-cliente-total-bbl').textContent = hasBbl ? totalBbl.toLocaleString('es-CO') : '';
                         document.getElementById('facturas-cliente-total-gln').textContent = hasGln ? totalGln.toLocaleString('es-CO') : '';
                         document.getElementById('facturas-cliente-total-ton').textContent = hasTon ? totalTon.toLocaleString('es-CO') : '';
                     }
                     panel.classList.remove('d-none');
-                    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 },
                 scales: {
-                    x: { 
+                    x: {
                         stacked: true,
                         ticks: {
                             autoSkip: false,
                             maxRotation: 0,
                             minRotation: 0,
-                            callback: function(val, idx){
+                            callback: function (val, idx) {
                                 // Obtener etiqueta original
-                                const label = this.getLabelForValue ? this.getLabelForValue(val) : (Array.isArray(val)? val.join(' '): val);
-                                if(!label) return '';
+                                const label = this.getLabelForValue ? this.getLabelForValue(val) : (Array.isArray(val) ? val.join(' ') : val);
+                                if (!label) return '';
                                 const maxChars = 14; // caracteres por línea
                                 const words = label.split(' ');
                                 const lines = [];
                                 let line = '';
-                                words.forEach(w=>{
-                                    if((line + w).length > maxChars){
-                                        if(line) lines.push(line.trim());
+                                words.forEach(w => {
+                                    if ((line + w).length > maxChars) {
+                                        if (line) lines.push(line.trim());
                                         line = w + ' ';
                                     } else {
                                         line += w + ' ';
                                     }
                                 });
-                                if(line) lines.push(line.trim());
+                                if (line) lines.push(line.trim());
                                 // Limitar a 3 líneas y truncar con elipsis si excede
-                                if(lines.length > 3){
-                                    return lines.slice(0,2).concat('…');
+                                if (lines.length > 3) {
+                                    return lines.slice(0, 2).concat('…');
                                 }
                                 return lines;
                             }
                         }
                     },
-                    y: { stacked: true, ticks:{ callback: value=> currencyFormatter.format(value) } }
+                    y: { stacked: true, ticks: { callback: value => currencyFormatter.format(value) } }
                 },
                 layout: { padding: { bottom: 10 } }
             }
         });
     }
 
-    async function handleFacturacion(e){
+    async function handleFacturacion(e) {
         const file = e.target.files[0];
-        if(!file) return;
+        if (!file) return;
         const formData = new FormData();
         formData.append('archivo_excel', file);
-        try{
-            const resp = await fetch('/api/procesar_facturacion', {method:'POST', body: formData});
+        try {
+            const resp = await fetch('/api/procesar_facturacion', { method: 'POST', body: formData });
             const data = await resp.json();
-            if(!data.success) throw new Error(data.message||'Error procesando facturación');
-            
+            if (!data.success) throw new Error(data.message || 'Error procesando facturación');
+
             // Debug: Mostrar estructura de datos
             console.log('Datos de facturación recibidos:', data);
-            if(data.facturas && data.facturas.length > 0) {
+            if (data.facturas && data.facturas.length > 0) {
                 console.log('Primera factura:', data.facturas[0]);
                 console.log('Columnas disponibles en primera factura:', Object.keys(data.facturas[0]));
             }
-            
-            facturasData = data.facturas||[];
+
+            facturasData = data.facturas || [];
             facturasPorClienteBase = new Map();
-            facturasData.forEach(f=>{
-                const cli = (f.tercero||'SIN TERCERO').toUpperCase();
-                if(!facturasPorClienteBase.has(cli)) facturasPorClienteBase.set(cli, []);
+            facturasData.forEach(f => {
+                const cli = (f.tercero || 'SIN TERCERO').toUpperCase();
+                if (!facturasPorClienteBase.has(cli)) facturasPorClienteBase.set(cli, []);
                 facturasPorClienteBase.get(cli).push(f);
             });
             aplicarFiltrosFacturas();
-            if(currentView==='charts') recomputeTopClientesEXWFiltered();
+            if (currentView === 'charts') recomputeTopClientesEXWFiltered();
             renderFacturacionGlobal();
-        }catch(err){
-            alert('Error: '+err.message);
+        } catch (err) {
+            alert('Error: ' + err.message);
         }
     }
-    function precomputeBaseEXW(){
+    function precomputeBaseEXW() {
         baseEXW = globalReportData && globalReportData.top_clientes_ventas_exw ? globalReportData.top_clientes_ventas_exw : null;
     }
-    function recomputeTopClientesEXWFiltered(){
-        if(!globalReportData || !globalReportData.odoo_detalle){
+    function recomputeTopClientesEXWFiltered() {
+        if (!globalReportData || !globalReportData.odoo_detalle) {
             renderTopClientesEXW(null); return;
         }
-    // Reaplicar filtros de facturas por tiempo
-    aplicarFiltrosFacturas();
-    // Filtrar detalle por vista seleccionada
-        const detalle = globalReportData.odoo_detalle.filter(r=>{
-            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+        // Reaplicar filtros de facturas por tiempo
+        aplicarFiltrosFacturas();
+        // Filtrar detalle por vista seleccionada
+        const detalle = globalReportData.odoo_detalle.filter(r => {
+            if (globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
             // Rango fechas prioritario
-            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
-            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            if (globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if (globalFechaFin && r.fecha > globalFechaFin) return false;
             // Compatibilidad filtros antiguos
-            if(!globalFechaInicio && !globalFechaFin){
-                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            if (!globalFechaInicio && !globalFechaFin) {
+                if (globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if (globalQuarter) { const qm = quarterMonths(globalQuarter); if (!qm.includes(r.fecha.slice(5, 7))) return false; }
+                else if (globalMonth && r.fecha.slice(5, 7) !== globalMonth) return false;
+                if (globalDay && r.fecha.slice(8, 10) !== globalDay) return false;
             }
             // Filtro de banco
-            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+            if (globalTipoBancoSeleccionado && (r.banco || '').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         updateChartClaseSubclaseOptions(detalle);
@@ -1550,169 +1977,169 @@
         const selectedSubRaw = chartSubclaseSelect ? chartSubclaseSelect.value : '';
         const selectedSub = selectedSubRaw.toUpperCase();
         const incluirAmbas = !selectedClase; // modo Auto: combinar ambas permitidas
-        const exw = detalle.filter(r=> {
-            const claseDato = (r.clase||'').toUpperCase();
-            if(incluirAmbas){
-                if(!ALLOWED_CLASSES.includes(claseDato)) return false;
+        const exw = detalle.filter(r => {
+            const claseDato = (r.clase || '').toUpperCase();
+            if (incluirAmbas) {
+                if (!ALLOWED_CLASSES.includes(claseDato)) return false;
             } else {
-                if(claseDato !== selectedClase) return false;
+                if (claseDato !== selectedClase) return false;
             }
-            if(selectedSub && ( (r.subclase||'SIN SUBCLASE').toUpperCase() !== selectedSub)) return false;
+            if (selectedSub && ((r.subclase || 'SIN SUBCLASE').toUpperCase() !== selectedSub)) return false;
             return true;
         });
-        if(exw.length===0){ renderTopClientesEXW({clientes:[], total_general:0}); return; }
+        if (exw.length === 0) { renderTopClientesEXW({ clientes: [], total_general: 0 }); return; }
         const map = new Map();
-        exw.forEach(r=>{
+        exw.forEach(r => {
             const cli = r.tercero || 'SIN TERCERO';
             const sub = r.subclase || 'SIN SUBCLASE';
-            const val = Number(r.debito||0);
-            if(!map.has(cli)) map.set(cli, new Map());
+            const val = Number(r.debito || 0);
+            if (!map.has(cli)) map.set(cli, new Map());
             const inner = map.get(cli);
-            inner.set(sub, (inner.get(sub)||0)+val);
+            inner.set(sub, (inner.get(sub) || 0) + val);
         });
-        let arr = Array.from(map.entries()).map(([cli, inner])=>({
+        let arr = Array.from(map.entries()).map(([cli, inner]) => ({
             cliente: cli,
-            total: Array.from(inner.values()).reduce((a,b)=>a+b,0),
-            subclases: Array.from(inner.entries()).map(([sub,total])=>({subclase:sub,total}))
+            total: Array.from(inner.values()).reduce((a, b) => a + b, 0),
+            subclases: Array.from(inner.entries()).map(([sub, total]) => ({ subclase: sub, total }))
         }));
-        arr.sort((a,b)=>b.total-a.total);
-        arr = arr.slice(0,10);
-    renderTopClientesEXW({clientes:arr,total_general:arr.reduce((a,c)=>a+c.total,0)});
-    renderFacturacionGlobal();
+        arr.sort((a, b) => b.total - a.total);
+        arr = arr.slice(0, 10);
+        renderTopClientesEXW({ clientes: arr, total_general: arr.reduce((a, c) => a + c.total, 0) });
+        renderFacturacionGlobal();
     }
 
     // ---- Graficas Ingresos / Egresos por Tipo de Flujo ----
-    function recomputeIngresoEgresoFlujoCharts(){
-        if(!globalReportData || !globalReportData.odoo_detalle) return;
+    function recomputeIngresoEgresoFlujoCharts() {
+        if (!globalReportData || !globalReportData.odoo_detalle) return;
         const tfSelect = document.getElementById('tf-tercero-filter');
         const claseSelect = document.getElementById('tf-tercero-clase-filter');
-        const tfFiltro = tfSelect ? (tfSelect.value||'').toUpperCase() : '';
-        const claseFiltro = claseSelect ? (claseSelect.value||'').toUpperCase() : '';
+        const tfFiltro = tfSelect ? (tfSelect.value || '').toUpperCase() : '';
+        const claseFiltro = claseSelect ? (claseSelect.value || '').toUpperCase() : '';
         // Base filtrada por empresa/tiempo
-        const base = globalReportData.odoo_detalle.filter(r=>{
-            if(globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
+        const base = globalReportData.odoo_detalle.filter(r => {
+            if (globalEmpresaSeleccionada && r.empresa !== globalEmpresaSeleccionada) return false;
             // Rango de fechas (prioritario)
-            if(globalFechaInicio && r.fecha < globalFechaInicio) return false;
-            if(globalFechaFin && r.fecha > globalFechaFin) return false;
+            if (globalFechaInicio && r.fecha < globalFechaInicio) return false;
+            if (globalFechaFin && r.fecha > globalFechaFin) return false;
             // (Compatibilidad con antiguos filtros año/mes si en algún lugar se reactivan)
-            if(!globalFechaInicio && !globalFechaFin){
-                if(globalYear && !r.fecha.startsWith(globalYear)) return false;
-                if(globalQuarter){ const qm = quarterMonths(globalQuarter); if(!qm.includes(r.fecha.slice(5,7))) return false; }
-                else if(globalMonth && r.fecha.slice(5,7)!==globalMonth) return false;
-                if(globalDay && r.fecha.slice(8,10)!==globalDay) return false;
+            if (!globalFechaInicio && !globalFechaFin) {
+                if (globalYear && !r.fecha.startsWith(globalYear)) return false;
+                if (globalQuarter) { const qm = quarterMonths(globalQuarter); if (!qm.includes(r.fecha.slice(5, 7))) return false; }
+                else if (globalMonth && r.fecha.slice(5, 7) !== globalMonth) return false;
+                if (globalDay && r.fecha.slice(8, 10) !== globalDay) return false;
             }
             // Filtro de tipo banco (coincide con daily_comparison en campo tipo_banco -> aquí 'banco')
-            if(globalTipoBancoSeleccionado && (r.banco||'').trim() !== globalTipoBancoSeleccionado) return false;
+            if (globalTipoBancoSeleccionado && (r.banco || '').trim() !== globalTipoBancoSeleccionado) return false;
             return true;
         });
         // Poblar tipos de flujo (siempre actualizar para reflejar filtros globales)
-        if(tfSelect){
+        if (tfSelect) {
             const prev = tfSelect.value.toUpperCase();
-            const tipos = Array.from(new Set(base.map(r=> (r.tipo_flujo||'SIN TIPO').toUpperCase()))).sort();
-            tfSelect.innerHTML = '<option value="">(Todos)</option>'+tipos.map(t=>`<option value="${t}">${t}</option>`).join('');
-            if(prev && tipos.includes(prev)) tfSelect.value = prev; else tfSelect.value='';
-            if(!tfSelect.dataset.eventsBound){
-                tfSelect.addEventListener('change', ()=>{ recomputeIngresoEgresoFlujoCharts(); });
-                tfSelect.dataset.eventsBound='1';
+            const tipos = Array.from(new Set(base.map(r => (r.tipo_flujo || 'SIN TIPO').toUpperCase()))).sort();
+            tfSelect.innerHTML = '<option value="">(Todos)</option>' + tipos.map(t => `<option value="${t}">${t}</option>`).join('');
+            if (prev && tipos.includes(prev)) tfSelect.value = prev; else tfSelect.value = '';
+            if (!tfSelect.dataset.eventsBound) {
+                tfSelect.addEventListener('change', () => { recomputeIngresoEgresoFlujoCharts(); });
+                tfSelect.dataset.eventsBound = '1';
             }
         }
         // Aplicar filtro de tipo flujo
-        const trasTipo = base.filter(r=> !tfFiltro || (r.tipo_flujo||'SIN TIPO').toUpperCase()===tfFiltro);
+        const trasTipo = base.filter(r => !tfFiltro || (r.tipo_flujo || 'SIN TIPO').toUpperCase() === tfFiltro);
         // Poblar clases a partir del subconjunto filtrado por tipo
-        if(claseSelect){
+        if (claseSelect) {
             const prevClase = claseSelect.value.toUpperCase();
-            const clases = Array.from(new Set(trasTipo.map(r=> (r.clase||'SIN CLASE').toUpperCase()))).sort();
-            claseSelect.innerHTML = '<option value="">(Todas)</option>'+clases.map(c=>`<option value="${c}">${c}</option>`).join('');
-            if(prevClase && clases.includes(prevClase)) claseSelect.value = prevClase; else claseSelect.value='';
-            if(!claseSelect.dataset.eventsBound){
-                claseSelect.addEventListener('change', ()=>{ recomputeIngresoEgresoFlujoCharts(); });
-                claseSelect.dataset.eventsBound='1';
+            const clases = Array.from(new Set(trasTipo.map(r => (r.clase || 'SIN CLASE').toUpperCase()))).sort();
+            claseSelect.innerHTML = '<option value="">(Todas)</option>' + clases.map(c => `<option value="${c}">${c}</option>`).join('');
+            if (prevClase && clases.includes(prevClase)) claseSelect.value = prevClase; else claseSelect.value = '';
+            if (!claseSelect.dataset.eventsBound) {
+                claseSelect.addEventListener('change', () => { recomputeIngresoEgresoFlujoCharts(); });
+                claseSelect.dataset.eventsBound = '1';
             }
         }
-        const detFiltrado = trasTipo.filter(r=> !claseFiltro || (r.clase||'SIN CLASE').toUpperCase()===claseFiltro);
+        const detFiltrado = trasTipo.filter(r => !claseFiltro || (r.clase || 'SIN CLASE').toUpperCase() === claseFiltro);
         // Agrupar por tercero
         const ingresosMap = new Map();
         const egresosMap = new Map();
-        detFiltrado.forEach(r=>{
-            const tercero = (r.tercero||'SIN TERCERO').toUpperCase();
-            const deb = Number(r.debito)||0;
-            const cred = Number(r.credito)||0;
-            if(deb>0) ingresosMap.set(tercero,(ingresosMap.get(tercero)||0)+deb);
-            if(cred>0) egresosMap.set(tercero,(egresosMap.get(tercero)||0)+cred);
+        detFiltrado.forEach(r => {
+            const tercero = (r.tercero || 'SIN TERCERO').toUpperCase();
+            const deb = Number(r.debito) || 0;
+            const cred = Number(r.credito) || 0;
+            if (deb > 0) ingresosMap.set(tercero, (ingresosMap.get(tercero) || 0) + deb);
+            if (cred > 0) egresosMap.set(tercero, (egresosMap.get(tercero) || 0) + cred);
         });
-        let ingresosArr = Array.from(ingresosMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
-        let egresosArr = Array.from(egresosMap.entries()).sort((a,b)=>b[1]-a[1]).slice(0,10);
-        renderTercerosChart('chartIngresosFlujo', ingresosArr, 'Débito', 'ingresos-flujo-total', ingresosArr.reduce((a,c)=>a+c[1],0));
-        renderTercerosChart('chartEgresosFlujo', egresosArr, 'Crédito', 'egresos-flujo-total', egresosArr.reduce((a,c)=>a+c[1],0));
+        let ingresosArr = Array.from(ingresosMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        let egresosArr = Array.from(egresosMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        renderTercerosChart('chartIngresosFlujo', ingresosArr, 'Débito', 'ingresos-flujo-total', ingresosArr.reduce((a, c) => a + c[1], 0));
+        renderTercerosChart('chartEgresosFlujo', egresosArr, 'Crédito', 'egresos-flujo-total', egresosArr.reduce((a, c) => a + c[1], 0));
     }
 
-    function renderTercerosChart(canvasId, dataPairs, serieLabel, totalSpanId, total){
+    function renderTercerosChart(canvasId, dataPairs, serieLabel, totalSpanId, total) {
         const canvas = document.getElementById(canvasId);
-        if(!canvas) return;
+        if (!canvas) return;
         const span = document.getElementById(totalSpanId);
-        if(!dataPairs.length){
+        if (!dataPairs.length) {
             span.textContent = 'Sin datos';
-            if(canvas._chartInstance){ canvas._chartInstance.destroy(); canvas._chartInstance=null; }
+            if (canvas._chartInstance) { canvas._chartInstance.destroy(); canvas._chartInstance = null; }
             return;
         }
-        span.textContent = 'Total: '+currencyFormatter.format(total);
-        const labels = dataPairs.map(p=>p[0]);
-        const values = dataPairs.map(p=>p[1]);
-        const palette = ['#0d6efd','#6610f2','#6f42c1','#d63384','#dc3545','#fd7e14','#ffc107','#198754','#20c997','#0dcaf0','#6c757d','#343a40'];
-        if(canvas._chartInstance) canvas._chartInstance.destroy();
+        span.textContent = 'Total: ' + currencyFormatter.format(total);
+        const labels = dataPairs.map(p => p[0]);
+        const values = dataPairs.map(p => p[1]);
+        const palette = ['#0d6efd', '#6610f2', '#6f42c1', '#d63384', '#dc3545', '#fd7e14', '#ffc107', '#198754', '#20c997', '#0dcaf0', '#6c757d', '#343a40'];
+        if (canvas._chartInstance) canvas._chartInstance.destroy();
         const ctx = canvas.getContext('2d');
         canvas._chartInstance = new Chart(ctx, {
-            type:'bar',
-            data:{ labels, datasets:[{ label: serieLabel, data: values, backgroundColor: labels.map((_,i)=>palette[i%palette.length]) }] },
-            options:{
-                responsive:true,
-                plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: c=> serieLabel+': '+currencyFormatter.format(c.parsed.y||0) } } },
-                scales:{
-                    x:{
-                        grid:{ display:false },
-                        ticks:{
-                            autoSkip:false,
-                            maxRotation:0,
-                            minRotation:0,
-                            callback:function(value){
+            type: 'bar',
+            data: { labels, datasets: [{ label: serieLabel, data: values, backgroundColor: labels.map((_, i) => palette[i % palette.length]) }] },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => serieLabel + ': ' + currencyFormatter.format(c.parsed.y || 0) } } },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function (value) {
                                 const raw = this.getLabelForValue ? this.getLabelForValue(value) : '';
-                                if(!raw) return '';
+                                if (!raw) return '';
                                 const MAX_CHARS = 14; // igual que primeras gráficas
                                 const words = raw.split(/\s+/);
-                                const lines=[]; let line='';
-                                words.forEach(w=>{
-                                    if((line + w).length > MAX_CHARS){
-                                        if(line) lines.push(line.trim());
+                                const lines = []; let line = '';
+                                words.forEach(w => {
+                                    if ((line + w).length > MAX_CHARS) {
+                                        if (line) lines.push(line.trim());
                                         line = w + ' ';
                                     } else {
                                         line += w + ' ';
                                     }
                                 });
-                                if(line) lines.push(line.trim());
-                                if(lines.length>3){
-                                    return lines.slice(0,2).concat('…');
+                                if (line) lines.push(line.trim());
+                                if (lines.length > 3) {
+                                    return lines.slice(0, 2).concat('…');
                                 }
                                 return lines;
                             }
                         }
                     },
-                    y:{ ticks:{ callback:v=>currencyFormatter.format(v) } }
+                    y: { ticks: { callback: v => currencyFormatter.format(v) } }
                 },
-                layout:{ padding:{ bottom:4 } }
+                layout: { padding: { bottom: 4 } }
             }
         });
     }
 
-    function renderFacturacionGlobal(){
+    function renderFacturacionGlobal() {
         const card = document.getElementById('facturacion-global-card');
-        if(!card) return;
-        const claseActual = chartClaseSelect ? (chartClaseSelect.value||'').toUpperCase() : '';
-    if(!['VENTAS EXW CTG','ANTICIPO VENTAS FOB CTG'].includes(claseActual)){
-            card.style.display='none';
+        if (!card) return;
+        const claseActual = chartClaseSelect ? (chartClaseSelect.value || '').toUpperCase() : '';
+        if (!['VENTAS EXW CTG', 'ANTICIPO VENTAS FOB CTG'].includes(claseActual)) {
+            card.style.display = 'none';
             return;
         }
-        if(!facturasPorCliente || facturasPorCliente.size===0){
-            card.style.display='none';
+        if (!facturasPorCliente || facturasPorCliente.size === 0) {
+            card.style.display = 'none';
             return;
         }
         const thead = document.getElementById('facturacion-global-thead');
@@ -1724,58 +2151,58 @@
         const totalGlnCell = document.getElementById('facturacion-global-total-gln');
         const totalTonCell = document.getElementById('facturacion-global-total-ton');
 
-        let granTotalCop=0, granTotalBbl=0, granTotalGln=0, granTotalTon=0, anyBbl=false, anyGln=false, anyTon=false;
+        let granTotalCop = 0, granTotalBbl = 0, granTotalGln = 0, granTotalTon = 0, anyBbl = false, anyGln = false, anyTon = false;
         let filas = [];
 
-    if(claseActual === 'ANTICIPO VENTAS FOB CTG'){
+        if (claseActual === 'ANTICIPO VENTAS FOB CTG') {
             // Agrupar por Cliente + Etiqueta
             const mapa = new Map(); // key: cliente|| etiqueta
-            facturasPorCliente.forEach((lista, clienteUpper)=>{
-                lista.forEach(f=>{
-                    const etiqueta = (f.etiqueta||'').toString().trim() || 'SIN ETIQUETA';
-                    const key = clienteUpper+'||'+etiqueta;
+            facturasPorCliente.forEach((lista, clienteUpper) => {
+                lista.forEach(f => {
+                    const etiqueta = (f.etiqueta || '').toString().trim() || 'SIN ETIQUETA';
+                    const key = clienteUpper + '||' + etiqueta;
                     let obj = mapa.get(key);
-                    if(!obj){
-                        obj = {cliente:clienteUpper, etiqueta:etiqueta, cantidad:0, cop:0, bbl:0, gln:0, ton:0};
-                        mapa.set(key,obj);
+                    if (!obj) {
+                        obj = { cliente: clienteUpper, etiqueta: etiqueta, cantidad: 0, cop: 0, bbl: 0, gln: 0, ton: 0 };
+                        mapa.set(key, obj);
                     }
                     obj.cantidad += 1;
-                    obj.cop += (f.valor||0);
-                    obj.bbl += (f.bbl||0);
-                    obj.gln += (f.gln||0);
-                    obj.ton += (f.ton||0);
+                    obj.cop += (f.valor || 0);
+                    obj.bbl += (f.bbl || 0);
+                    obj.gln += (f.gln || 0);
+                    obj.ton += (f.ton || 0);
                 });
             });
             filas = Array.from(mapa.values());
-            filas.forEach(r=>{
-                granTotalCop+=r.cop; 
-                granTotalBbl+=r.bbl; if(r.bbl>0) anyBbl=true;
-                granTotalGln+=r.gln; if(r.gln>0) anyGln=true;
-                granTotalTon+=r.ton; if(r.ton>0) anyTon=true;
+            filas.forEach(r => {
+                granTotalCop += r.cop;
+                granTotalBbl += r.bbl; if (r.bbl > 0) anyBbl = true;
+                granTotalGln += r.gln; if (r.gln > 0) anyGln = true;
+                granTotalTon += r.ton; if (r.ton > 0) anyTon = true;
             });
-            filas.sort((a,b)=>b.cop-a.cop);
+            filas.sort((a, b) => b.cop - a.cop);
             // Construir encabezado FOB con Etiqueta
             thead.innerHTML = `<tr><th>Cliente</th><th>Etiqueta</th><th class='text-end'>Facturas</th><th class='text-end'>Total COP$</th><th class='text-end'>Total Bbl</th><th class='text-end'>Total Gln</th><th class='text-end'>Total Ton</th></tr>`;
             tfoot.innerHTML = `<tr><th colspan='3' class='text-end'>Gran Total:</th><th class='text-end' id='facturacion-global-total-cop'></th><th class='text-end' id='facturacion-global-total-bbl'></th><th class='text-end' id='facturacion-global-total-gln'></th><th class='text-end' id='facturacion-global-total-ton'></th></tr>`;
-            tbody.innerHTML = filas.map(f=>`<tr><td>${f.cliente}</td><td>${f.etiqueta}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO'):''}</td></tr>`).join('');
+            tbody.innerHTML = filas.map(f => `<tr><td>${f.cliente}</td><td>${f.etiqueta}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl ? f.bbl.toLocaleString('es-CO') : ''}</td><td class='text-end'>${f.gln ? f.gln.toLocaleString('es-CO') : ''}</td><td class='text-end'>${f.ton ? f.ton.toLocaleString('es-CO') : ''}</td></tr>`).join('');
         } else { // VENTAS EXW CTG
-            facturasPorCliente.forEach((lista, clienteUpper)=>{
-                if(!lista.length) return;
-                const sumCop = lista.reduce((a,f)=>a+(f.valor||0),0);
-                const sumBbl = lista.reduce((a,f)=>a+(f.bbl||0),0);
-                const sumGln = lista.reduce((a,f)=>a+(f.gln||0),0);
-                const sumTon = lista.reduce((a,f)=>a+(f.ton||0),0);
-                granTotalCop += sumCop; 
-                granTotalBbl += sumBbl; if(sumBbl>0) anyBbl=true;
-                granTotalGln += sumGln; if(sumGln>0) anyGln=true;
-                granTotalTon += sumTon; if(sumTon>0) anyTon=true;
-                filas.push({cliente:clienteUpper, cantidad:lista.length, cop:sumCop, bbl:sumBbl, gln:sumGln, ton:sumTon});
+            facturasPorCliente.forEach((lista, clienteUpper) => {
+                if (!lista.length) return;
+                const sumCop = lista.reduce((a, f) => a + (f.valor || 0), 0);
+                const sumBbl = lista.reduce((a, f) => a + (f.bbl || 0), 0);
+                const sumGln = lista.reduce((a, f) => a + (f.gln || 0), 0);
+                const sumTon = lista.reduce((a, f) => a + (f.ton || 0), 0);
+                granTotalCop += sumCop;
+                granTotalBbl += sumBbl; if (sumBbl > 0) anyBbl = true;
+                granTotalGln += sumGln; if (sumGln > 0) anyGln = true;
+                granTotalTon += sumTon; if (sumTon > 0) anyTon = true;
+                filas.push({ cliente: clienteUpper, cantidad: lista.length, cop: sumCop, bbl: sumBbl, gln: sumGln, ton: sumTon });
             });
-            filas.sort((a,b)=>b.cop-a.cop);
+            filas.sort((a, b) => b.cop - a.cop);
             // Restaurar encabezado original EXW
             thead.innerHTML = `<tr><th>Cliente</th><th class='text-end'>Facturas</th><th class='text-end'>Total COP$</th><th class='text-end'>Total Bbl</th><th class='text-end'>Total Gln</th><th class='text-end'>Total Ton</th></tr>`;
             tfoot.innerHTML = `<tr><th colspan='2' class='text-end'>Gran Total:</th><th class='text-end' id='facturacion-global-total-cop'></th><th class='text-end' id='facturacion-global-total-bbl'></th><th class='text-end' id='facturacion-global-total-gln'></th><th class='text-end' id='facturacion-global-total-ton'></th></tr>`;
-            tbody.innerHTML = filas.map(f=>`<tr><td>${f.cliente}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl? f.bbl.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.gln? f.gln.toLocaleString('es-CO'):''}</td><td class='text-end'>${f.ton? f.ton.toLocaleString('es-CO'):''}</td></tr>`).join('');
+            tbody.innerHTML = filas.map(f => `<tr><td>${f.cliente}</td><td class='text-end'>${f.cantidad}</td><td class='text-end'>${currencyFormatter.format(f.cop)}</td><td class='text-end'>${f.bbl ? f.bbl.toLocaleString('es-CO') : ''}</td><td class='text-end'>${f.gln ? f.gln.toLocaleString('es-CO') : ''}</td><td class='text-end'>${f.ton ? f.ton.toLocaleString('es-CO') : ''}</td></tr>`).join('');
         }
 
         // Re-obtener referencias (tfoot replaced)
@@ -1784,35 +2211,35 @@
         const newTotalGlnCell = document.getElementById('facturacion-global-total-gln');
         const newTotalTonCell = document.getElementById('facturacion-global-total-ton');
 
-    spanTotal.textContent = (claseActual==='ANTICIPO VENTAS FOB CTG'? 'Cliente / Etiqueta: ':'Clientes: ')+filas.length;
+        spanTotal.textContent = (claseActual === 'ANTICIPO VENTAS FOB CTG' ? 'Cliente / Etiqueta: ' : 'Clientes: ') + filas.length;
         newTotalCopCell.textContent = currencyFormatter.format(granTotalCop);
-        newTotalBblCell.textContent = anyBbl? granTotalBbl.toLocaleString('es-CO'):'';
-        newTotalGlnCell.textContent = anyGln? granTotalGln.toLocaleString('es-CO'):'';
-        newTotalTonCell.textContent = anyTon? granTotalTon.toLocaleString('es-CO'):'';
-        card.style.display='block';
+        newTotalBblCell.textContent = anyBbl ? granTotalBbl.toLocaleString('es-CO') : '';
+        newTotalGlnCell.textContent = anyGln ? granTotalGln.toLocaleString('es-CO') : '';
+        newTotalTonCell.textContent = anyTon ? granTotalTon.toLocaleString('es-CO') : '';
+        card.style.display = 'block';
     }
 
     // Botón de alternar vistas
-    document.getElementById('toggle-view-btn').addEventListener('click', ()=>{
-        if(!globalReportData){return;}
-        if(currentView==='report'){
-            currentView='charts';
+    document.getElementById('toggle-view-btn').addEventListener('click', () => {
+        if (!globalReportData) { return; }
+        if (currentView === 'report') {
+            currentView = 'charts';
             document.getElementById('report-output').classList.add('d-none');
             document.getElementById('charts-view').classList.remove('d-none');
-            document.getElementById('toggle-view-btn').innerHTML='<i class="bi bi-table"></i><span>Ver Reporte</span>';
+            document.getElementById('toggle-view-btn').innerHTML = '<i class="bi bi-table"></i><span>Ver Reporte</span>';
             // Limpiar filtros internos al entrar a gráficos
             resetInternalFilters();
             recomputeTopClientesEXWFiltered();
             recomputeTopProveedoresEgresosFiltered();
             recomputeIngresoEgresoFlujoCharts();
         } else {
-            currentView='report';
+            currentView = 'report';
             document.getElementById('charts-view').classList.add('d-none');
             document.getElementById('report-output').classList.remove('d-none');
-            document.getElementById('toggle-view-btn').innerHTML='<i class="bi bi-graph-up"></i><span>Ver Gráficos</span>';
+            document.getElementById('toggle-view-btn').innerHTML = '<i class="bi bi-graph-up"></i><span>Ver Gráficos</span>';
         }
     });
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
- 
+
 {% endblock %}

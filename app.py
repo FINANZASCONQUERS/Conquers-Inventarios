@@ -939,7 +939,8 @@ class VolumenPendienteDian(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     fecha = db.Column(db.Date, nullable=False, unique=True, index=True)
-    volumen_pendiente = db.Column(db.Float, nullable=False, default=0.0)
+    volumen_pendiente = db.Column(db.Float, nullable=False, default=0.0) # Este es el volumen APROBADO disponible para distribuir
+    volumen_por_aprobar = db.Column(db.Float, nullable=False, default=0.0) # Nuevo: Pendiente de aprobación DIAN
     observacion = db.Column(db.Text, nullable=True)
     
     # Auditoría
@@ -1088,6 +1089,29 @@ def _ensure_trasiegos_columns():
                 print('[INIT] No fue posible añadir columna en trasiegos_tk_barcaza:', e)
 
 _ensure_trasiegos_columns()
+
+def _ensure_volumen_dian_columns():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'volumen_pendiente_dian' not in insp.get_table_names():
+            return
+        cols = [c['name'] for c in insp.get_columns('volumen_pendiente_dian')]
+        if 'volumen_por_aprobar' not in cols:
+            try:
+                # Determinar el tipo de columna según el dialecto
+                dialect = db.engine.dialect.name
+                col_type = 'FLOAT' 
+                default_val = '0.0'
+                
+                ddl = f'ALTER TABLE volumen_pendiente_dian ADD COLUMN volumen_por_aprobar {col_type} DEFAULT {default_val}'
+                with db.engine.begin() as conn:
+                    conn.execute(text(ddl))
+                print('[INIT] Columna volumen_por_aprobar añadida a volumen_pendiente_dian')
+            except Exception as e:
+                print('[INIT] No fue posible añadir columna volumen_por_aprobar:', e)
+
+_ensure_volumen_dian_columns()
 
 # ===== Servir guías cargadas (PDF/imagenes) =====
 @app.get('/guias/<path:filename>')
@@ -4458,23 +4482,36 @@ def dashboard_siza():
         productos = ProductoSiza.query.filter_by(activo=True).order_by(ProductoSiza.orden).all()
         
         # Inicializar productos por defecto si no existen
-        if not productos:
-            productos_default = [
-                ProductoSiza(codigo='F04', nombre='F04', color_badge='primary', orden=1),
-                ProductoSiza(codigo='DILUYENTE', nombre='DILUYENTE', color_badge='success', orden=2),
-                ProductoSiza(codigo='MGO', nombre='MGO', color_badge='warning', orden=3),
-                ProductoSiza(codigo='AGUA_RESIDUAL', nombre='AGUA RESIDUAL', color_badge='danger', orden=4)
-            ]
-            for p in productos_default:
-                db.session.add(p)
+        # Verificar y crear productos por defecto uno a uno
+        defaults_data = [
+            {'codigo': 'F04', 'nombre': 'F04', 'color': 'primary', 'orden': 1},
+            {'codigo': 'DILUYENTE', 'nombre': 'DILUYENTE', 'color': 'success', 'orden': 2},
+            {'codigo': 'MGO', 'nombre': 'MGO', 'color': 'warning', 'orden': 3},
+            {'codigo': 'F06', 'nombre': 'F06', 'color': 'dark', 'orden': 4},
+            {'codigo': 'AGUA_RESIDUAL', 'nombre': 'AGUA RESIDUAL', 'color': 'danger', 'orden': 5}
+        ]
+        
+        updated_products = False
+        existing_codes = {p.codigo for p in productos}
+        
+        for d in defaults_data:
+            if d['codigo'] not in existing_codes:
+                new_prod = ProductoSiza(codigo=d['codigo'], nombre=d['nombre'], color_badge=d['color'], orden=d['orden'])
+                db.session.add(new_prod)
+                updated_products = True
+        
+        if updated_products:
             db.session.commit()
-            productos = productos_default
+            # Recargar lista completa
+            productos = ProductoSiza.query.filter_by(activo=True).order_by(ProductoSiza.orden).all()
         
         # Calcular métricas por producto
         inventario_productos = []
         total_disponible = 0
         total_comprometido = 0
         alerta_global = False
+        productos_sin_inventario = []  # Lista de productos DIAN sin inventario
+        pedidos_pendientes_para_tabla = []
         
         for producto in productos:
             # Obtener inventario del día
@@ -4484,42 +4521,56 @@ def dashboard_siza():
             ).first()
             
             if not inventario:
-                # Crear inventario inicial
+                # Buscar el último inventario registrado de días anteriores para arrastrar saldo
+                ultimo_inventario = InventarioSizaDiario.query.filter(
+                    InventarioSizaDiario.producto_id == producto.id,
+                    InventarioSizaDiario.fecha < hoy
+                ).order_by(InventarioSizaDiario.fecha.desc()).first()
+                
+                saldo_inicial = ultimo_inventario.cupo_web if ultimo_inventario else 0.0
+                
+                # Crear inventario inicial para hoy con el saldo anterior
                 inventario = InventarioSizaDiario(
                     fecha=hoy,
                     producto_id=producto.id,
-                    cupo_web=0.0,
-                    usuario_actualizacion='Sistema'
+                    cupo_web=saldo_inicial,
+                    usuario_actualizacion='Sistema (Arrastre Saldo)'
                 )
                 db.session.add(inventario)
                 db.session.commit()
             
-            # Pedidos pendientes de este producto
-            pedidos_producto = PedidoSiza.query.filter_by(
-                producto_id=producto.id,
-                estado='PENDIENTE'
+            # Pedidos comprometidos (PENDIENTE + APROBADO) - Aún no despachados
+            pedidos_producto = PedidoSiza.query.filter(
+                PedidoSiza.producto_id == producto.id,
+                PedidoSiza.estado.in_(['PENDIENTE', 'APROBADO'])
             ).all()
             
-            comprometido = sum(p.volumen_solicitado for p in pedidos_producto)
-            disponible = inventario.cupo_web - comprometido
+            comprometido_producto = sum(p.volumen_solicitado for p in pedidos_producto)
+            disponible_producto = inventario.cupo_web - comprometido_producto # Disponible real para nuevos pedidos
+            
+            # Pedidos SOLO pendientes para la tabla de gestión
+            pedidos_gestion = [p for p in pedidos_producto if p.estado == 'PENDIENTE']
+            pedidos_pendientes_para_tabla.extend(pedidos_gestion)
             
             inventario_productos.append({
                 'producto': producto,
                 'inventario': inventario,
-                'comprometido': comprometido,
-                'disponible': disponible,
-                'alerta': disponible <= 0,
+                'comprometido': comprometido_producto,
+                'disponible': disponible_producto,
+                'alerta': disponible_producto <= 0,
                 'pedidos_count': len(pedidos_producto)
             })
             
-            total_disponible += disponible
-            total_comprometido += comprometido
+            total_disponible += disponible_producto
+            total_comprometido += comprometido_producto
             
-            if disponible <= 0:
+            # Solo alertar para productos DIAN (excluir AGUA_RESIDUAL)
+            if disponible_producto <= 0 and producto.codigo != 'AGUA_RESIDUAL':
                 alerta_global = True
+                productos_sin_inventario.append(producto.nombre)
         
-        # Obtener pedidos pendientes (para la tabla principal)
-        pedidos_pendientes = PedidoSiza.query.filter_by(estado='PENDIENTE').order_by(PedidoSiza.fecha_registro).all()
+        # Obtener pedidos aprobados (para la nueva tabla en frontend)
+        pedidos_aprobados = PedidoSiza.query.filter_by(estado='APROBADO').order_by(PedidoSiza.fecha_gestion.desc()).all()
         
         # Obtener pedidos pendientes y aprobados (para el modal de consumo)
         todos_pedidos = PedidoSiza.query.filter(
@@ -4586,6 +4637,7 @@ def dashboard_siza():
             volumen_dian = VolumenPendienteDian(
                 fecha=hoy,
                 volumen_pendiente=0.0,
+                volumen_por_aprobar=0.0,
                 usuario_actualizacion='Sistema'
             )
             db.session.add(volumen_dian)
@@ -4595,8 +4647,8 @@ def dashboard_siza():
         usuario_email = session.get('email', '')
         puede_editar_dian = usuario_email in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
         
-        # Verificar si el usuario puede ver volumen DIAN (Juan Diego, Carlos, Brando, Samantha + editores)
-        puede_ver_dian = puede_editar_dian or usuario_email in [
+        # Verificar si el usuario puede ver volumen DIAN (Admins + Juan Diego, Carlos, Brando, Samantha + editores)
+        puede_ver_dian = session.get('rol') == 'admin' or puede_editar_dian or usuario_email in [
             'carlos.baron@conquerstrading.com',
             'juandiego.cuadros@conquerstrading.com', 
             'brando@conquerstrading.com',
@@ -4609,8 +4661,10 @@ def dashboard_siza():
             total_disponible=total_disponible,
             total_comprometido=total_comprometido,
             alerta_cupo=alerta_global,
+            productos_sin_inventario=productos_sin_inventario,  # Lista de productos DIAN sin inventario
             pedidos=todos_pedidos,  # Todos los pedidos (PENDIENTE y APROBADO) para modales
-            pedidos_pendientes=pedidos_pendientes,  # Solo pendientes para tabla principal
+            pedidos_pendientes=pedidos_pendientes_para_tabla,  # Solo pendientes para tabla principal
+            pedidos_aprobados=pedidos_aprobados, # Nueva lista para despachar
             productos=productos,
             movimientos=movimientos_recientes,  # Solo los últimos 15
             total_movimientos=total_movimientos,  # Total de movimientos disponibles
@@ -4623,6 +4677,27 @@ def dashboard_siza():
     except Exception as e:
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
         return redirect(url_for('home'))
+
+@login_required
+@permiso_requerido("siza_solicitante")  # Todos pueden ver historial
+@app.route('/siza/historial')
+def historial_siza():
+    """Renderiza la página de historial completo de SIZA."""
+    try:
+        # Obtener lista de productos para los filtros
+        productos = ProductoSiza.query.filter_by(activo=True).order_by(ProductoSiza.orden).all()
+        
+        # Verificar si el usuario es gestor
+        es_gestor = tiene_permiso('siza_gestor')
+        
+        return render_template(
+            'siza_historial.html',
+            productos=productos,
+            es_gestor=es_gestor
+        )
+    except Exception as e:
+        flash(f'Error al cargar historial: {str(e)}', 'danger')
+        return redirect(url_for('dashboard_siza'))
 
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden actualizar inventario
@@ -4679,7 +4754,7 @@ def recargar_producto_siza():
         producto_id = int(request.form.get('producto_id'))
         volumen_recarga = float(request.form.get('volumen_recarga', 0))
         observacion = request.form.get('observacion', '').strip()
-        descontar_de_dian = request.form.get('descontar_de_dian') == 'on'  # Checkbox
+        descontar_de_dian = request.form.get('descontar_de_dian') in ['on', '1']  # Checkbox
         
         if volumen_recarga <= 0:
             flash('El volumen de recarga debe ser mayor a cero.', 'danger')
@@ -4969,28 +5044,50 @@ def actualizar_volumen_dian():
             return redirect(url_for('dashboard_siza'))
         
         hoy = date.today()
-        volumen_pendiente = float(request.form.get('volumen_pendiente', 0))
+        
+        # Obtener valores del formulario
+        agregar_aprobacion = float(request.form.get('agregar_aprobacion', 0))  # Nuevo: volumen a SUMAR
+        volumen_aprobado_actual = float(request.form.get('volumen_pendiente', 0))  # Valor actual (hidden)
+        volumen_por_aprobar = float(request.form.get('volumen_por_aprobar', 0))
         observacion = request.form.get('observacion', '').strip()
         
         # Buscar o crear registro
         volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
         
         if not volumen_dian:
+            # Crear nuevo registro
             volumen_dian = VolumenPendienteDian(
                 fecha=hoy,
-                volumen_pendiente=volumen_pendiente,
+                volumen_pendiente=agregar_aprobacion,  # Iniciar con el primer valor agregado
+                volumen_por_aprobar=volumen_por_aprobar,
                 observacion=observacion,
                 usuario_actualizacion=session.get('nombre', 'Usuario')
             )
             db.session.add(volumen_dian)
         else:
-            volumen_dian.volumen_pendiente = volumen_pendiente
+            # Actualizar registro existente
+            # SUMAR la nueva aprobación al total existente
+            volumen_dian.volumen_pendiente = volumen_aprobado_actual + agregar_aprobacion
+            
+            # Si se agregó una aprobación, descontarla automáticamente del "Por Aprobar"
+            if agregar_aprobacion > 0:
+                # Descontar del volumen por aprobar
+                volumen_dian.volumen_por_aprobar = max(0, volumen_por_aprobar - agregar_aprobacion)
+            else:
+                # Si no se agregó aprobación, solo actualizar el valor ingresado
+                volumen_dian.volumen_por_aprobar = volumen_por_aprobar
+            
             volumen_dian.observacion = observacion
             volumen_dian.usuario_actualizacion = session.get('nombre', 'Usuario')
             volumen_dian.fecha_actualizacion = datetime.utcnow()
         
         db.session.commit()
-        flash(f'Volumen pendiente DIAN actualizado: {volumen_pendiente:,.0f} BBL', 'success')
+        
+        # Mensaje de confirmación
+        if agregar_aprobacion > 0:
+            flash(f'✅ Nueva aprobación DIAN agregada: {agregar_aprobacion:,.3f} BBL. Total Aprobado: {volumen_dian.volumen_pendiente:,.3f} BBL', 'success')
+        else:
+            flash(f'Control DIAN actualizado. Aprobado: {volumen_dian.volumen_pendiente:,.3f} | Por Aprobar: {volumen_por_aprobar:,.3f}', 'success')
         
     except ValueError:
         flash('El volumen debe ser un número válido.', 'danger')
@@ -5300,6 +5397,77 @@ def gestionar_pedido(pedido_id):
     except Exception as e:
         db.session.rollback()
         flash(f'Error al gestionar pedido: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@permiso_requerido("siza_gestor")
+@app.route('/siza/despachar-pedido/<int:pedido_id>', methods=['POST'])
+def despachar_pedido_siza(pedido_id):
+    """Registra el despacho (consumo real) de un pedido aprobado."""
+    try:
+        pedido = PedidoSiza.query.get_or_404(pedido_id)
+        
+        if pedido.estado != 'APROBADO':
+            flash(f'El pedido {pedido.numero_pedido} debe estar APROBADO para ser despachado.', 'warning')
+            return redirect(url_for('dashboard_siza'))
+        
+        # Volumen real despachado (puede diferir ligeramente del solicitado)
+        volumen_despachado = float(request.form.get('volumen_real', pedido.volumen_solicitado))
+        observacion = request.form.get('observacion', '')
+        
+        if volumen_despachado <= 0:
+            flash('El volumen despachado debe ser mayor a cero.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+        
+        hoy = date.today()
+        
+        # Obtener inventario para descontar
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=hoy,
+            producto_id=pedido.producto_id
+        ).first()
+        
+        # Nota: El volumen ya estaba "comprometido", pero ahora se "consume" realmente.
+        # Al pasar a DESPACHADO, sale de la suma de "comprometido" (filtro estado IN PENDIENTE, APROBADO).
+        # Y debemos restarlo de cupo_web.
+        
+        if not inventario or inventario.cupo_web < volumen_despachado:
+             # OJO: Si estaba comprometido, teóricamente debería haber cupo, salvo que se haya consumido por otro lado sin pedido.
+             # Permitiremos el despacho pero advertiremos si queda negativo? No, bloqueo estricto si no hay fisico.
+             # Pero espera, cupo_web incluye TODO (incluso lo comprometido).
+            if not inventario or inventario.cupo_web < volumen_despachado:
+                 flash(f'Error Crítico: No hay inventario físico suficiente ({inventario.cupo_web if inventario else 0} BBL) para despachar.', 'danger')
+                 return redirect(url_for('dashboard_siza'))
+
+        # Actualizar Inventario
+        inventario.cupo_web -= volumen_despachado
+        inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
+        inventario.fecha_actualizacion = datetime.utcnow()
+        
+        # Registrar Consumo vinculado (para historial)
+        consumo = ConsumoSiza(
+            fecha=hoy,
+            producto_id=pedido.producto_id,
+            volumen_consumido=volumen_despachado,
+            observacion=f"Despacho Pedido #{pedido.numero_pedido}. {observacion}",
+            usuario_registro=session.get('nombre', 'Sistema')
+        )
+        db.session.add(consumo)
+        
+        # Actualizar Pedido
+        pedido.estado = 'DESPACHADO'
+        pedido.usuario_gestion = session.get('nombre', 'Sistema')
+        pedido.fecha_gestion = datetime.utcnow()
+        # Podríamos guardar el volumen real entregado en algún campo extra del pedido si fuera necesario, 
+        # pero por ahora asumimos que el ConsumoSiza es el registro fiel del físico.
+        
+        db.session.commit()
+        flash(f'Pedido {pedido.numero_pedido} DESPACHADO correctamente (-{volumen_despachado:,.3f} BBL).', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al despachar pedido: {str(e)}', 'danger')
     
     return redirect(url_for('dashboard_siza'))
 
@@ -10625,12 +10793,71 @@ def flujo_efectivo():
 
 @login_required
 @permiso_requerido('flujo_efectivo')
+@app.route('/api/analyze_flujo_file', methods=['POST'])
+def analyze_flujo_file():
+    """Analiza el archivo Excel y devuelve los periodos (Año-Mes) encontrados."""
+    if 'archivo_excel' not in request.files:
+        return jsonify(success=False, message="No se encontró el archivo."), 400
+    archivo = request.files['archivo_excel']
+    if archivo.filename == '' or not archivo.filename.lower().endswith(('.xlsx','.xls')):
+        return jsonify(success=False, message="Archivo inválido (debe ser .xlsx o .xls)."), 400
+    
+    try:
+        xls = pd.ExcelFile(archivo)
+        sheet_map = {name.strip().lower(): name for name in xls.sheet_names}
+        if 'bancos' not in sheet_map or 'odoo' not in sheet_map:
+            return jsonify(success=False, message='El archivo debe contener las hojas "Bancos" y "Odoo".'), 400
+            
+        df_bancos = pd.read_excel(xls, sheet_name=sheet_map['bancos'])
+        df_bancos.columns = df_bancos.columns.str.strip()
+        df_bancos['FECHA DE OPERACIÓN'] = pd.to_datetime(df_bancos['FECHA DE OPERACIÓN'], errors='coerce')
+        fechas_b = df_bancos['FECHA DE OPERACIÓN'].dropna().dt.to_period('M').unique()
+
+        df_odoo = pd.read_excel(xls, sheet_name=sheet_map['odoo'])
+        df_odoo.columns = df_odoo.columns.str.strip()
+        df_odoo['Fecha'] = pd.to_datetime(df_odoo['Fecha'], errors='coerce')
+        fechas_o = df_odoo['Fecha'].dropna().dt.to_period('M').unique()
+
+        # Construir estructura de respuesta
+        periodos_found = set()
+        for p in fechas_b: periodos_found.add((p.year, p.month))
+        for p in fechas_o: periodos_found.add((p.year, p.month))
+        
+        result_tree = {}
+        for y, m in periodos_found:
+            result_tree.setdefault(y, []).append(m)
+        
+        # Ordenar meses
+        for y in result_tree:
+            result_tree[y].sort()
+
+        return jsonify(success=True, found_periods=result_tree)
+
+    except Exception as e:
+        app.logger.exception("Error analizando archivo flujo efectivo")
+        return jsonify(success=False, message=f"Error analizando archivo: {str(e)}"), 500
+
+@login_required
+@permiso_requerido('flujo_efectivo')
 @app.route('/api/procesar_flujo_efectivo', methods=['POST'])
 def procesar_flujo_efectivo_api():
-    """Procesa Excel y persiste TODOS los movimientos (bancos/odoo) sin eliminar duplicados. Responde dataset completo persistido."""
+    """Procesa Excel y persiste movimientos. SI recibe 'selected_periods', FILTRA solo esos periodos."""
     if 'archivo_excel' not in request.files:
         return jsonify(success=False, message="No se encontró el archivo en la solicitud."), 400
     archivo = request.files['archivo_excel']
+    
+    # Parsear selected_periods si viene
+    selected_periods = request.form.get('selected_periods')
+    target_periods_set = None
+    if selected_periods:
+        try:
+            # Espera formato JSON: [[2025, 1], [2025, 2], ...]
+            import json
+            sp_list = json.loads(selected_periods)
+            target_periods_set = set(tuple(x) for x in sp_list)
+        except:
+            pass # Si falla, procesamos todo el archivo (comportamiento default)
+
     if archivo.filename == '' or not archivo.filename.lower().endswith(('.xlsx','.xls')):
         return jsonify(success=False, message="Archivo inválido."), 400
     try:
@@ -10891,12 +11118,73 @@ def procesar_flujo_efectivo_api():
                 'banco': str(r.get('Banco') or '')
             })
 
-        # ======================= PERSISTENCIA / DEDUP =======================
+        # ======================= PERSISTENCIA ACTUALIZADA (SMART UPDATE) =======================
+        # LÓGICA: Identificar los meses (Año, Mes) que vienen en el archivo y BORRAR esos meses de la BD
+        # antes de insertar los nuevos. Esto permite tener 2025 quieto y actualizar 2026 las veces que sea.
+        
+        # --- FILTRADO POR SELECCIÓN DE USUARIO (Si existe) ---
+        if target_periods_set:
+            # Función auxiliar para chequear si fecha está en target
+            def is_in_target(dt):
+                if pd.isna(dt): return False
+                return (dt.year, dt.month) in target_periods_set
+
+            if not df_bancos_mov.empty and '__fecha_date' in df_bancos_mov.columns:
+                df_bancos_mov = df_bancos_mov[df_bancos_mov['__fecha_date'].apply(is_in_target)].copy()
+            
+            # Filtrar detalle_records también (es una lista de dicts)
+            # Primero reconstruimos si es necesario o filtramos la lista directamente
+            detalle_records = [
+                rec for rec in detalle_records 
+                if is_in_target(pd.to_datetime(rec['fecha']))
+            ]
+            
+            # Recalcular DF detalle para consistencia en caso de uso posterior (si fuera necesario)
+            if not df_detalle.empty and '__fecha_date' in df_detalle.columns:
+                 df_detalle = df_detalle[df_detalle['__fecha_date'].apply(is_in_target)].copy()
+
+
+        periodos_a_actualizar = set()
+        
+        # Recopilar fechas de Bancos
+        if not df_bancos_mov.empty and '__fecha_date' in df_bancos_mov.columns:
+            fechas_b = df_bancos_mov['__fecha_date'].dropna().dt.to_period('M').unique()
+            for p in fechas_b:
+                periodos_a_actualizar.add((p.year, p.month))
+                
+        # Recopilar fechas de Odoo (revisar lista filtrada o df filtrado)
+        # Usamos df_detalle filtrado arriba si existe, sino reconstruir de detalle_records
+        if detalle_records:
+             # Extraer fechas de la lista ya filtrada
+             p_fechas = set()
+             for r in detalle_records:
+                 dt = pd.to_datetime(r['fecha'])
+                 if not pd.isna(dt):
+                     p_fechas.add((dt.year, dt.month))
+             periodos_a_actualizar.update(p_fechas)
+
+        if periodos_a_actualizar:
+            for (anio, mes) in periodos_a_actualizar:
+                # Limpiar Bancos para el periodo
+                db.session.query(FlujoBancoMovimiento).filter(
+                    func.extract('year', FlujoBancoMovimiento.fecha) == anio,
+                    func.extract('month', FlujoBancoMovimiento.fecha) == mes
+                ).delete(synchronize_session=False)
+                
+                # Limpiar Odoo para el periodo
+                db.session.query(FlujoOdooMovimiento).filter(
+                    func.extract('year', FlujoOdooMovimiento.fecha) == anio,
+                    func.extract('month', FlujoOdooMovimiento.fecha) == mes
+                ).delete(synchronize_session=False)
+            
+            # Flush para aplicar borrados antes de insertar
+            db.session.flush()
+
         batch = FlujoUploadBatch(filename=archivo.filename, usuario=session.get('nombre','Desconocido'))
         db.session.add(batch)
         db.session.flush()  # obtener batch.id
 
-        # Insertar SIEMPRE todas las filas (sin deduplicación). Se genera unique_hash aleatorio.
+        # Insertar registros (ahora seguros de no duplicar dentro del mismo mes)
         bancos_count = 0
         for _, r in df_bancos_mov.iterrows():
             monto_val = float(r.get('COP$', 0) or 0)
@@ -11301,22 +11589,42 @@ def flujo_efectivo_cached():
 @permiso_requerido('flujo_efectivo')
 @app.route('/api/flujo_efectivo_delete_all', methods=['DELETE'])
 def flujo_efectivo_delete_all():
-    """Elimina TODOS los registros cargados del módulo Flujo de Efectivo (batches, bancos y odoo).
-
-    Uso previsto: antes de volver a subir un archivo completo actualizado para evitar duplicados
-    de meses anteriores. Tras la eliminación se puede subir un Excel que contenga histórico + meses nuevos.
+    """Elimina registros del módulo Flujo de Efectivo.
+       Si se recibe 'year' en el body, elimina solo ese año.
+       Si no, elimina TODOS los registros.
     """
     try:
-        # Primero eliminar movimientos hijos para respetar FK (no hay cascade definido)
-        deleted_bancos = db.session.query(FlujoBancoMovimiento).delete(synchronize_session=False)
-        deleted_odoo = db.session.query(FlujoOdooMovimiento).delete(synchronize_session=False)
-        deleted_batches = db.session.query(FlujoUploadBatch).delete(synchronize_session=False)
-        db.session.commit()
-        return jsonify(success=True,
-                       message="Datos de Flujo de Efectivo eliminados correctamente.",
-                       eliminados_bancos=deleted_bancos,
-                       eliminados_odoo=deleted_odoo,
-                       eliminados_batches=deleted_batches)
+        data = request.get_json() or {}
+        year_to_delete = data.get('year')
+        
+        if year_to_delete:
+            try:
+                year_int = int(year_to_delete)
+                # Eliminar solo por año
+                deleted_bancos = db.session.query(FlujoBancoMovimiento).filter(func.extract('year', FlujoBancoMovimiento.fecha) == year_int).delete(synchronize_session=False)
+                deleted_odoo = db.session.query(FlujoOdooMovimiento).filter(func.extract('year', FlujoOdooMovimiento.fecha) == year_int).delete(synchronize_session=False)
+                # No eliminamos batches porque pueden tener otros años mezclados, se mantienen como historial de carga
+                
+                db.session.commit()
+                return jsonify(success=True,
+                               message=f"Datos del año {year_int} eliminados correctamente.",
+                               eliminados_bancos=deleted_bancos,
+                               eliminados_odoo=deleted_odoo,
+                               mode='partial')
+            except ValueError:
+                return jsonify(success=False, message="Año inválido"), 400
+        else:
+            # Eliminar TODO
+            deleted_bancos = db.session.query(FlujoBancoMovimiento).delete(synchronize_session=False)
+            deleted_odoo = db.session.query(FlujoOdooMovimiento).delete(synchronize_session=False)
+            deleted_batches = db.session.query(FlujoUploadBatch).delete(synchronize_session=False)
+            db.session.commit()
+            return jsonify(success=True,
+                           message="Datos de Flujo de Efectivo eliminados completamente.",
+                           eliminados_bancos=deleted_bancos,
+                           eliminados_odoo=deleted_odoo,
+                           eliminados_batches=deleted_batches,
+                           mode='all')
     except Exception as e:
         db.session.rollback()
         app.logger.exception('Error eliminando datos de flujo de efectivo')

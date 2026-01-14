@@ -1,0 +1,208 @@
+<!-- Tab de Historial de Pedidos -->
+
+<!-- Filtros -->
+<div class="filter-card">
+    <div class="filter-title">
+        <i class="bi bi-funnel-fill"></i>
+        Filtros de Búsqueda
+    </div>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label fw-bold">Rango de Fechas</label>
+            <select class="form-select" id="pedidos-dias-filter">
+                <option value="7">Últimos 7 días</option>
+                <option value="30">Últimos 30 días</option>
+                <option value="90" selected>Últimos 90 días</option>
+                <option value="180">Últimos 6 meses</option>
+                <option value="365">Último año</option>
+                <option value="all">Todo el historial</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold">Estado</label>
+            <select class="form-select" id="pedidos-estado-filter">
+                <option value="todos">Todos los estados</option>
+                <option value="PENDIENTE">Pendiente</option>
+                <option value="APROBADO">Aprobado</option>
+                <option value="RECHAZADO">Rechazado</option>
+                <option value="COMPLETADO">Completado</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold">Producto</label>
+            <select class="form-select" id="pedidos-producto-filter">
+                <option value="">Todos los productos</option>
+                {% for producto in productos %}
+                <option value="{{ producto.id }}">{{ producto.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold">&nbsp;</label>
+            <button class="btn btn-filter w-100" onclick="cargarPedidos()">
+                <i class="bi bi-search me-2"></i>Buscar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="stats-row" id="pedidos-stats">
+    <div class="stat-card">
+        <div class="stat-label">Total Pedidos</div>
+        <div class="stat-value" id="stat-total-pedidos">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Pendientes</div>
+        <div class="stat-value" id="stat-pendientes">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Aprobados</div>
+        <div class="stat-value" id="stat-aprobados">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Completados</div>
+        <div class="stat-value" id="stat-completados">0</div>
+    </div>
+</div>
+
+<!-- Tabla de Pedidos -->
+<div class="table-responsive table-modern">
+    <table class="table mb-0">
+        <thead>
+            <tr>
+                <th>Nº Pedido</th>
+                <th>Fecha Registro</th>
+                <th>Producto</th>
+                <th class="text-end">Volumen (BBL)</th>
+                <th>Estado</th>
+                <th>Solicitante</th>
+                <th>Fecha Gestión</th>
+                <th>Gestionado Por</th>
+                <th>Observación</th>
+            </tr>
+        </thead>
+        <tbody id="pedidos-table-body">
+            <tr>
+                <td colspan="9" class="text-center">
+                    <div class="loading-spinner mx-auto"></div>
+                    <p class="mt-3 text-muted">Cargando pedidos...</p>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // Función para cargar pedidos
+    function cargarPedidos() {
+        const dias = document.getElementById('pedidos-dias-filter').value;
+        const estado = document.getElementById('pedidos-estado-filter').value;
+        const productoId = document.getElementById('pedidos-producto-filter').value;
+
+        const tbody = document.getElementById('pedidos-table-body');
+        tbody.innerHTML = `
+        <tr>
+            <td colspan="9" class="text-center">
+                <div class="loading-spinner mx-auto"></div>
+                <p class="mt-3 text-muted">Cargando pedidos...</p>
+            </td>
+        </tr>
+    `;
+
+        // Construir URL con parámetros
+        let url = '/siza/historial-pedidos?';
+        if (dias !== 'all') url += `dias=${dias}&`;
+        if (estado !== 'todos') url += `estado=${estado}&`;
+        if (productoId) url += `producto_id=${productoId}&`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    renderPedidos(data.pedidos);
+                    actualizarEstadisticasPedidos(data.pedidos);
+                } else {
+                    tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="text-center text-danger">
+                            <i class="bi bi-exclamation-triangle fs-1"></i>
+                            <p class="mt-3">Error al cargar pedidos: ${data.error}</p>
+                        </td>
+                    </tr>
+                `;
+                }
+            })
+            .catch(error => {
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle fs-1"></i>
+                        <p class="mt-3">Error de conexión: ${error.message}</p>
+                    </td>
+                </tr>
+            `;
+            });
+    }
+
+    function renderPedidos(pedidos) {
+        const tbody = document.getElementById('pedidos-table-body');
+
+        if (pedidos.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="9">
+                    <div class="empty-state">
+                        <i class="bi bi-inbox"></i>
+                        <h5>No se encontraron pedidos</h5>
+                        <p>Intenta ajustar los filtros de búsqueda</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        tbody.innerHTML = pedidos.map(pedido => {
+            const badgeClass = {
+                'PENDIENTE': 'badge-pendiente',
+                'APROBADO': 'badge-aprobado',
+                'RECHAZADO': 'badge-rechazado',
+                'COMPLETADO': 'badge-completado'
+            }[pedido.estado] || 'badge-pendiente';
+
+            return `
+            <tr>
+                <td><strong>${pedido.numero_pedido}</strong></td>
+                <td>${pedido.fecha_registro}</td>
+                <td><span class="badge bg-primary">${pedido.producto}</span></td>
+                <td class="text-end fw-bold">${pedido.volumen_solicitado.toLocaleString('es-CO', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</td>
+                <td><span class="badge-estado ${badgeClass}">${pedido.estado}</span></td>
+                <td>${pedido.usuario_registro}</td>
+                <td>${pedido.fecha_gestion || '-'}</td>
+                <td>${pedido.usuario_gestion}</td>
+                <td><small class="text-muted">${pedido.observacion}</small></td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+    function actualizarEstadisticasPedidos(pedidos) {
+        const stats = {
+            total: pedidos.length,
+            pendientes: pedidos.filter(p => p.estado === 'PENDIENTE').length,
+            aprobados: pedidos.filter(p => p.estado === 'APROBADO').length,
+            completados: pedidos.filter(p => p.estado === 'COMPLETADO').length
+        };
+
+        document.getElementById('stat-total-pedidos').textContent = stats.total;
+        document.getElementById('stat-pendientes').textContent = stats.pendientes;
+        document.getElementById('stat-aprobados').textContent = stats.aprobados;
+        document.getElementById('stat-completados').textContent = stats.completados;
+    }
+
+    // Cargar pedidos al iniciar
+    document.addEventListener('DOMContentLoaded', function () {
+        cargarPedidos();
+    });
+</script>

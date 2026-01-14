@@ -1,0 +1,221 @@
+{# Modales para cada producto - Recargar y Consumir #}
+
+{# Este archivo se incluye dentro del loop de productos #}
+
+{# Modal Recargar Producto #}
+<div class="modal fade" id="modalRecargar{{ item.producto.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header text-white"
+                style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border: none; padding: 1.5rem;">
+                <h5 class="modal-title fw-bold" style="font-size: 1.4rem;">
+                    <i class="bi bi-arrow-repeat me-2"></i>Recargar {{ item.producto.nombre }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('recargar_producto_siza') }}" method="POST"
+                onsubmit="return validarRecargaDian({{ item.producto.id }})">
+                <div class="modal-body" style="padding: 2rem;">
+                    <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+
+                    {# Inventario Actual #}
+                    <div class="mb-4 p-4"
+                        style="background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); border-radius: 15px; border-left: 5px solid #00897b;">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <i class="bi bi-bar-chart-fill" style="font-size: 3rem; color: #00695c;"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="mb-1"
+                                    style="color: #00695c; font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">
+                                    Inventario Actual
+                                </h6>
+                                <div style="font-size: 2.2rem; font-weight: 800; color: #004d40;">
+                                    {{ "{:,.3f}".format(item.inventario.cupo_web) }} BBL
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if item.producto.codigo != 'AGUA_RESIDUAL' and puede_editar_dian and volumen_dian and
+                    volumen_dian.volumen_pendiente > 0 %}
+                    {# Volumen DIAN Disponible #}
+                    <div class="mb-4 p-4"
+                        style="background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-radius: 15px; border-left: 5px solid #43a047;">
+                        <div class="row align-items-center mb-3">
+                            <div class="col-auto">
+                                <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #2e7d32;"></i>
+                            </div>
+                            <div class="col">
+                                <h6 class="mb-1"
+                                    style="color: #2e7d32; font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">
+                                    <i class="bi bi-shield-check me-1"></i>Volumen APROBADO por DIAN
+                                </h6>
+                                <div style="font-size: 2.2rem; font-weight: 800; color: #2e7d32;">
+                                    {{ "{:,.3f}".format(volumen_dian.volumen_pendiente) }} BBL
+                                </div>
+                                <small style="color: #2e7d32; opacity: 0.9;">✅ Listo para distribuir a productos</small>
+                            </div>
+                        </div>
+
+                        {# Checkbox Descontar DIAN #}
+                        <div class="form-check p-3" style="background: rgba(255, 255, 255, 0.6); border-radius: 10px;">
+                            <input class="form-check-input" type="checkbox" name="descontar_de_dian"
+                                id="descontar_dian_{{ item.producto.id }}" value="1"
+                                style="width: 1.5rem; height: 1.5rem;">
+                            <label class="form-check-label ms-2 fw-bold" for="descontar_dian_{{ item.producto.id }}"
+                                style="font-size: 1.1rem; color: #2e7d32; cursor: pointer;">
+                                <i class="bi bi-arrow-down-circle-fill me-2"></i>Descontar de Volumen APROBADO DIAN
+                            </label>
+                            <small class="d-block mt-2" style="color: #2e7d32; margin-left: 2.5rem;">
+                                Al marcar esta opción, el volumen se descontará del total APROBADO por DIAN
+                            </small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {# Input Volumen #}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold"
+                            style="font-size: 1.1rem; color: #333; margin-bottom: 0.75rem;">
+                            <i class="bi bi-calculator me-2" style="color: #43cea2;"></i>Volumen a Recargar (Barriles) *
+                        </label>
+                        <input type="number" step="0.001" class="form-control" id="volumenRecarga{{ item.producto.id }}"
+                            name="volumen_recarga" placeholder="Ej: 50000" required min="0.01" {% if puede_editar_dian
+                            and volumen_dian %}max="{{ volumen_dian.volumen_pendiente }}" {% endif %}
+                            style="font-size: 1.4rem; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 12px; font-weight: 700;">
+                        {% if puede_editar_dian and volumen_dian and volumen_dian.volumen_pendiente > 0 %}
+                        <div class="form-text mt-2" style="font-size: 0.95rem;">
+                            <i class="bi bi-info-circle me-1"></i>Máximo disponible en DIAN: <strong>{{
+                                "{:,.3f}".format(volumen_dian.volumen_pendiente) }} BBL</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {# Observación #}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold"
+                            style="font-size: 1.1rem; color: #333; margin-bottom: 0.75rem;">
+                            <i class="bi bi-chat-left-text me-2" style="color: #43cea2;"></i>Observación
+                        </label>
+                        <textarea class="form-control" name="observacion" rows="3"
+                            placeholder="Detalles de la recarga (Ej: Recarga por aprobación DIAN, Reposición de inventario...)"
+                            style="border: 2px solid #e0e0e0; border-radius: 12px; padding: 1rem;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border: none; padding: 1.5rem 2rem; background: #f8f9fa;">
+                    <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal"
+                        style="border-radius: 12px; padding: 0.75rem 2rem; font-weight: 600;">
+                        <i class="bi bi-x-circle me-2"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-lg text-white fw-bold"
+                        style="background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%); border: none; border-radius: 12px; padding: 0.75rem 2.5rem; box-shadow: 0 4px 15px rgba(67, 206, 162, 0.4);">
+                        <i class="bi bi-check-circle-fill me-2" style="font-size: 1.3rem;"></i>Registrar Recarga
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# Modal Registrar Consumo #}
+<div class="modal fade" id="modalConsumo{{ item.producto.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header bg-danger text-white" style="border: none; padding: 1.5rem;">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-box-arrow-right me-2"></i>Registrar Consumo/Despacho - {{ item.producto.nombre }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding: 2rem;">
+                {# Información de Pedidos Aprobados #}
+                {% set pedidos_aprobados_producto = pedidos|selectattr('producto_id', 'equalto',
+                item.producto.id)|selectattr('estado', 'equalto', 'APROBADO')|list %}
+                {% if pedidos_aprobados_producto|length > 0 %}
+                <div class="alert alert-success mb-3">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-check-circle-fill me-2"></i>Pedidos Aprobados Pendientes de Consumo: {{
+                        pedidos_aprobados_producto|length }}
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless mb-2">
+                            <thead>
+                                <tr>
+                                    <th>Nº Pedido</th>
+                                    <th class="text-end">Volumen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pedido_apr in pedidos_aprobados_producto[:5] %}
+                                <tr>
+                                    <td class="fw-bold">{{ pedido_apr.numero_pedido }}</td>
+                                    <td class="text-end">{{ "{:,.3f}".format(pedido_apr.volumen_solicitado) }} BBL</td>
+                                </tr>
+                                {% endfor %}
+                                {% if pedidos_aprobados_producto|length > 5 %}
+                                <tr>
+                                    <td colspan="2" class="text-muted"><small>...y {{ pedidos_aprobados_producto|length
+                                            - 5 }} más</small></td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <form action="{{ url_for('consumir_pedidos_siza') }}" method="POST" class="mt-2">
+                        <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+                        <button type="submit" class="btn btn-success w-100"
+                            onclick="return confirm('¿Consumir automáticamente TODOS los pedidos aprobados de {{ item.producto.nombre }}?')">
+                            <i class="bi bi-lightning-charge-fill me-2"></i>Consumir Automáticamente Todos los Pedidos
+                            Aprobados
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle me-2"></i>No hay pedidos aprobados pendientes de consumo para este
+                    producto.
+                </div>
+                {% endif %}
+
+                {# Separador #}
+                <div class="text-center my-3">
+                    <hr>
+                    <strong class="text-muted">O REGISTRA UN CONSUMO MANUAL</strong>
+                    <hr>
+                </div>
+
+                {# Formulario de Consumo Manual #}
+                <form action="{{ url_for('registrar_consumo_siza') }}" method="POST">
+                    <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
+
+                    <div class="alert alert-warning">
+                        <strong>Inventario Disponible:</strong> {{ "{:,.3f}".format(item.inventario.cupo_web) }} BBL<br>
+                        <small>Este volumen será RESTADO del inventario</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Volumen Consumido/Despachado (BBL) *</label>
+                        <input type="number" step="0.001" class="form-control" name="volumen_consumo"
+                            placeholder="Ej: 500" required min="0" max="{{ item.inventario.cupo_web }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación</label>
+                        <textarea class="form-control" name="observacion" rows="3"
+                            placeholder="Detalles del consumo (Ej: Número de pedido, cliente, vehiculo...)"></textarea>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i>Registrar Consumo Manual
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="border: none; padding: 1.5rem; background: #f8f9fa;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
