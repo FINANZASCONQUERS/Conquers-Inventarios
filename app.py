@@ -950,6 +950,22 @@ class VolumenPendienteDian(db.Model):
     def __repr__(self):
         return f'<VolumenPendienteDian {self.fecha}: {self.volumen_pendiente} BBL>'
 
+class HistorialAprobacionDian(db.Model):
+    """Historial individual de aprobaciones DIAN para poder revertirlas."""
+    __tablename__ = 'historial_aprobacion_dian'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha_operativa = db.Column(db.Date, nullable=False, index=True) # Fecha a la que aplica
+    volumen_agregado = db.Column(db.Float, nullable=False) # Cuánto se sumó al aprobado
+    observacion = db.Column(db.String(255), nullable=True)
+    
+    # Auditoría
+    usuario_registro = db.Column(db.String(100), nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<HistorialAprobacionDian {self.fecha_operativa}: +{self.volumen_agregado}>'
+
 class CupoSizaConfig(db.Model):
     """DEPRECADO: Mantenido por compatibilidad. Usar InventarioSizaDiario."""
     __tablename__ = 'cupo_siza_config'
@@ -4643,6 +4659,9 @@ def dashboard_siza():
             db.session.add(volumen_dian)
             db.session.commit()
         
+        # Obtener historial de aprobaciones de hoy
+        historial_dian_hoy = HistorialAprobacionDian.query.filter_by(fecha_operativa=hoy).order_by(HistorialAprobacionDian.fecha_registro.desc()).all()
+        
         # Verificar si el usuario puede editar volumen DIAN (solo Daniela y Shirley)
         usuario_email = session.get('email', '')
         puede_editar_dian = usuario_email in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
@@ -4661,6 +4680,7 @@ def dashboard_siza():
             total_disponible=total_disponible,
             total_comprometido=total_comprometido,
             alerta_cupo=alerta_global,
+            historial_dian_hoy=historial_dian_hoy, # Pasar historial al template
             productos_sin_inventario=productos_sin_inventario,  # Lista de productos DIAN sin inventario
             pedidos=todos_pedidos,  # Todos los pedidos (PENDIENTE y APROBADO) para modales
             pedidos_pendientes=pedidos_pendientes_para_tabla,  # Solo pendientes para tabla principal
@@ -4687,13 +4707,9 @@ def historial_siza():
         # Obtener lista de productos para los filtros
         productos = ProductoSiza.query.filter_by(activo=True).order_by(ProductoSiza.orden).all()
         
-        # Verificar si el usuario es gestor
-        es_gestor = tiene_permiso('siza_gestor')
-        
         return render_template(
             'siza_historial.html',
-            productos=productos,
-            es_gestor=es_gestor
+            productos=productos
         )
     except Exception as e:
         flash(f'Error al cargar historial: {str(e)}', 'danger')
@@ -5067,19 +5083,47 @@ def actualizar_volumen_dian():
         else:
             # Actualizar registro existente
             # SUMAR la nueva aprobación al total existente
-            volumen_dian.volumen_pendiente = volumen_aprobado_actual + agregar_aprobacion
+            volumen_dian.volumen_pendiente = volumen_dian.volumen_pendiente + agregar_aprobacion
             
-            # Si se agregó una aprobación, descontarla automáticamente del "Por Aprobar"
+            # Nota: Usamos volumen_dian.volumen_pendiente en lugar de volumen_aprobado_actual 
+            # para asegurar consistencia con la base de datos
+            
+            # Si se agregó una aprobación
             if agregar_aprobacion > 0:
-                # Descontar del volumen por aprobar
+                # 1. Descontar del volumen por aprobar (usando el valor que envió el form o calculando)
+                # Si el usuario editó el campo "por aprobar", usamos ese valor menos lo aprobado
+                # Pero para ser seguros, restamos de lo que había o usamos el input
+                
+                # La lógica actual toma el input `volumen_por_aprobar` del form.
+                # Si el usuario puso 5000 en el input y agrega 1000, el resultado será 4000.
                 volumen_dian.volumen_por_aprobar = max(0, volumen_por_aprobar - agregar_aprobacion)
+                
+                # 2. Guardar en HISTORIAL
+                nuevo_historial = HistorialAprobacionDian(
+                    fecha_operativa=hoy,
+                    volumen_agregado=agregar_aprobacion,
+                    observacion=observacion,
+                    usuario_registro=session.get('nombre', 'Usuario')
+                )
+                db.session.add(nuevo_historial)
+                
             else:
-                # Si no se agregó aprobación, solo actualizar el valor ingresado
+                # Si no se agregó aprobación, solo actualizar el valor ingresado de por aprobar
                 volumen_dian.volumen_por_aprobar = volumen_por_aprobar
             
             volumen_dian.observacion = observacion
             volumen_dian.usuario_actualizacion = session.get('nombre', 'Usuario')
             volumen_dian.fecha_actualizacion = datetime.utcnow()
+        
+        # Caso especial: Si es el primer registro del día y hubo aprobación, también guardar historial
+        if agregar_aprobacion > 0 and 'nuevo_historial' not in locals():
+             nuevo_historial = HistorialAprobacionDian(
+                fecha_operativa=hoy,
+                volumen_agregado=agregar_aprobacion,
+                observacion=observacion,
+                usuario_registro=session.get('nombre', 'Usuario')
+            )
+             db.session.add(nuevo_historial)
         
         db.session.commit()
         
@@ -5087,7 +5131,7 @@ def actualizar_volumen_dian():
         if agregar_aprobacion > 0:
             flash(f'✅ Nueva aprobación DIAN agregada: {agregar_aprobacion:,.3f} BBL. Total Aprobado: {volumen_dian.volumen_pendiente:,.3f} BBL', 'success')
         else:
-            flash(f'Control DIAN actualizado. Aprobado: {volumen_dian.volumen_pendiente:,.3f} | Por Aprobar: {volumen_por_aprobar:,.3f}', 'success')
+            flash(f'Control DIAN actualizado. Aprobado: {volumen_dian.volumen_pendiente:,.3f} | Por Aprobar: {volumen_dian.volumen_por_aprobar:,.3f}', 'success')
         
     except ValueError:
         flash('El volumen debe ser un número válido.', 'danger')
@@ -5095,6 +5139,47 @@ def actualizar_volumen_dian():
         db.session.rollback()
         flash(f'Error al actualizar volumen DIAN: {str(e)}', 'danger')
     
+    return redirect(url_for('dashboard_siza'))
+
+@login_required
+@app.route('/siza/eliminar-historial-dian/<int:id>', methods=['POST'])
+def eliminar_historial_dian_siza(id):
+    """Elimina un registro de historial de aprobación y revierte el volumen."""
+    try:
+        # Verificar permisos
+        usuario_email = session.get('email', '')
+        if usuario_email not in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']:
+            flash('No tienes permiso para eliminar registros DIAN.', 'danger')
+            return redirect(url_for('dashboard_siza'))
+            
+        registro = HistorialAprobacionDian.query.get_or_404(id)
+        
+        # Obtener el registro principal de volumen para la fecha
+        volumen_dian = VolumenPendienteDian.query.filter_by(fecha=registro.fecha_operativa).first()
+        
+        if volumen_dian:
+            # Revertir cambios:
+            # 1. Restar el volumen agregado del total aprobado
+            volumen_dian.volumen_pendiente = max(0, volumen_dian.volumen_pendiente - registro.volumen_agregado)
+            
+            # 2. Devolver el volumen al "Por Aprobar" (porque si se eliminó la aprobación, vuelve a estar pendiente)
+            volumen_dian.volumen_por_aprobar += registro.volumen_agregado
+            
+            volumen_dian.usuario_actualizacion = session.get('nombre', 'Sistema')
+            volumen_dian.fecha_actualizacion = datetime.utcnow()
+            
+            # Eliminar el registro del historial
+            db.session.delete(registro)
+            db.session.commit()
+            
+            flash(f'✅ Registro eliminado. Se restaron {registro.volumen_agregado:,.3f} BBL del aprobado y se devolvieron a pendiente.', 'success')
+        else:
+            flash('No se encontró el registro de volumen diario asociado.', 'danger')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error al eliminar registro: {str(e)}', 'danger')
+        
     return redirect(url_for('dashboard_siza'))
 
 @login_required

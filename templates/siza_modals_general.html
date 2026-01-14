@@ -183,16 +183,59 @@
                                     <i class="bi bi-clock-history me-2"></i>En Trámite (BBL)
                                 </label>
                                 <input type="number" step="0.001" class="form-control mb-2" name="volumen_por_aprobar"
-                                    value="{{ volumen_dian.volumen_por_aprobar if volumen_dian and volumen_dian.volumen_por_aprobar else 0 }}"
-                                    min="0"
+                                    value="{{ volumen_dian.volumen_por_aprobar if volumen_dian else 0 }}" min="0"
+                                    required
                                     style="font-size: 1.6rem; padding: 1rem; border: 3px solid #1976d2; border-radius: 12px; font-weight: 800; text-align: center; background: white;">
 
                                 <small class="d-block text-center mt-2" style="color: #1565c0; font-weight: 600;">
-                                    <i class="bi bi-arrow-left-circle me-1"></i>Esperando aprobación
+                                    <i class="bi bi-pencil me-1"></i>Editable manualmente
                                 </small>
                             </div>
                         </div>
                     </div>
+
+                    <!-- Nueva Sección: Historial de Aprobaciones de Hoy -->
+                    {% if historial_dian_hoy %}
+                    <div class="mt-2 mb-4 p-3 border rounded shadow-sm bg-white">
+                        <h6 class="fw-bold text-success mb-3">
+                            <i class="bi bi-clock-history me-2"></i>Aprobaciones Agregadas Hoy
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-modern align-middle mb-0">
+                                <thead style="background-color: #f8f9fa;">
+                                    <tr>
+                                        <th>Hora</th>
+                                        <th>Volumen Agregado</th>
+                                        <th>Observación</th>
+                                        <th>Usuario</th>
+                                        <th class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in historial_dian_hoy %}
+                                    <tr style="font-size: 0.9rem;">
+                                        <td>{{ log.fecha_registro.strftime('%H:%M') }}</td>
+                                        <td class="fw-bold text-success">+{{ "{:,.3f}".format(log.volumen_agregado) }}
+                                            BBL</td>
+                                        <td><small class="text-muted">{{ log.observacion or '-' }}</small></td>
+                                        <td>{{ log.usuario_registro }}</td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="eliminarAprobacionDian('{{ log.id }}', '{{ log.volumen_agregado }}')">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Al eliminar, se restará del total aprobado y se devolverá a "Por Aprobar".
+                        </small>
+                    </div>
+                    {% endif %}
 
                     <!-- Observaciones -->
                     <div class="mb-4">
@@ -211,13 +254,13 @@
                         </h6>
                         <p class="mb-1" style="font-size: 0.9rem;">
                             <strong>Día 1:</strong> DIAN aprobó 5,000 BBL → Ingreso <span
-                                class="badge bg-success">5,000</span> en "Agregar" → Total Aprobado: <span
-                                class="badge bg-warning">5,000</span>
+                                class="badge bg-success">5,000</span> en
+                            "Agregar" → Total Aprobado: <span class="badge bg-warning">5,000</span>
                         </p>
                         <p class="mb-1" style="font-size: 0.9rem;">
                             <strong>Día 5:</strong> DIAN aprobó otros 3,000 BBL → Ingreso <span
-                                class="badge bg-success">3,000</span> en "Agregar" → Total Aprobado: <span
-                                class="badge bg-warning">8,000</span>
+                                class="badge bg-success">3,000</span> en
+                            "Agregar" → Total Aprobado: <span class="badge bg-warning">8,000</span>
                         </p>
                         <p class="mb-0" style="font-size: 0.9rem;">
                             <strong>Recarga:</strong> Distribuyo 2,000 BBL a F04 → Total Aprobado queda en: <span
@@ -239,6 +282,17 @@
         </div>
     </div>
 </div>
+<script>
+    function eliminarAprobacionDian(id, volumen) {
+        if (confirm(`¿Está seguro de eliminar esta aprobación de ${volumen} BBL?\n\nEsta acción:\n1. Restará ${volumen} BBL del Total Aprobado.\n2. Devolverá ${volumen} BBL a "Por Aprobar".`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/siza/eliminar-historial-dian/${id}`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+</script>
 {% endif %}
 
 {# Modales para Despachar Pedidos Aprobados #}
