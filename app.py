@@ -1898,7 +1898,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "siza_solicitante"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
@@ -1912,14 +1912,14 @@ USUARIOS = {
     "password": generate_password_hash("Conquers2025"),
     "nombre": "Omar Morales",
     "rol": "viewer",
-    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo"]
+    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"]
 },
 
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "David Restrepo",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
     },
 
 
@@ -1992,7 +1992,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Felipe De La Vega",
         "rol": "editor",
-    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion"] 
+    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion", "siza_solicitante"] 
     },
 
         "accountingzf@conquerstrading.com": { 
