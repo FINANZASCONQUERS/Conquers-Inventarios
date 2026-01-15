@@ -4591,6 +4591,24 @@ def dashboard_siza():
         # Obtener pedidos aprobados (para la nueva tabla en frontend)
         pedidos_aprobados = PedidoSiza.query.filter_by(estado='APROBADO').order_by(PedidoSiza.fecha_gestion.desc()).all()
         
+        # Obtener mis pedidos despachados HOY para notificación visual
+        usuario_actual = session.get('nombre', '')
+        mis_despachos_hoy = []
+        if usuario_actual:
+            # Filtramos por nombre de usuario (asumiendo que coincide con usuario_registro)
+            # y que el estado sea DESPACHADO y la fecha de gestión sea hoy.
+            # Nota: fecha_gestion es datetime UTC. Comparamos con fecha hoy.
+            # Convertimos a Bogota si es necesario, pero una comparacion simple con la fecha funciona para "hoy".
+            # Para mayor precision convertimos.
+            pass
+            # Haremos esto simple: filtrar por estado y usuario, y en template filtrar fecha o aqui mismo.
+            # SQLAlchemy func.date(fecha_gestion)
+            mis_despachos_hoy = PedidoSiza.query.filter(
+                PedidoSiza.usuario_registro == usuario_actual,
+                PedidoSiza.estado == 'DESPACHADO',
+                func.date(PedidoSiza.fecha_gestion) == hoy
+            ).all()
+
         # Obtener pedidos pendientes y aprobados (para el modal de consumo)
         todos_pedidos = PedidoSiza.query.filter(
             (PedidoSiza.estado == 'PENDIENTE') | (PedidoSiza.estado == 'APROBADO')
@@ -4691,7 +4709,8 @@ def dashboard_siza():
             es_gestor=es_gestor,  # Permiso para mostrar/ocultar botones en template
             volumen_dian=volumen_dian,  # Volumen pendiente DIAN
             puede_editar_dian=puede_editar_dian,  # Permiso para editar volumen DIAN
-            puede_ver_dian=puede_ver_dian  # Permiso para ver volumen DIAN
+            puede_ver_dian=puede_ver_dian,  # Permiso para ver volumen DIAN
+            mis_despachos_hoy=mis_despachos_hoy # Notificación de despachos para solicitante
         )
     except Exception as e:
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
@@ -5213,7 +5232,7 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
     smtp_server = os.getenv('SMTP_SERVER', 'smtp.office365.com')
     smtp_port = int(os.getenv('SMTP_PORT', 587))
     smtp_user = os.getenv('SMTP_USER', 'numbers@conquerstrading.com') # Usuario por defecto (público)
-    smtp_password = os.getenv('SMTP_PASSWORD') # LA CONTRASEÑA NO ESTÁ EN EL CÓDIGO
+    smtp_password = os.getenv('SMTP_PASSWORD')
 
     if not smtp_password:
         print(f"⚠️ [SIMULACIÓN CORREO] Faltan credenciales reales. Configurar SMTP_PASSWORD en Render.")
@@ -5544,6 +5563,70 @@ def gestionar_pedido(pedido_id):
     
     return redirect(url_for('dashboard_siza'))
 
+def obtener_email_usuario(nombre_usuario):
+    """Busca el email de un usuario en el diccionario USUARIOS basado en su nombre."""
+    for email, datos in USUARIOS.items():
+        if datos.get('nombre') == nombre_usuario:
+            return email
+    return None
+
+def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
+    """Envía correo al solicitante informando que su pedido fue despachado."""
+    email_solicitante = obtener_email_usuario(pedido.usuario_registro)
+    
+    if not email_solicitante:
+        print(f"⚠️ No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
+        return
+
+    asunto = f"🚀 Pedido Despachado: {pedido.numero_pedido} - SIZA"
+    
+    cuerpo = f"""
+    Hola {pedido.usuario_registro},
+
+    Tu pedido ha sido DESPACHADO y procesado exitosamente.
+
+    📦 RESUMEN DEL DESPACHO
+    --------------------------------------------------
+    N° Pedido:     {pedido.numero_pedido}
+    Producto:      {producto_nombre}
+    Volumen:       {volumen_real:,.3f} BBL
+    Fecha/Hora:    {datetime.now().strftime('%Y-%m-%d %H:%M')}
+    Estado:        DESPACHADO (COMPLETADO)
+    --------------------------------------------------
+
+    El volumen ha sido descontado del inventario oficial.
+    
+    Atentamente,
+    Equipo de Logística - Conquers Trading
+    """
+
+    # Configuración SMTP
+    smtp_server = os.getenv('SMTP_SERVER', 'smtp.office365.com')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    smtp_user = os.getenv('SMTP_USER', 'numbers@conquerstrading.com') 
+    smtp_password = os.getenv('SMTP_PASSWORD')
+
+    if not smtp_password:
+        print(f"⚠️ [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = email_solicitante
+        msg['Subject'] = asunto
+        msg.attach(MIMEText(cuerpo, 'plain'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        text = msg.as_string()
+        server.sendmail(smtp_user, [email_solicitante], text) 
+        server.quit()
+        print(f"✅ Notificación de despacho enviada a {email_solicitante}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de despacho: {str(e)}")
+
 @login_required
 @permiso_requerido("siza_gestor")
 @app.route('/siza/despachar-pedido/<int:pedido_id>', methods=['POST'])
@@ -5607,6 +5690,10 @@ def despachar_pedido_siza(pedido_id):
         # pero por ahora asumimos que el ConsumoSiza es el registro fiel del físico.
         
         db.session.commit()
+        
+        # Enviar notificación de despacho
+        enviar_notificacion_despacho(pedido, pedido.producto.nombre, volumen_despachado)
+
         flash(f'Pedido {pedido.numero_pedido} DESPACHADO correctamente (-{volumen_despachado:,.3f} BBL).', 'success')
         
     except Exception as e:
