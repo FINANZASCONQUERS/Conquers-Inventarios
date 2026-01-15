@@ -39,6 +39,9 @@ import base64
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from urllib.parse import urljoin, urlparse, quote, unquote
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 load_dotenv()
 
 BOGOTA_TZ = pytz.timezone('America/Bogota')
@@ -5178,6 +5181,63 @@ def eliminar_historial_dian_siza(id):
         
     return redirect(url_for('dashboard_siza'))
 
+def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
+    """Envía notificación por correo a Daniela y Shirli cuando hay un nuevo pedido."""
+    destinatarios = ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
+
+    asunto = f"🔔 Nuevo Pedido SIZA Pendiente: {pedido.numero_pedido}"
+    
+    cuerpo = f"""
+    Hola Daniela y Shirli,
+
+    Se ha registrado un nuevo pedido en SIZA que requiere su atención.
+
+    📋 DETALLES DEL PEDIDO
+    --------------------------------------------------
+    Producto:      {producto_nombre}
+    N° Pedido:     {pedido.numero_pedido}
+    Volumen:       {pedido.volumen_solicitado:,.3f} BBL
+    Solicitante:   {pedido.usuario_registro}
+    Fecha/Hora:    {datetime.now().strftime('%Y-%m-%d %H:%M')}
+    Estado:        PENDIENTE
+    --------------------------------------------------
+
+    Por favor ingresen al módulo SIZA para aprobar o gestionar este pedido.
+    
+    Atentamente,
+    Sistema SIZA - Conquers Trading
+    """
+
+    # Configuración SMTP
+    # Por seguridad, las credenciales SE DEBEN configurar en las variables de entorno de Render
+    smtp_server = os.getenv('SMTP_SERVER', 'smtp.office365.com')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    smtp_user = os.getenv('SMTP_USER', 'numbers@conquerstrading.com') # Usuario por defecto (público)
+    smtp_password = os.getenv('SMTP_PASSWORD') # LA CONTRASEÑA NO ESTÁ EN EL CÓDIGO
+
+    if not smtp_password:
+        print(f"⚠️ [SIMULACIÓN CORREO] Faltan credenciales reales. Configurar SMTP_PASSWORD en Render.")
+        # No retornamos error, simplemente no enviamos el correo para no bloquear la app
+        return
+
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = ", ".join(destinatarios)
+        msg['Subject'] = asunto
+        msg.attach(MIMEText(cuerpo, 'plain'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        text = msg.as_string()
+        server.sendmail(smtp_user, destinatarios, text)
+        server.quit()
+        print(f"✅ Notificación de correo enviada exitosamente a {destinatarios} desde {smtp_user}")
+    except Exception as e:
+        print(f"❌ Error al enviar correo de notificación: {str(e)}")
+
 @login_required
 @permiso_requerido("cupo_siza")
 @app.route('/siza/actualizar-cupo-web', methods=['POST'])
@@ -5241,6 +5301,9 @@ def registrar_pedido():
         db.session.commit()
         
         producto = ProductoSiza.query.get(producto_id)
+        
+        # Enviar notificación por correo
+        enviar_alerta_nuevo_pedido(nuevo_pedido, producto.nombre)
         
         # Mostrar mensaje según disponibilidad
         if volumen_solicitado > disponible_real:

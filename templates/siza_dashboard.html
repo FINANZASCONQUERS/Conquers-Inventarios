@@ -886,7 +886,7 @@
 
     <!-- Pedidos Pendientes -->
     {% if pedidos_pendientes %}
-    <div class="section-container">
+    <div class="section-container" id="tablaPedidosPendientes">
         <h2 class="section-title">
             <i class="bi bi-clock-history"></i>
             Pedidos Pendientes de Aprobación
@@ -1009,6 +1009,30 @@
     </div>
     {% endif %}
 </div>
+
+
+<!-- Notificación Toast para Gestores -->
+{% if es_gestor and pedidos_pendientes %}
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055; margin-top: 60px;">
+    <div id="notificacionPedidos" class="toast show" role="alert" aria-live="assertive" aria-atomic="true"
+        style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5253 100%); color: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(238, 82, 83, 0.4);">
+        <div class="toast-header text-white border-0" style="background: transparent;">
+            <i class="bi bi-bell-fill me-2 fs-5"></i>
+            <strong class="me-auto fs-6">¡Atención Gestor SIZA!</strong>
+            <small class="text-white-50">Ahora</small>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body fs-6 fw-bold">
+            Hay {{ pedidos_pendientes|length }} pedido(s) esperando aprobación.
+            <hr style="margin: 8px 0; border-color: rgba(255,255,255,0.3);">
+            <a href="#tablaPedidosPendientes" class="btn btn-sm btn-light text-danger fw-bold w-100"
+                onclick="document.querySelector('#tablaPedidosPendientes').scrollIntoView({behavior: 'smooth'});">
+                <i class="bi bi-eye-fill me-1"></i>Revisar Ahora
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Modales adicionales (nuevo pedido, DIAN, etc.) -->
 {% include 'siza_modals_general.html' %}
