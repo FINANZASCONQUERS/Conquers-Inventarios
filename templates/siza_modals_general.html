@@ -295,6 +295,75 @@
 </script>
 {% endif %}
 
+{# Modal Historial DIAN (Visor para todos) #}
+<div class="modal fade" id="modalHistorialDian" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 20px; overflow: hidden;">
+            <div class="modal-header text-white"
+                style="background: linear-gradient(135deg, #424242 0%, #212121 100%); padding: 1.5rem;">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-clock-history me-2"></i>Historial de Movimientos DIAN (Hoy)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {% if movimientos_dian_hoy %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Hora</th>
+                                <th>Tipo Movimiento</th>
+                                <th class="text-end">Volumen</th>
+                                <th>Detalle</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mov in movimientos_dian_hoy %}
+                            <tr>
+                                <td>{{ mov.fecha_registro.strftime('%H:%M') }}</td>
+                                <td>
+                                    {% if mov.tipo == 'INGRESO_PENDIENTE' %}
+                                    <span class="badge bg-info text-dark"><i
+                                            class="bi bi-box-arrow-in-down me-1"></i>Ingreso Por Aprobar</span>
+                                    {% elif mov.tipo == 'APROBACION' %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aprobación
+                                        DIAN</span>
+                                    {% elif mov.tipo == 'AJUSTE_NEGATIVO' %}
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-pencil me-1"></i>Ajuste
+                                        Manual</span>
+                                    {% elif mov.tipo == 'CONSUMO' %}
+                                    <span class="badge bg-secondary"><i
+                                            class="bi bi-box-arrow-up me-1"></i>Consumo/Despacho</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ mov.tipo }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-bold">
+                                    {{ "{:,.3f}".format(mov.volumen) }} BBL
+                                </td>
+                                <td><small class="text-muted">{{ mov.observacion or '-' }}</small></td>
+                                <td>{{ mov.usuario_registro }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-clipboard-data text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
+                    <p class="mt-3 text-muted">No se han registrado movimientos DIAN el día de hoy.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer bg-light" style="border:none;">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {# Modales para Despachar Pedidos Aprobados #}
 {% for pedido in pedidos_aprobados %}
 <div class="modal fade" id="modalDespachar{{ pedido.id }}" tabindex="-1">

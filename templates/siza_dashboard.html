@@ -843,11 +843,17 @@
                 </h3>
                 <p class="mb-0" style="opacity: 0.9; font-size: 0.9rem;">Gestión de volúmenes aprobados y pendientes</p>
             </div>
-            {% if puede_editar_dian %}
-            <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalVolumenDian">
-                <i class="bi bi-pencil-square me-1"></i>Actualizar
-            </button>
-            {% endif %}
+            <div class="d-flex gap-2 align-items-center">
+                <button class="btn btn-sm btn-outline-light border-0" data-bs-toggle="modal"
+                    data-bs-target="#modalHistorialDian" title="Ver detalle de movimientos">
+                    <i class="bi bi-list-task fs-5"></i>
+                </button>
+                {% if puede_editar_dian %}
+                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalVolumenDian">
+                    <i class="bi bi-pencil-square me-1"></i>Actualizar
+                </button>
+                {% endif %}
+            </div>
         </div>
 
         <div class="dian-buckets">

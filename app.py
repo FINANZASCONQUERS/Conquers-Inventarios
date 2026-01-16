@@ -969,6 +969,23 @@ class HistorialAprobacionDian(db.Model):
     def __repr__(self):
         return f'<HistorialAprobacionDian {self.fecha_operativa}: +{self.volumen_agregado}>'
 
+class MovimientoDian(db.Model):
+    """Registro detallado de todos los movimientos de volumen DIAN (Ingreso, Aprobación, Consumo)."""
+    __tablename__ = 'movimientos_dian'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fecha_operativa = db.Column(db.Date, nullable=False, index=True)
+    tipo = db.Column(db.String(50), nullable=False) # 'INGRESO_PENDIENTE', 'APROBACION', 'CONSUMO', 'AJUSTE'
+    volumen = db.Column(db.Float, nullable=False) # Valor absoluto del movimiento
+    observacion = db.Column(db.String(255), nullable=True)
+    
+    # Auditoría
+    usuario_registro = db.Column(db.String(100), nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<MovimientoDian {self.fecha_operativa} [{self.tipo}]: {self.volumen}>'
+
 class CupoSizaConfig(db.Model):
     """DEPRECADO: Mantenido por compatibilidad. Usar InventarioSizaDiario."""
     __tablename__ = 'cupo_siza_config'
@@ -4688,8 +4705,15 @@ def dashboard_siza():
             db.session.add(volumen_dian)
             db.session.commit()
         
-        # Obtener historial de aprobaciones de hoy
+        # Obtener historial de aprobaciones de hoy (Compatibilidad)
         historial_dian_hoy = HistorialAprobacionDian.query.filter_by(fecha_operativa=hoy).order_by(HistorialAprobacionDian.fecha_registro.desc()).all()
+        
+        # Obtener historial DETALLADO de movimientos DIAN (Nuevo)
+        movimientos_dian_hoy = []
+        try:
+            movimientos_dian_hoy = MovimientoDian.query.filter_by(fecha_operativa=hoy).order_by(MovimientoDian.fecha_registro.desc()).all()
+        except Exception:
+            pass # Si la tabla no existe aún, ignorar
         
         # Verificar si el usuario puede editar volumen DIAN (solo Daniela y Shirley)
         usuario_email = session.get('email', '')
@@ -4718,7 +4742,8 @@ def dashboard_siza():
             volumen_dian=volumen_dian,  # Volumen pendiente DIAN
             puede_editar_dian=puede_editar_dian,  # Permiso para editar volumen DIAN
             puede_ver_dian=puede_ver_dian,  # Permiso para ver volumen DIAN
-            mis_despachos_hoy=mis_despachos_hoy # Notificación de despachos para solicitante
+            mis_despachos_hoy=mis_despachos_hoy, # Notificación de despachos para solicitante
+            movimientos_dian_hoy=movimientos_dian_hoy # Historial detallado de movimientos DIAN
         )
     except Exception as e:
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
@@ -5096,46 +5121,76 @@ def actualizar_volumen_dian():
         # Buscar o crear registro
         volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
         
+        # Guardar saldo previo para calcular ingresos
+        saldo_por_aprobar_previo = volumen_dian.volumen_por_aprobar if volumen_dian else 0.0
+        
         if not volumen_dian:
-            # Crear nuevo registro
+            # Lógica para registro NUEVO
+            volumen_final_por_aprobar = max(0, volumen_por_aprobar - agregar_aprobacion) if agregar_aprobacion > 0 else volumen_por_aprobar
+            
             volumen_dian = VolumenPendienteDian(
                 fecha=hoy,
-                volumen_pendiente=agregar_aprobacion,  # Iniciar con el primer valor agregado
-                volumen_por_aprobar=volumen_por_aprobar,
+                volumen_pendiente=agregar_aprobacion,
+                volumen_por_aprobar=volumen_final_por_aprobar,
                 observacion=observacion,
                 usuario_actualizacion=session.get('nombre', 'Usuario')
             )
             db.session.add(volumen_dian)
-        else:
-            # Actualizar registro existente
-            # SUMAR la nueva aprobación al total existente
-            volumen_dian.volumen_pendiente = volumen_dian.volumen_pendiente + agregar_aprobacion
             
-            # Nota: Usamos volumen_dian.volumen_pendiente en lugar de volumen_aprobado_actual 
-            # para asegurar consistencia con la base de datos
+            # Registrar Movimientos Iniciales
+            if volumen_por_aprobar > 0:
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo='INGRESO_PENDIENTE', volumen=volumen_por_aprobar,
+                    observacion=f"Ingreso Inicial: {observacion}", usuario_registro=session.get('nombre', 'Usuario')
+                ))
+                
+            if agregar_aprobacion > 0:
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo='APROBACION', volumen=agregar_aprobacion,
+                    observacion=f"Aprobación Inicial: {observacion}", usuario_registro=session.get('nombre', 'Usuario')
+                ))
+                
+        else:
+            # Lógica para registro EXISTENTE
+            
+            # 1. Detectar INGRESO de volumen pendiente (Diferencia entre lo que había y lo nuevo en el form)
+            delta_ingreso = volumen_por_aprobar - saldo_por_aprobar_previo
+            
+            if abs(delta_ingreso) > 0.01:
+                tipo_mov = 'INGRESO_PENDIENTE' if delta_ingreso > 0 else 'AJUSTE_NEGATIVO'
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo=tipo_mov, volumen=abs(delta_ingreso),
+                    observacion=f"Ajuste Manual Por Aprobar ({delta_ingreso:+.2f}): {observacion}", 
+                    usuario_registro=session.get('nombre', 'Usuario')
+                ))
+
+            # 2. Procesar APROBACIÓN y Actualización
+            volumen_dian.volumen_pendiente = volumen_dian.volumen_pendiente + agregar_aprobacion
             
             # Si se agregó una aprobación
             if agregar_aprobacion > 0:
                 # VALIDACIÓN INTELIGENTE:
-                # No se puede aprobar más de lo que está "Por Aprobar".
                 if agregar_aprobacion > volumen_por_aprobar:
-                    flash(f'⚠️ Error Lógico: Estás intentando aprobar {agregar_aprobacion:,.2f} BBL, pero solo hay {volumen_por_aprobar:,.2f} BBL marcados como "Por Aprobar". Ajusta primero el saldo pendiente.', 'danger')
+                    flash(f'⚠️ Error Lógico: Estás intentando aprobar {agregar_aprobacion:,.2f} BBL, pero solo hay {volumen_por_aprobar:,.2f} BBL disponibles ({saldo_por_aprobar_previo} + ingresos).', 'danger')
                     return redirect(url_for('dashboard_siza'))
 
-                # 1. Descontar del volumen por aprobar
+                # Descontar del volumen por aprobar
                 volumen_dian.volumen_por_aprobar = max(0, volumen_por_aprobar - agregar_aprobacion)
                 
-                # 2. Guardar en HISTORIAL
-                nuevo_historial = HistorialAprobacionDian(
-                    fecha_operativa=hoy,
-                    volumen_agregado=agregar_aprobacion,
-                    observacion=observacion,
-                    usuario_registro=session.get('nombre', 'Usuario')
-                )
-                db.session.add(nuevo_historial)
+                # Registrar Historial APROBACION
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo='APROBACION', volumen=agregar_aprobacion,
+                    observacion=f"Aprobación: {observacion}", usuario_registro=session.get('nombre', 'Usuario')
+                ))
+                
+                # Mantener compatibilidad con HistorialAprobacionDian (Viejo)
+                db.session.add(HistorialAprobacionDian(
+                    fecha_operativa=hoy, volumen_agregado=agregar_aprobacion,
+                    observacion=observacion, usuario_registro=session.get('nombre', 'Usuario')
+                ))
                 
             else:
-                # Si no se agregó aprobación, solo actualizar el valor ingresado de por aprobar
+                # Si solo se actualizó el pendiente sin aprobar
                 volumen_dian.volumen_por_aprobar = volumen_por_aprobar
             
             volumen_dian.observacion = observacion
@@ -15835,6 +15890,10 @@ def descargar_guia_sharepoint(registro, numero_guia):
 # ===================================================================
 # --- FIN: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
 # ===================================================================
+
+# Asegurar que todas las tablas existan (incluyendo la nueva MovimientoDian)
+with app.app_context():
+    db.create_all()
 
 if __name__ == '__main__':
     app.run(debug=True) 
