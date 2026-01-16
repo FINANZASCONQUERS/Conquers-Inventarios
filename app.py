@@ -4670,12 +4670,20 @@ def dashboard_siza():
         # Obtener volumen pendiente DIAN
         volumen_dian = VolumenPendienteDian.query.filter_by(fecha=hoy).first()
         if not volumen_dian:
-            # Crear registro inicial
+            # Buscar saldo del día anterior (o último registro existente)
+            ultimo_registro = VolumenPendienteDian.query.filter(
+                VolumenPendienteDian.fecha < hoy
+            ).order_by(VolumenPendienteDian.fecha.desc()).first()
+
+            saldo_pendiente = ultimo_registro.volumen_pendiente if ultimo_registro else 0.0
+            saldo_por_aprobar = ultimo_registro.volumen_por_aprobar if ultimo_registro else 0.0
+
+            # Crear registro para HOY arrastrando los saldos
             volumen_dian = VolumenPendienteDian(
                 fecha=hoy,
-                volumen_pendiente=0.0,
-                volumen_por_aprobar=0.0,
-                usuario_actualizacion='Sistema'
+                volumen_pendiente=saldo_pendiente,   # ARRASTRE DE SALDO APROBADO
+                volumen_por_aprobar=saldo_por_aprobar, # ARRASTRE DE POR APROBAR
+                usuario_actualizacion='Sistema (Arrastre Saldo)'
             )
             db.session.add(volumen_dian)
             db.session.commit()
@@ -5108,12 +5116,13 @@ def actualizar_volumen_dian():
             
             # Si se agregó una aprobación
             if agregar_aprobacion > 0:
-                # 1. Descontar del volumen por aprobar (usando el valor que envió el form o calculando)
-                # Si el usuario editó el campo "por aprobar", usamos ese valor menos lo aprobado
-                # Pero para ser seguros, restamos de lo que había o usamos el input
-                
-                # La lógica actual toma el input `volumen_por_aprobar` del form.
-                # Si el usuario puso 5000 en el input y agrega 1000, el resultado será 4000.
+                # VALIDACIÓN INTELIGENTE:
+                # No se puede aprobar más de lo que está "Por Aprobar".
+                if agregar_aprobacion > volumen_por_aprobar:
+                    flash(f'⚠️ Error Lógico: Estás intentando aprobar {agregar_aprobacion:,.2f} BBL, pero solo hay {volumen_por_aprobar:,.2f} BBL marcados como "Por Aprobar". Ajusta primero el saldo pendiente.', 'danger')
+                    return redirect(url_for('dashboard_siza'))
+
+                # 1. Descontar del volumen por aprobar
                 volumen_dian.volumen_por_aprobar = max(0, volumen_por_aprobar - agregar_aprobacion)
                 
                 # 2. Guardar en HISTORIAL
@@ -5254,8 +5263,55 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
         server.sendmail(smtp_user, destinatarios, text)
         server.quit()
         print(f"✅ Notificación de correo enviada exitosamente a {destinatarios} desde {smtp_user}")
+
+
     except Exception as e:
         print(f"❌ Error al enviar correo de notificación: {str(e)}")
+
+@app.route('/siza/test-email')
+@login_required
+def siza_test_email():
+    """Ruta temporal para diagnosticar errores de correo."""
+    if not tiene_permiso("admin") and not tiene_permiso("siza_gestor"):
+        return "Acceso denegado", 403
+
+    usuario_actual = session.get('nombre', 'Usuario Test')
+    destinatario = session.get('email', 'numbers@conquerstrading.com') # Intentar enviar al mismo usuario logueado o default
+    
+    config_debug = {
+        "SMTP_SERVER": os.getenv('SMTP_SERVER', 'smtp.office365.com'),
+        "SMTP_PORT": int(os.getenv('SMTP_PORT', 587)),
+        "SMTP_USER": os.getenv('SMTP_USER', 'numbers@conquerstrading.com'),
+        "HAS_PASSWORD": "SI" if os.getenv('SMTP_PASSWORD') else "NO"
+    }
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = config_debug["SMTP_USER"]
+        msg['To'] = destinatario
+        msg['Subject'] = "PRUEBA DE CORREO SIZA - DIAGNÓSTICO"
+        msg.attach(MIMEText(f"Hola {usuario_actual},\n\nSi lees esto, el sistema de correos funciona correctamente.\n\nConfig: {config_debug}", 'plain'))
+
+        server = smtplib.SMTP(config_debug["SMTP_SERVER"], config_debug["SMTP_PORT"])
+        server.set_debuglevel(1) # Habilitar logs detallados
+        server.starttls()
+        server.login(config_debug["SMTP_USER"], os.getenv('SMTP_PASSWORD'))
+        text = msg.as_string()
+        server.sendmail(config_debug["SMTP_USER"], [destinatario], text)
+        server.quit()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Correo enviado exitosamente a {destinatario}",
+            "config": config_debug
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "type": type(e).__name__,
+            "config": config_debug
+        }), 500
 
 @login_required
 @permiso_requerido("cupo_siza")
