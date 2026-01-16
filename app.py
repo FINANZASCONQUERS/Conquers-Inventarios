@@ -5268,50 +5268,7 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
     except Exception as e:
         print(f"❌ Error al enviar correo de notificación: {str(e)}")
 
-@app.route('/siza/test-email')
-@login_required
-def siza_test_email():
-    """Ruta temporal para diagnosticar errores de correo."""
-    if not tiene_permiso("admin") and not tiene_permiso("siza_gestor"):
-        return "Acceso denegado", 403
 
-    usuario_actual = session.get('nombre', 'Usuario Test')
-    destinatario = session.get('email', 'numbers@conquerstrading.com') # Intentar enviar al mismo usuario logueado o default
-    
-    config_debug = {
-        "SMTP_SERVER": os.getenv('SMTP_SERVER', 'smtp.office365.com'),
-        "SMTP_PORT": int(os.getenv('SMTP_PORT', 587)),
-        "SMTP_USER": os.getenv('SMTP_USER', 'numbers@conquerstrading.com'),
-        "HAS_PASSWORD": "SI" if os.getenv('SMTP_PASSWORD') else "NO"
-    }
-
-    try:
-        msg = MIMEMultipart()
-        msg['From'] = config_debug["SMTP_USER"]
-        msg['To'] = destinatario
-        msg['Subject'] = "PRUEBA DE CORREO SIZA - DIAGNÓSTICO"
-        msg.attach(MIMEText(f"Hola {usuario_actual},\n\nSi lees esto, el sistema de correos funciona correctamente.\n\nConfig: {config_debug}", 'plain'))
-
-        server = smtplib.SMTP(config_debug["SMTP_SERVER"], config_debug["SMTP_PORT"])
-        server.set_debuglevel(1) # Habilitar logs detallados
-        server.starttls()
-        server.login(config_debug["SMTP_USER"], os.getenv('SMTP_PASSWORD'))
-        text = msg.as_string()
-        server.sendmail(config_debug["SMTP_USER"], [destinatario], text)
-        server.quit()
-        
-        return jsonify({
-            "status": "success",
-            "message": f"Correo enviado exitosamente a {destinatario}",
-            "config": config_debug
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "type": type(e).__name__,
-            "config": config_debug
-        }), 500
 
 @login_required
 @permiso_requerido("cupo_siza")
@@ -15811,6 +15768,51 @@ def descargar_guia_sharepoint(registro, numero_guia):
 # ===================================================================
 # --- FIN: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
 # ===================================================================
+
+@app.route('/siza/test-email')
+@login_required
+def siza_test_email():
+    """Ruta temporal para diagnosticar errores de correo."""
+    if not tiene_permiso("admin") and not tiene_permiso("siza_gestor"):
+        return "Acceso denegado", 403
+
+    usuario_actual = session.get('nombre', 'Usuario Test')
+    destinatario = session.get('email', 'numbers@conquerstrading.com') # Intentar enviar al mismo usuario logueado o default
+    
+    config_debug = {
+        "SMTP_SERVER": os.getenv('SMTP_SERVER', 'smtp.office365.com'),
+        "SMTP_PORT": int(os.getenv('SMTP_PORT', 587)),
+        "SMTP_USER": os.getenv('SMTP_USER', 'numbers@conquerstrading.com'),
+        "HAS_PASSWORD": "SI" if os.getenv('SMTP_PASSWORD') else "NO"
+    }
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = config_debug["SMTP_USER"]
+        msg['To'] = destinatario
+        msg['Subject'] = "PRUEBA DE CORREO SIZA - DIAGNÓSTICO"
+        msg.attach(MIMEText(f"Hola {usuario_actual},\n\nSi lees esto, el sistema de correos funciona correctamente.\n\nConfig: {config_debug}", 'plain'))
+
+        server = smtplib.SMTP(config_debug["SMTP_SERVER"], config_debug["SMTP_PORT"])
+        server.set_debuglevel(1) # Habilitar logs detallados
+        server.starttls()
+        server.login(config_debug["SMTP_USER"], os.getenv('SMTP_PASSWORD'))
+        text = msg.as_string()
+        server.sendmail(config_debug["SMTP_USER"], [destinatario], text)
+        server.quit()
+        
+        return jsonify({
+            "status": "success",
+            "message": f"Correo enviado exitosamente a {destinatario}",
+            "config": config_debug
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "type": type(e).__name__,
+            "config": config_debug
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
