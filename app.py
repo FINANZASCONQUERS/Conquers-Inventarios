@@ -5266,7 +5266,74 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
 
 
     except Exception as e:
-        print(f"❌ Error al enviar correo de notificación: {str(e)}")
+        error_msg = f"⚠️ No se pudo enviar el correo: {str(e)}"
+        print(f"❌ {error_msg}")
+        try:
+            flash(error_msg, 'warning')
+        except:
+            pass
+
+def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
+    """Envía correo al solicitante informando que su pedido fue despachado."""
+    email_solicitante = obtener_email_usuario(pedido.usuario_registro)
+    
+    if not email_solicitante:
+        print(f"⚠️ No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
+        return
+
+    asunto = f"🚀 Pedido Despachado: {pedido.numero_pedido} - SIZA"
+    
+    cuerpo = f"""
+    Hola {pedido.usuario_registro},
+
+    Tu pedido ha sido DESPACHADO y procesado exitosamente.
+
+    📦 RESUMEN DEL DESPACHO
+    --------------------------------------------------
+    N° Pedido:     {pedido.numero_pedido}
+    Producto:      {producto_nombre}
+    Volumen:       {volumen_real:,.3f} BBL
+    Fecha/Hora:    {datetime.now().strftime('%Y-%m-%d %H:%M')}
+    Estado:        DESPACHADO (COMPLETADO)
+    --------------------------------------------------
+
+    El volumen ha sido descontado del inventario oficial.
+    
+    Atentamente,
+    Equipo de Logística - Conquers Trading
+    """
+
+    # Configuración SMTP
+    smtp_server = os.getenv('SMTP_SERVER', 'smtp.office365.com')
+    smtp_port = int(os.getenv('SMTP_PORT', 587))
+    smtp_user = os.getenv('SMTP_USER', 'numbers@conquerstrading.com') 
+    smtp_password = os.getenv('SMTP_PASSWORD')
+
+    if not smtp_password:
+        print(f"⚠️ [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
+        return
+
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = smtp_user
+        msg['To'] = email_solicitante
+        msg['Subject'] = asunto
+        msg.attach(MIMEText(cuerpo, 'plain'))
+
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        text = msg.as_string()
+        server.sendmail(smtp_user, [email_solicitante], text) 
+        server.quit()
+        print(f"✅ Notificación de despacho enviada a {email_solicitante}")
+    except Exception as e:
+        error_msg = f"⚠️ No se pudo enviar el correo de despacho: {str(e)}"
+        print(f"❌ {error_msg}")
+        try:
+            flash(error_msg, 'warning')
+        except:
+            pass
 
 
 
