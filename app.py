@@ -4708,10 +4708,13 @@ def dashboard_siza():
         # Obtener historial de aprobaciones de hoy (Compatibilidad)
         historial_dian_hoy = HistorialAprobacionDian.query.filter_by(fecha_operativa=hoy).order_by(HistorialAprobacionDian.fecha_registro.desc()).all()
         
-        # Obtener historial DETALLADO de movimientos DIAN (Nuevo)
-        movimientos_dian_hoy = []
+        # Obtener historial DETALLADO de movimientos DIAN (Completo)
+        historial_dian_completo = []
         try:
-            movimientos_dian_hoy = MovimientoDian.query.filter_by(fecha_operativa=hoy).order_by(MovimientoDian.fecha_registro.desc()).all()
+            historial_dian_completo = MovimientoDian.query.order_by(
+                MovimientoDian.fecha_operativa.desc(), 
+                MovimientoDian.fecha_registro.desc()
+            ).limit(200).all()
         except Exception:
             pass # Si la tabla no existe aún, ignorar
         
@@ -4743,7 +4746,7 @@ def dashboard_siza():
             puede_editar_dian=puede_editar_dian,  # Permiso para editar volumen DIAN
             puede_ver_dian=puede_ver_dian,  # Permiso para ver volumen DIAN
             mis_despachos_hoy=mis_despachos_hoy, # Notificación de despachos para solicitante
-            movimientos_dian_hoy=movimientos_dian_hoy # Historial detallado de movimientos DIAN
+            historial_dian_completo=historial_dian_completo # Historial detallado de movimientos DIAN (Todos)
         )
     except Exception as e:
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
@@ -4851,6 +4854,13 @@ def recargar_producto_siza():
                     volumen_dian.observacion += f" | {obs_dian}"
                 else:
                     volumen_dian.observacion = obs_dian
+
+                # Registar CONSUMO en Historial DIAN
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo='RECARGA-CONSUMO', volumen=volumen_recarga,
+                    observacion=f"Descarga hacia {producto.nombre}: {observacion or 'Recarga Inventario'}", 
+                    usuario_registro=session.get('nombre', 'Sistema')
+                ))
         
         # Registrar la recarga
         recarga = RecargaSiza(
