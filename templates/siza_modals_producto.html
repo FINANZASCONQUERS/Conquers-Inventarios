@@ -62,7 +62,8 @@
                         <div class="form-check p-3" style="background: rgba(255, 255, 255, 0.6); border-radius: 10px;">
                             <input class="form-check-input" type="checkbox" name="descontar_de_dian"
                                 id="descontar_dian_{{ item.producto.id }}" value="1"
-                                style="width: 1.5rem; height: 1.5rem;">
+                                style="width: 1.5rem; height: 1.5rem;"
+                                onchange="toggleMaxDian({{ item.producto.id }}, {{ volumen_dian.volumen_pendiente if volumen_dian else 0 }})">
                             <label class="form-check-label ms-2 fw-bold" for="descontar_dian_{{ item.producto.id }}"
                                 style="font-size: 1.1rem; color: #2e7d32; cursor: pointer;">
                                 <i class="bi bi-arrow-down-circle-fill me-2"></i>Descontar de Volumen APROBADO DIAN

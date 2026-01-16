@@ -1072,6 +1072,20 @@
 
 {% block extra_js %}
 <script>
+    // Habilitar/Deshabilitar límite max según checkbox DIAN
+    function toggleMaxDian(productoId, maxDian) {
+        const check = document.getElementById('descontar_dian_' + productoId);
+        const input = document.getElementById('volumenRecarga' + productoId);
+
+        if (check && input) {
+            if (check.checked) {
+                input.setAttribute('max', maxDian);
+            } else {
+                input.removeAttribute('max');
+            }
+        }
+    }
+
     // Validación de recarga DIAN
     function validarRecargaDian(productoId) {
         const checkbox = document.getElementById('descontar_dian_' + productoId);
