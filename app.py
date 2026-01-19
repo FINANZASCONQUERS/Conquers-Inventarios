@@ -409,7 +409,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['GUIDES_DIR'] = os.environ.get('GUIDES_DIR') or ('/var/data/guias' if os.name != 'nt' else os.path.join(app.root_path, 'guias'))
 app.config['MIME_DEBUG'] = os.environ.get('MIME_DEBUG', '0')  # Activa logs de depuración de MIME cuando sea '1'/'true'
 os.makedirs(app.config['GUIDES_DIR'], exist_ok=True)
-db = SQLAlchemy(app) # <--- ESTA LÍNEA ES LA QUE CREA LA VARIABLE 'db'
+from extensions import db
+db.init_app(app) # <--- Iniciamos la BD definida en extensions.py
 migrate = Migrate(app, db)
 
 scheduler = BackgroundScheduler()
@@ -968,6 +969,8 @@ class HistorialAprobacionDian(db.Model):
     
     def __repr__(self):
         return f'<HistorialAprobacionDian {self.fecha_operativa}: +{self.volumen_agregado}>'
+
+
 
 class MovimientoDian(db.Model):
     """Registro detallado de todos los movimientos de volumen DIAN (Ingreso, Aprobación, Consumo)."""
@@ -2250,12 +2253,7 @@ def cargar_transito_config():
     # Si hay error, devolver configuración por defecto
     return default_config
 
-def login_required(f):
-    # ... tu decorador de login (déjalo como está) ...
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # ...
-     return decorated_function
+
 
 
 def tiene_permiso(permiso_requerido):
@@ -5399,6 +5397,45 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
             flash(error_msg, 'warning')
         except:
             pass
+
+@app.route('/siza/reset-fabrica', methods=['POST'])
+@login_required
+def siza_reset_fabrica():
+    """Borra TODOS los datos transaccionales de SIZA para reiniciar."""
+    # Doble verificación de seguridad
+    if session.get('rol') != 'admin' and session.get('email') not in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']:
+        flash('⚠️ ACCESO DENEGADO: Solo administradores pueden reiniciar el sistema.', 'danger')
+        return redirect(url_for('dashboard_siza'))
+
+    try:
+        # 1. Eliminar pedidos
+        num_ped = PedidoSiza.query.delete()
+        
+        # 2. Eliminar movimientos de inventario y recargas
+        num_rec = RecargaSiza.query.delete()
+        num_con = ConsumoSiza.query.delete()
+        InventarioSizaDiario.query.delete()
+        
+        # 3. Eliminar datos DIAN
+        VolumenPendienteDian.query.delete()
+        HistorialAprobacionDian.query.delete()
+        
+        try:
+             MovimientoDian.query.delete()
+        except: 
+            pass
+        
+        db.session.commit()
+        
+        mensaje = f'✅ SISTEMA SIZA REINICIADO: Se eliminaron {num_ped} pedidos, {num_rec} recargas y {num_con} consumos. El inventario empieza de 0.'
+        print(mensaje)
+        flash(mensaje, 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error critico al reiniciar: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard_siza'))
 
 
 
@@ -12229,7 +12266,7 @@ class WhatsappMessage(db.Model):
 class Cliente(db.Model):
     __tablename__ = 'clientes'
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(255), nullable=False, unique=True)
+    nombre = db.Column(db.String(255), nullable=False)
     direccion = db.Column(db.String(255), nullable=False)
     ciudad_departamento = db.Column(db.String(255), nullable=False)
 
@@ -14098,8 +14135,14 @@ def agregar_cliente_ajax():
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
     clientes = cargar_clientes()
-    if any(c.get('NOMBRE_CLIENTE', '').lower() == nombre.lower() for c in clientes):
-        return jsonify(success=False, message=f"El cliente '{nombre}' ya existe."), 409 # 409 Conflict
+    
+    # Validar duplicados por NOMBRE + DIRECCIÓN (no solo nombre)
+    if any(
+        (c.get('NOMBRE_CLIENTE', '').upper() == nombre.upper()) and 
+        (c.get('DIRECCION', '').upper() == direccion.upper()) 
+        for c in clientes
+    ):
+        return jsonify(success=False, message=f"El cliente '{nombre}' con esa dirección ya existe."), 409
 
     nuevo_cliente = {
         "NOMBRE_CLIENTE": nombre.upper(),
@@ -14112,7 +14155,13 @@ def agregar_cliente_ajax():
 
     # Guardar también en PostgreSQL
     try:
-        if not Cliente.query.filter_by(nombre=nombre.upper()).first():
+        # Verificar si existe EXACTAMENTE ese cliente (nombre + dirección)
+        existe_db = Cliente.query.filter(
+            func.upper(Cliente.nombre) == nombre.upper(),
+            func.upper(Cliente.direccion) == direccion.upper()
+        ).first()
+
+        if not existe_db:
             cliente_db = Cliente(
                 nombre=nombre.upper(),
                 direccion=direccion.upper(),
@@ -14122,7 +14171,8 @@ def agregar_cliente_ajax():
             db.session.commit()
     except Exception as e:
         db.session.rollback()
-        return jsonify(success=False, message=f"Error al guardar en la base de datos: {e}"), 500
+        # No fallamos la petición AJAX si falla la BD, porque ya guardamos en JSON (prioridad frontend)
+        app.logger.warning(f"Error al guardar cliente DB (se guardó en JSON): {e}")
 
     return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
 
@@ -14135,32 +14185,85 @@ def actualizar_cliente_ajax():
     nombre = (data.get('nombre') or '').strip()
     direccion = (data.get('direccion') or '').strip()
     ciudad = (data.get('ciudad') or '').strip()
+    
+    # Nuevos campos para identificar unívocamente al original
+    original_direccion = (data.get('original_direccion') or '').strip()
+    # Si no llega original_direccion (frontend viejo), usamos comportamiento fallback (buscar solo nombre)
 
     if not original_nombre or not nombre or not direccion or not ciudad:
         return jsonify(success=False, message='Todos los campos son obligatorios.'), 400
 
     original_upper = original_nombre.upper()
+    original_dir_upper = original_direccion.upper()
+    
     nombre_upper = nombre.upper()
     direccion_upper = direccion.upper()
     ciudad_upper = ciudad.upper()
 
     clientes = cargar_clientes()
     coincidencia = None
+    
+    # Buscar coincidencia exacta por Nombre AND Dirección
     for c in clientes:
-        if (c.get('NOMBRE_CLIENTE') or '').upper() == original_upper:
-            coincidencia = c
-            break
+        c_nombre = (c.get('NOMBRE_CLIENTE') or '').upper()
+        c_direccion = (c.get('DIRECCION') or '').upper()
+        
+        if c_nombre == original_upper:
+            # Si tenemos direccion original, la usamos para desempatar
+            if original_dir_upper:
+                if c_direccion == original_dir_upper:
+                    coincidencia = c
+                    break
+            else:
+                # Fallback: primer nombre que coincida
+                coincidencia = c
+                break
 
     if not coincidencia:
         return jsonify(success=False, message=f"No se encontró el cliente '{original_nombre}'."), 404
 
-    if nombre_upper != coincidencia.get('NOMBRE_CLIENTE') and any(
-        (otro.get('NOMBRE_CLIENTE') or '').upper() == nombre_upper for otro in clientes
-    ):
-        return jsonify(success=False, message=f"Ya existe un cliente con el nombre '{nombre_upper}'."), 409
+    # Verificar conflictos: Nuevo nombre+direccion ya existe en OTRO registro
+    # "Otro" significa que no es la misma instancia en memoria (pero en JSON no hay ID).
+    # Así que verificamos si existe un registro con (NuevoNombre, NuevaDireccion) 
+    # QUE NO SEA el que estamos editando (coincidencia).
+    
+    ya_existe = False
+    for otro in clientes:
+        if otro is coincidencia:
+            continue
+        if (otro.get('NOMBRE_CLIENTE','').upper() == nombre_upper and 
+            otro.get('DIRECCION','').upper() == direccion_upper):
+            ya_existe = True
+            break
+            
+    if ya_existe:
+        return jsonify(success=False, message=f"Ya existe otro cliente con nombre '{nombre_upper}' y esa dirección."), 409
 
+    # Actualizar valores
     coincidencia['NOMBRE_CLIENTE'] = nombre_upper
     coincidencia['DIRECCION'] = direccion_upper
+    coincidencia['CIUDAD_DEPARTAMENTO'] = ciudad_upper
+    
+    guardar_clientes(clientes)
+    
+    # Actualizar DB (Intentar buscar por original y actualizar)
+    try:
+        # DB requiere ID o criterio único. Como no tenemos ID en frontend, intentamos best-effort.
+        q = Cliente.query.filter(func.upper(Cliente.nombre) == original_upper)
+        if original_dir_upper:
+            q = q.filter(func.upper(Cliente.direccion) == original_dir_upper)
+            
+        cliente_db = q.first()
+        if cliente_db:
+            cliente_db.nombre = nombre_upper
+            cliente_db.direccion = direccion_upper
+            cliente_db.ciudad_departamento = ciudad_upper
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.warning(f"Error al actualizar cliente DB (JSON actualizado): {e}")
+
+    return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=coincidencia)
     coincidencia['CIUDAD_DEPARTAMENTO'] = ciudad_upper
     clientes.sort(key=lambda x: x.get('NOMBRE_CLIENTE', ''))
 
@@ -15901,6 +16004,11 @@ def descargar_guia_sharepoint(registro, numero_guia):
 # --- FIN: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
 # ===================================================================
 
+# --- Blueprint Pricing ---
+from pricing.routes import pricing_bp
+app.register_blueprint(pricing_bp)
+
+from pricing.models import HistorialCombustibles
 # Asegurar que todas las tablas existan (incluyendo la nueva MovimientoDian)
 with app.app_context():
     db.create_all()

@@ -13,8 +13,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ url_for('recargar_producto_siza') }}" method="POST"
-                onsubmit="return validarRecargaDian({{ item.producto.id }})">
+            <form action="{{ url_for('recargar_producto_siza') }}" method="POST">
                 <div class="modal-body" style="padding: 2rem;">
                     <input type="hidden" name="producto_id" value="{{ item.producto.id }}">
 
@@ -37,8 +36,7 @@
                         </div>
                     </div>
 
-                    {% if item.producto.codigo != 'AGUA_RESIDUAL' and puede_editar_dian and volumen_dian and
-                    volumen_dian.volumen_pendiente > 0 %}
+                    {% if item.producto.codigo != 'AGUA_RESIDUAL' and puede_editar_dian %}
                     {# Volumen DIAN Disponible #}
                     <div class="mb-4 p-4"
                         style="background: linear-gradient(135deg, #c8e6c9 0%, #a5d6a7 100%); border-radius: 15px; border-left: 5px solid #43a047;">
@@ -52,7 +50,7 @@
                                     <i class="bi bi-shield-check me-1"></i>Volumen APROBADO por DIAN
                                 </h6>
                                 <div style="font-size: 2.2rem; font-weight: 800; color: #2e7d32;">
-                                    {{ "{:,.3f}".format(volumen_dian.volumen_pendiente) }} BBL
+                                    {{ "{:,.3f}".format(volumen_dian.volumen_pendiente if volumen_dian else 0) }} BBL
                                 </div>
                                 <small style="color: #2e7d32; opacity: 0.9;">✅ Listo para distribuir a productos</small>
                             </div>
@@ -62,8 +60,7 @@
                         <div class="form-check p-3" style="background: rgba(255, 255, 255, 0.6); border-radius: 10px;">
                             <input class="form-check-input" type="checkbox" name="descontar_de_dian"
                                 id="descontar_dian_{{ item.producto.id }}" value="1"
-                                style="width: 1.5rem; height: 1.5rem;"
-                                onchange="toggleMaxDian({{ item.producto.id }}, {{ volumen_dian.volumen_pendiente if volumen_dian else 0 }})">
+                                style="width: 1.5rem; height: 1.5rem;">
                             <label class="form-check-label ms-2 fw-bold" for="descontar_dian_{{ item.producto.id }}"
                                 style="font-size: 1.1rem; color: #2e7d32; cursor: pointer;">
                                 <i class="bi bi-arrow-down-circle-fill me-2"></i>Descontar de Volumen APROBADO DIAN
@@ -83,8 +80,7 @@
                             <i class="bi bi-calculator me-2" style="color: #43cea2;"></i>Volumen a Recargar (Barriles) *
                         </label>
                         <input type="number" step="0.001" class="form-control" id="volumenRecarga{{ item.producto.id }}"
-                            name="volumen_recarga" placeholder="Ej: 50000" required min="0.01" {% if puede_editar_dian
-                            and volumen_dian %}max="{{ volumen_dian.volumen_pendiente }}" {% endif %}
+                            name="volumen_recarga" placeholder="Ej: 50000" required min="0.01"
                             style="font-size: 1.4rem; padding: 1rem; border: 2px solid #e0e0e0; border-radius: 12px; font-weight: 700;">
                         {% if puede_editar_dian and volumen_dian and volumen_dian.volumen_pendiente > 0 %}
                         <div class="form-text mt-2" style="font-size: 0.95rem;">
