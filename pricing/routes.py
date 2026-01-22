@@ -58,21 +58,47 @@ def update_prices():
     brent_df = pd.DataFrame()
     # MEJORA: Si falla la API, usar el ultimo valor conocido de la BD en lugar de 0
     latest_brent = latest_record.brent if (latest_record and latest_record.brent) else 0.0
+    
     try:
-        # Intentar evitar bloqueo usando cache y descarga más inteligente
         import yfinance as yf
+        import time
+        import random
         
-        # Descargar historial reciente
+        # BUCLE DE INSISTENCIA (RETRIES)
+        # Intentaremos hasta 5 veces si Yahoo nos bloquea
+        max_retries = 5
+        attempts = 0
+        success = False
+        
         fetch_start = start_date - timedelta(days=7)
         
-        # Usar Ticker directamente que a veces es mas robusto que download masivo
-        ticker = yf.Ticker("BZ=F")
-        brent_df = ticker.history(start=fetch_start, interval="1d")
+        while attempts < max_retries and not success:
+            attempts += 1
+            try:
+                # Usar Ticker directamente
+                ticker = yf.Ticker("BZ=F")
+                brent_df = ticker.history(start=fetch_start, interval="1d")
+                
+                # Si falló history, intentar legacy download
+                if brent_df.empty:
+                    print(f"Intento {attempts}/{max_retries}: Ticker.history vacio, probando download...")
+                    brent_df = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
+                
+                # Validar éxito
+                if not brent_df.empty:
+                    success = True
+                    print(f"Éxito obteniendo Brent en intento {attempts}")
+                else:
+                    raise ValueError("Datos vacíos")
+                    
+            except Exception as e_retry:
+                print(f"Fallo intento {attempts} Yahoo: {e_retry}")
+                if attempts < max_retries:
+                    # Esperar un tiempo aleatorio entre 2 y 5 segundos antes de reintentar
+                    # (Random jitter ayuda a saltar bloqueos de IP masiva)
+                    sleep_time = random.uniform(2.0, 5.0)
+                    time.sleep(sleep_time)
         
-        # Si history falla o devuelve vacio, intentar download clasico con timeout
-        if brent_df.empty:
-             print("Ticker.history vacio, intentando download...")
-             brent_df = yf.download("BZ=F", start=fetch_start, progress=False)
         # Fix MultiIndex de Yahoo (Price, Ticker) -> 'Close'
         if isinstance(brent_df.columns, pd.MultiIndex):
             try:
