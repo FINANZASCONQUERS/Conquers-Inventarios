@@ -854,6 +854,10 @@ class InventarioSizaDiario(db.Model):
     
     # Volumen disponible del día
     cupo_web = db.Column(db.Float, nullable=False, default=0.0)
+
+    # Métricas de Desperdicio y Agua Acumulada
+    volumen_agua_generada = db.Column(db.Float, default=0.0)       # Agua generada por este producto
+    volumen_desperdicio_generado = db.Column(db.Float, default=0.0) # Desperdicio (Merma) generado por este producto
     
     # Auditoría
     usuario_actualizacion = db.Column(db.String(100), nullable=False)
@@ -878,6 +882,8 @@ class RecargaSiza(db.Model):
     fecha = db.Column(db.Date, nullable=False, index=True)
     producto_id = db.Column(db.Integer, db.ForeignKey('productos_siza.id'), nullable=False)
     volumen_recargado = db.Column(db.Float, nullable=False)
+    volumen_merma = db.Column(db.Float, default=0.0)  # Merma/Desperdicio generado en esta recarga
+    descontado_dian = db.Column(db.Boolean, default=False)  # Si se descontó de cupo DIAN
     observacion = db.Column(db.Text, nullable=True)
     
     # Auditoría
@@ -4568,6 +4574,9 @@ def dashboard_siza():
                     fecha=hoy,
                     producto_id=producto.id,
                     cupo_web=saldo_inicial,
+                    # Arrastrar acumulados históricos de agua y desperdicio
+                    volumen_agua_generada=ultimo_inventario.volumen_agua_generada if ultimo_inventario else 0.0,
+                    volumen_desperdicio_generado=ultimo_inventario.volumen_desperdicio_generado if ultimo_inventario else 0.0,
                     usuario_actualizacion='Sistema (Arrastre Saldo)'
                 )
                 db.session.add(inventario)
@@ -4586,13 +4595,28 @@ def dashboard_siza():
             pedidos_gestion = [p for p in pedidos_producto if p.estado == 'PENDIENTE']
             pedidos_pendientes_para_tabla.extend(pedidos_gestion)
             
+            # Calcular Desperdicio Generado HOY por este producto
+            desperdicio_hoy = 0
+            # Solo buscar si no es agua residual (evitar consultas innecesarias)
+            if producto.codigo != 'AGUA_RESIDUAL':
+                # Buscamos movimientos de DIAN que contengan "Desperdicio" y el nombre del producto en la observación
+                try:
+                    movs_desperdicio = MovimientoDian.query.filter(
+                        MovimientoDian.fecha_operativa == hoy,
+                        MovimientoDian.observacion.like(f'%Desperdicio%{producto.nombre}%')
+                    ).all()
+                    desperdicio_hoy = sum(m.volumen for m in movs_desperdicio)
+                except Exception:
+                    desperdicio_hoy = 0
+
             inventario_productos.append({
                 'producto': producto,
                 'inventario': inventario,
                 'comprometido': comprometido_producto,
                 'disponible': disponible_producto,
                 'alerta': disponible_producto <= 0,
-                'pedidos_count': len(pedidos_producto)
+                'pedidos_count': len(pedidos_producto),
+                'desperdicio_hoy': desperdicio_hoy
             })
             
             total_disponible += disponible_producto
@@ -4860,11 +4884,16 @@ def recargar_producto_siza():
                     usuario_registro=session.get('nombre', 'Sistema')
                 ))
         
-        # Registrar la recarga
+        # === LEER MERMA (Desperdicio) ANTES DE REGISTRAR ===
+        vol_merma = float(request.form.get('volumen_total_desperdicio', 0))
+        
+        # Registrar la recarga (ahora con merma)
         recarga = RecargaSiza(
             fecha=hoy,
             producto_id=producto_id,
             volumen_recargado=volumen_recarga,
+            volumen_merma=vol_merma,  # NUEVO: Guardar merma individual
+            descontado_dian=descontar_de_dian,  # Rastrear si se descontó de DIAN
             observacion=observacion or None,
             usuario_registro=session.get('nombre', 'Sistema')
         )
@@ -4889,6 +4918,31 @@ def recargar_producto_siza():
             inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
             inventario.fecha_actualizacion = datetime.utcnow()
         
+        # === LOGICA DE MERMA (Desperdicio) ===
+        # (vol_merma ya se leyó antes de crear RecargaSiza)
+        
+        # 1. Actualizar Acumulado de Merma del Producto Actual
+        # Verificar existencia de columna (por seguridad en migraciones parciales)
+        try:
+            inventario.volumen_desperdicio_generado = (inventario.volumen_desperdicio_generado or 0) + vol_merma
+        except AttributeError:
+            pass # Si la columna no existe aún
+        
+        # 2. Descontar de DIAN (Solo Merma)
+        if descontar_de_dian and 'volumen_dian' in locals() and volumen_dian:
+            if vol_merma > 0:
+                volumen_dian.volumen_pendiente -= vol_merma
+                
+                current_prod = ProductoSiza.query.get(producto_id)
+                obs_dian = f"Merma por recarga {current_prod.nombre}: {vol_merma:,.3f} BBL"
+                
+                db.session.add(MovimientoDian(
+                    fecha_operativa=hoy, tipo='RECARGA-CONSUMO', volumen=vol_merma,
+                    observacion=obs_dian, 
+                    usuario_registro=session.get('nombre', 'Sistema')
+                ))
+                flash(f'ℹ️ Registrada Merma: {vol_merma:,.3f} BBL. Descontado de DIAN.', 'info')
+
         db.session.commit()
         
         producto = ProductoSiza.query.get(producto_id)
@@ -4906,6 +4960,150 @@ def recargar_producto_siza():
         flash(f'Error al registrar recarga: {str(e)}', 'danger')
     
     return redirect(url_for('dashboard_siza'))
+
+@app.route('/siza/historial-recargas/<int:producto_id>')
+@login_required
+def historial_recargas_siza(producto_id):
+    """Obtener historial de recargas de un producto con mermas."""
+    try:
+        recargas = RecargaSiza.query.filter_by(producto_id=producto_id)\
+            .order_by(RecargaSiza.fecha.desc(), RecargaSiza.fecha_registro.desc())\
+            .limit(50).all()
+        
+        resultado = []
+        for r in recargas:
+            resultado.append({
+                'id': r.id,
+                'fecha': r.fecha.strftime('%Y-%m-%d'),
+                'volumen_recargado': float(r.volumen_recargado),
+                'volumen_merma': float(r.volumen_merma or 0),
+                'observacion': r.observacion or '',
+                'usuario_registro': r.usuario_registro,
+                'hora_registro': r.fecha_registro.strftime('%H:%M') if r.fecha_registro else ''
+            })
+        
+        return jsonify({'success': True, 'recargas': resultado})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/siza/eliminar-recarga/<int:recarga_id>', methods=['POST'])
+@login_required
+def eliminar_recarga_siza(recarga_id):
+    """Eliminar una recarga del historial."""
+    try:
+        recarga = RecargaSiza.query.get_or_404(recarga_id)
+        producto_id = recarga.producto_id
+        volumen = recarga.volumen_recargado
+        merma = recarga.volumen_merma or 0
+        fecha = recarga.fecha
+        descontado_dian = recarga.descontado_dian
+        
+        # Eliminar registro
+        db.session.delete(recarga)
+        
+        # Actualizar inventario (restar el volumen que se había sumado)
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=fecha, producto_id=producto_id
+        ).first()
+        
+        if inventario:
+            inventario.cupo_web -= volumen
+            inventario.volumen_desperdicio_generado = max(0, (inventario.volumen_desperdicio_generado or 0) - merma)
+        
+        # DEVOLVER A DIAN si se había descontado
+        if descontado_dian:
+            volumen_devolver = volumen + merma  # Volumen original + merma
+            volumen_dian = VolumenPendienteDian.query.filter_by(fecha=fecha).first()
+            
+            if volumen_dian:
+                volumen_dian.volumen_pendiente += volumen_devolver
+                volumen_dian.fecha_actualizacion = datetime.utcnow()
+                
+                # Registrar movimiento de devolución
+                db.session.add(MovimientoDian(
+                    fecha_operativa=fecha,
+                    tipo='REVERSA',
+                    volumen=volumen_devolver,
+                    observacion=f"Reversa por eliminación de recarga ID {recarga_id}: +{volumen:,.0f} BBL (producto) + {merma:,.0f} BBL (merma)",
+                    usuario_registro=session.get('nombre', 'Sistema')
+                ))
+        
+        db.session.commit()
+        
+        msg = f'Recarga eliminada: -{volumen:,.0f} BBL'
+        if descontado_dian:
+            msg += f' | Devuelto a DIAN: +{(volumen + merma):,.0f} BBL'
+        flash(msg, 'warning')
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/siza/editar-recarga/<int:recarga_id>', methods=['POST'])
+@login_required
+def editar_recarga_siza(recarga_id):
+    """Editar una recarga existente."""
+    try:
+        recarga = RecargaSiza.query.get_or_404(recarga_id)
+        
+        # Valores actuales
+        volumen_anterior = recarga.volumen_recargado
+        merma_anterior = recarga.volumen_merma or 0
+        descontado_dian_anterior = recarga.descontado_dian
+        
+        # Nuevos valores del formulario
+        nuevo_volumen = float(request.form.get('volumen_recargado'))
+        nueva_merma = float(request.form.get('volumen_merma', 0))
+        nueva_observacion = request.form.get('observacion', '').strip()
+        
+        # Calcular diferencias
+        diff_volumen = nuevo_volumen - volumen_anterior
+        diff_merma = nueva_merma - merma_anterior
+        
+        # Actualizar la recarga
+        recarga.volumen_recargado = nuevo_volumen
+        recarga.volumen_merma = nueva_merma
+        recarga.observacion = nueva_observacion or None
+        recarga.usuario_edicion = session.get('nombre', 'Sistema')
+        recarga.fecha_edicion = datetime.utcnow()
+        
+        # Actualizar inventario del producto
+        inventario = InventarioSizaDiario.query.filter_by(
+            fecha=recarga.fecha, producto_id=recarga.producto_id
+        ).first()
+        
+        if inventario:
+            inventario.cupo_web += diff_volumen
+            inventario.volumen_desperdicio_generado = max(0, (inventario.volumen_desperdicio_generado or 0) + diff_merma)
+        
+        # Actualizar DIAN si se había descontado
+        if descontado_dian_anterior:
+            diff_total = diff_volumen + diff_merma
+            volumen_dian = VolumenPendienteDian.query.filter_by(fecha=recarga.fecha).first()
+            
+            if volumen_dian:
+                volumen_dian.volumen_pendiente -= diff_total
+                volumen_dian.fecha_actualizacion = datetime.utcnow()
+                
+                # Registrar movimiento de ajuste
+                db.session.add(MovimientoDian(
+                    fecha_operativa=recarga.fecha,
+                    tipo='AJUSTE',
+                    volumen=abs(diff_total),
+                    observacion=f"Ajuste por edición recarga ID {recarga_id}: {'+' if diff_total < 0 else '-'}{abs(diff_total):,.0f} BBL",
+                    usuario_registro=session.get('nombre', 'Sistema')
+                ))
+        
+        db.session.commit()
+        
+        flash(f'Recarga actualizada: {nuevo_volumen:,.0f} BBL (Δ {diff_volumen:+,.0f})', 'success')
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden consumir
@@ -4964,55 +5162,6 @@ def registrar_consumo_siza():
     return redirect(url_for('dashboard_siza'))
 
 @login_required
-@permiso_requerido("siza_gestor")  # Solo gestores pueden editar recargas
-@app.route('/siza/editar-recarga/<int:recarga_id>', methods=['POST'])
-def editar_recarga_siza(recarga_id):
-    """Edita una recarga existente."""
-    try:
-        recarga = RecargaSiza.query.get_or_404(recarga_id)
-        volumen_anterior = recarga.volumen_recargado
-        producto_id = recarga.producto_id
-        fecha_recarga = recarga.fecha
-        
-        nuevo_volumen = float(request.form.get('volumen_recargado', 0))
-        nueva_observacion = request.form.get('observacion', '').strip()
-        
-        if nuevo_volumen <= 0:
-            flash('El volumen debe ser mayor a cero.', 'danger')
-            return redirect(url_for('dashboard_siza'))
-        
-        # Calcular diferencia
-        diferencia = nuevo_volumen - volumen_anterior
-        
-        # Actualizar la recarga
-        recarga.volumen_recargado = nuevo_volumen
-        recarga.observacion = nueva_observacion or None
-        recarga.usuario_edicion = session.get('nombre', 'Sistema')
-        recarga.fecha_edicion = datetime.utcnow()
-        
-        # Ajustar el inventario
-        inventario = InventarioSizaDiario.query.filter_by(
-            fecha=fecha_recarga,
-            producto_id=producto_id
-        ).first()
-        
-        if inventario:
-            inventario.cupo_web += diferencia
-            inventario.usuario_actualizacion = session.get('nombre', 'Sistema')
-            inventario.fecha_actualizacion = datetime.utcnow()
-        
-        db.session.commit()
-        
-        flash(f'Recarga editada exitosamente. Ajuste: {diferencia:+,.0f} BBL', 'success')
-        
-    except ValueError:
-        flash('El volumen debe ser un número válido.', 'danger')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al editar recarga: {str(e)}', 'danger')
-    
-    return redirect(url_for('dashboard_siza'))
-
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden editar consumos
 @app.route('/siza/editar-consumo/<int:consumo_id>', methods=['POST'])

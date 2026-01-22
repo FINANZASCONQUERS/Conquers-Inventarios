@@ -1,0 +1,679 @@
+﻿{% extends 'base.html' %}
+
+{% block container_class %}container-fluid px-4 py-4{% endblock %}
+
+{% block content %}
+<!-- Header & Update Button -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-dark mb-0">📊 Dashboard Gerencial: Ecopetrol Pricing</h2>
+        <p class="text-muted mb-0">Análisis Visual e Inteligencia de Mercado</p>
+    </div>
+    <form method="POST" action="{{ url_for('pricing_bp.update_prices') }}">
+        <button type="submit" class="btn btn-primary d-flex align-items-center gap-2 shadow-sm rounded-pill px-4">
+            <i class="bi bi-arrow-clockwise"></i> Actualizar Datos
+        </button>
+    </form>
+</div>
+
+<!-- FLASH MESSAGES -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="row mb-4">
+    <div class="col-12">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+
+<!-- 1. CHART SECTION (Full Width - Top Priority) -->
+<div class="card shadow-lg border-0 mb-4 rounded-4 overflow-hidden">
+    <div class="card-header bg-gradient-primary py-3 border-bottom-0"
+        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h5 class="fw-bold m-0 text-white text-center">
+            <i class="bi bi-graph-up-arrow me-2"></i>Dinámica de Premiums (Diferenciales)
+        </h5>
+    </div>
+    <div class="card-body bg-white position-relative p-3" style="min-height: 750px;">
+        <!-- Company Logo Watermark - BOTTOM RIGHT (Professional Look) -->
+        <div class="position-absolute"
+            style="bottom: 60px; right: 25px; z-index: 9; opacity: 0.8; pointer-events: none;">
+            <img src="{{ url_for('static', filename='Logo_de_empresa.jpeg') }}" alt="Conquers Trading"
+                style="width: 140px; height: auto; mix-blend-mode: multiply; filter: grayscale(100%) opacity(0.6);">
+        </div>
+
+        <!-- ENHANCED Filter Overlay with Granularity Selector - MOVED TO TOP -->
+        <div class="d-flex justify-content-center align-items-center gap-3 px-4 py-2 mx-auto mb-3"
+            style="width: fit-content; background: rgba(255,255,255,0.97); border-radius: 30px; padding: 12px 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid rgba(103, 126, 234, 0.25); position: relative; z-index: 100;">
+
+            <!-- Granularity Selector -->
+            <div class="d-flex align-items-center gap-2">
+                <small class="text-muted fw-bold" style="font-size: 0.75rem;">Vista:</small>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-primary btn-sm px-3 active fw-semibold" id="viewYear"
+                        title="Vista Anual" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar3 me-1"></i>Año
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold" id="viewQuarter"
+                        title="Vista Trimestral" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar2-range me-1"></i>Trim
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold" id="viewMonth"
+                        title="Vista Mensual" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar2-month me-1"></i>Mes
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm px-3 fw-semibold" id="viewDay"
+                        title="Vista Diaria" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar-day me-1"></i>Día
+                    </button>
+                </div>
+            </div>
+
+            <div class="vr" style="height: 32px; opacity: 0.3;"></div>
+
+            <!-- Global Year Selector (Visible for Year, Quarter, Month) -->
+            <div id="globalYearSelector" class="d-flex align-items-center gap-2">
+                <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Año:</small>
+                <select class="form-select form-select-sm fw-semibold" id="yearSelect"
+                    style="width: 110px; font-size: 0.85rem;">
+                    <option value="2025" selected>2025</option>
+                    <option value="2026">2026</option>
+                    <option value="all">Todos</option>
+                </select>
+            </div>
+
+            <div class="vr" style="height: 32px; opacity: 0.3;" id="yearSeparator"></div>
+
+            <!-- Period Selector Container (changes based on granularity) -->
+            <div id="periodSelectorContainer">
+
+                <!-- Year View (Placeholder/Info or Hidden) -->
+                <!-- We don't need specific controls for Year view anymore since the global selector handles it -->
+
+                <!-- Quarter View (Hidden by default) -->
+                <div id="quarterSelector" class="d-none">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-semibold" data-quarter="q1"
+                            style="font-size: 0.8rem;">Q1</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-semibold" data-quarter="q2"
+                            style="font-size: 0.8rem;">Q2</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-semibold" data-quarter="q3"
+                            style="font-size: 0.8rem;">Q3</button>
+                        <button type="button" class="btn btn-outline-info btn-sm px-3 fw-semibold" data-quarter="q4"
+                            style="font-size: 0.8rem;">Q4</button>
+                    </div>
+                </div>
+
+                <!-- Month View (Hidden by default) -->
+                <div id="monthSelector" class="d-none d-flex align-items-center gap-2">
+                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Mes:</small>
+                    <select class="form-select form-select-sm fw-semibold" id="monthSelect"
+                        style="width: 140px; font-size: 0.85rem;">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+
+                <!-- Day View (Hidden by default) -->
+                <div id="daySelector" class="d-none d-flex align-items-center gap-2">
+                    <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Fecha:</small>
+                    <input type="date" class="form-control form-control-sm fw-semibold" id="dayInput"
+                        style="width: 160px; font-size: 0.85rem;" value="2025-01-19">
+                </div>
+            </div>
+
+            <div class="vr" style="height: 32px; opacity: 0.3;"></div>
+
+            <!-- Quick Actions -->
+            <button type="button" class="btn btn-sm btn-success px-3 fw-semibold" id="btnApplyFilter"
+                style="font-size: 0.8rem;">
+                <i class="bi bi-check-circle me-1"></i>Aplicar
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary px-2" id="btnResetFilter" title="Ver Todo">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+        </div>
+
+        <!-- Chart Container -->
+        <div id="premiumChart" style="height: 680px; width: 100%;"></div>
+    </div>
+    <div class="card-footer bg-light text-center text-muted small py-2 border-top-0">
+        <i class="bi bi-mouse me-1"></i> Seleccione una vista y período, luego pulse "Aplicar"
+    </div>
+</div>
+
+<!-- 2. COLLAPSIBLE DATA TABLES (Side by Side Layout) -->
+<div class="accordion shadow-sm mb-5" id="accordionTables">
+    <div class="accordion-item border-0 rounded-3 overflow-hidden">
+        <h2 class="accordion-header" id="headingTables">
+            <button class="accordion-button collapsed fw-bold bg-white text-dark shadow-none py-3" type="button"
+                data-bs-toggle="collapse" data-bs-target="#collapseTables" aria-expanded="false"
+                aria-controls="collapseTables">
+                <i class="bi bi-layout-split me-2"></i> 📚 Ver Tablas Detalladas (Base + Análisis) - Clic para
+                desplegar
+            </button>
+        </h2>
+        <div id="collapseTables" class="accordion-collapse collapse" aria-labelledby="headingTables"
+            data-bs-parent="#accordionTables">
+            <div class="accordion-body bg-light p-3">
+
+                <div class="row g-3">
+
+                    <!-- A. Main Pricing Table (Left Side - Wider) -->
+                    <div class="col-xl-7 col-lg-12">
+                        <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden">
+                            <div
+                                class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold m-0 text-dark">💵 Precios Base (Detalle Ecopetrol)</h6>
+                                <span class="badge bg-light text-dark border">Última: {{
+                                    records[0].fecha.strftime('%d/%m/%Y') if records else 'N/A' }}</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 600px;">
+                                    <table class="table table-bordered table-hover align-middle mb-0 text-center"
+                                        style="font-size: 0.7rem;">
+                                        <thead class="bg-light sticky-top shadow-sm" style="z-index: 10;">
+                                            <tr class="align-middle">
+                                                <th rowspan="2" class="bg-light py-2">FECHA</th>
+                                                <th rowspan="2" class="bg-light">TRM</th>
+                                                <th rowspan="2" class="bg-light">BRENT</th>
+                                                <th colspan="5"
+                                                    class="table-primary border-bottom-0 text-primary-emphasis fw-bold">
+                                                    F04</th>
+                                                <th rowspan="2" class="bg-white fw-bold border-start border-end">FUEL
+                                                    OIL<br>(USD)
+                                                </th>
+                                                <th colspan="4"
+                                                    class="table-info border-bottom-0 text-info-emphasis fw-bold">
+                                                    BPI</th>
+                                            </tr>
+                                            <tr class="align-middle">
+                                                <th class="table-primary fw-normal">COP/BLL</th>
+                                                <th class="table-primary fw-normal">IVA+<br>IMPU</th>
+                                                <th class="table-primary fw-bold">TOTAL<br>COP</th>
+                                                <th class="table-primary fw-normal">USD/BLL</th>
+                                                <th class="table-primary fw-bold text-success">TOTAL<br>USD</th>
+                                                <th class="table-info fw-normal">COP/KG</th>
+                                                <th class="table-info fw-normal">USD/KG</th>
+                                                <th class="table-info fw-normal">USD/MT</th>
+                                                <th class="table-info fw-bold text-success">USD/BLL</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% if not records %}
+                                            <tr>
+                                                <td colspan="12" class="py-5 text-muted">Sin datos disponibles.</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% for r in records %}
+                                            <tr>
+                                                <td class="fw-bold text-nowrap bg-light">{{
+                                                    r.fecha.strftime('%d/%m/%Y') }}</td>
+                                                <td class="font-monospace text-muted">$ {{ "{:,.2f}".format(r.trm)
+                                                    }}</td>
+                                                <td class="fw-bold text-dark font-monospace">{{
+                                                    "{:,.2f}".format(r.brent) }}</td>
+                                                <td class="text-secondary font-monospace">$ {{
+                                                    "{:,.0f}".format(r.f04_base_cop or 0) }}</td>
+                                                <td class="text-secondary font-monospace">$ {{
+                                                    "{:,.0f}".format(r.f04_impuesto_cop or 0) }}</td>
+                                                <td class="fw-bold font-monospace bg-light">$ {{
+                                                    "{:,.0f}".format(r.f04_total_cop or 0) }}</td>
+                                                <td class="font-monospace">$ {{ "{:,.2f}".format(r.f04_base_usd or
+                                                    0) }}</td>
+                                                <td class="fw-bold bg-success-subtle font-monospace text-dark">$ {{
+                                                    "{:,.2f}".format(r.f04_total_usd or 0) }}</td>
+                                                <td class="fw-bold border-start border-end bg-white font-monospace">
+                                                    $ {{ "{:,.2f}".format(r.fuel_oil_usd or 0) }}</td>
+                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.bpi_cop_kg or 0)
+                                                    }}</td>
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.bpi_usd_kg or 0) }}
+                                                </td>
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.bpi_usd_mt or 0) }}
+                                                </td>
+                                                <td class="fw-bold bg-info-subtle font-monospace text-dark">$ {{
+                                                    "{:,.2f}".format(r.bpi_usd_bll or 0) }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- B. Premium Analysis Table (Right Side - Narrower) -->
+                    <div class="col-xl-5 col-lg-12">
+                        <div class="card shadow-sm border-0 h-100 rounded-3 overflow-hidden">
+                            <div
+                                class="card-header bg-warning-subtle py-3 border-0 d-flex justify-content-between align-items-center">
+                                <h6 class="fw-bold m-0 text-dark">✨ Diferenciales (Premium)</h6>
+                                <span class="badge bg-warning text-dark">Gerencia</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive" style="max-height: 600px;">
+                                    <table class="table table-hover align-middle mb-0 text-center text-nowrap"
+                                        style="font-size: 0.75rem;">
+                                        <thead class="bg-light sticky-top shadow-sm">
+                                            <tr>
+                                                <th class="py-3 bg-light">Fecha</th>
+                                                <th class="py-3 bg-light">Brent</th>
+                                                <th class="py-3 text-primary bg-primary-subtle">F04 Base</th>
+                                                <th class="py-3 text-primary bg-primary-subtle border-start">F04 +
+                                                    IVA</th>
+                                                <th class="py-3 text-danger bg-danger-subtle border-start">FUEL OIL
+                                                </th>
+                                                <th class="py-3 text-success bg-success-subtle border-start">BPI
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for r in records %}
+                                            {% set prev_r = records[loop.index] if loop.index < records|length else None
+                                                %} <tr>
+                                                <td class="fw-bold text-muted">{{ r.fecha.strftime('%d/%m/%Y')
+                                                    }}</td>
+                                                <td class="text-muted small">{{ "{:,.2f}".format(r.brent) }}
+                                                </td>
+
+                                                <!-- Trends Macro Definition -->
+                                                {% macro render_smart_trend(curr_val, prev_val) %}
+                                                {% set curr = curr_val or 0.0 %}
+                                                {% if prev_val is none %}
+                                                <span class="fw-bold text-secondary">{{
+                                                    "{:,.2f}".format(curr) }}</span>
+                                                {% else %}
+                                                {% set prev = prev_val or 0.0 %}
+                                                {% set delta = curr - prev %}
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <span class="fw-bold {{ 'text-dark' if curr == 0 else '' }}">
+                                                        {{ "{:,.2f}".format(curr) }}
+                                                    </span>
+                                                    {% if delta> 0.001 %}
+                                                    <span
+                                                        class="badge bg-success-subtle text-success rounded-pill px-2 py-0"
+                                                        style="font-size: 0.7em;" title="Subió">
+                                                        <i class="bi bi-arrow-up-short"></i>
+                                                    </span>
+                                                    {% elif delta < -0.001 %} <span
+                                                        class="badge bg-danger-subtle text-danger rounded-pill px-2 py-0"
+                                                        style="font-size: 0.7em;" title="Bajó">
+                                                        <i class="bi bi-arrow-down-short"></i>
+                                                        </span>
+                                                        {% else %}
+                                                        <span class="text-muted small"><i class="bi bi-dash"></i></span>
+                                                        {% endif %}
+                                                </div>
+                                                {% endif %}
+                                                {% endmacro %}
+                                                <!-- End Macro -->
+
+                                                <td class="bg-light">{{ render_smart_trend(r.diff_f04_base,
+                                                    prev_r.diff_f04_base if prev_r else None) }}</td>
+                                                <td class="bg-light border-start">{{
+                                                    render_smart_trend(r.diff_f04_total,
+                                                    prev_r.diff_f04_total if prev_r else None) }}</td>
+                                                <td class="bg-light border-start">{{
+                                                    render_smart_trend(r.diff_fuel_oil,
+                                                    prev_r.diff_fuel_oil if prev_r else None) }}</td>
+                                                <td class="bg-light border-start">{{
+                                                    render_smart_trend(r.diff_bpi,
+                                                    prev_r.diff_bpi if prev_r else None) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- End Columns -->
+                </div>
+                <!-- End Row -->
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ApexCharts Script -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Prepare Data
+        const dates = [];
+        const f04Base = [];
+        const f04Total = [];
+        const bpi = [];
+        const fuelOil = [];
+
+        // Reverse for chart Chronological Order
+        {% for r in records | reverse %}
+        var ts = new Date("{{ r.fecha.isoformat() }}T00:00:00").getTime();
+        dates.push("{{ r.fecha.isoformat() }}T00:00:00");
+
+        f04Base.push([ts, {{ r.diff_f04_base or 0 }}]);
+    f04Total.push([ts, {{ r.diff_f04_total or 0 }}]);
+    bpi.push([ts, {{ r.diff_bpi or 0 }}]);
+    fuelOil.push([ts, {{ r.diff_fuel_oil or 0 }}]);
+    {% endfor %}
+
+    // Spanish Locale Configuration
+    const spanishLocale = {
+        name: 'es',
+        options: {
+            months: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+            shortMonths: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+            days: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+            shortDays: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+            toolbar: {
+                download: 'Descargar SVG',
+                selection: 'Selección',
+                selectionZoom: 'Zoom de selección',
+                zoomIn: 'Acercar',
+                zoomOut: 'Alejar',
+                pan: 'Desplazar',
+                reset: 'Restablecer'
+            }
+        }
+    };
+
+    // Chart Config
+    var options = {
+        series: [{
+            name: 'Premium F04',
+            data: f04Base
+        }, {
+            name: 'Premium F04+IVA',
+            data: f04Total
+        }, {
+            name: 'Premium BPI',
+            data: bpi
+        }, {
+            name: 'Premium Fuel Oil',
+            data: fuelOil
+        }],
+        chart: {
+            type: 'area',
+            height: 680,
+            width: '100%',
+            fontFamily: 'Segoe UI, sans-serif',
+            defaultLocale: 'es',
+            locales: [spanishLocale],
+            toolbar: {
+                show: true,
+                tools: {
+                    download: true,
+                    selection: true,
+                    zoom: true,
+                    zoomin: true,
+                    zoomout: true,
+                    pan: true,
+                    reset: true
+                }
+            },
+            zoom: { autoScaleYaxis: true }
+        },
+        colors: ['#0d6efd', '#0dcaf0', '#FF9800', '#6f42c1'],
+        dataLabels: { enabled: false },
+        stroke: {
+            curve: 'smooth',
+            width: 2
+        },
+        fill: {
+            type: 'gradient',
+            gradient: {
+                shadeIntensity: 1,
+                opacityFrom: 0.4,
+                opacityTo: 0.1,
+                stops: [0, 90, 100]
+            }
+        },
+        xaxis: {
+            type: 'datetime',
+            // categories: dates, // REMOVED: Using XY pairs instead for better Zoom support
+            labels: {
+                datetimeFormatter: {
+                    year: 'yyyy',
+                    month: "MMM 'yy",
+                    day: 'dd MMM'
+                }
+            },
+            tooltip: { enabled: false }
+        },
+        yaxis: {
+            labels: {
+                formatter: (val) => "$ " + val.toFixed(2),
+                style: { colors: '#718096' }
+            },
+            title: {
+                text: "Diferencial (USD)",
+                style: { fontSize: '12px', fontWeight: 600 }
+            }
+        },
+        tooltip: {
+            theme: 'light',
+            x: {
+                format: 'dd MMM yyyy',
+                formatter: function (value) {
+                    const date = new Date(value);
+                    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+                    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+                }
+            },
+            y: { formatter: (val) => "$ " + val.toFixed(2) }
+        },
+        grid: {
+            borderColor: '#e7e7e7',
+            strokeDashArray: 3,
+            xaxis: { lines: { show: true } },
+            yaxis: { lines: { show: true } }
+        },
+        legend: {
+            position: 'bottom',
+            horizontalAlign: 'center',
+            offsetY: 5,
+            floating: false,
+            markers: {
+                width: 14,
+                height: 14,
+                radius: 3,
+                strokeWidth: 2
+            },
+            itemMargin: {
+                horizontal: 20,
+                vertical: 10
+            },
+            fontSize: '14px',
+            fontWeight: 600,
+            labels: {
+                colors: '#333',
+                useSeriesColors: false
+            }
+        }
+    };
+
+    var chart = new ApexCharts(document.querySelector("#premiumChart"), options);
+    chart.render();
+
+    // ========================
+    // GRANULARITY FILTER LOGIC
+    // ========================
+    const viewButtons = {
+        year: document.getElementById('viewYear'),
+        quarter: document.getElementById('viewQuarter'),
+        month: document.getElementById('viewMonth'),
+        day: document.getElementById('viewDay')
+    };
+
+    const selectors = {
+        // year: document.getElementById('yearSelector'), // REMOVED (Global)
+        quarter: document.getElementById('quarterSelector'),
+        month: document.getElementById('monthSelector'),
+        day: document.getElementById('daySelector')
+    };
+
+    let currentView = 'year';
+
+    // Switch between granularities
+    // Switch between granularities
+    Object.keys(viewButtons).forEach(view => {
+        viewButtons[view].addEventListener('click', () => {
+            // Update active button
+            Object.values(viewButtons).forEach(btn => {
+                btn.classList.remove('btn-primary', 'active');
+                btn.classList.add('btn-outline-primary');
+            });
+            viewButtons[view].classList.remove('btn-outline-primary');
+            viewButtons[view].classList.add('btn-primary', 'active');
+
+            // Show/hide selectors
+            Object.keys(selectors).forEach(s => {
+                if (selectors[s]) selectors[s].classList.add('d-none');
+            });
+            if (selectors[view]) selectors[view].classList.remove('d-none');
+
+            // Handle Global Year Selector Visibility
+            const globalYear = document.getElementById('globalYearSelector');
+            const yearSep = document.getElementById('yearSeparator');
+
+            if (view === 'day') {
+                globalYear.classList.add('d-none');
+                yearSep.classList.add('d-none');
+            } else {
+                globalYear.classList.remove('d-none');
+                yearSep.classList.remove('d-none');
+
+                // If switching to Quarter/Month and Year is 'all', force it to latest numeric year
+                // to make sure month/quarter filters make sense
+                const yearSelect = document.getElementById('yearSelect');
+                if ((view === 'quarter' || view === 'month') && yearSelect.value === 'all') {
+                    // Find latest year
+                    yearSelect.value = "2025"; // Fallback safe
+                    // Try to find max year in options
+                    let maxYear = 0;
+                    for (let opt of yearSelect.options) {
+                        if (opt.value !== 'all') {
+                            const y = parseInt(opt.value);
+                            if (y > maxYear) maxYear = y;
+                        }
+                    }
+                    if (maxYear > 0) yearSelect.value = maxYear.toString();
+                }
+            }
+
+            currentView = view;
+        });
+    });
+
+    // Apply Filter with FIXED LOGIC
+    // Apply Filter with FIXED LOGIC
+    document.getElementById('btnApplyFilter').addEventListener('click', () => {
+        if (!dates || dates.length === 0) {
+            alert("No hay datos disponibles para filtrar.");
+            return;
+        }
+
+        const allDates = dates.map(d => new Date(d).getTime()).sort((a, b) => a - b);
+        const earliestTimestamp = allDates[0];
+        const latestTimestamp = allDates[allDates.length - 1];
+        const latestDate = new Date(latestTimestamp);
+        // Default to current year or the year of the latest data point
+        const currentYear = latestDate.getFullYear();
+
+        let start, end;
+
+        // Logic Logic: Use the GLOBAL Year Select
+        const yearSelectVal = document.getElementById('yearSelect').value;
+        const selectedYearInt = parseInt(yearSelectVal);
+        const resolvedYear = isNaN(selectedYearInt) ? currentYear : selectedYearInt;
+
+        if (currentView === 'year') {
+            if (yearSelectVal === 'all') {
+                start = earliestTimestamp;
+                end = latestTimestamp;
+            } else {
+                start = new Date(resolvedYear, 0, 1).getTime();
+                end = new Date(resolvedYear, 11, 31, 23, 59, 59).getTime();
+            }
+        } else if (currentView === 'quarter') {
+            const activeQ = document.querySelector('#quarterSelector button.btn-info');
+            if (!activeQ) {
+                alert('Por favor seleccione un trimestre (Q1, Q2, Q3 o Q4)');
+                return;
+            }
+            const quarter = parseInt(activeQ.dataset.quarter.substring(1));
+            start = new Date(resolvedYear, (quarter - 1) * 3, 1).getTime();
+            end = new Date(resolvedYear, quarter * 3, 0, 23, 59, 59).getTime();
+        } else if (currentView === 'month') {
+            const month = parseInt(document.getElementById('monthSelect').value);
+            start = new Date(resolvedYear, month - 1, 1).getTime();
+            end = new Date(resolvedYear, month, 0, 23, 59, 59).getTime();
+        } else if (currentView === 'day') {
+            const dayValue = document.getElementById('dayInput').value;
+            if (!dayValue) {
+                alert('Por favor seleccione una fecha');
+                return;
+            }
+            // Use local time parsing to avoid timezone issues
+            const parts = dayValue.split('-');
+            const dayDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            start = dayDate.getTime();
+
+            const dayEnd = new Date(parts[0], parts[1] - 1, parts[2]);
+            dayEnd.setHours(23, 59, 59, 999);
+            end = dayEnd.getTime();
+        }
+
+        // Clamp to data bounds but allow viewing empty periods if requested (to avoid confusion)
+        // If the selected range is completely outside data range, warn user but still try to show context or full range
+        if (end < earliestTimestamp || start > latestTimestamp) {
+            // Option: Alert user and reset OR just show what's available
+            /* alert("El rango seleccionado no contiene datos. Mostrando todo el historial.");
+            start = earliestTimestamp;
+            end = latestTimestamp; */
+        }
+
+        // Apply zoom (ApexCharts handles empty ranges gracefully usually, but let's be safe)
+        if (start && end && start < end) {
+            chart.zoomX(start, end);
+        } else {
+            console.warn("Invalid zoom range:", start, end);
+        }
+    });
+
+    // Reset Filter
+    document.getElementById('btnResetFilter').addEventListener('click', () => {
+        chart.zoomX(new Date(dates[0]).getTime(), new Date(dates[dates.length - 1]).getTime());
+    });
+
+    // Quarter button selection
+    document.querySelectorAll('#quarterSelector button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('#quarterSelector button').forEach(b => {
+                b.classList.remove('btn-info', 'active');
+                b.classList.add('btn-outline-info');
+            });
+            e.target.classList.remove('btn-outline-info');
+            e.target.classList.add('btn-info', 'active');
+        });
+    });
+    });
+</script>
+{% endblock %}

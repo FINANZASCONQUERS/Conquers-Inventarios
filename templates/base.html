@@ -385,8 +385,8 @@ defecto seguros. #}
                                 </h6>
                             </li>
                             {% if 'planilla_precios' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'planilla_precios' %}active{% endif %}"
-                                    href="{{ url_for('planilla_precios') }}"><i
+                            <li><a class="dropdown-item {% if request.endpoint == 'pricing_bp.index' %}active{% endif %}"
+                                    href="{{ url_for('pricing_bp.index') }}"><i
                                         class="bi bi-currency-exchange me-2 text-success"></i>Planilla Precios</a></li>
                             {% endif %}
                             {% if 'flujo_efectivo' in session.get('area', []) %}
@@ -532,7 +532,7 @@ defecto seguros. #}
                                 <h6 class="dropdown-header text-primary"><i
                                         class="bi bi-currency-dollar me-2"></i>Finanzas</h6>
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('planilla_precios') }}"><i
+                            <li><a class="dropdown-item" href="{{ url_for('pricing_bp.index') }}"><i
                                         class="bi bi-currency-exchange me-2 text-success"></i>Planilla de Precios</a>
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('flujo_efectivo') }}"><i

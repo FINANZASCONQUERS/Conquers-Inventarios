@@ -1,0 +1,119 @@
+{# Modal de Historial de Recargas por Producto #}
+<div class="modal fade" id="modalHistorialRecargas{{ item.producto.id }}" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-clock-history me-2"></i>Historial de Recargas - {{ item.producto.nombre }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 10%;">Fecha</th>
+                                <th style="width: 12%;">Volumen (BBL)</th>
+                                <th style="width: 12%;">Merma (BBL)</th>
+                                <th style="width: 10%;">% Merma</th>
+                                <th style="width: 25%;">Observación</th>
+                                <th style="width: 15%;">Usuario</th>
+                                <th style="width: 8%;">Hora</th>
+                                <th style="width: 8%;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-historial-{{ item.producto.id }}">
+                            <tr>
+                                <td colspan="8" class="text-center">
+                                    <div class="spinner-border spinner-border-sm" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    Cargando historial...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Cargar historial al abrir el modal
+    document.getElementById('modalHistorialRecargas{{ item.producto.id }}').addEventListener('shown.bs.modal', function () {
+        cargarHistorialRecargas({{ item.producto.id }});
+    });
+
+    function cargarHistorialRecargas(productoId) {
+        const tbody = document.getElementById('tbody-historial-' + productoId);
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center"><div class="spinner-border spinner-border-sm"></div> Cargando...</td></tr>';
+
+        fetch('/siza/historial-recargas/' + productoId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">' + data.error + '</td></tr>';
+                    return;
+                }
+
+                if (data.recargas.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No hay recargas registradas</td></tr>';
+                    return;
+                }
+
+                let html = '';
+                data.recargas.forEach(r => {
+                    const porcentajeMerma = r.volumen_recargado > 0 ? ((r.volumen_merma / r.volumen_recargado) * 100).toFixed(2) : '0.00';
+                    html += `
+                        <tr>
+                            <td>${r.fecha}</td>
+                            <td class="text-end fw-bold">${parseFloat(r.volumen_recargado).toLocaleString('es-CO', { minimumFractionDigits: 3 })}</td>
+                            <td class="text-end text-warning fw-bold">${parseFloat(r.volumen_merma).toLocaleString('es-CO', { minimumFractionDigits: 3 })}</td>
+                            <td class="text-end">${porcentajeMerma}%</td>
+                            <td><small>${r.observacion || '-'}</small></td>
+                            <td><small>${r.usuario_registro}</small></td>
+                            <td><small>${r.hora_registro}</small></td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-danger" onclick="eliminarRecarga(${r.id}, ${productoId})" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            })
+            .catch(error => {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error al cargar: ' + error + '</td></tr>';
+            });
+    }
+
+    function eliminarRecarga(recargaId, productoId) {
+        if (!confirm('¿Está seguro de eliminar esta recarga? Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        fetch('/siza/eliminar-recarga/' + recargaId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Recarga eliminada exitosamente');
+                    cargarHistorialRecargas(productoId);
+                    location.reload(); // Recargar para actualizar el dashboard
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error al eliminar: ' + error);
+            });
+    }
+</script>

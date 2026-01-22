@@ -1,38 +1,54 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8" />
     <title>GUÍA TRANSPORTE MINMINAS</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
         /* Estilos Generales y de la Guía */
-        @page { size: landscape; margin: 0; }
-        html, body { 
-            margin: 0; padding: 0;
+        @page {
+            size: landscape;
+            margin: 0;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
             font: 12pt ARIAL, sans-serif;
-            width: 100%; 
+            width: 100%;
             min-height: 100vh;
             overflow-x: hidden;
             overflow-y: auto;
             line-height: 1.2;
             position: relative;
         }
+
         body::before {
             content: "";
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: url("{{ url_for('static', filename='Fondo.webp') }}") no-repeat center center;
-            background-size: cover; /* Cambiado de px fijos a cover para mejor escalado */
+            background-size: cover;
+            /* Cambiado de px fijos a cover para mejor escalado */
             background-attachment: fixed;
             opacity: 0.50;
             z-index: -1;
-            pointer-events: none; /* Para que no interfiera con interacciones */
+            pointer-events: none;
+            /* Para que no interfiera con interacciones */
         }
+
         /* Controles de Zoom */
         #controles-zoom {
             position: fixed;
@@ -42,11 +58,12 @@
             background: rgba(0, 64, 128, 0.95);
             padding: 10px 15px;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         #controles-zoom button {
             background: white;
             border: none;
@@ -59,10 +76,12 @@
             cursor: pointer;
             transition: all 0.2s;
         }
+
         #controles-zoom button:hover {
             background: #e6f2ff;
             transform: scale(1.1);
         }
+
         #nivel-zoom {
             color: white;
             font-weight: bold;
@@ -70,7 +89,7 @@
             min-width: 50px;
             text-align: center;
         }
-        
+
         /* Panel de Impresión Parcial */
         #panel-impresion-parcial {
             position: fixed;
@@ -80,15 +99,17 @@
             background: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
             max-width: 350px;
             max-height: 80vh;
             overflow-y: auto;
             display: none;
         }
+
         #panel-impresion-parcial.activo {
             display: block;
         }
+
         #panel-impresion-parcial h4 {
             margin-top: 0;
             color: #004080;
@@ -96,6 +117,7 @@
             border-bottom: 2px solid #004080;
             padding-bottom: 10px;
         }
+
         .campo-checkbox {
             display: flex;
             align-items: center;
@@ -103,15 +125,18 @@
             padding: 5px;
             border-radius: 5px;
         }
+
         .campo-checkbox:hover {
             background: #f0f8ff;
         }
+
         .campo-checkbox input[type="checkbox"] {
             margin-right: 10px;
             width: 18px;
             height: 18px;
             cursor: pointer;
         }
+
         .campo-checkbox label {
             cursor: pointer;
             margin: 0;
@@ -119,6 +144,7 @@
             font-weight: normal;
             text-transform: none;
         }
+
         .botones-panel {
             display: flex;
             gap: 10px;
@@ -126,6 +152,7 @@
             padding-top: 15px;
             border-top: 1px solid #ddd;
         }
+
         .botones-panel button {
             flex: 1;
             padding: 10px;
@@ -135,27 +162,33 @@
             font-weight: bold;
             font-size: 13px;
         }
+
         .btn-imprimir-seleccion {
             background: #28a745;
             color: white;
         }
+
         .btn-imprimir-seleccion:hover {
             background: #218838;
         }
+
         .btn-cancelar-parcial {
             background: #6c757d;
             color: white;
         }
+
         .btn-cancelar-parcial:hover {
             background: #5a6268;
         }
+
         /* Contenedor de acciones (id histórico) */
-        #acciones { 
+        #acciones {
             position: fixed;
             top: 10px;
             left: 10px;
             z-index: 1000;
         }
+
         /* Contenedor de acciones que actualmente usa class="acciones" */
         .acciones {
             position: fixed;
@@ -163,6 +196,7 @@
             left: 10px;
             z-index: 1000;
         }
+
         #acciones button {
             padding: 8px 15px;
             margin-right: 8px;
@@ -174,7 +208,9 @@
             cursor: pointer;
             font-size: 12px;
         }
-        .acciones button { /* mismo estilo para la clase */
+
+        .acciones button {
+            /* mismo estilo para la clase */
             padding: 8px 15px;
             margin-right: 8px;
             background: #004080;
@@ -185,11 +221,15 @@
             cursor: pointer;
             font-size: 12px;
         }
+
         #acciones button:hover {
             background: #0066cc;
         }
-        .acciones button:hover { background: #0066cc; }
-        
+
+        .acciones button:hover {
+            background: #0066cc;
+        }
+
         /* Estilo para el botón de Cerrar Sesión */
         #boton-logout {
             position: fixed;
@@ -207,51 +247,112 @@
             display: flex;
             align-items: center;
             gap: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
+
         #boton-logout:hover {
             background-color: #c82333;
         }
-        
-        #selloInput { -webkit-appearance: none; -moz-appearance: textfield; appearance: textfield; }
-        #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; display: none; }
-        .fila-acciones-agregar {
-    display: flex;
-    justify-content: center; /* Centra los botones horizontalmente */
-    gap: 1rem; /* Espacio entre los botones */
-    margin-top: 1cm; /* Espacio arriba, separándolo del formulario */
-}
 
-/* Estilo opcional para que los botones se vean un poco mejor */
-.fila-acciones-agregar .btn {
-    font-weight: 500;
-}
+        #selloInput {
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        #selloInput::-webkit-outer-spin-button,
+        #selloInput::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+            display: none;
+        }
+
+        .fila-acciones-agregar {
+            display: flex;
+            justify-content: center;
+            /* Centra los botones horizontalmente */
+            gap: 1rem;
+            /* Espacio entre los botones */
+            margin-top: 1cm;
+            /* Espacio arriba, separándolo del formulario */
+        }
+
+        /* Estilo opcional para que los botones se vean un poco mejor */
+        .fila-acciones-agregar .btn {
+            font-weight: 500;
+        }
+
         /* Estilos de Impresión */
         @media print {
-           .no-print { 
-        display: none !important; 
-    }
-    .btn-agregar-conductor-interno {
-        display: none !important;
-    }
+            .no-print {
+                display: none !important;
+            }
 
-            #acciones, #boton-logout, #controles-zoom { display: none !important; }
-            body::before { display: none; }
+            .btn-agregar-conductor-interno {
+                display: none !important;
+            }
+
+            #acciones,
+            #boton-logout,
+            #controles-zoom {
+                display: none !important;
+            }
+
+            body::before {
+                display: none;
+            }
+
             /* RESETEAR ZOOM PARA IMPRESIÓN - CRÍTICO */
             #contenedor-guia {
                 transform: none !important;
                 transform-origin: initial !important;
             }
-            .campo, .hoja { border: none !important; }
-            select { background: transparent !important; border: none !important; }
-            body { transform: rotate(0deg) !important; }
-            ::placeholder { color: transparent !important; }
-            input[placeholder]:empty:before { content: none !important; }
-            #selloInput::-webkit-outer-spin-button, #selloInput::-webkit-inner-spin-button { display: none !important; }
-            @page { size: letter; margin: 0; }
-             body { width: 29.7cm; height: 21cm; transform: rotate(0deg); } 
-            #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 3.8cm auto; padding: 1.5cm 1cm 1cm 1cm; }
-            
+
+            .campo,
+            .hoja {
+                border: none !important;
+            }
+
+            select {
+                background: transparent !important;
+                border: none !important;
+            }
+
+            body {
+                transform: rotate(0deg) !important;
+            }
+
+            ::placeholder {
+                color: transparent !important;
+            }
+
+            input[placeholder]:empty:before {
+                content: none !important;
+            }
+
+            #selloInput::-webkit-outer-spin-button,
+            #selloInput::-webkit-inner-spin-button {
+                display: none !important;
+            }
+
+            @page {
+                size: letter;
+                margin: 0;
+            }
+
+            body {
+                width: 29.7cm;
+                height: 21cm;
+                transform: rotate(0deg);
+            }
+
+            #contenedor-guia {
+                width: 25.7cm;
+                height: 16.5cm;
+                margin: 3.8cm auto;
+                padding: 1.5cm 1cm 1cm 1cm;
+            }
+
             /* Impresión Parcial - Ocultar campos no seleccionados */
             body.impresion-parcial .campo:not(.imprimir-este) input,
             body.impresion-parcial .campo:not(.imprimir-este) select,
@@ -265,7 +366,10 @@
             }
 
             /* Empresa transportadora: envolver texto largo en dos líneas dentro del mismo cuadro */
-            .empresa-transportadora input { display: none !important; }
+            .empresa-transportadora input {
+                display: none !important;
+            }
+
             .empresa-transportadora .empresa-transportadora-wrap {
                 display: flex !important;
                 align-items: center;
@@ -285,7 +389,10 @@
             }
 
             /* Destino: envolver texto largo en dos líneas dentro del mismo cuadro */
-            .lugar-destino input { display: none !important; }
+            .lugar-destino input {
+                display: none !important;
+            }
+
             .lugar-destino .destino-wrap {
                 display: flex !important;
                 align-items: center;
@@ -306,1131 +413,1453 @@
 
         /* Solo pantalla: ordenar visualmente sin tocar la impresión */
         @media screen {
+
             /* Separación uniforme entre campos por fila */
-            .fila { gap: 0.25cm; }
+            .fila {
+                gap: 0.25cm;
+            }
+
             /* Quitar desplazamientos negativos solo en pantalla */
             .lugar-fecha,
             .planta-productor,
             .factura-remision,
-            .observaciones { left: 0 !important; }
+            .observaciones {
+                left: 0 !important;
+            }
+
             /* Evitar desbordes horizontales en pantalla */
-            .observaciones { width: 100% !important; }
+            .observaciones {
+                width: 100% !important;
+            }
+
             /* El margen superior negativo de dirección hace saltos; anúlalo en pantalla */
-            .direccion { margin-top: 0 !important; }
+            .direccion {
+                margin-top: 0 !important;
+            }
+
             /* Ajuste opcional para que acciones no tape el formulario en pantallas pequeñas */
-            #contenedor-guia { 
+            #contenedor-guia {
                 margin-top: 3.0cm;
                 transform-origin: top center;
                 transition: transform 0.3s ease;
             }
+
             /* La caja de volumen no tenía ancho válido; define uno solo para pantalla */
-            .volumen { width: 8.6cm; }
+            .volumen {
+                width: 8.6cm;
+            }
+
             /* Mejorar scroll en pantalla */
             body {
-                padding-bottom: 80px; /* Espacio para controles de zoom */
+                padding-bottom: 80px;
+                /* Espacio para controles de zoom */
             }
         }
-        #contenedor-guia { width: 25.7cm; height: 16.5cm; margin: 2.2cm auto 1cm auto; padding: 1.5cm 1cm 1cm 1cm; }
-        .hoja { width: 100%; height: 100%; display: flex; flex-direction: column; font-size: 10pt; }
-        .fila { display: flex; margin-bottom: 0.4cm; }
-        .fila.pequeno { margin-bottom: 0.3cm; }
-        .fila.muy-pequeno { margin-bottom: 0.20cm; }
-        .campo { flex: none; border: 1px solid #333; padding: 4px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; text-align: center; background: white; border-radius: 5px; }
-        label { font-weight: bold; font-size: 9pt; margin-bottom: 2px; text-align: center; text-transform: uppercase; }
-        .campo input::placeholder, .campo select::placeholder { color: transparent; }
-        .campo input:focus::placeholder, .campo select:focus::placeholder { color: #999; }
-        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: none; }
-        select::-ms-expand { display: none; }
-        .campo input, .campo select, .campo textarea { width: 100%; border: none; background: transparent; font: inherit; text-transform: uppercase; outline: none; resize: none; text-align: center; font-weight: bold; padding: 0; }
-          #direccionCliente {
-            line-height: 0.45cm; /* Establece la altura de cada renglón */
-            overflow-y: hidden;  /* Oculta el scroll si el texto es muy largo */
+
+        #contenedor-guia {
+            width: 25.7cm;
+            height: 16.5cm;
+            margin: 2.2cm auto 1cm auto;
+            padding: 1.5cm 1cm 1cm 1cm;
         }
-        .select-producto { font-size: 12pt; font-weight: bold; border: none; background: transparent; width: 100%; }
-        .descripcion-producto, .volumen { font-weight: bold; }
-        .grupo-producto .dato-producto span { font-weight: bold; font-size: 11pt; }
-        .lugar-fecha {position: relative;left: -75px; width: 10.5cm; height: 1.1cm; font-size: 14pt }
-        .planta-productor { position: relative;left: -83px; width: 8.8cm; height: 1cm;font-size: 14pt }
-        .planta-productor input { text-align: left; padding-left: 0px; padding-right: 0px; }
-        .factura-remision {position: relative;left: -40px; width: 3.5cm; height: 1cm;font-size: 16pt  }
-        .despacho { width: 15cm; height: 1cm; font-size: 14pt }
-        .codigo-sicom { width: 10cm; height: 1cm; font-size: 16pt }
-        .direccion { margin-top: -0.3cm;width: 15cm; height: 1.2cm; font-size: 14pt }
-        .ciudad { width: 11cm; height: 1cm; font-size: 12pt }
-        .nombre-conductor { width: 16cm; height: 1cm; font-size: 14pt }
-        .cedula { width: 9cm; height: 1cm; font-size: 18pt }
-        .empresa-transportadora { width: 9cm; height: 1cm; font-size: 14pt }
-    /* Capa de texto envuelto (solo visible en impresión) */
-    .empresa-transportadora .empresa-transportadora-wrap { display: none; }
+
+        .hoja {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            font-size: 10pt;
+        }
+
+        .fila {
+            display: flex;
+            margin-bottom: 0.4cm;
+        }
+
+        .fila.pequeno {
+            margin-bottom: 0.3cm;
+        }
+
+        .fila.muy-pequeno {
+            margin-bottom: 0.20cm;
+        }
+
+        .campo {
+            flex: none;
+            border: 1px solid #333;
+            padding: 4px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            background: white;
+            border-radius: 5px;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 9pt;
+            margin-bottom: 2px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .campo input::placeholder,
+        .campo select::placeholder {
+            color: transparent;
+        }
+
+        .campo input:focus::placeholder,
+        .campo select:focus::placeholder {
+            color: #999;
+        }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: none;
+        }
+
+        select::-ms-expand {
+            display: none;
+        }
+
+        .campo input,
+        .campo select,
+        .campo textarea {
+            width: 100%;
+            border: none;
+            background: transparent;
+            font: inherit;
+            text-transform: uppercase;
+            outline: none;
+            resize: none;
+            text-align: center;
+            font-weight: bold;
+            padding: 0;
+        }
+
+        #direccionCliente {
+            line-height: 0.45cm;
+            /* Establece la altura de cada renglón */
+            overflow-y: hidden;
+            /* Oculta el scroll si el texto es muy largo */
+        }
+
+        .select-producto {
+            font-size: 12pt;
+            font-weight: bold;
+            border: none;
+            background: transparent;
+            width: 100%;
+        }
+
+        .descripcion-producto,
+        .volumen {
+            font-weight: bold;
+        }
+
+        .grupo-producto .dato-producto span {
+            font-weight: bold;
+            font-size: 11pt;
+        }
+
+        .lugar-fecha {
+            position: relative;
+            left: -75px;
+            width: 10.5cm;
+            height: 1.1cm;
+            font-size: 14pt
+        }
+
+        .planta-productor {
+            position: relative;
+            left: -83px;
+            width: 8.8cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .planta-productor input {
+            text-align: left;
+            padding-left: 0px;
+            padding-right: 0px;
+        }
+
+        .factura-remision {
+            position: relative;
+            left: -40px;
+            width: 3.5cm;
+            height: 1cm;
+            font-size: 16pt
+        }
+
+        .despacho {
+            width: 15cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .codigo-sicom {
+            width: 10cm;
+            height: 1cm;
+            font-size: 16pt
+        }
+
+        .direccion {
+            margin-top: -0.3cm;
+            width: 15cm;
+            height: 1.2cm;
+            font-size: 14pt
+        }
+
+        .ciudad {
+            width: 11cm;
+            height: 1cm;
+            font-size: 12pt
+        }
+
+        .nombre-conductor {
+            width: 16cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .cedula {
+            width: 9cm;
+            height: 1cm;
+            font-size: 18pt
+        }
+
+        .empresa-transportadora {
+            width: 9cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        /* Capa de texto envuelto (solo visible en impresión) */
+        .empresa-transportadora .empresa-transportadora-wrap {
+            display: none;
+        }
+
         /* Capa de texto envuelto para DESTINO (oculta en pantalla) */
-        .lugar-destino .destino-wrap { display: none; }
-        .placa-cabezote { width: 9.5cm; height: 1cm; font-size: 16pt }
-        .placa-tanque { width: 7.5cm; height: 1cm; font-size: 16pt }
+        .lugar-destino .destino-wrap {
+            display: none;
+        }
+
+        .placa-cabezote {
+            width: 9.5cm;
+            height: 1cm;
+            font-size: 16pt
+        }
+
+        .placa-tanque {
+            width: 7.5cm;
+            height: 1cm;
+            font-size: 16pt
+        }
+
         /* Ajuste para bajar el texto dentro de los cuadros */
         .empresa-transportadora input,
         .placa-cabezote input,
         .placa-tanque input {
             margin-top: 10px;
         }
+
         .lugar-origen input,
         .fecha-hora-salida input,
         .hora input {
             margin-top: 10px;
         }
-        .lugar-origen { width: 9cm; height: 1cm; font-size: 14pt }
-        .fecha-hora-salida { width: 12cm; height: 1cm;font-size: 14pt  }
-        .hora { width: 2.8cm; height: 1cm; font-size: 14pt }
-        .lugar-destino { width: 10cm; height: 1cm; font-size: 14pt }
-        .horas-vigencia { width: 11cm; height: 1cm; font-size: 14pt }
-        .descripcion-producto { width: 17cm; height: 3.9cm; padding: 25px; font-size: 18pt; padding-bottom: 60px; padding-top: 60px; }
-        .volumen { width: cm; height: 4.2cm; padding: 18px; font-size: 18pt; }
-        .volumen div { margin-bottom: 25px; }
-        .volumen div:last-child { margin-bottom: 0; }
-        .observaciones { position: relative;left: -40px; width: 26cm; height: 1.6cm; font-size: 18pt; position: relative;  }
-        .zona-frontera { width: 3.7cm; height: 1cm; }
-        .grupo-producto { display: flex; flex-direction: column; width: 100%; height: 100%; }
-        .datos-producto { display: flex; justify-content: space-between; margin-top: 0.2cm; }
-        .dato-producto { display: flex; flex-direction: column; align-items: center; width: 2.2cm; }
-        .dato-producto input { width: 100%; border: none; text-align: center; }
+
+        .lugar-origen {
+            width: 9cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .fecha-hora-salida {
+            width: 12cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .hora {
+            width: 2.8cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .lugar-destino {
+            width: 10cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .horas-vigencia {
+            width: 11cm;
+            height: 1cm;
+            font-size: 14pt
+        }
+
+        .descripcion-producto {
+            width: 17cm;
+            height: 3.9cm;
+            padding: 25px;
+            font-size: 18pt;
+            padding-bottom: 60px;
+            padding-top: 60px;
+        }
+
+        .volumen {
+            width: cm;
+            height: 4.2cm;
+            padding: 18px;
+            font-size: 18pt;
+        }
+
+        .volumen div {
+            margin-bottom: 25px;
+        }
+
+        .volumen div:last-child {
+            margin-bottom: 0;
+        }
+
+        .observaciones {
+            position: relative;
+            left: -40px;
+            width: 26cm;
+            height: 1.6cm;
+            font-size: 18pt;
+            position: relative;
+        }
+
+        .zona-frontera {
+            width: 3.7cm;
+            height: 1cm;
+        }
+
+        .grupo-producto {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        .datos-producto {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.2cm;
+        }
+
+        .dato-producto {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 2.2cm;
+        }
+
+        .dato-producto input {
+            width: 100%;
+            border: none;
+            text-align: center;
+        }
     </style>
 </head>
+
 <body>
-  </div> <div class="fila-acciones-agregar no-print">
-    <button type="button" id="btnAbrirModalCliente" class="btn btn-outline-success">
-        <i class="bi bi-person-plus-fill me-1"></i> Agregar Cliente
-    </button>
-    <button type="button" id="btnEditarCliente" class="btn btn-outline-primary">
-        <i class="bi bi-pencil-square me-1"></i> Editar Cliente
-    </button>
-    <button type="button" id="btnAbrirModalProducto" class="btn btn-outline-success">
-        <i class="bi bi-box-seam me-1"></i> Agregar Producto
-    </button>
-    <button type="button" id="btnEditarProducto" class="btn btn-outline-primary">
-        <i class="bi bi-pencil-square me-1"></i> Editar Producto
-    </button>
-    <button type="button" id="btnAbrirModalConductor" class="btn btn-outline-success">
-        <i class="bi bi-person-plus-fill me-1"></i> Agregar Conductor
-    </button>
-    <button type="button" id="btnAbrirModalEmpresa" class="btn btn-outline-success">
-        <i class="bi bi-building-add me-1"></i> Agregar Empresa
-    </button>
-</div>
-</div>
-<div class="acciones no-print">
-    <button onclick="window.history.back()" class="btn btn-secondary">
-        <i class="bi bi-arrow-left"></i> Regresar
-    </button>
-    <button onclick="window.print()" class="btn btn-primary">
-        <i class="bi bi-printer"></i> Imprimir Guía
-    </button>
-    <button onclick="abrirImpresionParcial()" class="btn btn-warning" style="background: #ffc107; border-color: #ffc107;">
-        <i class="bi bi-printer-fill"></i> Imprimir Solo Campos
-    </button>
-    <a id="boton-logout" href="{{ url_for('logout') }}" class="btn btn-danger">
-        <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
-    </a>
-</div>
-
-<!-- Panel de Impresión Parcial -->
-<div id="panel-impresion-parcial" class="no-print">
-    <h4><i class="bi bi-check2-square"></i> Seleccionar Campos a Imprimir</h4>
-    <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
-        Marca solo los campos que olvidaste y necesitas reimprimir:
-    </p>
-    <div id="lista-campos-seleccionables"></div>
-    <div class="botones-panel">
-        <button class="btn-imprimir-seleccion" onclick="imprimirSeleccion()">
-            <i class="bi bi-printer"></i> Imprimir
+    </div>
+    <div class="fila-acciones-agregar no-print">
+        <button type="button" id="btnAbrirModalCliente" class="btn btn-outline-success">
+            <i class="bi bi-person-plus-fill me-1"></i> Agregar Cliente
         </button>
-        <button class="btn-cancelar-parcial" onclick="cerrarImpresionParcial()">
-            Cancelar
+        <button type="button" id="btnEditarCliente" class="btn btn-outline-primary">
+            <i class="bi bi-pencil-square me-1"></i> Editar Cliente
+        </button>
+        <button type="button" id="btnAbrirModalProducto" class="btn btn-outline-success">
+            <i class="bi bi-box-seam me-1"></i> Agregar Producto
+        </button>
+        <button type="button" id="btnEditarProducto" class="btn btn-outline-primary">
+            <i class="bi bi-pencil-square me-1"></i> Editar Producto
+        </button>
+        <button type="button" id="btnAbrirModalConductor" class="btn btn-outline-success">
+            <i class="bi bi-person-plus-fill me-1"></i> Agregar Conductor
+        </button>
+        <button type="button" id="btnAbrirModalEmpresa" class="btn btn-outline-success">
+            <i class="bi bi-building-add me-1"></i> Agregar Empresa
         </button>
     </div>
-</div>
+    </div>
+    <div class="acciones no-print">
+        <button onclick="window.history.back()" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Regresar
+        </button>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="bi bi-printer"></i> Imprimir Guía
+        </button>
+        <button onclick="abrirImpresionParcial()" class="btn btn-warning"
+            style="background: #ffc107; border-color: #ffc107;">
+            <i class="bi bi-printer-fill"></i> Imprimir Solo Campos
+        </button>
+        <a id="boton-logout" href="{{ url_for('logout') }}" class="btn btn-danger">
+            <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+        </a>
+    </div>
 
-<!-- Controles de Zoom -->
-<div id="controles-zoom" class="no-print">
-    <button onclick="ajustarZoom(-10)" title="Alejar">−</button>
-    <span id="nivel-zoom">100%</span>
-    <button onclick="ajustarZoom(10)" title="Acercar">+</button>
-    <button onclick="resetearZoom()" title="Restablecer" style="width: auto; padding: 0 10px;">⟲</button>
-</div>
-<div id="contenedor-guia">
-  <div class="hoja">
-    <div class="fila">
-      <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
-      <div class="campo planta-productor sin-borde" data-campo="planta"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
-      <div class="campo factura-remision sin-borde" data-campo="factura"><input id="facturaRemision" placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
-    </div>
-    <div class="fila">
-      <div class="campo despacho sin-borde" data-campo="cliente">
-        <select id="clienteSelect" onchange="autocompletarCliente()" class="sin-borde">
-          <option value="">SELECCIONE UN CLIENTE</option>
-          </select>
-      </div>
-      <div class="campo codigo-sicom sin-borde" data-campo="sicom"><input placeholder="CÓDIGO SICOM"></div>
-    </div>
-    <div class="fila">
-      <div class="campo direccion sin-borde" data-campo="direccion"><textarea id="direccionCliente" placeholder="DIRECCIÓN"></textarea></div>
-      <div class="campo ciudad sin-borde" data-campo="ciudad"><input id="ciudadCliente" placeholder="CIUDAD"></div>
-    </div>
-    <div class="fila pequeno">
-      <div class="campo nombre-conductor sin-borde" data-campo="conductor">
-        <input id="conductorSelect" list="listaConductores" placeholder="NOMBRE DEL CONDUCTOR">
-        <datalist id="listaConductores"></datalist>
-      </div>
-      <div class="campo cedula sin-borde" data-campo="cedula">
-        <input id="cedulaConductor" list="listaCedulas" placeholder="CÉDULA DEL CONDUCTOR">
-        <datalist id="listaCedulas"></datalist>
-      </div>
-    </div>
-    <div class="fila">
-      <div class="campo empresa-transportadora sin-borde" data-campo="empresa">
-    <input id="empresaTransportadoraInput" list="listaEmpresas" placeholder="EMPRESA TRANSPORTADORA">
-    <div class="empresa-transportadora-wrap" aria-hidden="true"></div>
-    <datalist id="listaEmpresas"></datalist>
-</div>
-      <div class="campo placa-cabezote sin-borde" data-campo="placaCabezote"><input id="placaCabezote" placeholder="PLACA DEL CABEZOTE"></div>
-    <div class="campo placa-tanque sin-borde" data-campo="placaTanque"><input id="placaTanque" placeholder="PLACA DEL TANQUE"></div>
-    </div>
-    <div class="fila">
-      <div class="campo lugar-origen sin-borde" data-campo="origen"><input value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
-      <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida" readonly></div>
-      <div class="campo hora sin-borde" data-campo="horaSalida"><input id="horaSalida"></div>
-    </div>
-    <div class="fila">
-            <div class="campo lugar-destino sin-borde" data-campo="destino">
-                <input id="destinoDireccion" placeholder="DESTINO">
-                <div class="destino-wrap" aria-hidden="true"></div>
-            </div>
-      <div class="campo horas-vigencia sin-borde" data-campo="horasVigencia"><input placeholder="HORAS DE VIGENCIA"></div>
-    </div>
-    <div class="fila muy-pequeno">
-      <div class="campo descripcion-producto sin-borde" data-campo="producto">
-        <div class="grupo-producto">
-          <select id="productoSelect" class="select-producto" onchange="mostrarProducto()"></select>
-          <div class="datos-producto">
-            <div class="dato-producto"><span>TEMP F</span><input id="tempF" class="sin-borde"></div>
-            <div class="dato-producto"><span>API OBS</span><input id="apiObs" class="sin-borde"></div>
-            <div class="dato-producto"><span>API CORR</span><input id="apiCorr" class="sin-borde"></div>
-            <div class="dato-producto"><span>UN</span><input id="unidadProducto" class="sin-borde"></div>
-          </div>
+    <!-- Panel de Impresión Parcial -->
+    <div id="panel-impresion-parcial" class="no-print">
+        <h4><i class="bi bi-check2-square"></i> Seleccionar Campos a Imprimir</h4>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
+            Marca solo los campos que olvidaste y necesitas reimprimir:
+        </p>
+        <div id="lista-campos-seleccionables"></div>
+        <div class="botones-panel">
+            <button class="btn-imprimir-seleccion" onclick="imprimirSeleccion()">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <button class="btn-cancelar-parcial" onclick="cerrarImpresionParcial()">
+                Cancelar
+            </button>
         </div>
-      </div>
-      <div class="campo volumen sin-borde" data-campo="volumen">
-        <div><label for="barriles" style="display:inline; font-weight:bold; font-size:12pt;">BBL NSV:</label> <input id="barriles" readonly style="width:3cm; border:none; display:inline; text-align:left;"></div>
-        <div><label for="galones" style="display:inline; font-weight:bold; font-size:12pt;">GAL NETOS:</label> <input id="galones" oninput="convertirABarriles()" style="width:3cm; border:none; display:inline; text-align:left;"></div>  
-      </div>
     </div>
-    <div class="fila" style="position: relative;">
-      <div class="campo observaciones" data-campo="observaciones">
-        <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
-            <textarea class="sin-borde" style="height: 70%; padding-top: 18px;"></textarea>
-            <div style="margin-top:12px; display:flex; align-items:center; width:100%;">
-                <strong style="margin-right:8px;">SELLOS:</strong>
-                <input id="selloInput" type="text" style="flex:1; min-width:0; border:none; background:white; font-weight:bold; font-size:1.1em; text-align:left; outline:none; box-shadow:none; overflow:hidden; resize:none; -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield;">
+
+    <!-- Controles de Zoom -->
+    <div id="controles-zoom" class="no-print">
+        <button onclick="ajustarZoom(-10)" title="Alejar">−</button>
+        <span id="nivel-zoom">100%</span>
+        <button onclick="ajustarZoom(10)" title="Acercar">+</button>
+        <button onclick="resetearZoom()" title="Restablecer" style="width: auto; padding: 0 10px;">⟲</button>
+    </div>
+    <div id="contenedor-guia">
+        <div class="hoja">
+            <div class="fila">
+                <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
+                <div class="campo planta-productor sin-borde" data-campo="planta"><input
+                        value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+                <div class="campo factura-remision sin-borde" data-campo="factura"><input id="facturaRemision"
+                        placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
+            </div>
+            <div class="fila">
+                <div class="campo despacho sin-borde" data-campo="cliente">
+                    <select id="clienteSelect" onchange="autocompletarCliente()" class="sin-borde">
+                        <option value="">SELECCIONE UN CLIENTE</option>
+                    </select>
+                </div>
+                <div class="campo codigo-sicom sin-borde" data-campo="sicom"><input placeholder="CÓDIGO SICOM"></div>
+            </div>
+            <div class="fila">
+                <div class="campo direccion sin-borde" data-campo="direccion"><textarea id="direccionCliente"
+                        placeholder="DIRECCIÓN"></textarea></div>
+                <div class="campo ciudad sin-borde" data-campo="ciudad"><input id="ciudadCliente" placeholder="CIUDAD">
+                </div>
+            </div>
+            <div class="fila pequeno">
+                <div class="campo nombre-conductor sin-borde" data-campo="conductor">
+                    <input id="conductorSelect" list="listaConductores" placeholder="NOMBRE DEL CONDUCTOR">
+                    <datalist id="listaConductores"></datalist>
+                </div>
+                <div class="campo cedula sin-borde" data-campo="cedula">
+                    <input id="cedulaConductor" list="listaCedulas" placeholder="CÉDULA DEL CONDUCTOR">
+                    <datalist id="listaCedulas"></datalist>
+                </div>
+            </div>
+            <div class="fila">
+                <div class="campo empresa-transportadora sin-borde" data-campo="empresa">
+                    <input id="empresaTransportadoraInput" list="listaEmpresas" placeholder="EMPRESA TRANSPORTADORA">
+                    <div class="empresa-transportadora-wrap" aria-hidden="true"></div>
+                    <datalist id="listaEmpresas"></datalist>
+                </div>
+                <div class="campo placa-cabezote sin-borde" data-campo="placaCabezote"><input id="placaCabezote"
+                        placeholder="PLACA DEL CABEZOTE"></div>
+                <div class="campo placa-tanque sin-borde" data-campo="placaTanque"><input id="placaTanque"
+                        placeholder="PLACA DEL TANQUE"></div>
+            </div>
+            <div class="fila">
+                <div class="campo lugar-origen sin-borde" data-campo="origen"><input
+                        value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
+                <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida"
+                        readonly></div>
+                <div class="campo hora sin-borde" data-campo="horaSalida"><input id="horaSalida"></div>
+            </div>
+            <div class="fila">
+                <div class="campo lugar-destino sin-borde" data-campo="destino">
+                    <input id="destinoDireccion" placeholder="DESTINO">
+                    <div class="destino-wrap" aria-hidden="true"></div>
+                </div>
+                <div class="campo horas-vigencia sin-borde" data-campo="horasVigencia"><input
+                        placeholder="HORAS DE VIGENCIA"></div>
+            </div>
+            <div class="fila muy-pequeno">
+                <div class="campo descripcion-producto sin-borde" data-campo="producto">
+                    <div class="grupo-producto">
+                        <select id="productoSelect" class="select-producto" onchange="mostrarProducto()"></select>
+                        <div class="datos-producto">
+                            <div class="dato-producto"><span>TEMP F</span><input id="tempF" class="sin-borde"></div>
+                            <div class="dato-producto"><span>API OBS</span><input id="apiObs" class="sin-borde"></div>
+                            <div class="dato-producto"><span>API CORR</span><input id="apiCorr" class="sin-borde"></div>
+                            <div class="dato-producto"><span>UN</span><input id="unidadProducto" class="sin-borde">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="campo volumen sin-borde" data-campo="volumen">
+                    <div><label for="barriles" style="display:inline; font-weight:bold; font-size:12pt;">BBL
+                            NSV:</label> <input id="barriles" readonly
+                            style="width:3cm; border:none; display:inline; text-align:left;"></div>
+                    <div><label for="galones" style="display:inline; font-weight:bold; font-size:12pt;">GAL
+                            NETOS:</label> <input id="galones" oninput="convertirABarriles()"
+                            style="width:3cm; border:none; display:inline; text-align:left;"></div>
+                </div>
+            </div>
+            <div class="fila" style="position: relative;">
+                <div class="campo observaciones" data-campo="observaciones">
+                    <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
+                        <textarea class="sin-borde" style="height: 70%; padding-top: 18px;"></textarea>
+                        <div style="margin-top:12px; display:flex; align-items:center; width:100%;">
+                            <strong style="margin-right:8px;">SELLOS:</strong>
+                            <input id="selloInput" type="text"
+                                style="flex:1; min-width:0; border:none; background:white; font-weight:bold; font-size:1.1em; text-align:left; outline:none; box-shadow:none; overflow:hidden; resize:none; -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield;">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-      </div>
     </div>
-  </div>
-</div>
 
 
-<div class="modal fade" id="modalAgregarCliente" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="modalLabel">Agregar Nuevo Cliente</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formAgregarCliente">
-            <div class="mb-3">
-                <label for="nombreNuevoCliente" class="form-label">Nombre del Cliente</label>
-                <input type="text" class="form-control" id="nombreNuevoCliente" required>
+    <div class="modal fade" id="modalAgregarCliente" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel">Agregar Nuevo Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregarCliente">
+                        <div class="mb-3">
+                            <label for="nombreNuevoCliente" class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="nombreNuevoCliente" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="direccionNuevoCliente" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="direccionNuevoCliente" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ciudadNuevoCliente" class="form-label">Ciudad y Departamento</label>
+                            <input type="text" class="form-control" id="ciudadNuevoCliente" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarCliente">Guardar Cliente</button>
+                </div>
             </div>
-            <div class="mb-3">
-                <label for="direccionNuevoCliente" class="form-label">Dirección</label>
-                <input type="text" class="form-control" id="direccionNuevoCliente" required>
-            </div>
-            <div class="mb-3">
-                <label for="ciudadNuevoCliente" class="form-label">Ciudad y Departamento</label>
-                <input type="text" class="form-control" id="ciudadNuevoCliente" required>
-            </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnGuardarCliente">Guardar Cliente</button>
-      </div>
+        </div>
     </div>
-  </div>
-</div>
-<div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalLabelEditarCliente" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalLabelEditarCliente">Editar Cliente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formEditarCliente">
+    <div class="modal fade" id="modalEditarCliente" tabindex="-1" aria-labelledby="modalLabelEditarCliente"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabelEditarCliente">Editar Cliente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarCliente">
                         <input type="hidden" id="originalNombreCliente">
+                        <input type="hidden" id="originalDireccionCliente">
                         <div class="mb-3">
-                                <label for="editarNombreCliente" class="form-label">Nombre del Cliente</label>
-                                <input type="text" class="form-control" id="editarNombreCliente" required>
-                        </div>
-                        <div class="mb-3">
-                                <label for="editarDireccionCliente" class="form-label">Dirección</label>
-                                <input type="text" class="form-control" id="editarDireccionCliente" required>
+                            <label for="editarNombreCliente" class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="editarNombreCliente" required>
                         </div>
                         <div class="mb-3">
-                                <label for="editarCiudadCliente" class="form-label">Ciudad y Departamento</label>
-                                <input type="text" class="form-control" id="editarCiudadCliente" required>
+                            <label for="editarDireccionCliente" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="editarDireccionCliente" required>
                         </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btnActualizarCliente">Guardar Cambios</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="modalAgregarConductor" tabindex="-1" aria-labelledby="modalLabelConductor" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="modalLabelConductor">Agregar Nuevo Conductor</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="formAgregarConductor">
-              <div class="mb-3">
-                  <label for="nombreNuevoConductor" class="form-label">Nombre del Conductor</label>
-                  <input type="text" class="form-control" id="nombreNuevoConductor" required>
-              </div>
-              <div class="mb-3">
-                  <label for="cedulaNuevoConductor" class="form-label">Cédula</label>
-                  <input type="text" class="form-control" id="cedulaNuevoConductor" required>
-              </div>
-              <div class="mb-3">
-                  <label for="placaNuevoConductor" class="form-label">Placa del Cabezote</label>
-                  <input type="text" class="form-control" id="placaNuevoConductor" required>
-              </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="btnGuardarConductor">Guardar Conductor</button>
-        </div>
-      </div>
-    </div>
-</div>
-<div class="modal fade" id="modalAgregarEmpresa" tabindex="-1" aria-labelledby="modalLabelEmpresa" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalLabelEmpresa">Agregar Nueva Empresa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formAgregarEmpresa">
-                    <div class="mb-3">
-                        <label for="nombreNuevaEmpresa" class="form-label">Nombre de la Empresa Transportadora</label>
-                        <input type="text" class="form-control" id="nombreNuevaEmpresa" name="nombre" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btnGuardarEmpresa">Guardar Empresa</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-            <!-- MODAL AGREGAR PRODUCTO -->
-            <div class="modal fade" id="modalAgregarProducto" tabindex="-1" aria-labelledby="modalLabelProducto" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="modalLabelProducto">Agregar Nuevo Producto</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="mb-3">
+                            <label for="editarCiudadCliente" class="form-label">Ciudad y Departamento</label>
+                            <input type="text" class="form-control" id="editarCiudadCliente" required>
                         </div>
-                        <div class="modal-body">
-                            <form id="formAgregarProducto">
-                                    <div class="mb-3">
-                                            <label for="nombreNuevoProducto" class="form-label">Nombre del Producto</label>
-                                            <input type="text" class="form-control" id="nombreNuevoProducto" required>
-                                    </div>
-                                        <div class="mb-3">
-                                            <label for="unidadNuevoProducto" class="form-label">Unidad</label>
-                                            <input type="text" class="form-control" id="unidadNuevoProducto" placeholder="UN">
-                                        </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-primary" id="btnGuardarProducto">Guardar Producto</button>
-                        </div>
-                    </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnActualizarCliente">Guardar Cambios</button>
                 </div>
             </div>
-
-            <!-- MODAL EDITAR PRODUCTO -->
-            <div class="modal fade" id="modalEditarProducto" tabindex="-1" aria-labelledby="modalLabelEditarProducto" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="modalLabelEditarProducto">Editar Producto</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+    </div>
+    <div class="modal fade" id="modalAgregarConductor" tabindex="-1" aria-labelledby="modalLabelConductor"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabelConductor">Agregar Nuevo Conductor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregarConductor">
+                        <div class="mb-3">
+                            <label for="nombreNuevoConductor" class="form-label">Nombre del Conductor</label>
+                            <input type="text" class="form-control" id="nombreNuevoConductor" required>
                         </div>
-                        <div class="modal-body">
-                            <form id="formEditarProducto">
-                                    <input type="hidden" id="originalNombreProducto">
-                                    <div class="mb-3">
-                                            <label for="editarNombreProducto" class="form-label">Nombre del Producto</label>
-                                            <input type="text" class="form-control" id="editarNombreProducto" required>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="editarUnidadProducto" class="form-label">Unidad</label>
-                                        <input type="text" class="form-control" id="editarUnidadProducto" placeholder="UN">
-                                    </div>
-                            </form>
+                        <div class="mb-3">
+                            <label for="cedulaNuevoConductor" class="form-label">Cédula</label>
+                            <input type="text" class="form-control" id="cedulaNuevoConductor" required>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-primary" id="btnActualizarProducto">Guardar Cambios</button>
+                        <div class="mb-3">
+                            <label for="placaNuevoConductor" class="form-label">Placa del Cabezote</label>
+                            <input type="text" class="form-control" id="placaNuevoConductor" required>
                         </div>
-                    </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarConductor">Guardar Conductor</button>
                 </div>
             </div>
+        </div>
+    </div>
+    <div class="modal fade" id="modalAgregarEmpresa" tabindex="-1" aria-labelledby="modalLabelEmpresa"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabelEmpresa">Agregar Nueva Empresa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregarEmpresa">
+                        <div class="mb-3">
+                            <label for="nombreNuevaEmpresa" class="form-label">Nombre de la Empresa
+                                Transportadora</label>
+                            <input type="text" class="form-control" id="nombreNuevaEmpresa" name="nombre" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarEmpresa">Guardar Empresa</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- MODAL AGREGAR PRODUCTO -->
+    <div class="modal fade" id="modalAgregarProducto" tabindex="-1" aria-labelledby="modalLabelProducto"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabelProducto">Agregar Nuevo Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregarProducto">
+                        <div class="mb-3">
+                            <label for="nombreNuevoProducto" class="form-label">Nombre del Producto</label>
+                            <input type="text" class="form-control" id="nombreNuevoProducto" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="unidadNuevoProducto" class="form-label">Unidad</label>
+                            <input type="text" class="form-control" id="unidadNuevoProducto" placeholder="UN">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarProducto">Guardar Producto</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    let conductores = [], clientes = [], productos = [], empresas = [];
+    <!-- MODAL EDITAR PRODUCTO -->
+    <div class="modal fade" id="modalEditarProducto" tabindex="-1" aria-labelledby="modalLabelEditarProducto"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabelEditarProducto">Editar Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formEditarProducto">
+                        <input type="hidden" id="originalNombreProducto">
+                        <div class="mb-3">
+                            <label for="editarNombreProducto" class="form-label">Nombre del Producto</label>
+                            <input type="text" class="form-control" id="editarNombreProducto" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editarUnidadProducto" class="form-label">Unidad</label>
+                            <input type="text" class="form-control" id="editarUnidadProducto" placeholder="UN">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnActualizarProducto">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    // --- FUNCIONES DE CARGA Y ACTUALIZACIÓN ---
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    async function cargarDatos() {
-        console.log("Iniciando carga de datos...");
+    <script>
+        let conductores = [], clientes = [], productos = [], empresas = [];
 
-        const cargarJson = async (url) => {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn(`Advertencia: No se pudo cargar ${url}. Se usará una lista vacía.`);
+        // --- FUNCIONES DE CARGA Y ACTUALIZACIÓN ---
+
+        async function cargarDatos() {
+            console.log("Iniciando carga de datos...");
+
+            const cargarJson = async (url) => {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn(`Advertencia: No se pudo cargar ${url}. Se usará una lista vacía.`);
+                        return [];
+                    }
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Fallo crítico al cargar ${url}:`, error);
                     return [];
                 }
-                return await response.json();
-            } catch (error) {
-                console.error(`Fallo crítico al cargar ${url}:`, error);
-                return [];
-            }
-        };
+            };
 
-        [conductores, clientes, productos, empresas] = await Promise.all([
-            cargarJson("{{ url_for('static', filename='Conductores.json') }}"),
-            cargarJson("{{ url_for('static', filename='Clientes.json') }}"),
-            cargarJson("{{ url_for('static', filename='Producto.json') }}"),
-            cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}")
-        ]);
+            [conductores, clientes, productos, empresas] = await Promise.all([
+                cargarJson("{{ url_for('static', filename='Conductores.json') }}"),
+                cargarJson("{{ url_for('static', filename='Clientes.json') }}"),
+                cargarJson("{{ url_for('static', filename='Producto.json') }}"),
+                cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}")
+            ]);
 
-        console.log("Datos cargados:", { conductores, clientes, productos, empresas });
+            console.log("Datos cargados:", { conductores, clientes, productos, empresas });
 
-        // Llenamos todos los dropdowns y datalists
-        actualizarDropdownEmpresas();
-        actualizarDropdownClientes();
-        actualizarDropdownConductores();
+            // Llenamos todos los dropdowns y datalists
+            actualizarDropdownEmpresas();
+            actualizarDropdownClientes();
+            actualizarDropdownConductores();
 
-        const prodSel = document.getElementById('productoSelect');
-        prodSel.innerHTML = '';
-        productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
+            const prodSel = document.getElementById('productoSelect');
+            prodSel.innerHTML = '';
+            productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
 
-        configurarEventosConductores();
-    }
+            configurarEventosConductores();
+        }
 
-    function actualizarDropdownClientes() {
-        const cliSel = document.getElementById('clienteSelect');
-        cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
-        clientes.forEach(c => cliSel.insertAdjacentHTML('beforeend', `<option value="${c.NOMBRE_CLIENTE}">${c.NOMBRE_CLIENTE}</option>`));
-        cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
-    }
+        function actualizarDropdownClientes() {
+            const cliSel = document.getElementById('clienteSelect');
+            cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
+            clientes.forEach((c, index) => cliSel.insertAdjacentHTML('beforeend', `<option value="${index}">${c.NOMBRE_CLIENTE} - ${c.CIUDAD_DEPARTAMENTO}</option>`));
+            cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
+        }
 
-    function actualizarDropdownConductores() {
-        const dl = document.getElementById('listaConductores');
-        const dc = document.getElementById('listaCedulas');
-        dl.innerHTML = '';
-        dc.innerHTML = '';
-        conductores.forEach(c => {
-            dl.insertAdjacentHTML('beforeend', `<option value="${c.CONDUCTOR}" data-cedula="${c.CEDULA}" data-placa="${c.PLACA}"></option>`);
-            dc.insertAdjacentHTML('beforeend', `<option value="${c.CEDULA}" data-nombre="${c.CONDUCTOR}" data-placa="${c.PLACA}"></option>`);
-        });
-    }
-
-    // Asegúrate de tener la función para empresas también
-    function actualizarDropdownEmpresas() {
-        const datalist = document.getElementById('listaEmpresas');
-        if (datalist) {
-            datalist.innerHTML = '';
-            empresas.forEach(e => {
-                datalist.insertAdjacentHTML('beforeend', `<option value="${e.NOMBRE_EMPRESA}"></option>`);
+        function actualizarDropdownConductores() {
+            const dl = document.getElementById('listaConductores');
+            const dc = document.getElementById('listaCedulas');
+            dl.innerHTML = '';
+            dc.innerHTML = '';
+            conductores.forEach(c => {
+                dl.insertAdjacentHTML('beforeend', `<option value="${c.CONDUCTOR}" data-cedula="${c.CEDULA}" data-placa="${c.PLACA}"></option>`);
+                dc.insertAdjacentHTML('beforeend', `<option value="${c.CEDULA}" data-nombre="${c.CONDUCTOR}" data-placa="${c.PLACA}"></option>`);
             });
         }
-    }
 
-    function actualizarDropdownProductos() {
-        const prodSel = document.getElementById('productoSelect');
-        if (!prodSel) return;
-        prodSel.innerHTML = '';
-        productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO || p.producto || p.PRODUCT}" >${p.PRODUCTO || p.producto || p.PRODUCT}</option>`));
-        prodSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_PRODUCTO" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO PRODUCTO</option>');
-    }
-    
-    // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
-
-    window.addEventListener('DOMContentLoaded', async () => {
-    // 1. Cargar todos los datos iniciales
-    await cargarDatos();
-
-    // ▼▼▼ AÑADIR ESTE BLOQUE DE CÓDIGO COMPLETO ▼▼▼
-
-    // Pasa los datos de Flask a una variable de JavaScript de forma segura.
-    const datosGuia = {{ (datos_guia | default({})) | tojson | safe }};
-
-    // Sincroniza el texto envuelto para impresión con el valor del input de empresa transportadora
-    function syncEmpresaTransportadoraWrap(){
-        const inp = document.getElementById('empresaTransportadoraInput');
-        const wrap = document.querySelector('.empresa-transportadora .empresa-transportadora-wrap');
-        if (inp && wrap){
-            const txt = (inp.value || 'EMPRESA TRANSPORTADORA').toString();
-            wrap.textContent = txt.toUpperCase();
-        }
-    }
-
-    // Sincroniza el texto envuelto del DESTINO para impresión con el valor del input
-    function syncDestinoWrap(){
-        const inp = document.getElementById('destinoDireccion');
-        const wrap = document.querySelector('.lugar-destino .destino-wrap');
-        if (inp && wrap){
-            const txt = (inp.value || 'DESTINO').toString();
-            wrap.textContent = txt.toUpperCase();
-        }
-    }
-
-if (Object.keys(datosGuia).length > 1) { 
-    console.log("Rellenando guía con datos recibidos:", datosGuia);
-
-    // --- Rellenar campos de texto y selects ---
-    document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
-    syncEmpresaTransportadoraWrap();
-    document.getElementById('placaCabezote').value = datosGuia.placa || '';
-    // Mapear columna 'TANQUE' desde programación a 'PLACA DEL TANQUE' (acepta variantes de nombre)
-    document.getElementById('placaTanque').value = (
-        datosGuia.TANQUE || datosGuia.tanque || datosGuia.PLACA_TANQUE || datosGuia.placa_tanque || ''
-    ).toString();
-    document.getElementById('conductorSelect').value = datosGuia.conductor || '';
-    document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
-    document.getElementById('destinoDireccion').value = datosGuia.destino || '';
-    syncDestinoWrap();
-    document.getElementById('galones').value = datosGuia.galones || '';
-    document.getElementById('selloInput').value = datosGuia.precintos || '';
-    // Factura/Remisión desde Programación de Cargue
-    document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
-
-    // --- Cliente y Dirección ---
-    const clienteSelect = document.getElementById('clienteSelect');
-    if (datosGuia.cliente) {
-        clienteSelect.value = datosGuia.cliente;
-        // Disparamos el evento 'change' para que se ejecute la función que autocompleta la dirección.
-        clienteSelect.dispatchEvent(new Event('change')); 
-    }
-
-    // --- Producto, Temperatura y APIs ---
-    const productoSelect = document.getElementById('productoSelect');
-    if (datosGuia.producto) {
-        productoSelect.value = datosGuia.producto;
-        // Disparamos el evento para que cargue los datos por defecto del producto (Temp, API, etc.)
-        productoSelect.dispatchEvent(new Event('change'));
-    }
-
-    // Ahora, sobrescribimos los datos por defecto con los valores REALES de la programación.
-    document.getElementById('tempF').value = datosGuia.temperatura || document.getElementById('tempF').value;
-    document.getElementById('apiObs').value = datosGuia.api_obs || document.getElementById('apiObs').value;
-    document.getElementById('apiCorr').value = datosGuia.api_corregido || document.getElementById('apiCorr').value;
-    
-    // Si se rellenaron los galones, disparamos la conversión a barriles.
-    if (document.getElementById('galones').value) {
-         convertirABarriles();
-    }
-}
-
-    // 2. Definir todas las variables de los modales en un solo lugar
-    const modalElCliente = document.getElementById('modalAgregarCliente');
-    const modalCliente = new bootstrap.Modal(modalElCliente);
-    const modalElEditarCliente = document.getElementById('modalEditarCliente');
-    const modalEditarCliente = modalElEditarCliente ? new bootstrap.Modal(modalElEditarCliente) : null;
-    
-    const modalElConductor = document.getElementById('modalAgregarConductor');
-    const modalConductor = new bootstrap.Modal(modalElConductor);
-
-    const modalElEmpresa = document.getElementById('modalAgregarEmpresa');
-    const modalEmpresa = new bootstrap.Modal(modalElEmpresa);
-
-    // 3. Configurar todos los eventos
-    
-    // Eventos para CLIENTE
-    document.getElementById('btnAbrirModalCliente').addEventListener('click', () => {
-        document.getElementById('formAgregarCliente').reset();
-        modalCliente.show();
-    });
-    const btnEditarCliente = document.getElementById('btnEditarCliente');
-    if (btnEditarCliente && modalEditarCliente) {
-        btnEditarCliente.addEventListener('click', () => {
-            const select = document.getElementById('clienteSelect');
-            const seleccionado = (select.value || '').trim();
-            if (!seleccionado || seleccionado === 'AGREGAR_CLIENTE') {
-                Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
-                return;
+        // Asegúrate de tener la función para empresas también
+        function actualizarDropdownEmpresas() {
+            const datalist = document.getElementById('listaEmpresas');
+            if (datalist) {
+                datalist.innerHTML = '';
+                empresas.forEach(e => {
+                    datalist.insertAdjacentHTML('beforeend', `<option value="${e.NOMBRE_EMPRESA}"></option>`);
+                });
             }
-            const clienteActual = clientes.find(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === seleccionado.toUpperCase());
-            if (!clienteActual) {
-                Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No pudimos cargar los datos de ese cliente. Actualiza la página e inténtalo de nuevo.' });
-                return;
+        }
+
+        function actualizarDropdownProductos() {
+            const prodSel = document.getElementById('productoSelect');
+            if (!prodSel) return;
+            prodSel.innerHTML = '';
+            productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO || p.producto || p.PRODUCT}" >${p.PRODUCTO || p.producto || p.PRODUCT}</option>`));
+            prodSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_PRODUCTO" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO PRODUCTO</option>');
+        }
+
+        // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            // 1. Cargar todos los datos iniciales
+            await cargarDatos();
+
+            // ▼▼▼ AÑADIR ESTE BLOQUE DE CÓDIGO COMPLETO ▼▼▼
+
+            // Pasa los datos de Flask a una variable de JavaScript de forma segura.
+            const datosGuia = {{ (datos_guia | default ({})) | tojson | safe }};
+
+        // Sincroniza el texto envuelto para impresión con el valor del input de empresa transportadora
+        function syncEmpresaTransportadoraWrap() {
+            const inp = document.getElementById('empresaTransportadoraInput');
+            const wrap = document.querySelector('.empresa-transportadora .empresa-transportadora-wrap');
+            if (inp && wrap) {
+                const txt = (inp.value || 'EMPRESA TRANSPORTADORA').toString();
+                wrap.textContent = txt.toUpperCase();
             }
-            document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-            document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-            document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
-            document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
-            modalEditarCliente.show();
-        });
-    }
-    document.getElementById('clienteSelect').addEventListener('change', function() {
-        if (this.value === 'AGREGAR_CLIENTE') {
+        }
+
+        // Sincroniza el texto envuelto del DESTINO para impresión con el valor del input
+        function syncDestinoWrap() {
+            const inp = document.getElementById('destinoDireccion');
+            const wrap = document.querySelector('.lugar-destino .destino-wrap');
+            if (inp && wrap) {
+                const txt = (inp.value || 'DESTINO').toString();
+                wrap.textContent = txt.toUpperCase();
+            }
+        }
+
+        if (Object.keys(datosGuia).length > 1) {
+            console.log("Rellenando guía con datos recibidos:", datosGuia);
+
+            // --- Rellenar campos de texto y selects ---
+            document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
+            syncEmpresaTransportadoraWrap();
+            document.getElementById('placaCabezote').value = datosGuia.placa || '';
+            // Mapear columna 'TANQUE' desde programación a 'PLACA DEL TANQUE' (acepta variantes de nombre)
+            document.getElementById('placaTanque').value = (
+                datosGuia.TANQUE || datosGuia.tanque || datosGuia.PLACA_TANQUE || datosGuia.placa_tanque || ''
+            ).toString();
+            document.getElementById('conductorSelect').value = datosGuia.conductor || '';
+            document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
+            document.getElementById('destinoDireccion').value = datosGuia.destino || '';
+            syncDestinoWrap();
+            document.getElementById('galones').value = datosGuia.galones || '';
+            document.getElementById('selloInput').value = datosGuia.precintos || '';
+            // Factura/Remisión desde Programación de Cargue
+            document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
+
+            // --- Cliente y Dirección ---
+            const clienteSelect = document.getElementById('clienteSelect');
+            if (datosGuia.cliente) {
+                // Como ahora el value es un indice, buscamos el indice por nombre (fallback al primero encontrado)
+                const idx = clientes.findIndex(c => c.NOMBRE_CLIENTE === datosGuia.cliente);
+                if (idx !== -1) {
+                    clienteSelect.value = idx;
+                    // Disparamos el evento 'change' para que se ejecute la función que autocompleta la dirección.
+                    clienteSelect.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // --- Producto, Temperatura y APIs ---
+            const productoSelect = document.getElementById('productoSelect');
+            if (datosGuia.producto) {
+                productoSelect.value = datosGuia.producto;
+                // Disparamos el evento para que cargue los datos por defecto del producto (Temp, API, etc.)
+                productoSelect.dispatchEvent(new Event('change'));
+            }
+
+            // Ahora, sobrescribimos los datos por defecto con los valores REALES de la programación.
+            document.getElementById('tempF').value = datosGuia.temperatura || document.getElementById('tempF').value;
+            document.getElementById('apiObs').value = datosGuia.api_obs || document.getElementById('apiObs').value;
+            document.getElementById('apiCorr').value = datosGuia.api_corregido || document.getElementById('apiCorr').value;
+
+            // Si se rellenaron los galones, disparamos la conversión a barriles.
+            if (document.getElementById('galones').value) {
+                convertirABarriles();
+            }
+        }
+
+        // 2. Definir todas las variables de los modales en un solo lugar
+        const modalElCliente = document.getElementById('modalAgregarCliente');
+        const modalCliente = new bootstrap.Modal(modalElCliente);
+        const modalElEditarCliente = document.getElementById('modalEditarCliente');
+        const modalEditarCliente = modalElEditarCliente ? new bootstrap.Modal(modalElEditarCliente) : null;
+
+        const modalElConductor = document.getElementById('modalAgregarConductor');
+        const modalConductor = new bootstrap.Modal(modalElConductor);
+
+        const modalElEmpresa = document.getElementById('modalAgregarEmpresa');
+        const modalEmpresa = new bootstrap.Modal(modalElEmpresa);
+
+        // 3. Configurar todos los eventos
+
+        // Eventos para CLIENTE
+        document.getElementById('btnAbrirModalCliente').addEventListener('click', () => {
             document.getElementById('formAgregarCliente').reset();
             modalCliente.show();
-            this.value = "";
+        });
+        const btnEditarCliente = document.getElementById('btnEditarCliente');
+        if (btnEditarCliente && modalEditarCliente) {
+            btnEditarCliente.addEventListener('click', () => {
+                const select = document.getElementById('clienteSelect');
+                const index = select.value;
+                if (!index || index === 'AGREGAR_CLIENTE' || index === "") {
+                    Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
+                    return;
+                }
+                const clienteActual = clientes[index];
+                if (!clienteActual) {
+                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No pudimos cargar los datos de ese cliente. Actualiza la página e inténtalo de nuevo.' });
+                    return;
+                }
+                document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+                document.getElementById('originalDireccionCliente').value = clienteActual.DIRECCION || '';
+                document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+                document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
+                document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
+                modalEditarCliente.show();
+            });
         }
-    });
-    document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
-        const nombre = document.getElementById('nombreNuevoCliente').value.trim();
-        const direccion = document.getElementById('direccionNuevoCliente').value.trim();
-        const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
-        if (!nombre || !direccion || !ciudad) return Swal.fire({icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.'});
-        
-        try {
-            const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
-            const result = await response.json();
-            if (response.ok) {
-                clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
-                actualizarDropdownClientes();
-                document.getElementById('clienteSelect').value = result.nuevo_cliente.NOMBRE_CLIENTE;
-                document.getElementById('clienteSelect').dispatchEvent(new Event('change'));
-                modalCliente.hide();
-                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+        document.getElementById('clienteSelect').addEventListener('change', function () {
+            if (this.value === 'AGREGAR_CLIENTE') {
+                document.getElementById('formAgregarCliente').reset();
+                modalCliente.show();
+                this.value = "";
             }
-        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
-    });
-    const btnActualizarCliente = document.getElementById('btnActualizarCliente');
-    if (btnActualizarCliente && modalEditarCliente) {
-        btnActualizarCliente.addEventListener('click', async () => {
-            const original = document.getElementById('originalNombreCliente').value.trim();
-            const nombre = document.getElementById('editarNombreCliente').value.trim();
-            const direccion = document.getElementById('editarDireccionCliente').value.trim();
-            const ciudad = document.getElementById('editarCiudadCliente').value.trim();
-            if (!original || !nombre || !direccion || !ciudad) {
-                Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa todos los campos antes de guardar.' });
-                return;
-            }
+        });
+        document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
+            const nombre = document.getElementById('nombreNuevoCliente').value.trim();
+            const direccion = document.getElementById('direccionNuevoCliente').value.trim();
+            const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
+            if (!nombre || !direccion || !ciudad) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
+
             try {
-                const response = await fetch("{{ url_for('actualizar_cliente_ajax') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ original_nombre: original, nombre, direccion, ciudad })
-                });
+                const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
                 const result = await response.json();
                 if (response.ok) {
                     clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
                     actualizarDropdownClientes();
-                    const select = document.getElementById('clienteSelect');
-                    select.value = result.cliente.NOMBRE_CLIENTE;
-                    select.dispatchEvent(new Event('change'));
-                    modalEditarCliente.hide();
-                    Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
+                    // Encontrar el indice del nuevo cliente (por nombre y dirección para ser exactos)
+                    const newIdx = clientes.findIndex(c =>
+                        c.NOMBRE_CLIENTE === result.nuevo_cliente.NOMBRE_CLIENTE &&
+                        c.DIRECCION === result.nuevo_cliente.DIRECCION
+                    );
+                    if (newIdx !== -1) {
+                        document.getElementById('clienteSelect').value = newIdx;
+                        document.getElementById('clienteSelect').dispatchEvent(new Event('change'));
+                    }
+                    modalCliente.hide();
+                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
                 } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo actualizar el cliente.' });
+                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
                 }
-            } catch (error) {
-                Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' });
-            }
+            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
         });
-    }
-
-    // Eventos para CONDUCTOR
-    document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
-        document.getElementById('formAgregarConductor').reset();
-        modalConductor.show();
-    });
-    document.getElementById('btnGuardarConductor').addEventListener('click', async () => {
-        const nombre = document.getElementById('nombreNuevoConductor').value.trim();
-        const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
-        const placa = document.getElementById('placaNuevoConductor').value.trim();
-        if (!nombre || !cedula || !placa) return Swal.fire({icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.'});
-        
-        try {
-            const response = await fetch("{{ url_for('agregar_conductor_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, cedula, placa }) });
-            const result = await response.json();
-            if (response.ok) {
-                conductores = await (await fetch("{{ url_for('static', filename='Conductores.json') }}?v=" + Date.now())).json();
-                actualizarDropdownConductores();
-                document.getElementById('conductorSelect').value = result.nuevo_conductor.CONDUCTOR;
-                document.getElementById('conductorSelect').dispatchEvent(new Event('change'));
-                modalConductor.hide();
-                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El conductor '${result.nuevo_conductor.CONDUCTOR}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
-            }
-        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
-    });
-
-    // Eventos para EMPRESA
-    document.getElementById('btnAbrirModalEmpresa').addEventListener('click', () => {
-        document.getElementById('formAgregarEmpresa').reset();
-        modalEmpresa.show();
-    });
-    document.getElementById('btnGuardarEmpresa').addEventListener('click', async () => {
-        const nombre = document.getElementById('nombreNuevaEmpresa').value.trim();
-        if (!nombre) return Swal.fire({icon: 'warning', title: 'Campo Vacío', text: 'Por favor, ingrese el nombre de la empresa.'});
-        
-        try {
-            const response = await fetch("{{ url_for('agregar_empresa_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
-            const result = await response.json();
-            if (response.ok) {
-                empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
-                actualizarDropdownEmpresas();
-                document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
-                syncEmpresaTransportadoraWrap();
-                modalEmpresa.hide();
-                Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Error', text: result.message });
-            }
-        } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.'}); }
-    });
-
-    // Eventos para PRODUCTOS
-    const modalElProducto = document.getElementById('modalAgregarProducto');
-    const modalProducto = modalElProducto ? new bootstrap.Modal(modalElProducto) : null;
-    const modalElEditarProducto = document.getElementById('modalEditarProducto');
-    const modalEditarProducto = modalElEditarProducto ? new bootstrap.Modal(modalElEditarProducto) : null;
-
-    document.getElementById('btnAbrirModalProducto').addEventListener('click', () => {
-        if (!modalProducto) return;
-        document.getElementById('formAgregarProducto').reset();
-        modalProducto.show();
-    });
-
-    document.getElementById('btnGuardarProducto').addEventListener('click', async () => {
-        const nombre = document.getElementById('nombreNuevoProducto').value.trim();
-        const unidad = document.getElementById('unidadNuevoProducto').value.trim();
-        if (!nombre) return Swal.fire({icon: 'warning', title: 'Campo vacío', text: 'Ingrese el nombre del producto.'});
-        const payload = { producto: nombre, unidad };
-        try {
-            const response = await fetch("{{ url_for('agregar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const result = await response.json();
-            if (response.ok) {
-                productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
-                actualizarDropdownProductos();
-                document.getElementById('productoSelect').value = result.nuevo_producto.PRODUCTO || result.nuevo_producto.producto || nombre;
-                document.getElementById('productoSelect').dispatchEvent(new Event('change'));
-                modalProducto.hide();
-                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado.', timer: 2000, showConfirmButton: false });
-                return;
-            }
-        } catch (err) {
-            // fallback local update
-            console.warn('No se pudo llamar al endpoint agregar_producto_ajax, actualizando localmente', err);
+        const btnActualizarCliente = document.getElementById('btnActualizarCliente');
+        if (btnActualizarCliente && modalEditarCliente) {
+            btnActualizarCliente.addEventListener('click', async () => {
+                const original = document.getElementById('originalNombreCliente').value.trim();
+                const originalDireccion = document.getElementById('originalDireccionCliente').value.trim();
+                const nombre = document.getElementById('editarNombreCliente').value.trim();
+                const direccion = document.getElementById('editarDireccionCliente').value.trim();
+                const ciudad = document.getElementById('editarCiudadCliente').value.trim();
+                if (!original || !nombre || !direccion || !ciudad) {
+                    Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa todos los campos antes de guardar.' });
+                    return;
+                }
+                try {
+                    const response = await fetch("{{ url_for('actualizar_cliente_ajax') }}", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            original_nombre: original,
+                            original_direccion: originalDireccion,
+                            nombre,
+                            direccion,
+                            ciudad
+                        })
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                        actualizarDropdownClientes();
+                        // Encontrar el indice del cliente actualizado
+                        const newIdx = clientes.findIndex(c =>
+                            c.NOMBRE_CLIENTE === result.cliente.NOMBRE_CLIENTE &&
+                            c.DIRECCION === result.cliente.DIRECCION
+                        );
+                        if (newIdx !== -1) {
+                            const select = document.getElementById('clienteSelect');
+                            select.value = newIdx;
+                            select.dispatchEvent(new Event('change'));
+                        }
+                        modalEditarCliente.hide();
+                        Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo actualizar el cliente.' });
+                    }
+                } catch (error) {
+                    Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' });
+                }
+            });
         }
-        // Local fallback: añadir al arreglo y actualizar select (solo PRODUCTO y UN)
-        productos.push({ PRODUCTO: nombre, UN: unidad });
-        actualizarDropdownProductos();
-        document.getElementById('productoSelect').value = nombre;
-        document.getElementById('productoSelect').dispatchEvent(new Event('change'));
-        if (modalProducto) modalProducto.hide();
-        Swal.fire({ icon: 'success', title: 'Guardado (local)', text: 'Producto agregado localmente.', timer: 2000, showConfirmButton: false });
-    });
 
-    const btnEditarProducto = document.getElementById('btnEditarProducto');
-    if (btnEditarProducto && modalEditarProducto) {
-        btnEditarProducto.addEventListener('click', () => {
-            const select = document.getElementById('productoSelect');
-            const seleccionado = (select.value || '').trim();
-            if (!seleccionado || seleccionado === 'AGREGAR_PRODUCTO') {
-                Swal.fire({ icon: 'info', title: 'Selecciona un producto', text: 'Elige un producto de la lista para poder editarlo.' });
-                return;
-            }
-            const productoActual = productos.find(p => ((p.PRODUCTO||p.producto||'').toUpperCase() === seleccionado.toUpperCase()));
-            if (!productoActual) {
-                Swal.fire({ icon: 'error', title: 'Producto no encontrado', text: 'No pudimos cargar los datos de ese producto. Actualiza la página e inténtalo de nuevo.' });
-                return;
-            }
-            document.getElementById('originalNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
-            document.getElementById('editarNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
-            document.getElementById('editarUnidadProducto').value = productoActual.UN || productoActual.unidad || '';
-            modalEditarProducto.show();
+        // Eventos para CONDUCTOR
+        document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
+            document.getElementById('formAgregarConductor').reset();
+            modalConductor.show();
         });
-    }
+        document.getElementById('btnGuardarConductor').addEventListener('click', async () => {
+            const nombre = document.getElementById('nombreNuevoConductor').value.trim();
+            const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
+            const placa = document.getElementById('placaNuevoConductor').value.trim();
+            if (!nombre || !cedula || !placa) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
 
-    const btnActualizarProducto = document.getElementById('btnActualizarProducto');
-    if (btnActualizarProducto && modalEditarProducto) {
-        btnActualizarProducto.addEventListener('click', async () => {
-            const original = document.getElementById('originalNombreProducto').value.trim();
-            const nombre = document.getElementById('editarNombreProducto').value.trim();
-            const unidad = document.getElementById('editarUnidadProducto').value.trim();
-            if (!original || !nombre) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa los campos antes de guardar.' });
-            const payload = { original_producto: original, producto: nombre, unidad };
             try {
-                const response = await fetch("{{ url_for('actualizar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const response = await fetch("{{ url_for('agregar_conductor_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, cedula, placa }) });
+                const result = await response.json();
+                if (response.ok) {
+                    conductores = await (await fetch("{{ url_for('static', filename='Conductores.json') }}?v=" + Date.now())).json();
+                    actualizarDropdownConductores();
+                    document.getElementById('conductorSelect').value = result.nuevo_conductor.CONDUCTOR;
+                    document.getElementById('conductorSelect').dispatchEvent(new Event('change'));
+                    modalConductor.hide();
+                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El conductor '${result.nuevo_conductor.CONDUCTOR}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+                }
+            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
+        });
+
+        // Eventos para EMPRESA
+        document.getElementById('btnAbrirModalEmpresa').addEventListener('click', () => {
+            document.getElementById('formAgregarEmpresa').reset();
+            modalEmpresa.show();
+        });
+        document.getElementById('btnGuardarEmpresa').addEventListener('click', async () => {
+            const nombre = document.getElementById('nombreNuevaEmpresa').value.trim();
+            if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Por favor, ingrese el nombre de la empresa.' });
+
+            try {
+                const response = await fetch("{{ url_for('agregar_empresa_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+                const result = await response.json();
+                if (response.ok) {
+                    empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
+                    actualizarDropdownEmpresas();
+                    document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
+                    syncEmpresaTransportadoraWrap();
+                    modalEmpresa.hide();
+                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+                }
+            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
+        });
+
+        // Eventos para PRODUCTOS
+        const modalElProducto = document.getElementById('modalAgregarProducto');
+        const modalProducto = modalElProducto ? new bootstrap.Modal(modalElProducto) : null;
+        const modalElEditarProducto = document.getElementById('modalEditarProducto');
+        const modalEditarProducto = modalElEditarProducto ? new bootstrap.Modal(modalElEditarProducto) : null;
+
+        document.getElementById('btnAbrirModalProducto').addEventListener('click', () => {
+            if (!modalProducto) return;
+            document.getElementById('formAgregarProducto').reset();
+            modalProducto.show();
+        });
+
+        document.getElementById('btnGuardarProducto').addEventListener('click', async () => {
+            const nombre = document.getElementById('nombreNuevoProducto').value.trim();
+            const unidad = document.getElementById('unidadNuevoProducto').value.trim();
+            if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo vacío', text: 'Ingrese el nombre del producto.' });
+            const payload = { producto: nombre, unidad };
+            try {
+                const response = await fetch("{{ url_for('agregar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const result = await response.json();
                 if (response.ok) {
                     productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
                     actualizarDropdownProductos();
-                    const select = document.getElementById('productoSelect');
-                    select.value = result.producto.PRODUCTO || result.producto.producto || nombre;
-                    select.dispatchEvent(new Event('change'));
-                    modalEditarProducto.hide();
-                    Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message || 'Producto actualizado.', timer: 2000, showConfirmButton: false });
+                    document.getElementById('productoSelect').value = result.nuevo_producto.PRODUCTO || result.nuevo_producto.producto || nombre;
+                    document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+                    modalProducto.hide();
+                    Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado.', timer: 2000, showConfirmButton: false });
                     return;
                 }
             } catch (err) {
-                console.warn('No se pudo llamar al endpoint actualizar_producto_ajax, actualizando localmente', err);
+                // fallback local update
+                console.warn('No se pudo llamar al endpoint agregar_producto_ajax, actualizando localmente', err);
             }
-            // Fallback local update
-            const idx = productos.findIndex(p => ((p.PRODUCTO||p.producto||'').toUpperCase() === original.toUpperCase()));
-            if (idx !== -1) {
-                productos[idx].PRODUCTO = nombre;
-                productos[idx].UN = unidad;
-            }
+            // Local fallback: añadir al arreglo y actualizar select (solo PRODUCTO y UN)
+            productos.push({ PRODUCTO: nombre, UN: unidad });
             actualizarDropdownProductos();
-            const select = document.getElementById('productoSelect');
-            select.value = nombre;
-            select.dispatchEvent(new Event('change'));
-            modalEditarProducto.hide();
-            Swal.fire({ icon: 'success', title: 'Actualizado (local)', text: 'Producto actualizado localmente.', timer: 2000, showConfirmButton: false });
+            document.getElementById('productoSelect').value = nombre;
+            document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+            if (modalProducto) modalProducto.hide();
+            Swal.fire({ icon: 'success', title: 'Guardado (local)', text: 'Producto agregado localmente.', timer: 2000, showConfirmButton: false });
         });
-    }
 
-    // Actualiza el wrap al editar manualmente el campo
-    const empresaInput = document.getElementById('empresaTransportadoraInput');
-    if (empresaInput){
-        empresaInput.addEventListener('input', syncEmpresaTransportadoraWrap);
-        empresaInput.addEventListener('change', syncEmpresaTransportadoraWrap);
-    }
-
-    // Asegurar sincronización antes de imprimir
-    window.addEventListener('beforeprint', () => { 
-        syncEmpresaTransportadoraWrap(); 
-        syncDestinoWrap();
-        // RESETEAR ZOOM ANTES DE IMPRIMIR
-        const contenedor = document.getElementById('contenedor-guia');
-        if (contenedor) {
-            contenedor.style.transform = 'none';
+        const btnEditarProducto = document.getElementById('btnEditarProducto');
+        if (btnEditarProducto && modalEditarProducto) {
+            btnEditarProducto.addEventListener('click', () => {
+                const select = document.getElementById('productoSelect');
+                const seleccionado = (select.value || '').trim();
+                if (!seleccionado || seleccionado === 'AGREGAR_PRODUCTO') {
+                    Swal.fire({ icon: 'info', title: 'Selecciona un producto', text: 'Elige un producto de la lista para poder editarlo.' });
+                    return;
+                }
+                const productoActual = productos.find(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === seleccionado.toUpperCase()));
+                if (!productoActual) {
+                    Swal.fire({ icon: 'error', title: 'Producto no encontrado', text: 'No pudimos cargar los datos de ese producto. Actualiza la página e inténtalo de nuevo.' });
+                    return;
+                }
+                document.getElementById('originalNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+                document.getElementById('editarNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+                document.getElementById('editarUnidadProducto').value = productoActual.UN || productoActual.unidad || '';
+                modalEditarProducto.show();
+            });
         }
-    });
 
-    // Restaurar zoom después de imprimir
-    window.addEventListener('afterprint', () => {
-        aplicarZoom();
-    });
+        const btnActualizarProducto = document.getElementById('btnActualizarProducto');
+        if (btnActualizarProducto && modalEditarProducto) {
+            btnActualizarProducto.addEventListener('click', async () => {
+                const original = document.getElementById('originalNombreProducto').value.trim();
+                const nombre = document.getElementById('editarNombreProducto').value.trim();
+                const unidad = document.getElementById('editarUnidadProducto').value.trim();
+                if (!original || !nombre) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa los campos antes de guardar.' });
+                const payload = { original_producto: original, producto: nombre, unidad };
+                try {
+                    const response = await fetch("{{ url_for('actualizar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const result = await response.json();
+                    if (response.ok) {
+                        productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
+                        actualizarDropdownProductos();
+                        const select = document.getElementById('productoSelect');
+                        select.value = result.producto.PRODUCTO || result.producto.producto || nombre;
+                        select.dispatchEvent(new Event('change'));
+                        modalEditarProducto.hide();
+                        Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message || 'Producto actualizado.', timer: 2000, showConfirmButton: false });
+                        return;
+                    }
+                } catch (err) {
+                    console.warn('No se pudo llamar al endpoint actualizar_producto_ajax, actualizando localmente', err);
+                }
+                // Fallback local update
+                const idx = productos.findIndex(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === original.toUpperCase()));
+                if (idx !== -1) {
+                    productos[idx].PRODUCTO = nombre;
+                    productos[idx].UN = unidad;
+                }
+                actualizarDropdownProductos();
+                const select = document.getElementById('productoSelect');
+                select.value = nombre;
+                select.dispatchEvent(new Event('change'));
+                modalEditarProducto.hide();
+                Swal.fire({ icon: 'success', title: 'Actualizado (local)', text: 'Producto actualizado localmente.', timer: 2000, showConfirmButton: false });
+            });
+        }
 
-    // Actualiza el wrap de DESTINO al editar manualmente
-    const destinoInput = document.getElementById('destinoDireccion');
-    if (destinoInput){
-        destinoInput.addEventListener('input', syncDestinoWrap);
-        destinoInput.addEventListener('change', syncDestinoWrap);
-    }
+        // Actualiza el wrap al editar manualmente el campo
+        const empresaInput = document.getElementById('empresaTransportadoraInput');
+        if (empresaInput) {
+            empresaInput.addEventListener('input', syncEmpresaTransportadoraWrap);
+            empresaInput.addEventListener('change', syncEmpresaTransportadoraWrap);
+        }
 
-     const now = new Date();
-    const dOpt = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        timeZone: 'America/Bogota'
-    };
-    const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
-    
-    const fechaInput = document.getElementById('fechaExpEDICION');
-    if (fechaInput) {
-        fechaInput.value = `CARTAGENA, ${fechaActual}`;
-    }
+        // Asegurar sincronización antes de imprimir
+        window.addEventListener('beforeprint', () => {
+            syncEmpresaTransportadoraWrap();
+            syncDestinoWrap();
+            // RESETEAR ZOOM ANTES DE IMPRIMIR
+            const contenedor = document.getElementById('contenedor-guia');
+            if (contenedor) {
+                contenedor.style.transform = 'none';
+            }
+        });
 
-    // Lógica para actualizar la hora de salida automáticamente
-    actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
-    setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
+        // Restaurar zoom después de imprimir
+        window.addEventListener('afterprint', () => {
+            aplicarZoom();
+        });
 
-    // Configurar campo Sellos (formato y límite)
-    configurarCampoSellos();
+        // Actualiza el wrap de DESTINO al editar manualmente
+        const destinoInput = document.getElementById('destinoDireccion');
+        if (destinoInput) {
+            destinoInput.addEventListener('input', syncDestinoWrap);
+            destinoInput.addEventListener('change', syncDestinoWrap);
+        }
 
-    // Cargar zoom guardado
-    cargarZoomGuardado();
+        const now = new Date();
+        const dOpt = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'America/Bogota'
+        };
+        const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
+
+        const fechaInput = document.getElementById('fechaExpEDICION');
+        if (fechaInput) {
+            fechaInput.value = `CARTAGENA, ${fechaActual}`;
+        }
+
+        // Lógica para actualizar la hora de salida automáticamente
+        actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
+        setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
+
+        // Configurar campo Sellos (formato y límite)
+        configurarCampoSellos();
+
+        // Cargar zoom guardado
+        cargarZoomGuardado();
 
 });
-    function configurarEventosConductores() {
-        const conductorInput = document.getElementById('conductorSelect');
-        const cedulaInput = document.getElementById('cedulaConductor');
-        const placaInput = document.getElementById('placaCabezote');
-        conductorInput.addEventListener('change', function() {
-            const selectedOption = document.querySelector(`#listaConductores option[value="${this.value}"]`);
-            if (selectedOption) {
-                cedulaInput.value = selectedOption.getAttribute('data-cedula') || '';
-                placaInput.value = selectedOption.getAttribute('data-placa') || '';
-            }
-        });
-        cedulaInput.addEventListener('change', function() {
-            const selectedOption = document.querySelector(`#listaCedulas option[value="${this.value}"]`);
-            if (selectedOption) {
-                conductorInput.value = selectedOption.getAttribute('data-nombre') || '';
-                placaInput.value = selectedOption.getAttribute('data-placa') || '';
-            }
-        });
-    }
-
-    function autocompletarCliente(){
-        if(document.getElementById('clienteSelect').value === 'AGREGAR_CLIENTE') return;
-        const nom = document.getElementById('clienteSelect').value;
-        const cli = clientes.find(c=>c.NOMBRE_CLIENTE===nom);
-        document.getElementById('direccionCliente').value = cli ? cli.DIRECCION : '';
-        document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
-        // Ahora el destino muestra la misma información que CIUDAD
-        document.getElementById('destinoDireccion').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
-        // Actualiza la capa impresa del DESTINO cuando proviene del autocompletado
-        if (typeof syncDestinoWrap === 'function') {
-            syncDestinoWrap();
+        function configurarEventosConductores() {
+            const conductorInput = document.getElementById('conductorSelect');
+            const cedulaInput = document.getElementById('cedulaConductor');
+            const placaInput = document.getElementById('placaCabezote');
+            conductorInput.addEventListener('change', function () {
+                const selectedOption = document.querySelector(`#listaConductores option[value="${this.value}"]`);
+                if (selectedOption) {
+                    cedulaInput.value = selectedOption.getAttribute('data-cedula') || '';
+                    placaInput.value = selectedOption.getAttribute('data-placa') || '';
+                }
+            });
+            cedulaInput.addEventListener('change', function () {
+                const selectedOption = document.querySelector(`#listaCedulas option[value="${this.value}"]`);
+                if (selectedOption) {
+                    conductorInput.value = selectedOption.getAttribute('data-nombre') || '';
+                    placaInput.value = selectedOption.getAttribute('data-placa') || '';
+                }
+            });
         }
-    }
 
-    function mostrarProducto(){
-        const nom=document.getElementById('productoSelect').value;
-        const p = productos.find(x => ((x.PRODUCTO||x.producto||'').toUpperCase() === (nom||'').toUpperCase()));
-        if (p) {
-            // Solo unidad (UN) es relevante ahora; limpiamos campos de temperatura/API para evitar confusión
-            document.getElementById('unidadProducto').value = p.UN || p.unidad || '';
-            document.getElementById('tempF').value = '';
-            document.getElementById('apiObs').value = '';
-            document.getElementById('apiCorr').value = '';
-        } else {
-            document.getElementById('unidadProducto').value = '';
-        }
-    }
-
-    function convertirABarriles(){
-        const gal=parseFloat(document.getElementById('galones').value.replace(/,/g, '.'));
-        if(!isNaN(gal)){
-            document.getElementById('barriles').value=(gal/42).toFixed(2).replace('.', ',');
-        }
-    }
-
-    function descargarPDF(){
-        const hoy=new Date().toISOString().slice(0,10);
-        html2pdf().set({
-            margin:[1.5,1,1,1],
-            filename:`Guia-${hoy}.pdf`,
-            html2canvas:{ scale:2, width:2570, height:1650, useCORS:true },
-            jsPDF:{ unit:'mm', format:'a4', orientation:'landscape' }
-        }).from(document.getElementById('contenedor-guia')).save();
-    }
-
-    function actualizarHoraAutomaticamente() {
-        const ahora = new Date();
-        const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
-        const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Bogota' };
-        const fechaTexto = ahora.toLocaleDateString('es-CO', opcionesFecha).toUpperCase();
-        const horaTexto = ahora.toLocaleTimeString('es-CO', opcionesHora).toUpperCase();
-        document.getElementById('fechaHoraSalida').value = fechaTexto;
-        document.getElementById('horaSalida').value = horaTexto;
-    }
-
-    // Configura el input de sellos: solo dígitos, máximo 100 y guiones cada 6 dígitos
-    function configurarCampoSellos(){
-        const selloInput = document.getElementById('selloInput');
-        if (!selloInput) return;
-
-        const formatear = (raw) => {
-            // Solo dígitos y máximo 100
-            let valor = (raw || '').replace(/[^\d]/g, '').substring(0, 100);
-            // Guión cada 6 dígitos
-            let out = '';
-            for (let i = 0; i < valor.length; i++) {
-                if (i > 0 && i % 6 === 0) out += '-';
-                out += valor[i];
+        function autocompletarCliente() {
+            if (document.getElementById('clienteSelect').value === 'AGREGAR_CLIENTE') return;
+            const index = document.getElementById('clienteSelect').value;
+            const cli = clientes[index];
+            document.getElementById('direccionCliente').value = cli ? cli.DIRECCION : '';
+            document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
+            // Ahora el destino muestra la misma información que CIUDAD
+            document.getElementById('destinoDireccion').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
+            // Actualiza la capa impresa del DESTINO cuando proviene del autocompletado
+            if (typeof syncDestinoWrap === 'function') {
+                syncDestinoWrap();
             }
-            return out;
-        };
+        }
 
-        selloInput.addEventListener('input', function(){
-            this.value = formatear(this.value);
-        });
-        selloInput.addEventListener('paste', function(e){
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text');
-            document.execCommand('insertText', false, formatear(text));
-        });
-    }
+        function mostrarProducto() {
+            const nom = document.getElementById('productoSelect').value;
+            const p = productos.find(x => ((x.PRODUCTO || x.producto || '').toUpperCase() === (nom || '').toUpperCase()));
+            if (p) {
+                // Solo unidad (UN) es relevante ahora; limpiamos campos de temperatura/API para evitar confusión
+                document.getElementById('unidadProducto').value = p.UN || p.unidad || '';
+                document.getElementById('tempF').value = '';
+                document.getElementById('apiObs').value = '';
+                document.getElementById('apiCorr').value = '';
+            } else {
+                document.getElementById('unidadProducto').value = '';
+            }
+        }
 
-    // Sistema de Zoom para mejorar la usabilidad
-    let nivelZoomActual = 100;
-    
-    // Cargar zoom guardado al iniciar
-    function cargarZoomGuardado() {
-        const zoomGuardado = localStorage.getItem('guiaTransporteZoom');
-        if (zoomGuardado) {
-            nivelZoomActual = parseInt(zoomGuardado);
+        function convertirABarriles() {
+            const gal = parseFloat(document.getElementById('galones').value.replace(/,/g, '.'));
+            if (!isNaN(gal)) {
+                document.getElementById('barriles').value = (gal / 42).toFixed(2).replace('.', ',');
+            }
+        }
+
+        function descargarPDF() {
+            const hoy = new Date().toISOString().slice(0, 10);
+            html2pdf().set({
+                margin: [1.5, 1, 1, 1],
+                filename: `Guia-${hoy}.pdf`,
+                html2canvas: { scale: 2, width: 2570, height: 1650, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            }).from(document.getElementById('contenedor-guia')).save();
+        }
+
+        function actualizarHoraAutomaticamente() {
+            const ahora = new Date();
+            const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
+            const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Bogota' };
+            const fechaTexto = ahora.toLocaleDateString('es-CO', opcionesFecha).toUpperCase();
+            const horaTexto = ahora.toLocaleTimeString('es-CO', opcionesHora).toUpperCase();
+            document.getElementById('fechaHoraSalida').value = fechaTexto;
+            document.getElementById('horaSalida').value = horaTexto;
+        }
+
+        // Configura el input de sellos: solo dígitos, máximo 100 y guiones cada 6 dígitos
+        function configurarCampoSellos() {
+            const selloInput = document.getElementById('selloInput');
+            if (!selloInput) return;
+
+            const formatear = (raw) => {
+                // Solo dígitos y máximo 100
+                let valor = (raw || '').replace(/[^\d]/g, '').substring(0, 100);
+                // Guión cada 6 dígitos
+                let out = '';
+                for (let i = 0; i < valor.length; i++) {
+                    if (i > 0 && i % 6 === 0) out += '-';
+                    out += valor[i];
+                }
+                return out;
+            };
+
+            selloInput.addEventListener('input', function () {
+                this.value = formatear(this.value);
+            });
+            selloInput.addEventListener('paste', function (e) {
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                document.execCommand('insertText', false, formatear(text));
+            });
+        }
+
+        // Sistema de Zoom para mejorar la usabilidad
+        let nivelZoomActual = 100;
+
+        // Cargar zoom guardado al iniciar
+        function cargarZoomGuardado() {
+            const zoomGuardado = localStorage.getItem('guiaTransporteZoom');
+            if (zoomGuardado) {
+                nivelZoomActual = parseInt(zoomGuardado);
+                aplicarZoom();
+            }
+        }
+
+        function ajustarZoom(cambio) {
+            nivelZoomActual = Math.max(50, Math.min(200, nivelZoomActual + cambio));
             aplicarZoom();
+            guardarZoom();
         }
-    }
-    
-    function ajustarZoom(cambio) {
-        nivelZoomActual = Math.max(50, Math.min(200, nivelZoomActual + cambio));
-        aplicarZoom();
-        guardarZoom();
-    }
-    
-    function resetearZoom() {
-        nivelZoomActual = 100;
-        aplicarZoom();
-        guardarZoom();
-    }
-    
-    function aplicarZoom() {
-        const contenedor = document.getElementById('contenedor-guia');
-        if (contenedor) {
-            const escala = nivelZoomActual / 100;
-            contenedor.style.transform = `scale(${escala})`;
-            document.getElementById('nivel-zoom').textContent = nivelZoomActual + '%';
-            
-            // Ajustar el scroll para mantener el contenido visible
-            if (nivelZoomActual > 100) {
-                document.body.style.overflowY = 'auto';
+
+        function resetearZoom() {
+            nivelZoomActual = 100;
+            aplicarZoom();
+            guardarZoom();
+        }
+
+        function aplicarZoom() {
+            const contenedor = document.getElementById('contenedor-guia');
+            if (contenedor) {
+                const escala = nivelZoomActual / 100;
+                contenedor.style.transform = `scale(${escala})`;
+                document.getElementById('nivel-zoom').textContent = nivelZoomActual + '%';
+
+                // Ajustar el scroll para mantener el contenido visible
+                if (nivelZoomActual > 100) {
+                    document.body.style.overflowY = 'auto';
+                }
             }
         }
-    }
-    
-    function guardarZoom() {
-        localStorage.setItem('guiaTransporteZoom', nivelZoomActual);
-    }
-    
-    // Soporte para zoom con Ctrl + Rueda del mouse
-    document.addEventListener('wheel', function(e) {
-        if (e.ctrlKey) {
-            e.preventDefault();
-            const cambio = e.deltaY > 0 ? -10 : 10;
-            ajustarZoom(cambio);
+
+        function guardarZoom() {
+            localStorage.setItem('guiaTransporteZoom', nivelZoomActual);
         }
-    }, { passive: false });
-    
-    // Atajos de teclado para zoom
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey) {
-            if (e.key === '+' || e.key === '=') {
+
+        // Soporte para zoom con Ctrl + Rueda del mouse
+        document.addEventListener('wheel', function (e) {
+            if (e.ctrlKey) {
                 e.preventDefault();
-                ajustarZoom(10);
-            } else if (e.key === '-') {
-                e.preventDefault();
-                ajustarZoom(-10);
-            } else if (e.key === '0') {
-                e.preventDefault();
-                resetearZoom();
+                const cambio = e.deltaY > 0 ? -10 : 10;
+                ajustarZoom(cambio);
             }
-        }
-    });
-    
-    // ============ SISTEMA DE IMPRESIÓN PARCIAL ============
-    
-    const camposDisponibles = [
-        { id: 'factura', nombre: 'Factura o Remisión' },
-        { id: 'cliente', nombre: 'Cliente' },
-        { id: 'sicom', nombre: 'Código SICOM' },
-        { id: 'direccion', nombre: 'Dirección' },
-        { id: 'ciudad', nombre: 'Ciudad' },
-        { id: 'conductor', nombre: 'Nombre del Conductor' },
-        { id: 'cedula', nombre: 'Cédula del Conductor' },
-        { id: 'empresa', nombre: 'Empresa Transportadora' },
-        { id: 'placaCabezote', nombre: 'Placa del Cabezote' },
-        { id: 'placaTanque', nombre: 'Placa del Tanque' },
-        { id: 'horaSalida', nombre: 'Hora de Salida' },
-        { id: 'destino', nombre: 'Destino' },
-        { id: 'horasVigencia', nombre: 'Horas de Vigencia' },
-        { id: 'producto', nombre: 'Producto' },
-        { id: 'volumen', nombre: 'Volumen (BBL/GAL)' },
-        { id: 'observaciones', nombre: 'Observaciones y Sellos' }
-    ];
-    
-    function abrirImpresionParcial() {
-        const panel = document.getElementById('panel-impresion-parcial');
-        const lista = document.getElementById('lista-campos-seleccionables');
-        
-        // Generar checkboxes
-        lista.innerHTML = camposDisponibles.map(campo => `
+        }, { passive: false });
+
+        // Atajos de teclado para zoom
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey) {
+                if (e.key === '+' || e.key === '=') {
+                    e.preventDefault();
+                    ajustarZoom(10);
+                } else if (e.key === '-') {
+                    e.preventDefault();
+                    ajustarZoom(-10);
+                } else if (e.key === '0') {
+                    e.preventDefault();
+                    resetearZoom();
+                }
+            }
+        });
+
+        // ============ SISTEMA DE IMPRESIÓN PARCIAL ============
+
+        const camposDisponibles = [
+            { id: 'factura', nombre: 'Factura o Remisión' },
+            { id: 'cliente', nombre: 'Cliente' },
+            { id: 'sicom', nombre: 'Código SICOM' },
+            { id: 'direccion', nombre: 'Dirección' },
+            { id: 'ciudad', nombre: 'Ciudad' },
+            { id: 'conductor', nombre: 'Nombre del Conductor' },
+            { id: 'cedula', nombre: 'Cédula del Conductor' },
+            { id: 'empresa', nombre: 'Empresa Transportadora' },
+            { id: 'placaCabezote', nombre: 'Placa del Cabezote' },
+            { id: 'placaTanque', nombre: 'Placa del Tanque' },
+            { id: 'horaSalida', nombre: 'Hora de Salida' },
+            { id: 'destino', nombre: 'Destino' },
+            { id: 'horasVigencia', nombre: 'Horas de Vigencia' },
+            { id: 'producto', nombre: 'Producto' },
+            { id: 'volumen', nombre: 'Volumen (BBL/GAL)' },
+            { id: 'observaciones', nombre: 'Observaciones y Sellos' }
+        ];
+
+        function abrirImpresionParcial() {
+            const panel = document.getElementById('panel-impresion-parcial');
+            const lista = document.getElementById('lista-campos-seleccionables');
+
+            // Generar checkboxes
+            lista.innerHTML = camposDisponibles.map(campo => `
             <div class="campo-checkbox">
                 <input type="checkbox" id="check_${campo.id}" value="${campo.id}">
                 <label for="check_${campo.id}">${campo.nombre}</label>
             </div>
         `).join('');
-        
-        panel.classList.add('activo');
-    }
-    
-    function cerrarImpresionParcial() {
-        document.getElementById('panel-impresion-parcial').classList.remove('activo');
-    }
-    
-    function imprimirSeleccion() {
-        const checkboxes = document.querySelectorAll('#lista-campos-seleccionables input[type="checkbox"]:checked');
-        
-        if (checkboxes.length === 0) {
-            alert('Por favor, selecciona al menos un campo para imprimir');
-            return;
+
+            panel.classList.add('activo');
         }
-        
-        // Obtener IDs de los campos seleccionados
-        const camposSeleccionados = Array.from(checkboxes).map(cb => cb.value);
-        
-        // Marcar los campos seleccionados
-        document.querySelectorAll('.campo[data-campo]').forEach(campo => {
-            const campoid = campo.getAttribute('data-campo');
-            if (camposSeleccionados.includes(campoid)) {
-                campo.classList.add('imprimir-este');
-            } else {
-                campo.classList.remove('imprimir-este');
+
+        function cerrarImpresionParcial() {
+            document.getElementById('panel-impresion-parcial').classList.remove('activo');
+        }
+
+        function imprimirSeleccion() {
+            const checkboxes = document.querySelectorAll('#lista-campos-seleccionables input[type="checkbox"]:checked');
+
+            if (checkboxes.length === 0) {
+                alert('Por favor, selecciona al menos un campo para imprimir');
+                return;
             }
+
+            // Obtener IDs de los campos seleccionados
+            const camposSeleccionados = Array.from(checkboxes).map(cb => cb.value);
+
+            // Marcar los campos seleccionados
+            document.querySelectorAll('.campo[data-campo]').forEach(campo => {
+                const campoid = campo.getAttribute('data-campo');
+                if (camposSeleccionados.includes(campoid)) {
+                    campo.classList.add('imprimir-este');
+                } else {
+                    campo.classList.remove('imprimir-este');
+                }
+            });
+
+            // Activar modo impresión parcial
+            document.body.classList.add('impresion-parcial');
+
+            // Cerrar panel
+            cerrarImpresionParcial();
+
+            // Imprimir
+            setTimeout(() => {
+                window.print();
+            }, 100);
+        }
+
+        // Limpiar modo impresión parcial después de imprimir
+        window.addEventListener('afterprint', () => {
+            document.body.classList.remove('impresion-parcial');
+            document.querySelectorAll('.campo').forEach(campo => {
+                campo.classList.remove('imprimir-este');
+            });
+            aplicarZoom(); // Restaurar zoom
         });
-        
-        // Activar modo impresión parcial
-        document.body.classList.add('impresion-parcial');
-        
-        // Cerrar panel
-        cerrarImpresionParcial();
-        
-        // Imprimir
-        setTimeout(() => {
-            window.print();
-        }, 100);
-    }
-    
-    // Limpiar modo impresión parcial después de imprimir
-    window.addEventListener('afterprint', () => {
-        document.body.classList.remove('impresion-parcial');
-        document.querySelectorAll('.campo').forEach(campo => {
-            campo.classList.remove('imprimir-este');
-        });
-        aplicarZoom(); // Restaurar zoom
-    });
-</script>
+    </script>
 </body>
+
 </html>

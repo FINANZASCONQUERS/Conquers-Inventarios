@@ -780,6 +780,18 @@
                                 {{ "{:,.3f}".format(item.inventario.cupo_web) }}
                             </div>
                             <div class="metric-main-unit">Barriles</div>
+                            {% if item.inventario.volumen_desperdicio_generado and
+                            item.inventario.volumen_desperdicio_generado > 0 %}
+                            <div class="mt-2"
+                                style="font-size: 0.8rem; color: #666; border-top: 1px dashed #e0e0e0; padding-top: 8px;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="small text-muted"><i class="bi bi-trash text-secondary me-1"></i>Merma
+                                        Histórica:</span>
+                                    <span class="fw-bold text-dark">{{
+                                        "{:,.2f}".format(item.inventario.volumen_desperdicio_generado) }} BBL</span>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- Métricas Secundarias -->
@@ -822,6 +834,12 @@
                             <i class="bi bi-box-arrow-right"></i>
                             <span>Consumir</span>
                         </button>
+                        <button class="action-btn"
+                            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"
+                            data-bs-toggle="modal" data-bs-target="#modalHistorialRecargas{{ item.producto.id }}">
+                            <i class="bi bi-clock-history"></i>
+                            <span>Historial</span>
+                        </button>
                     </div>
                     {% endif %}
                 </div>
@@ -829,7 +847,42 @@
 
             <!-- Modales (mantener los existentes) -->
             {% include 'siza_modals_producto.html' %}
+            {% include 'siza_modal_historial.html' %}
             {% endfor %}
+
+            {# Script de Cálculo de Mermas - Inline para evitar problemas de caché #}
+            <script>
+                // Función Global de Cálculo de Mermas (Anti-caché, inline)
+                if (typeof window.calcularMermasSiza === 'undefined') {
+                    window.calcularMermasSiza = function (id, esManual) {
+                        var volElem = document.getElementById('volumenRecarga' + id);
+                        var facElem = document.getElementById('factorDesperdicio' + id);
+                        var resElem = document.getElementById('volumenTotalDesperdicio' + id);
+
+                        if (!volElem || !facElem || !resElem) {
+                            console.error("SIZA: Inputs no encontrados para ID " + id);
+                            if (esManual) alert("Error: No se encuentran los campos. Refresque la página.");
+                            return;
+                        }
+
+                        var volStr = volElem.value ? volElem.value.toString().replace(',', '.') : '0';
+                        var facStr = facElem.value ? facElem.value.toString().replace(',', '.') : '0';
+
+                        var vol = parseFloat(volStr) || 0;
+                        var fac = parseFloat(facStr) || 0;
+
+                        var resultado = vol * (fac / 100.0);
+                        resElem.value = resultado.toFixed(3);
+
+                        if (esManual) {
+                            console.log("Cálculo manual: " + resultado);
+                            resElem.style.backgroundColor = "#d4edda";
+                            setTimeout(function () { resElem.style.backgroundColor = ""; }, 400);
+                        }
+                    };
+                    console.log("✅ Función calcularMermasSiza cargada correctamente");
+                }
+            </script>
         </div>
     </div>
 
@@ -857,24 +910,42 @@
         </div>
 
         <div class="dian-buckets">
-            <div class="dian-bucket">
-                <div class="dian-bucket-label">
-                    <i class="bi bi-check-circle-fill me-1"></i>Aprobado
+            <!-- Total -->
+            <div class="dian-bucket"
+                style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transform: scale(1.05);">
+                <div class="dian-bucket-label" style="color: rgba(255,255,255,0.95);">
+                    <i class="bi bi-bank2 me-1"></i>Total DIAN
                 </div>
-                <div class="dian-bucket-value">
+                <div class="dian-bucket-value" style="font-size: 2.2rem; color: white;">
+                    {% set total_dian = (volumen_dian.volumen_pendiente if volumen_dian else 0) +
+                    (volumen_dian.volumen_por_aprobar if volumen_dian and volumen_dian.volumen_por_aprobar else 0) %}
+                    {{ "{:,.3f}".format(total_dian) }} BBL
+                </div>
+                <small style="opacity: 0.95; font-size: 0.8rem; color: white; font-weight: 500;">Aprobado + Por
+                    Aprobar</small>
+            </div>
+
+            <!-- Aprobado -->
+            <div class="dian-bucket" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="dian-bucket-label" style="color: rgba(255,255,255,0.95);">
+                    <i class="bi bi-check-circle-fill me-1"></i>Ya Aprobado
+                </div>
+                <div class="dian-bucket-value" style="font-size: 2rem; color: white;">
                     {{ "{:,.3f}".format(volumen_dian.volumen_pendiente if volumen_dian else 0) }} BBL
                 </div>
-                <small style="opacity: 0.8; font-size: 0.75rem;">Listo para distribuir</small>
+                <small style="opacity: 0.9; font-size: 0.75rem; color: white;">Listo para distribuir</small>
             </div>
-            <div class="dian-bucket">
-                <div class="dian-bucket-label">
+
+            <!-- Por Aprobar -->
+            <div class="dian-bucket" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="dian-bucket-label" style="color: rgba(255,255,255,0.95);">
                     <i class="bi bi-hourglass-split me-1"></i>Por Aprobar
                 </div>
-                <div class="dian-bucket-value">
+                <div class="dian-bucket-value" style="font-size: 2rem; color: white;">
                     {{ "{:,.3f}".format(volumen_dian.volumen_por_aprobar if volumen_dian and
                     volumen_dian.volumen_por_aprobar else 0) }} BBL
                 </div>
-                <small style="opacity: 0.8; font-size: 0.75rem;">En trámite</small>
+                <small style="opacity: 0.9; font-size: 0.75rem; color: white;">En trámite DIAN</small>
             </div>
         </div>
 
@@ -1072,6 +1143,45 @@
 
 {% block extra_js %}
 <script>
+    // Funcción Global de Cálculo de Mermas (Blindada)
+    window.calcularMermasSiza = function (id, esManual) {
+        // Obtener elementos por ID
+        var volElem = document.getElementById('volumenRecarga' + id);
+        var facElem = document.getElementById('factorDesperdicio' + id);
+        var resElem = document.getElementById('volumenTotalDesperdicio' + id);
+
+        // Verificar existencia
+        if (!volElem || !facElem || !resElem) {
+            console.error("Error SIZA: No se encuentran inputs para el producto ID " + id);
+            if (esManual) alert("Error técnico: Inputs no encontrados. Refresque la página.");
+            return;
+        }
+
+        // Obtener valores y sanitizar (cambiar coma por punto)
+        var volStr = volElem.value ? volElem.value.toString().replace(',', '.') : '0';
+        var facStr = facElem.value ? facElem.value.toString().replace(',', '.') : '0';
+
+        // Convertir a números
+        var vol = parseFloat(volStr) || 0;
+        var fac = parseFloat(facStr) || 0;
+
+        // Calcular
+        var resultado = vol * (fac / 100.0);
+
+        // Asignar resultado
+        resElem.value = resultado.toFixed(3);
+
+        // Feedback visual si es manual
+        if (esManual) {
+            console.log("Cálculo manual ejecutado: " + resultado);
+            // Efecto flash suave
+            resElem.style.backgroundColor = "#dbfbeb"; // Verde claro
+            setTimeout(function () {
+                resElem.style.backgroundColor = "";
+            }, 500);
+        }
+    };
+
     // Habilitar/Deshabilitar límite max según checkbox DIAN
     function toggleMaxDian(productoId, maxDian) {
         const check = document.getElementById('descontar_dian_' + productoId);
