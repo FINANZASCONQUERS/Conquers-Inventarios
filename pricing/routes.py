@@ -34,10 +34,16 @@ def update_prices():
     
     today = date.today()
     
-    # Si ya estamos al día, validamos y salimos para no procesar nada
-    if start_date > today:
+    # Si ya estamos al día, validamos. PERO si el Brent es 0 (error previo), permitimos re-intentar hoy.
+    force_update_today = (latest_record and latest_record.fecha == today and latest_record.brent == 0.0)
+    
+    if start_date > today and not force_update_today:
        flash("La base de datos ya está actualizada hasta hoy. No se encontraron días nuevos.", "info")
        return redirect(url_for('pricing_bp.index'))
+       
+    # Si vamos a forzar update de hoy, retrocedemos start_date
+    if force_update_today:
+        start_date = today
 
     ECOPETROL_URL = "https://www.ecopetrol.com.co/wps/wcm/connect/94bf0826-889a-4937-a6c0-668e35b1ea55/PME-VPRECIOSCRUDOSYFUELOILPARAIFOS-15.xls?MOD=AJPERES&attachment=true&id=1589474858686"
     
