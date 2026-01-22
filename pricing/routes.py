@@ -36,20 +36,35 @@ def update_prices():
     
     # Validar si el ultimo registro esta corrupto (Brent = 0 o None)
     # getattr devuelve el valor del atributo (que puede ser None), no el default si existe.
-    current_brent = getattr(latest_record, 'brent', 0)
-    if latest_record and (current_brent is None or float(current_brent or 0) <= 0.01):
-         last_good_record = HistorialCombustibles.query.filter(HistorialCombustibles.brent > 0.01).order_by(HistorialCombustibles.fecha.desc()).first()
-         if last_good_record:
-             # Retomar desde el dia siguiente al ultimo bueno
-             start_date = last_good_record.fecha + timedelta(days=1)
-             flash(f"Detectados registros incompletos. Recalculando desde {start_date}...", "info")
-         else:
-             # Si todo es 0 o no hay historia buena, reiniciar año
-             start_date = date(2025, 1, 1)
-
-    # Si ya estamos al día y el ultimo dato ESTA BIEN (>0), entonces no hacemos nada
-    elif start_date > today:
-       flash("La base de datos ya está actualizada hasta hoy. No se encontraron días nuevos.", "info")
+    start_year = date(2025, 1, 1)
+    
+    # NUEVA LOGICA: Buscar cualquier hueco (Gap) en el pasado, no solo mirar el ultimo dia.
+    # Buscamos el primer registro desde 2025 que tenga Brent=0 o F04=0
+    from sqlalchemy import or_
+    bad_record = HistorialCombustibles.query.filter(
+        HistorialCombustibles.fecha >= start_year,
+        or_(
+            HistorialCombustibles.brent <= 0.01,
+            HistorialCombustibles.f04_base_cop <= 0.01,
+            HistorialCombustibles.f04_total_cop <= 0.01
+        )
+    ).order_by(HistorialCombustibles.fecha.asc()).first()
+    
+    if bad_record:
+        # Si encontramos un dia con ceros, forzamos iniciar desde ahi para repararlo
+        start_date = bad_record.fecha
+        flash(f"Se encontraron datos incompletos (ceros) desde el {start_date}. Reparando historial...", "warning")
+    
+    # Si no hay huecos, usamos la logica normal de continuar desde el ultimo
+    elif latest_record:
+        if getattr(latest_record, 'diff_f04_base', None) is None:
+             start_date = start_year
+        else:
+             start_date = latest_record.fecha + timedelta(days=1)
+    
+    # Proteccion limite futuro
+    if start_date > today:
+       flash("La base de datos ya está actualizada hasta hoy y sin huecos aparentes.", "info")
        return redirect(url_for('pricing_bp.index'))
 
     ECOPETROL_URL = "https://www.ecopetrol.com.co/wps/wcm/connect/94bf0826-889a-4937-a6c0-668e35b1ea55/PME-VPRECIOSCRUDOSYFUELOILPARAIFOS-15.xls?MOD=AJPERES&attachment=true&id=1589474858686"
