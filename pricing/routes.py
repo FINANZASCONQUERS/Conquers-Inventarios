@@ -90,14 +90,22 @@ def update_prices():
         while attempts < max_retries and not success:
             attempts += 1
             try:
-                # Usar Ticker directamente
-                ticker = yf.Ticker("BZ=F")
+                # Usar Ticker directamente con Session custom para evitar bloqueos
+                session = requests.Session()
+                session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                })
+                
+                ticker = yf.Ticker("BZ=F", session=session)
                 brent_df = ticker.history(start=fetch_start, interval="1d")
                 
-                # Si falló history, intentar legacy download
+                # Si falló history, intentar legacy download (con un try/except interno por si acaso)
                 if brent_df.empty:
                     print(f"Intento {attempts}/{max_retries}: Ticker.history vacio, probando download...")
-                    brent_df = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
+                    try:
+                        # yf.download maneja su propia session internamente o via overrides
+                        brent_df = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
+                    except: pass
                 
                 # Validar éxito
                 if not brent_df.empty:
@@ -201,10 +209,20 @@ def update_prices():
                 
         df = pd.read_excel(excel_file, sheet_name=sheet_name, header=None)
         
-        # Mapa de meses español
+        # Mapa de meses español (completo y abreviado)
         meses = {
-            'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
-            'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+            'enero': 1, 'ene': 1, 'jan': 1,
+            'febrero': 2, 'feb': 2,
+            'marzo': 3, 'mar': 3,
+            'abril': 4, 'abr': 4, 'apr': 4,
+            'mayo': 5, 'may': 5,
+            'junio': 6, 'jun': 6,
+            'julio': 7, 'jul': 7,
+            'agosto': 8, 'ago': 8, 'aug': 8,
+            'septiembre': 9, 'sep': 9, 'set': 9,
+            'octubre': 10, 'oct': 10,
+            'noviembre': 11, 'nov': 11,
+            'diciembre': 12, 'dic': 12, 'dec': 12
         }
 
         def parse_spanish_date(date_val, year_hint=None):
@@ -215,42 +233,60 @@ def update_prices():
             # Si es string
             date_str = str(date_val).strip()
             
-            # Intento 1: Formato pandas default (YYYY-MM-DD...)
+            # Intento 1: Formato pandas default y formatos comunes cortos
             try:
-                ts = pd.to_datetime(date_str, errors='raise')
-                return ts.date()
+                # Si contiene texto, a veces pd.to_datetime falla en locale EN si no entiende "Ene"
+                # Intentamos parsear directamente solo si parece formato ISO o standard
+                 if '-' in date_str and date_str[0].isdigit() and date_str.split('-')[1].isdigit():
+                     ts = pd.to_datetime(date_str, errors='raise')
+                     return ts.date()
             except:
                 pass
 
-            # Intento 2: Parseo manual Español "martes, 6 de enero..." (y casos sucios "2025sujeto")
+            # Intento 2: Parseo manual robusto para Español / Texto sucio
             try:
-                # Pre-limpieza de basura específica observada
+                # Pre-limpieza de basura específica
                 s_clean = date_str.lower()
-                s_clean = s_clean.replace('sujeto', ' sujeto ') # Separa "2025sujeto"
+                s_clean = s_clean.replace('sujeto', ' sujeto ')
                 s_clean = s_clean.replace('hasta', ' ')
+                # Reemplazar separadores por espacios
+                s_clean = s_clean.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('/', ' ')
+                s_clean = s_clean.replace('del', ' ').replace('de', ' ')
                 
-                parts = s_clean.replace(',', '').replace('.', '').replace('del', '').replace('de', '').split()
+                parts = s_clean.split()
                 day, month, year = None, None, None
                 
                 for part in parts:
                     if part.isdigit():
                         val = int(part)
-                        if val > 31: year = val
+                        if val > 31: 
+                            year = val
                         else: 
                             if not day: day = val
-                            else: year = val # Si aparece otro num puede ser año
+                            else: year = val # Conflicto dia/año, asumir segundo es año si hay duda
                     elif part in meses:
                         month = meses[part]
                 
-                # Inferencia: Si tenemos día y mes pero falta año, usar hint
-                if day and month and not year and year_hint:
-                    year = int(year_hint)
+                # Inferencia: Si tenemos día y mes pero falta año
+                if day and month and not year:
+                    if year_hint:
+                        year = int(year_hint)
+                    else:
+                        # Fallback a año actual si el mes es menor al actual, o año pasado?
+                        # Mejor usar año actual com default seguro
+                        year = datetime.now().year
 
                 if day and month and year:
                     return date(year, month, day)
             except:
                 pass
                 
+            # Ultimo intento: pd.to_datetime genérico (puede fallar en locale incorrecto)
+            try:
+                ts = pd.to_datetime(date_str, errors='coerce')
+                if not pd.isna(ts): return ts.date()
+            except: pass
+            
             return None
 
         # Buscar bloque "Fuel Oil No. 4 Apiay"
