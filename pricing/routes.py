@@ -276,9 +276,32 @@ def update_prices():
                  d_fin = parse_spanish_date(fecha_fin_raw, year_hint=d_fin_hint)
                  
                  # CRITERIO DE ACEPTACIÓN: Ambas deben ser fechas válidas
+                 # MEJORA: Si d_fin falla, intentar inferirlo basado en la siguiente fila (asumiendo continuidad semanal)
                  if not d_inicio: 
                      continue 
-                 if not d_fin: d_fin = d_inicio 
+                 
+                 if not d_fin or d_fin == d_inicio:
+                     # Intentar buscar la FECHA DE INICIO de la SIGUIENTE fila válida para cerrar este rango
+                     # Escaneamos hacia abajo buscando la proxima fecha valida
+                     next_start_found = None
+                     for lookahead_idx in range(r_idx + 1, min(r_idx + 10, len(df))): # Mirar 10 filas adelante
+                         try:
+                             row_next = df.iloc[lookahead_idx]
+                             next_raw = str(row_next[0]).strip() if pd.notnull(row_next[0]) else ""
+                             if len(next_raw) > 5:
+                                 next_date = parse_spanish_date(next_raw)
+                                 if next_date and next_date > d_inicio:
+                                     next_start_found = next_date
+                                     break
+                         except: pass
+                     
+                     if next_start_found:
+                         d_fin = next_start_found - timedelta(days=1)
+                         print(f"DEBUG: Fecha fin inferida para {d_inicio} -> {d_fin}")
+                     else:
+                         # Si no hay siguiente, asumir 6 dias (semana estandar ecopetrol)
+                         d_fin = d_inicio + timedelta(days=6)
+                         print(f"DEBUG: Fecha fin asumida (default 1 sem) para {d_inicio} -> {d_fin}")
                  
                  found_dates += 1
                  
