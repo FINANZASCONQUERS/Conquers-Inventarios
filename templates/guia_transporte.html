@@ -1159,7 +1159,7 @@
         function actualizarDropdownClientes() {
             const cliSel = document.getElementById('clienteSelect');
             cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
-            clientes.forEach((c, index) => cliSel.insertAdjacentHTML('beforeend', `<option value="${index}">${c.NOMBRE_CLIENTE} - ${c.CIUDAD_DEPARTAMENTO}</option>`));
+            clientes.forEach((c, index) => cliSel.insertAdjacentHTML('beforeend', `<option value="${index}">${c.NOMBRE_CLIENTE}</option>`));
             cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
         }
 
