@@ -43,11 +43,23 @@ def update_prices():
     
     # 1. BRENT (Yahoo Finance)
     brent_df = pd.DataFrame()
-    latest_brent = 0.0
+    # MEJORA: Si falla la API, usar el ultimo valor conocido de la BD en lugar de 0
+    latest_brent = latest_record.brent if (latest_record and latest_record.brent) else 0.0
     try:
-        # Descargar historial reciente (Desde un poco antes para coger ultimo val si hoy es nulo)
+        # Intentar evitar bloqueo usando cache y descarga más inteligente
+        import yfinance as yf
+        
+        # Descargar historial reciente
         fetch_start = start_date - timedelta(days=7)
-        brent_df = yf.download("BZ=F", start=fetch_start, progress=False)
+        
+        # Usar Ticker directamente que a veces es mas robusto que download masivo
+        ticker = yf.Ticker("BZ=F")
+        brent_df = ticker.history(start=fetch_start, interval="1d")
+        
+        # Si history falla o devuelve vacio, intentar download clasico con timeout
+        if brent_df.empty:
+             print("Ticker.history vacio, intentando download...")
+             brent_df = yf.download("BZ=F", start=fetch_start, progress=False)
         # Fix MultiIndex de Yahoo (Price, Ticker) -> 'Close'
         if isinstance(brent_df.columns, pd.MultiIndex):
             try:
