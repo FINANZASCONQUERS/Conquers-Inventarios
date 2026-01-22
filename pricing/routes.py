@@ -34,16 +34,17 @@ def update_prices():
     
     today = date.today()
     
-    # Validar si el ultimo registro esta corrupto (Brent = 0)
-    # Si es asi, buscamos hacia atras hasta donde estuviera bien para corregir el bache
-    if latest_record and getattr(latest_record, 'brent', 0) == 0.0:
-         last_good_record = HistorialCombustibles.query.filter(HistorialCombustibles.brent > 0).order_by(HistorialCombustibles.fecha.desc()).first()
+    # Validar si el ultimo registro esta corrupto (Brent = 0 o None)
+    # getattr devuelve el valor del atributo (que puede ser None), no el default si existe.
+    current_brent = getattr(latest_record, 'brent', 0)
+    if latest_record and (current_brent is None or float(current_brent or 0) <= 0.01):
+         last_good_record = HistorialCombustibles.query.filter(HistorialCombustibles.brent > 0.01).order_by(HistorialCombustibles.fecha.desc()).first()
          if last_good_record:
              # Retomar desde el dia siguiente al ultimo bueno
              start_date = last_good_record.fecha + timedelta(days=1)
-             flash(f"Detectados registros con valor 0. Recalculando desde {start_date}...", "info")
+             flash(f"Detectados registros incompletos. Recalculando desde {start_date}...", "info")
          else:
-             # Si todo es 0, reiniciar año
+             # Si todo es 0 o no hay historia buena, reiniciar año
              start_date = date(2025, 1, 1)
 
     # Si ya estamos al día y el ultimo dato ESTA BIEN (>0), entonces no hacemos nada
