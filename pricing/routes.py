@@ -162,6 +162,11 @@ def update_prices():
                             
                             # Convertir a formato estándar
                             brent_df = pd.DataFrame({'brent': brent_df_yf.iloc[:, 0]})
+                            
+                            # CRITICO: Eliminar zona horaria para coincidir con fechas naive (date)
+                            if brent_df.index.tz is not None:
+                                brent_df.index = brent_df.index.tz_localize(None)
+                            
                             print(f"✓ Yahoo: Último Brent = {latest_brent} ({last_valid_idx.date()})")
                     else:
                         raise ValueError("Yahoo data empty")
@@ -700,8 +705,12 @@ def update_prices():
 
             if found_brent_today is not None and found_brent_today > 0:
                 latest_brent = found_brent_today
-            
-            brent_val = latest_brent
+                brent_val = found_brent_today
+            else:
+                # Si no hay dato exacto (ej. fin de semana), mantener el ultimo conocido
+                # PERO validar si el gap es muy grande
+                brent_val = latest_brent
+                print(f"DEBUG: Brent {current_date} -> {brent_val} (Carry-Forward)")
             
             # TRM: Estrategia Carry-Forward
             found_trm_today = trm_map.get(current_date, 0.0)
