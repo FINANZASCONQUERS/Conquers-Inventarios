@@ -138,19 +138,11 @@ def update_prices():
             while attempts < max_retries and not success:
                 attempts += 1
                 try:
-                    # Fix: Usar Requests Session para evitar bloqueo en servidores (Cloud/Render)
-                    import requests
-                    session = requests.Session()
-                    session.headers.update({
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                    })
-                    
-                    ticker = yf.Ticker("BZ=F", session=session)
+                    ticker = yf.Ticker("BZ=F")
                     brent_df_yf = ticker.history(start=fetch_start, interval="1d")
                     
                     if brent_df_yf.empty:
-                         # Intento con download directo y session
-                         brent_df_yf = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10, session=session)
+                        brent_df_yf = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
                     
                     if not brent_df_yf.empty:
                         success = True
@@ -375,7 +367,17 @@ def update_prices():
                  d_fin = parse_spanish_date(fecha_fin_raw, year_hint=d_fin_hint)
                  
                  # CRITERIO DE ACEPTACIÓN: Ambas deben ser fechas válidas
-                 # MEJORA: Si d_fin falla, intentar inferirlo basado en la siguiente fila (asumiendo continuidad semanal)
+                 # MEJORA: Validar Año Incorrecto (Ecopetrol a veces deja 2025 en 2026)
+                 
+                 # Si la fecha parseada es 2025 pero estamos en 2026, y es Enero/Febrero, asumir error de año en Excel
+                 current_real_year = datetime.now().year
+                 if d_inicio and d_inicio.year == (current_real_year - 1):
+                      # Heurística: Si la fecha es de este año o el anterior, corregir al actual
+                      # Solo corregir si el mes coincide con la ventana actual de actualización (Enero)
+                      if d_inicio.month == datetime.now().month or d_inicio.month == (datetime.now().month - 1):
+                           d_inicio = d_inicio.replace(year=current_real_year)
+                           print(f"DEBUG: Corrigiendo año {current_real_year-1} -> {current_real_year} para {d_inicio}")
+                 
                  if not d_inicio:
                     # Debug solo para fechas recientes (potenciales) para no ensuciar log
                     if "2025" in fecha_inicio_raw or "25" in fecha_inicio_raw:
@@ -383,7 +385,7 @@ def update_prices():
                     continue 
 
                  # Debug éxito para confirmar formato
-                 if d_inicio.year == 2025 and d_inicio.month == 1:
+                 if d_inicio.year == 2025 or d_inicio.year == 2026:
                      print(f"DEBUG SUCCESS: Raw='{fecha_inicio_raw}' -> {d_inicio}") 
                  
                  if not d_fin or d_fin == d_inicio:
@@ -432,8 +434,8 @@ def update_prices():
                  # Col 4 (E): IVA
                  # Col 5 (F): Impuesto Carbono ($/GLN)
                  
-                 # DEBUG: Show raw cell values for Jan 2025
-                 if d_inicio.year == 2025 and d_inicio.month == 1:
+                 # DEBUG: Show raw cell values for Jan 2025/2026
+                 if (d_inicio.year == 2025 or d_inicio.year == 2026) and d_inicio.month == 1:
                      print(f"DEBUG RAW {d_inicio}: D=[{row.iloc[3]}] E=[{row.iloc[4]}] F=[{row.iloc[5]}]")
                   
                  val_ingreso = get_val(3)
@@ -443,8 +445,8 @@ def update_prices():
                  # 4. Transformaciones (Expandir fechas)
                  val_carbono_bll = val_carbono * 42.0 # GLN a BLL
                  
-                 # DEBUG: Show parsed values for Jan 2025
-                 if d_inicio.year == 2025 and d_inicio.month == 1:
+                 # DEBUG: Show parsed values for Jan 2025/2026
+                 if (d_inicio.year == 2025 or d_inicio.year == 2026) and d_inicio.month == 1:
                      print(f"DEBUG PARSED {d_inicio}->{d_fin}: Base={val_ingreso} IVA={val_iva} Carb={val_carbono}")
                   
                  curr = d_inicio
