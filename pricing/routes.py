@@ -16,11 +16,25 @@ def index():
 
 @pricing_bp.route('/pricing/update', methods=['POST'])
 def update_prices():
-    from extensions import db
     from pricing.models import HistorialCombustibles
     
     # Optimización: Buscar última fecha registrada
     latest_record = HistorialCombustibles.query.order_by(HistorialCombustibles.fecha.desc()).first()
+
+@pricing_bp.route('/pricing/reset', methods=['POST'])
+def reset_prices():
+    from extensions import db
+    from pricing.models import HistorialCombustibles
+    
+    try:
+        num_deleted = db.session.query(HistorialCombustibles).delete()
+        db.session.commit()
+        flash(f"Historial eliminado correctamente ({num_deleted} registros). El sistema se reiniciará desde 2025.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error eliminando historial: {e}", "danger")
+        
+    return redirect(url_for('pricing_bp.index'))
     
     start_date = date(2025, 1, 1)
     
