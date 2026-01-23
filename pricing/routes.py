@@ -322,14 +322,14 @@ def update_prices():
                  
                  # CRITERIO DE ACEPTACIÓN: Ambas deben ser fechas válidas
                  # MEJORA: Si d_fin falla, intentar inferirlo basado en la siguiente fila (asumiendo continuidad semanal)
-                if not d_inicio: 
+                 if not d_inicio:
                     # Debug solo para fechas recientes (potenciales) para no ensuciar log
                     if "2025" in fecha_inicio_raw or "25" in fecha_inicio_raw:
                          print(f"DEBUG FAIL PARSE: Raw='{fecha_inicio_raw}' -> Parsed=None")
                     continue 
 
-                # Debug éxito para confirmar formato
-                if d_inicio.year == 2025 and d_inicio.month == 1:
+                 # Debug éxito para confirmar formato
+                 if d_inicio.year == 2025 and d_inicio.month == 1:
                      print(f"DEBUG SUCCESS: Raw='{fecha_inicio_raw}' -> {d_inicio}") 
                  
                  if not d_fin or d_fin == d_inicio:
