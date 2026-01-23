@@ -69,75 +69,125 @@ def update_prices():
 
     ECOPETROL_URL = "https://www.ecopetrol.com.co/wps/wcm/connect/94bf0826-889a-4937-a6c0-668e35b1ea55/PME-VPRECIOSCRUDOSYFUELOILPARAIFOS-15.xls?MOD=AJPERES&attachment=true&id=1589474858686"
     
-    # 1. BRENT (Yahoo Finance)
+    # 1. BRENT - SISTEMA MULTI-FUENTE (EIA -> Yahoo -> BD)
     brent_df = pd.DataFrame()
-    # MEJORA: Si falla la API, usar el ultimo valor conocido de la BD en lugar de 0
-    latest_brent = latest_record.brent if (latest_record and latest_record.brent) else 0.0
+    latest_brent = latest_record.brent if (latest_record and latest_record.brent) else 75.0
     
+    # FUENTE 1: EIA (US Energy Information Administration - Oficial, gratis, sin key)
     try:
-        import yfinance as yf
-        import time
-        import random
+        print("Intentando obtener Brent desde EIA API...")
+        fetch_start = start_date - timedelta(days=10)
         
-        # BUCLE DE INSISTENCIA (RETRIES)
-        # Intentaremos hasta 5 veces si Yahoo nos bloquea
-        max_retries = 5
-        attempts = 0
-        success = False
+        # EIA endpoint para Brent (Europe Brent Spot Price FOB)
+        eia_url = "https://api.eia.gov/v2/petroleum/pri/spt/data/"
+        eia_api_key = "1436df7a36c507c936056b2c8646e38b" # Public key or user provided
+        params = {
+            "frequency": "daily",
+            "data[0]": "value",
+            "facets[series][]": "RBRTE",
+            "start": fetch_start.strftime("%Y-%m-%d"),
+            "sort[0][column]": "period",
+            "sort[0][direction]": "desc",
+            "offset": 0,
+            "length": 5000,
+            "api_key": eia_api_key
+        }
         
-        fetch_start = start_date - timedelta(days=7)
+        response = requests.get(eia_url, params=params, timeout=15)
         
-        while attempts < max_retries and not success:
-            attempts += 1
-            try:
-                # Usar Ticker directamente (sin session custom que rompe yfinance recientes)
-                ticker = yf.Ticker("BZ=F")
-                brent_df = ticker.history(start=fetch_start, interval="1d")
+        if response.status_code == 200:
+            data = response.json()
+            if 'response' in data and 'data' in data['response']:
+                records = data['response']['data']
                 
-                # Si falló history, intentar legacy download
-                if brent_df.empty:
-                    print(f"Intento {attempts}/{max_retries}: Ticker.history vacio, probando download...")
-                    try:
-                        brent_df = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
-                    except: pass
-                
-                # Validar éxito
-                if not brent_df.empty:
-                    success = True
-                    print(f"Éxito obteniendo Brent en intento {attempts}")
-                else:
-                    raise ValueError("Datos vacíos")
+                if records:
+                    # Convertir a DataFrame
+                    df_temp = pd.DataFrame(records)
+                    df_temp['date'] = pd.to_datetime(df_temp['period'])
+                    df_temp = df_temp.set_index('date')
+                    df_temp = df_temp.sort_index()
+                    df_temp['brent'] = pd.to_numeric(df_temp['value'], errors='coerce')
                     
-            except Exception as e_retry:
-                print(f"Fallo intento {attempts} Yahoo: {e_retry}")
-                if attempts < max_retries:
-                    # Esperar un tiempo aleatorio entre 2 y 5 segundos antes de reintentar
-                    # (Random jitter ayuda a saltar bloqueos de IP masiva)
-                    sleep_time = random.uniform(2.0, 5.0)
-                    time.sleep(sleep_time)
+                    brent_df = df_temp[['brent']].dropna()
+                    
+                    if not brent_df.empty:
+                        latest_brent = float(brent_df['brent'].iloc[-1])
+                        print(f"✓ EIA: Último Brent = {latest_brent} ({brent_df.index[-1].date()})")
+                    else:
+                        raise ValueError("EIA data empty after processing")
+                else:
+                    raise ValueError("No EIA records found")
+        else:
+            raise ValueError(f"EIA HTTP {response.status_code}")
+            
+    except Exception as e_eia:
+        print(f"✗ EIA falló: {e_eia}")
         
-        # Fix MultiIndex de Yahoo (Price, Ticker) -> 'Close'
-        if isinstance(brent_df.columns, pd.MultiIndex):
-            try:
-                brent_df = brent_df.xs('Close', level=0, axis=1) # O accede directo si es diferente
-            except:
-                # Si falla, intentar aplanar
-                brent_df.columns = [c[0] for c in brent_df.columns]
-        
-        # Obtener ultimo valor conocido real
-        if not brent_df.empty:
-            # Asumiendo columna 'BZ=F' o similar si se aplanó
-            # Busco la primera columna que tenga datos
-            last_valid_idx = brent_df.last_valid_index()
-            if last_valid_idx:
-                 val = brent_df.loc[last_valid_idx]
-                 # Si es serie (varias cols), tomar la primera
-                 if isinstance(val, pd.Series): val = val.iloc[0]
-                 latest_brent = float(val)
-                 print(f"Ultimo Brent Real: {latest_brent} ({last_valid_idx})")
+        # FUENTE 2: Yahoo Finance (Respaldo)
+        try:
+            print("Intentando Yahoo Finance como respaldo...")
+            import yfinance as yf
+            import time
+            import random
+            
+            max_retries = 3
+            attempts = 0
+            success = False
+            fetch_start = start_date - timedelta(days=7)
+            
+            while attempts < max_retries and not success:
+                attempts += 1
+                try:
+                    # Fix: Usar Requests Session para evitar bloqueo en servidores (Cloud/Render)
+                    import requests
+                    session = requests.Session()
+                    session.headers.update({
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    })
+                    
+                    ticker = yf.Ticker("BZ=F", session=session)
+                    brent_df_yf = ticker.history(start=fetch_start, interval="1d")
+                    
+                    if brent_df_yf.empty:
+                         # Intento con download directo y session
+                         brent_df_yf = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10, session=session)
+                    
+                    if not brent_df_yf.empty:
+                        success = True
+                        
+                        # Fix MultiIndex
+                        if isinstance(brent_df_yf.columns, pd.MultiIndex):
+                            try:
+                                brent_df_yf = brent_df_yf.xs('Close', level=0, axis=1)
+                            except:
+                                brent_df_yf.columns = [c[0] for c in brent_df_yf.columns]
+                        
+                        last_valid_idx = brent_df_yf.last_valid_index()
+                        if last_valid_idx:
+                            val = brent_df_yf.loc[last_valid_idx]
+                            if isinstance(val, pd.Series): val = val.iloc[0]
+                            latest_brent = float(val)
+                            
+                            # Convertir a formato estándar
+                            brent_df = pd.DataFrame({'brent': brent_df_yf.iloc[:, 0]})
+                            print(f"✓ Yahoo: Último Brent = {latest_brent} ({last_valid_idx.date()})")
+                    else:
+                        raise ValueError("Yahoo data empty")
+                        
+                except Exception as e_retry:
+                    print(f"✗ Yahoo intento {attempts}/{max_retries}: {e_retry}")
+                    if attempts < max_retries:
+                        time.sleep(random.uniform(1.0, 3.0))
+            
+            if not success:
+                raise ValueError("Yahoo failed all retries")
+                
+        except Exception as e_yahoo:
+            print(f"✗ Yahoo Finance falló: {e_yahoo}")
+            print(f"⚠ Usando último valor conocido de BD: {latest_brent}")
+    
+    # FUENTE 3: Si todo falla, brent_df queda vacío y se usa latest_brent de BD
 
-    except Exception as e:
-        print(f"Error Yahoo Brent: {e}")
 
     # 2. TRM (Datos.gov.co) - Fuente Oficial
     trm_map = {}
@@ -243,6 +293,7 @@ def update_prices():
                 s_clean = date_str.lower()
                 s_clean = s_clean.replace('sujeto', ' sujeto ')
                 s_clean = s_clean.replace('hasta', ' ')
+                s_clean = s_clean.replace(u'\xa0', ' ') # Non-breaking space
                 # Reemplazar separadores por espacios
                 s_clean = s_clean.replace(',', ' ').replace('.', ' ').replace('-', ' ').replace('/', ' ')
                 s_clean = s_clean.replace('del', ' ').replace('de', ' ')
@@ -266,13 +317,12 @@ def update_prices():
                     if year_hint:
                         year = int(year_hint)
                     else:
-                        # Fallback a año actual si el mes es menor al actual, o año pasado?
-                        # Mejor usar año actual com default seguro
                         year = datetime.now().year
 
                 if day and month and year:
                     return date(year, month, day)
-            except:
+            except Exception as e_parse:
+                print(f"Error parsing date '{date_str}': {e_parse}")
                 pass
                 
             # Ultimo intento: pd.to_datetime genérico (puede fallar en locale incorrecto)
@@ -280,6 +330,10 @@ def update_prices():
                 ts = pd.to_datetime(date_str, errors='coerce')
                 if not pd.isna(ts): return ts.date()
             except: pass
+            
+            # Solo logear si parece una fecha real pero falló
+            if len(date_str) > 5 and any(c.isdigit() for c in date_str):
+                print(f"WARN: Could not parse date string: '{date_str}'")
             
             return None
 
@@ -379,10 +433,10 @@ def update_prices():
                  # Col 5 (F): Impuesto Carbono ($/GLN)
                  
                  # DEBUG: Show raw cell values for Jan 2025
-                  if d_inicio.year == 2025 and d_inicio.month == 1:
-                      print(f\"DEBUG RAW {d_inicio}: D=[{row.iloc[3]}] E=[{row.iloc[4]}] F=[{row.iloc[5]}]\")
+                 if d_inicio.year == 2025 and d_inicio.month == 1:
+                     print(f"DEBUG RAW {d_inicio}: D=[{row.iloc[3]}] E=[{row.iloc[4]}] F=[{row.iloc[5]}]")
                   
-                  val_ingreso = get_val(3)
+                 val_ingreso = get_val(3)
                  val_iva = get_val(4)
                  val_carbono = get_val(5)
                  
@@ -390,10 +444,10 @@ def update_prices():
                  val_carbono_bll = val_carbono * 42.0 # GLN a BLL
                  
                  # DEBUG: Show parsed values for Jan 2025
-                  if d_inicio.year == 2025 and d_inicio.month == 1:
-                      print(f\"DEBUG PARSED {d_inicio}->{d_fin}: Base={val_ingreso} IVA={val_iva} Carb={val_carbono}\")
+                 if d_inicio.year == 2025 and d_inicio.month == 1:
+                     print(f"DEBUG PARSED {d_inicio}->{d_fin}: Base={val_ingreso} IVA={val_iva} Carb={val_carbono}")
                   
-                  curr = d_inicio
+                 curr = d_inicio
                  while curr <= d_fin:
                      # Protección contra rangos absurdamente largos (error de data)
                      if (curr - d_inicio).days > 60: break
@@ -446,7 +500,13 @@ def update_prices():
                                  col_ingreso_fo = c_idx
                          break
             
+            if start_row_fo is None:
+                 print(f"WARN: No se encontró header 'INGRESO PRODUCTOR' en hoja '{sheet_name_fo}'. Intentando escaneo completo.")
+                 start_row_fo = 0
+
+            # Iterar siempre si start_row_fo tiene valor (aunque sea 0)
             if start_row_fo is not None:
+                print(f"DEBUG: Escaneando Fuel Oil desde fila {start_row_fo}")
                 for r_idx in range(start_row_fo, len(df_fo)):
                     row = df_fo.iloc[r_idx]
                     
