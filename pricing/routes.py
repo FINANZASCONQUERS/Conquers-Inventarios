@@ -377,7 +377,21 @@ def update_prices():
                       if d_inicio.month == datetime.now().month or d_inicio.month == (datetime.now().month - 1):
                            d_inicio = d_inicio.replace(year=current_real_year)
                            print(f"DEBUG: Corrigiendo año {current_real_year-1} -> {current_real_year} para {d_inicio}")
-                 
+                           
+                           # CRÍTICO: Si corregimos d_inicio, también debemos corregir d_fin si tiene el año viejo
+                           # o si por consecuencia d_fin quedó menor que d_inicio.
+                           if d_fin:
+                               # Si d_fin tiene el mismo año viejo, actualizarlo
+                               if d_fin.year == (current_real_year - 1):
+                                   d_fin = d_fin.replace(year=current_real_year)
+                                   print(f"DEBUG: Corrigiendo año fin -> {d_fin}")
+                               
+                               # Si aun así d_fin es menor (ej. cambio de año en rango), forzar consistencia
+                               if d_fin < d_inicio:
+                                   # Intentar mover d_fin al año siguiente si parece ser un rango que cruza año (Dic->Ene)
+                                   # pero como estamos corrigiendo "2025" a "2026", es probable que simplemente necesite ser >=
+                                   if d_fin.year < d_inicio.year:
+                                        d_fin = d_fin.replace(year=d_inicio.year)                 
                  if not d_inicio:
                     # Debug solo para fechas recientes (potenciales) para no ensuciar log
                     if "2025" in fecha_inicio_raw or "25" in fecha_inicio_raw:

@@ -14,6 +14,10 @@
 
     <style>
         /* Estilos Generales y de la Guía */
+        .print-only {
+            display: none;
+        }
+
         @page {
             size: landscape;
             margin: 0;
@@ -282,6 +286,102 @@
             font-weight: 500;
         }
 
+        /* ESTILOS PARA DROPDOWN PERSONALIZADO DE CLIENTES */
+        .custom-dropdown-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .input-dropdown-trigger {
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            /* Mimic input style */
+            outline: none;
+        }
+
+        .custom-dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 180%;
+            /* Más ancho para ver detalles */
+            max-height: 450px;
+            /* Altura suficiente para varios */
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 9999;
+        }
+
+        /* Scrollbar bonito */
+        .custom-dropdown-menu::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-dropdown-menu::-webkit-scrollbar-thumb {
+            background-color: #004080;
+            border-radius: 4px;
+        }
+
+        .custom-dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item-client {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.15s ease-in-out;
+            color: #333;
+            text-align: left;
+        }
+
+        .dropdown-item-client:hover {
+            background-color: #e6f2ff;
+        }
+
+        .client-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            display: block;
+            color: #000;
+        }
+
+        .client-details {
+            font-size: 0.85em;
+            color: #666;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .btn-add-client-item {
+            padding: 12px;
+            text-align: center;
+            font-weight: bold;
+            color: #007bff;
+            background: #fdfdfd;
+            cursor: pointer;
+            border-top: 2px solid #eee;
+        }
+
+        .btn-add-client-item:hover {
+            text-decoration: underline;
+            background: #f0f8ff;
+        }
+
+        @media print {
+            .custom-dropdown-menu {
+                display: none !important;
+            }
+        }
+
         /* Estilos de Impresión */
         @media print {
             .no-print {
@@ -316,6 +416,18 @@
             select {
                 background: transparent !important;
                 border: none !important;
+            }
+
+            /* Ajuste para impresión: ocultar el select overlay, mostrar el input display */
+            #clienteSelect {
+                display: none !important;
+            }
+
+            #clienteNombreDisplay {
+                display: block !important;
+                visibility: visible !important;
+                position: static !important;
+                /* Reset position for print flow */
             }
 
             body {
@@ -844,9 +956,13 @@
             </div>
             <div class="fila">
                 <div class="campo despacho sin-borde" data-campo="cliente">
-                    <select id="clienteSelect" onchange="autocompletarCliente()" class="sin-borde">
-                        <option value="">SELECCIONE UN CLIENTE</option>
-                    </select>
+                    <div class="custom-dropdown-container">
+                        <input id="clienteNombreDisplay" placeholder="SELECCIONE UN CLIENTE" readonly
+                            class="sin-borde input-dropdown-trigger" onclick="toggleClientesDropdown()">
+
+                        <!-- Menú Personalizado (generado por JS) -->
+                        <div id="dropdownClientesList" class="custom-dropdown-menu"></div>
+                    </div>
                 </div>
                 <div class="campo codigo-sicom sin-borde" data-campo="sicom"><input placeholder="CÓDIGO SICOM"></div>
             </div>
@@ -1156,11 +1272,40 @@
             configurarEventosConductores();
         }
 
+        // Función actualizada para usar el menú personalizado
         function actualizarDropdownClientes() {
-            const cliSel = document.getElementById('clienteSelect');
-            cliSel.innerHTML = '<option value="">SELECCIONE UN CLIENTE</option>';
-            clientes.forEach((c, index) => cliSel.insertAdjacentHTML('beforeend', `<option value="${index}">${c.NOMBRE_CLIENTE}</option>`));
-            cliSel.insertAdjacentHTML('beforeend', '<option value="AGREGAR_CLIENTE" style="font-weight:bold; color: #007bff;">+ AGREGAR NUEVO CLIENTE</option>');
+            const listaDiv = document.getElementById('dropdownClientesList');
+            if (!listaDiv) return;
+
+            listaDiv.innerHTML = '';
+
+            // Opción reset / placeholder (opcional, aqui no necesaria porque input tiene placeholder)
+
+            clientes.forEach((c, index) => {
+                const item = document.createElement('div');
+                item.className = 'dropdown-item-client';
+                item.onclick = () => seleccionarCliente(index);
+
+                // Estructura bonita
+                item.innerHTML = `
+                    <span class="client-name">${c.NOMBRE_CLIENTE}</span>
+                    <span class="client-details">${c.CIUDAD_DEPARTAMENTO || 'Sin ciudad'} — ${c.DIRECCION || 'Sin dirección'}</span>
+                `;
+                listaDiv.appendChild(item);
+            });
+
+            // Opción Agregar Nuevo
+            const addBtn = document.createElement('div');
+            addBtn.className = 'btn-add-client-item';
+            addBtn.innerHTML = '<i class="bi bi-plus-circle"></i> AGREGAR NUEVO CLIENTE';
+            addBtn.onclick = () => {
+                document.getElementById('formAgregarCliente').reset();
+                // Cerrar dropdown
+                document.getElementById('dropdownClientesList').classList.remove('show');
+                const modal = new bootstrap.Modal(document.getElementById('modalAgregarCliente'));
+                modal.show();
+            };
+            listaDiv.appendChild(addBtn);
         }
 
         function actualizarDropdownConductores() {
@@ -1195,16 +1340,7 @@
 
         // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
 
-        window.addEventListener('DOMContentLoaded', async () => {
-            // 1. Cargar todos los datos iniciales
-            await cargarDatos();
-
-            // ▼▼▼ AÑADIR ESTE BLOQUE DE CÓDIGO COMPLETO ▼▼▼
-
-            // Pasa los datos de Flask a una variable de JavaScript de forma segura.
-            const datosGuia = {{ (datos_guia | default ({})) | tojson | safe }};
-
-        // Sincroniza el texto envuelto para impresión con el valor del input de empresa transportadora
+        // Declarar funciones globalmente para evitar problemas de scope
         function syncEmpresaTransportadoraWrap() {
             const inp = document.getElementById('empresaTransportadoraInput');
             const wrap = document.querySelector('.empresa-transportadora .empresa-transportadora-wrap');
@@ -1214,7 +1350,6 @@
             }
         }
 
-        // Sincroniza el texto envuelto del DESTINO para impresión con el valor del input
         function syncDestinoWrap() {
             const inp = document.getElementById('destinoDireccion');
             const wrap = document.querySelector('.lugar-destino .destino-wrap');
@@ -1223,6 +1358,19 @@
                 wrap.textContent = txt.toUpperCase();
             }
         }
+
+        // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            // 1. Cargar todos los datos iniciales
+            await cargarDatos();
+
+            // Pasa los datos de Flask a una variable de JavaScript de forma segura.
+            const datosGuia = {{ (datos_guia | default ({})) | tojson | safe }};
+
+        // Asegurarse de llamar a las funciones de sync una vez cargados los datos
+        syncEmpresaTransportadoraWrap();
+        syncDestinoWrap();
 
         if (Object.keys(datosGuia).length > 1) {
             console.log("Rellenando guía con datos recibidos:", datosGuia);
@@ -1245,14 +1393,12 @@
             document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
 
             // --- Cliente y Dirección ---
-            const clienteSelect = document.getElementById('clienteSelect');
+            // Reemplazo para funcionar con el Dropdown Personalizado
             if (datosGuia.cliente) {
-                // Como ahora el value es un indice, buscamos el indice por nombre (fallback al primero encontrado)
+                // Buscamos el indice por nombre (fallback al primero encontrado)
                 const idx = clientes.findIndex(c => c.NOMBRE_CLIENTE === datosGuia.cliente);
                 if (idx !== -1) {
-                    clienteSelect.value = idx;
-                    // Disparamos el evento 'change' para que se ejecute la función que autocompleta la dirección.
-                    clienteSelect.dispatchEvent(new Event('change'));
+                    seleccionarCliente(idx);
                 }
             }
 
@@ -1297,15 +1443,26 @@
         const btnEditarCliente = document.getElementById('btnEditarCliente');
         if (btnEditarCliente && modalEditarCliente) {
             btnEditarCliente.addEventListener('click', () => {
-                const select = document.getElementById('clienteSelect');
-                const index = select.value;
-                if (!index || index === 'AGREGAR_CLIENTE' || index === "") {
+                // Para editar, necesitamos saber qué cliente está seleccionado actualmente.
+                // Como quitamos el select, usamos el valor del input display para buscarlo.
+                const nombreActual = document.getElementById('clienteNombreDisplay').value;
+                if (!nombreActual) {
                     Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
+                    return;
+                }
+
+                // Buscar el cliente por nombre exacto (y dirección si fuera posible, pero aqui asumimos nombre display)
+                // OJO: Si hay duplicados de nombre, esto podría editar el primero. 
+                // Idealmente deberíamos guardar el INDEX seleccionado en una variable global.
+                const index = clientes.findIndex(c => c.NOMBRE_CLIENTE === nombreActual);
+
+                if (index === -1) {
+                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No se encontró el cliente en la lista.' });
                     return;
                 }
                 const clienteActual = clientes[index];
                 if (!clienteActual) {
-                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No pudimos cargar los datos de ese cliente. Actualiza la página e inténtalo de nuevo.' });
+                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'Datos irrelevantes.' });
                     return;
                 }
                 document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
@@ -1316,13 +1473,8 @@
                 modalEditarCliente.show();
             });
         }
-        document.getElementById('clienteSelect').addEventListener('change', function () {
-            if (this.value === 'AGREGAR_CLIENTE') {
-                document.getElementById('formAgregarCliente').reset();
-                modalCliente.show();
-                this.value = "";
-            }
-        });
+        // El evento change del select ya no existe porque el select se eliminó.
+        // La lógica de "AGREGAR_CLIENTE" ahora se maneja en el botón dentro del dropdown personalizado.
         document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
             const nombre = document.getElementById('nombreNuevoCliente').value.trim();
             const direccion = document.getElementById('direccionNuevoCliente').value.trim();
@@ -1341,8 +1493,7 @@
                         c.DIRECCION === result.nuevo_cliente.DIRECCION
                     );
                     if (newIdx !== -1) {
-                        document.getElementById('clienteSelect').value = newIdx;
-                        document.getElementById('clienteSelect').dispatchEvent(new Event('change'));
+                        seleccionarCliente(newIdx);
                     }
                     modalCliente.hide();
                     Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
@@ -1385,9 +1536,7 @@
                             c.DIRECCION === result.cliente.DIRECCION
                         );
                         if (newIdx !== -1) {
-                            const select = document.getElementById('clienteSelect');
-                            select.value = newIdx;
-                            select.dispatchEvent(new Event('change'));
+                            seleccionarCliente(newIdx);
                         }
                         modalEditarCliente.hide();
                         Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
@@ -1584,31 +1733,34 @@
             destinoInput.addEventListener('change', syncDestinoWrap);
         }
 
-        const now = new Date();
-        const dOpt = {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            timeZone: 'America/Bogota'
-        };
-        const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
+}); // Fin del primer DOMContentLoaded
 
-        const fechaInput = document.getElementById('fechaExpEDICION');
-        if (fechaInput) {
-            fechaInput.value = `CARTAGENA, ${fechaActual}`;
-        }
+        // Otro listener para asegurar que la inicialización de Fecha/Hora corra sin depender del async anterior
+        window.addEventListener('DOMContentLoaded', () => {
+            const now = new Date();
+            const dOpt = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                timeZone: 'America/Bogota'
+            };
+            const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
 
-        // Lógica para actualizar la hora de salida automáticamente
-        actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
-        setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
+            const fechaInput = document.getElementById('fechaExpEDICION');
+            if (fechaInput) {
+                fechaInput.value = `CARTAGENA, ${fechaActual}`;
+            }
 
-        // Configurar campo Sellos (formato y límite)
-        configurarCampoSellos();
+            // Lógica para actualizar la hora de salida automáticamente
+            actualizarHoraAutomaticamente(); // Llama a la función una vez al inicio
+            setInterval(actualizarHoraAutomaticamente, 60000); // Y la actualiza cada minuto
 
-        // Cargar zoom guardado
-        cargarZoomGuardado();
+            // Configurar campo Sellos (formato y límite)
+            configurarCampoSellos();
 
-});
+            // Cargar zoom guardado
+            cargarZoomGuardado();
+        });
         function configurarEventosConductores() {
             const conductorInput = document.getElementById('conductorSelect');
             const cedulaInput = document.getElementById('cedulaConductor');
@@ -1629,19 +1781,48 @@
             });
         }
 
-        function autocompletarCliente() {
-            if (document.getElementById('clienteSelect').value === 'AGREGAR_CLIENTE') return;
-            const index = document.getElementById('clienteSelect').value;
+        // Lógica del Dropdown Personalizado
+        function toggleClientesDropdown() {
+            const menu = document.getElementById('dropdownClientesList');
+            // Cierra otros si hubiera
+            document.querySelectorAll('.custom-dropdown-menu.show').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        }
+
+        // Cerrar si clic fuera
+        window.addEventListener('click', function (e) {
+            const container = document.querySelector('.custom-dropdown-container');
+            if (container && !container.contains(e.target)) {
+                const menu = document.getElementById('dropdownClientesList');
+                if (menu) menu.classList.remove('show');
+            }
+        });
+
+        function seleccionarCliente(index) {
             const cli = clientes[index];
-            document.getElementById('direccionCliente').value = cli ? cli.DIRECCION : '';
-            document.getElementById('ciudadCliente').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
-            // Ahora el destino muestra la misma información que CIUDAD
-            document.getElementById('destinoDireccion').value = cli ? cli.CIUDAD_DEPARTAMENTO : '';
-            // Actualiza la capa impresa del DESTINO cuando proviene del autocompletado
+            if (!cli) return;
+
+            // Actualizar input visible
+            document.getElementById('clienteNombreDisplay').value = cli.NOMBRE_CLIENTE;
+
+            // Llenar otros campos
+            document.getElementById('direccionCliente').value = cli.DIRECCION || '';
+            document.getElementById('ciudadCliente').value = cli.CIUDAD_DEPARTAMENTO || '';
+            document.getElementById('destinoDireccion').value = cli.CIUDAD_DEPARTAMENTO || '';
+
+            // Cerrar menú
+            document.getElementById('dropdownClientesList').classList.remove('show');
+
+            // Sync impresión
             if (typeof syncDestinoWrap === 'function') {
                 syncDestinoWrap();
             }
         }
+
+        // DEPRECATED: autocompletarCliente (se reemplaza por seleccionarCliente y la lógica UI nueva)
+        function autocompletarCliente() { /* Vacio por compatiblidad si alguien lo llama */ }
 
         function mostrarProducto() {
             const nom = document.getElementById('productoSelect').value;

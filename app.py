@@ -12328,14 +12328,31 @@ def debug_productos():
     })
 
 def cargar_clientes():
-    """Función auxiliar para cargar clientes desde Clientes.json de forma segura."""
+    """Función auxiliar para cargar clientes. Prioriza DB -> Clientes.json."""
+    clientes_lista = []
+    
+    # 1. Intentar cargar desde la Base de Datos (PostgreSQL/SQLite)
     try:
-        # Buscamos el archivo en la carpeta 'static'
+        # Importación local para evitar dependencias circulares si las hubiera, 
+        # aunque Cliente está definido más abajo, Python permite esto si se ejecuta después.
+        registros_db = Cliente.query.all()
+        if registros_db:
+            for r in registros_db:
+                clientes_lista.append({
+                    "NOMBRE_CLIENTE": r.nombre,
+                    "DIRECCION": r.direccion,
+                    "CIUDAD_DEPARTAMENTO": r.ciudad_departamento
+                })
+            return clientes_lista
+    except Exception as e:
+        print(f"Advertencia: No se pudo cargar clientes desde DB: {e}")
+
+    # 2. Si DB falló o estaba vacía, cargar desde JSON (Fallback)
+    try:
         ruta_clientes = os.path.join(BASE_DIR, 'static', 'Clientes.json')
         with open(ruta_clientes, 'r', encoding='utf-8') as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
-        # Si el archivo no existe o está vacío/corrupto, devuelve una lista vacía.
         return []
 
 def guardar_clientes(clientes):
