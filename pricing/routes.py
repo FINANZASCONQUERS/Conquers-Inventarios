@@ -378,14 +378,22 @@ def update_prices():
                  # Col 4 (E): IVA
                  # Col 5 (F): Impuesto Carbono ($/GLN)
                  
-                 val_ingreso = get_val(3)
+                 # DEBUG: Show raw cell values for Jan 2025
+                  if d_inicio.year == 2025 and d_inicio.month == 1:
+                      print(f\"DEBUG RAW {d_inicio}: D=[{row.iloc[3]}] E=[{row.iloc[4]}] F=[{row.iloc[5]}]\")
+                  
+                  val_ingreso = get_val(3)
                  val_iva = get_val(4)
                  val_carbono = get_val(5)
                  
                  # 4. Transformaciones (Expandir fechas)
                  val_carbono_bll = val_carbono * 42.0 # GLN a BLL
                  
-                 curr = d_inicio
+                 # DEBUG: Show parsed values for Jan 2025
+                  if d_inicio.year == 2025 and d_inicio.month == 1:
+                      print(f\"DEBUG PARSED {d_inicio}->{d_fin}: Base={val_ingreso} IVA={val_iva} Carb={val_carbono}\")
+                  
+                  curr = d_inicio
                  while curr <= d_fin:
                      # Protección contra rangos absurdamente largos (error de data)
                      if (curr - d_inicio).days > 60: break
