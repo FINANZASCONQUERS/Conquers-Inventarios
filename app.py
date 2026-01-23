@@ -1964,7 +1964,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad"] 
+        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes"] 
     },
     # Juliana (Editor): Tiene acceso a Tránsito, Generar Guía y SIZA Solicitante.
     "ops@conquerstrading.com": {
@@ -2021,7 +2021,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Felipe De La Vega",
         "rol": "editor",
-    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion", "siza_solicitante"] 
+    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion", "siza_solicitante", "planilla_precios"] 
     },
 
         "accountingzf@conquerstrading.com": { 
@@ -2034,7 +2034,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Ana Maria Gallo",
         "rol": "logistica_destino",
-        "area": ["programacion_cargue","gestion_compras"]
+        "area": ["programacion_cargue","gestion_compras", "planilla_precios"]
     },
 
         "refinery.control@conquerstrading.com": {
@@ -2066,7 +2066,8 @@ PLANILLA_PLANTA = [
     {"TK": "TK-108", "PRODUCTO": "VLSFO",    "MAX_CAP": 28000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-102", "PRODUCTO": "FO6",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""}
+    {"TK": "TK-102", "PRODUCTO": "FO6",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 PLANILLA_BARCAZA_ORION = [
     # Sección MANZANILLO (MGO)
@@ -3505,7 +3506,7 @@ def planta():
     ).all()
     
     # 3. Preparar y ORDENAR los datos según el orden deseado
-    orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
+    orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
     orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
 
     # Combinar defaults con últimos registros para asegurar que todos los TK de la planilla existan (por ejemplo, TK-108)
@@ -3514,8 +3515,8 @@ def planta():
         for registro in registros_recientes:
             datos_por_tk[registro.tk] = {
                 "TK": registro.tk,
-                "PRODUCTO": registro.producto,
-                "MAX_CAP": registro.max_cap,
+                "PRODUCTO": "DILUYENTE" if registro.tk == "Consumo Interno" else (registro.producto or datos_por_tk.get(registro.tk, {}).get("PRODUCTO")),
+                "MAX_CAP": 124.78 if registro.tk == "Consumo Interno" else (registro.max_cap or datos_por_tk.get(registro.tk, {}).get("MAX_CAP")),
                 "BLS_60": registro.bls_60 or "",
                 "API": registro.api or "",
                 "BSW": registro.bsw or "",
@@ -3683,7 +3684,7 @@ def reporte_planta():
         # ========================================================
         
     # 1. Definimos el orden exacto que queremos.
-        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
+        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
         
         # 2. Creamos un mapa para asignar un "peso" a cada TK.
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
@@ -3700,11 +3701,13 @@ def reporte_planta():
         # ========================================================
 
         # Usamos la nueva lista YA ORDENADA para construir los datos para el HTML
-        # Construir mapa por TK desde registros
+        # Preparar mapa de defaults para fallback
+        defaults_map = {fila["TK"]: fila for fila in PLANILLA_PLANTA}
+
         mapa_js = {r.tk: {
             "TK": r.tk,
-            "PRODUCTO": r.producto,
-            "MAX_CAP": r.max_cap,
+            "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (r.producto or defaults_map.get(r.tk, {}).get("PRODUCTO")),
+            "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP")),
             "BLS_60": r.bls_60,
             "API": r.api,
             "BSW": r.bsw,
@@ -3726,7 +3729,7 @@ def reporte_planta():
                 }
 
         # Ordenar según orden deseado y filtrar únicamente los TK permitidos
-        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108"]
+        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
         allowed_set = set(orden_deseado)
         datos_planta_js = sorted(
@@ -6684,8 +6687,8 @@ def guardar_registro_planta():
                     timestamp=datetime.utcnow(),
                     usuario=session.get("nombre", "No identificado"),
                     tk=tk,
-                    producto=datos_tanque.get('PRODUCTO'),
-                    max_cap=to_float(datos_tanque.get('MAX_CAP')),
+                    producto="DILUYENTE" if tk == "Consumo Interno" else datos_tanque.get('PRODUCTO'),
+                    max_cap=124.78 if tk == "Consumo Interno" else to_float(datos_tanque.get('MAX_CAP')),
                     bls_60=to_float(datos_tanque.get('BLS_60')),
                     api=to_float(datos_tanque.get('API')),
                     bsw=to_float(datos_tanque.get('BSW')),
@@ -14430,43 +14433,57 @@ def actualizar_cliente_ajax():
         app.logger.warning(f"Error al actualizar cliente DB (JSON actualizado): {e}")
 
     return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=coincidencia)
-    coincidencia['CIUDAD_DEPARTAMENTO'] = ciudad_upper
-    clientes.sort(key=lambda x: x.get('NOMBRE_CLIENTE', ''))
 
-    try:
-        guardar_clientes(clientes)
-    except Exception as file_err:
-        return jsonify(success=False, message=f'No se pudo actualizar el archivo de clientes: {file_err}'), 500
+@login_required
+@app.route('/eliminar_cliente_ajax', methods=['POST'])
+def eliminar_cliente_ajax():
+    data = request.get_json() or {}
+    nombre = (data.get('nombre') or '').strip()
+    direccion = (data.get('direccion') or '').strip()
 
+    if not nombre:
+        return jsonify(success=False, message='El nombre del cliente es obligatorio.'), 400
+
+    nombre_upper = nombre.upper()
+    direccion_upper = direccion.upper()
+
+    clientes = cargar_clientes()
+    
+    # 1. Eliminar de la lista en memoria (JSON)
+    # Filtramos para quitar TODOS los que coincidan (por si hay duplicados exactos)
+    clientes_filtrados = [
+        c for c in clientes 
+        if not (
+            (c.get('NOMBRE_CLIENTE') or '').upper() == nombre_upper and 
+            (c.get('DIRECCION') or '').upper() == direccion_upper
+        )
+    ]
+    
+    deleted_count = len(clientes) - len(clientes_filtrados)
+    
+    if deleted_count == 0:
+        return jsonify(success=False, message='No se encontró el cliente para eliminar.'), 404
+
+    guardar_clientes(clientes_filtrados)
+
+    # 2. Eliminar de la Base de Datos
     try:
-        cliente_db = Cliente.query.filter_by(nombre=original_upper).first()
-        if cliente_db:
-            cliente_db.nombre = nombre_upper
-            cliente_db.direccion = direccion_upper
-            cliente_db.ciudad_departamento = ciudad_upper
-        else:
-            cliente_db = Cliente.query.filter_by(nombre=nombre_upper).first()
-            if cliente_db:
-                cliente_db.direccion = direccion_upper
-                cliente_db.ciudad_departamento = ciudad_upper
-            else:
-                cliente_db = Cliente(
-                    nombre=nombre_upper,
-                    direccion=direccion_upper,
-                    ciudad_departamento=ciudad_upper
-                )
-                db.session.add(cliente_db)
-        db.session.commit()
-    except Exception as db_err:
+        q = Cliente.query.filter(func.upper(Cliente.nombre) == nombre_upper)
+        if direccion_upper:
+            q = q.filter(func.upper(Cliente.direccion) == direccion_upper)
+        
+        registros = q.all()
+        for r in registros:
+            db.session.delete(r)
+        
+        if registros:
+            db.session.commit()
+            
+    except Exception as e:
         db.session.rollback()
-        return jsonify(success=False, message=f'Error al actualizar la base de datos: {db_err}'), 500
+        app.logger.warning(f"Error eliminando cliente de BD: {e}")
 
-    actualizado = {
-        'NOMBRE_CLIENTE': nombre_upper,
-        'DIRECCION': direccion_upper,
-        'CIUDAD_DEPARTAMENTO': ciudad_upper
-    }
-    return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=actualizado)
+    return jsonify(success=True, message=f'Se eliminaron {deleted_count} registro(s) correctamente.')
 
 @login_required
 @permiso_requerido('planilla_precios')
@@ -16180,4 +16197,4 @@ with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True)

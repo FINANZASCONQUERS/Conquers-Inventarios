@@ -12,6 +12,35 @@ pricing_bp = Blueprint('pricing_bp', __name__, template_folder='templates')
 def index():
     from pricing.models import HistorialCombustibles
     records = HistorialCombustibles.query.order_by(HistorialCombustibles.fecha.desc()).all()
+    
+    # 1. Calcular TRM Promedio Mensual (basado en registros)
+    trm_sums = {}
+    trm_counts = {}
+    
+    for r in records:
+        if r.trm and r.trm > 0:
+            key = (r.fecha.year, r.fecha.month)
+            trm_sums[key] = trm_sums.get(key, 0) + r.trm
+            trm_counts[key] = trm_counts.get(key, 0) + 1
+            
+    trm_avgs = {k: trm_sums[k]/trm_counts[k] for k in trm_sums}
+    
+    # 2. Enriquecer registros con "Premium COP"
+    # Formula: (USD_BLL original / 42.0) * TRM_Mensual
+    for r in records:
+        trm_mes = trm_avgs.get((r.fecha.year, r.fecha.month), r.trm or 0)
+        r.trm_mensual_used = trm_mes
+        
+        # Helper interno
+        def to_cop_gal(usd_val):
+            if not usd_val: return 0.0
+            return (usd_val / 42.0) * trm_mes
+            
+        r.premium_cop_f04_base = to_cop_gal(r.f04_base_usd)
+        r.premium_cop_f04_total = to_cop_gal(r.f04_total_usd)
+        r.premium_cop_fuel_oil = to_cop_gal(r.fuel_oil_usd)
+        r.premium_cop_bpi = to_cop_gal(r.bpi_usd_bll)
+
     return render_template('pricing/f04_premium.html', records=records)
 
 @pricing_bp.route('/pricing/reset', methods=['POST'])

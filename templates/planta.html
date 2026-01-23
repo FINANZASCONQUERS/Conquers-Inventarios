@@ -2,284 +2,740 @@
 
 {% block title %}Planilla de Planta{% endblock %}
 
-{% block navbar_brand_text %}Planilla de Planta{% endblock %}
-
-{% block main_style %}
-    /* Estilo para el fondo del área principal (<main>) */
-    background-color: #f4f7f9; /* Un fondo más limpio y profesional */
-    font-family: 'Poppins', sans-serif; /* Aplicando una fuente moderna */
-{% endblock %}
-
-{% block content %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-
-<div class="container-xl my-4">
-
-    <div class="page-header-container mb-4">
-        <div class="row g-3 align-items-center justify-content-between">
-            <div class="col-12 col-lg-6 d-flex align-items-center gap-3 mb-2 mb-lg-0">
-                <i class="bi bi-clipboard-data-fill page-title-icon"></i>
-                <h1 class="page-title-text h3 mb-0">Planilla de Inventario de Planta</h1>
-            </div>
-            <div class="col-12 col-lg-6">
-                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                    <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                        <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
-                    </a>
-                    <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-outline-primary d-flex align-items-center">
-                        <i class="bi bi-graph-up-arrow me-1"></i> Variación por Tanque
-                    </a>
-                    <button id="btnGuardarRegistro" onclick="guardarRegistro()" class="btn btn-success d-flex align-items-center">
-                        <i class="bi bi-save2-fill me-1"></i> Guardar Registro
-                    </button>
-                </div>
-            </div>
-            <div class="col-12">
-                <div class="d-flex align-items-center gap-3 small text-muted mt-1">
-                    <span class="legend-dot" style="--dot-color:#198754"></span> Días con registro
-                    <span class="legend-dot" style="--dot-color:#adb5bd"></span> Días sin registro
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <form method="GET" action="{{ url_for('planta') }}" class="mb-4">
-        <div class="row g-3 align-items-end bg-white border rounded-3 shadow-sm p-3 mx-0">
-            <div class="col-12 col-md-5">
-                <label for="fecha_filtro" class="form-label fw-bold text-muted">Ver inventario del día:</label>
-                <input type="text" class="form-control" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
-            </div>
-            <div class="col-12 col-md-auto d-flex gap-2">
-                <button type="submit" class="btn btn-primary d-flex align-items-center">
-                    <i class="bi bi-funnel-fill me-1"></i> Filtrar
-                </button>
-                <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Ver Estado Actual
-                </a>
-            </div>
-            {% if fecha_seleccionada and today_iso and fecha_seleccionada != today_iso %}
-            <div class="col-12 col-md-auto ms-auto">
-                <div class="badge bg-primary bg-opacity-10 text-primary p-2">
-                    <i class="bi bi-calendar-check me-1"></i> Mostrando datos del: {{ fecha_seleccionada }}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-    </form>
-                </div>
-            </div>
-        </div>
-    </form>
-
-    <div id="time-limit-alert-container" class="mb-3"></div>
-
-    <div id="alert-container"></div>
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-sm align-middle mb-0">
-                    <thead class="sticky-top">
-                        <tr>
-                            <th style="min-width: 100px;">TK</th>
-                            <th style="min-width: 150px;">PRODUCTO</th>
-                            <th style="min-width: 120px;">MAX. CAP</th>
-                            <th style="min-width: 120px;">BLS @60</th>
-                            <th style="min-width: 110px;">TON</th>
-                            <th style="min-width: 100px;">API</th>
-                            <th style="min-width: 100px;">%BSW</th>
-                            <th style="min-width: 100px;">%S</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for fila in planilla %}
-                        <tr data-tk="{{ fila.TK }}">
-                            <td class="fw-bold">{{ fila.TK }}</td>
-                            <td data-field="PRODUCTO">{{ fila.PRODUCTO }}</td>
-                            <td data-field="MAX_CAP">{{ fila.MAX_CAP }}</td>
-                            <td contenteditable="true" class="editable" data-field="BLS_60" inputmode="decimal" title="BLS @60; Las toneladas se calculan con API o factores de referencia.">{{ fila.BLS_60 }}</td>
-                            <td class="ton-col text-muted" title="Ton calculadas automáticamente">—</td>
-                            <td contenteditable="true" class="editable" data-field="API" inputmode="decimal">{{ fila.API }}</td>
-                            <td contenteditable="true" class="editable" data-field="BSW" inputmode="decimal">{{ fila.BSW }}</td>
-                            <td contenteditable="true" class="editable" data-field="S" inputmode="decimal">{{ fila.S }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    /* ----------------------------------------- */
-    /* --- ESTILOS GENERALES Y DE LAYOUT --- */
-    /* ----------------------------------------- */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0b8552 0%, #0a6b42 100%);
+        --success-gradient: linear-gradient(135deg, #28a745 0%, #20803a 100%);
+        --warning-gradient: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+        --danger-gradient: linear-gradient(135deg, #dc3545 0%, #bd2130 100%);
+        --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+        --card-shadow-hover: 0 12px 48px rgba(0, 0, 0, 0.12);
+        --border-radius: 16px;
+        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
+        min-height: 100vh;
+    }
+
+    /* ==== ENCABEZADO MEJORADO ==== */
+    .page-header-modern {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        border-left: 5px solid #0b8552;
+        animation: slideDown 0.5s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
     .page-title-icon {
+        width: 56px;
+        height: 56px;
+        background: var(--primary-gradient);
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
         font-size: 1.75rem;
-        color: #0b8552; /* Verde institucional */
-        margin-right: 0.75rem;
+        box-shadow: 0 4px 12px rgba(11, 133, 82, 0.3);
+        animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 4px 12px rgba(11, 133, 82, 0.3);
+        }
+
+        50% {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(11, 133, 82, 0.4);
+        }
     }
 
     .page-title-text {
-        color: #343a40;
-        font-weight: 600;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 0;
+        letter-spacing: -0.5px;
     }
 
-    .action-buttons-bar .btn-lg {
+    .page-subtitle {
+        color: #64748b;
         font-size: 0.95rem;
-        padding: 0.6rem 1.25rem;
+        margin-top: 0.25rem;
+    }
+
+    /* ==== FILTROS PREMIUM ==== */
+    .filter-card-premium {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        transition: var(--transition-smooth);
+    }
+
+    .filter-card-premium:hover {
+        box-shadow: var(--card-shadow-hover);
+        transform: translateY(-2px);
+    }
+
+    .date-input-wrapper {
+        position: relative;
+    }
+
+    .date-input-wrapper .form-control {
+        padding-left: 3rem;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
         font-weight: 500;
+        transition: var(--transition-smooth);
+        height: 48px;
     }
 
-    #alert-container {
-        position: fixed;
-        top: calc(4.5rem + 20px);
-        right: 20px;
-        z-index: 1055; /* Encima de otros elementos */
-        width: auto;
-        max-width: 400px;
-    }
-    
-
-    /* ----------------------------------------- */
-    /* --- ESTILOS DEL FILTRO MEJORADO --- */
-    /* ----------------------------------------- */
-    
-    .card.filter-card {
-        border-radius: 0.5rem;
-        background-color: #f8fafc;
-        border: 1px solid rgba(11, 133, 82, 0.1);
+    .date-input-wrapper .form-control:focus {
+        border-color: #0b8552;
+        box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1);
+        transform: translateY(-1px);
     }
 
-    .form-floating .form-control {
-        height: calc(3rem + 2px);
-        min-height: auto;
-        padding: 1rem 1.25rem;
-        border-radius: 0.375rem;
-        box-shadow: none;
-        transition: all 0.2s ease;
-    }
-
-    .form-floating .form-control:focus {
-        background-color: #fff;
-        box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.15);
-        border-color: rgba(11, 133, 82, 0.4);
-    }
-
-    .form-floating label {
-        font-size: 0.85rem;
-        padding: 0.75rem 1.25rem;
-        color: #6c757d;
-    }
-
-    .form-floating>.form-control:focus~label, 
-    .form-floating>.form-control:not(:placeholder-shown)~label {
-        transform: scale(0.85) translateY(-0.8rem) translateX(0.15rem);
-        background-color: #f8fafc;
-        padding: 0 0.5rem;
+    .date-input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
         color: #0b8552;
+        font-size: 1.25rem;
+        pointer-events: none;
     }
 
-    .badge.bg-primary-opacity {
-        background-color: rgba(11, 133, 82, 0.1);
+    /* ==== BOTONES PREMIUM ==== */
+    .btn-premium {
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: var(--transition-smooth);
+        border: none;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-premium::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.5s;
+    }
+
+    .btn-premium:hover::before {
+        left: 100%;
+    }
+
+    .btn-premium:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary-premium {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-success-premium {
+        background: var(--success-gradient);
+        color: white;
+    }
+
+    .btn-outline-premium {
+        background: white;
         color: #0b8552;
+        border: 2px solid #0b8552;
     }
 
-    /* ----------------------------------------- */
-    /* --- ESTILOS DE LA TABLA --- */
-    /* ----------------------------------------- */
+    .btn-outline-premium:hover {
+        background: #0b8552;
+        color: white;
+    }
 
-    .table-responsive thead.sticky-top th {
+    /* ==== TABLA MEJORADA ==== */
+    .table-container-modern {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .table-modern {
+        margin-bottom: 0;
+        font-size: 0.9rem;
+    }
+
+    .table-modern thead {
+        background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
         position: sticky;
         top: 0;
-        z-index: 2; /* Debe estar por encima del contenido de la tabla */
-        background-color: #f8f9fa; /* Un fondo de cabecera más claro */
-        color: #495057;
+        z-index: 10;
+    }
+
+    .table-modern thead th {
+        color: white;
         font-weight: 600;
         text-transform: uppercase;
         font-size: 0.75rem;
         letter-spacing: 0.5px;
-        border-bottom: 2px solid #dee2e6;
+        padding: 1.25rem 1rem;
+        border: none;
+        position: relative;
     }
 
-    .table th, .table td {
-        padding: 0.75rem;
+    .table-modern thead th::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--primary-gradient);
+        opacity: 0.8;
+    }
+
+    .table-modern tbody tr {
+        transition: var(--transition-smooth);
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .table-modern tbody tr:hover {
+        background: linear-gradient(90deg, rgba(11, 133, 82, 0.05) 0%, transparent 100%);
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .table-modern tbody td {
+        padding: 1rem;
         vertical-align: middle;
-    }
-    
-    .table tbody tr:last-child td {
-        border-bottom: none; /* Quitar el borde de la última fila */
+        border: none;
     }
 
-    /* ----------------------------------------- */
-    /* --- ESTILOS DE CELDAS EDITABLES --- */
-    /* ----------------------------------------- */
+    .tank-id-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 80px;
+        padding: 0.5rem 0.75rem;
+        background: var(--primary-gradient);
+        color: white;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 8px rgba(11, 133, 82, 0.3);
+    }
 
-    .editable {
+    .product-label {
+        font-weight: 500;
+        color: #4a5568;
+        font-size: 0.85rem;
+    }
+
+    /* ==== CELDAS EDITABLES PREMIUM ==== */
+    .editable-premium {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 2px solid #fbbf24;
+        border-radius: 8px;
+        padding: 0.75rem !important;
+        font-weight: 600;
+        color: #78350f;
         cursor: text;
-        background-color: #fef9e7; /* Fondo amarillo suave inicial */
-        border-left: 3px solid #f1c40f; /* Borde izquierdo para indicar "editable" */
-        transition: background-color 0.2s ease-in-out;
+        transition: var(--transition-smooth);
+        position: relative;
     }
 
-    .editable:hover {
-        background-color: #fdecb3;
+    .editable-premium::before {
+        content: '✏️';
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.75rem;
+        opacity: 0.5;
+        pointer-events: none;
     }
 
-    .editable:focus {
-        background-color: #fff;
-        outline: 2px solid #0b8552; /* Foco claro con el color principal */
-        outline-offset: -2px;
-        box-shadow: 0 0 8px rgba(11, 133, 82, 0.3);
+    .editable-premium:hover {
+        background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
     }
 
-    /* Estilo para celda guardada exitosamente (usado por JS) */
-    .cell-save-success {
-        transition: background-color 0.3s ease;
-        background-color: #d1e7dd !important; /* Verde de éxito de Bootstrap */
+    .editable-premium:focus {
+        background: white;
+        border-color: #0b8552;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1);
     }
 
-    /* ----------------------------------------- */
-    /* --- ESTILOS PARA ESTADO BLOQUEADO --- */
-    /* ----------------------------------------- */
-    
-    /* Estilo para aviso de hora límite (inyectado por JS) */
-    .aviso-hora-limite {
-        font-size: 1rem;
+    .editable-premium:focus::before {
+        display: none;
+    }
+
+    .cell-save-success-premium {
+        animation: successPulse 0.8s ease;
+    }
+
+    @keyframes successPulse {
+
+        0%,
+        100% {
+            background: white;
+            transform: scale(1);
+        }
+
+        50% {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            transform: scale(1.05);
+        }
+    }
+
+    .ton-col-premium {
+        font-weight: 700;
+        color: #0b8552;
+        font-size: 0.9rem;
+        background: linear-gradient(135deg, rgba(11, 133, 82, 0.05) 0%, transparent 100%);
+        border-radius: 6px;
+    }
+
+    .gal-val {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        font-weight: 600;
+    }
+
+    /* ==== READ-ONLY CELLS ==== */
+    .readonly-cell {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        color: #94a3b8;
+        font-weight: 500;
+        cursor: not-allowed;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+    }
+
+    /* ==== ALERTAS PREMIUM ==== */
+    .alert-modern {
+        border-radius: 12px;
+        border: none;
         padding: 1rem 1.25rem;
-        border-radius: 0.375rem; /* Bootstrap .rounded-3 */
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* ==== ESTADÍSTICAS RÁPIDAS ==== */
+    .stats-quick {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-card-mini {
+        flex: 1;
+        min-width: 200px;
+        background: white;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid;
+        transition: var(--transition-smooth);
+    }
+
+    .stat-card-mini:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--card-shadow);
+    }
+
+    .stat-card-mini.stat-primary {
+        border-left-color: #0b8552;
+    }
+
+    .stat-card-mini.stat-info {
+        border-left-color: #3b82f6;
+    }
+
+    .stat-card-mini.stat-warning {
+        border-left-color: #f59e0b;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a202c;
+    }
+
+    /* ==== LEYENDA MEJORADA ==== */
+    .legend-modern {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        font-size: 0.85rem;
         font-weight: 500;
     }
 
-    /* Estilo para celdas no editables después de la hora límite */
-    .celda-no-editable {
-        background-color: #e9ecef !important; /* Gris neutro */
-        cursor: not-allowed !important;
-        color: #6c757d;
-        border-left: 3px solid #adb5bd; /* Borde gris para indicar "bloqueado" */
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--dot-color);
+        box-shadow: 0 0 0 3px rgba(var(--dot-color-rgb), 0.2);
     }
 
-    .celda-no-editable:hover,
-    .celda-no-editable:focus {
-        background-color: #e9ecef !important;
-        outline: none !important;
-        box-shadow: none !important;
+    /* ==== RESPONSIVE ==== */
+    @media (max-width: 768px) {
+        .page-header-modern {
+            padding: 1.5rem;
+        }
+
+        .page-title-text {
+            font-size: 1.5rem;
+        }
+
+        .btn-premium {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card-mini {
+            min-width: 100%;
+        }
+
+        .table-modern {
+            font-size: 0.8rem;
+        }
+
+        .table-modern thead th,
+        .table-modern tbody td {
+            padding: 0.75rem 0.5rem;
+        }
+    }
+
+    /* ==== LOADING STATE ==== */
+    .saving-indicator {
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        z-index: 9999;
+        display: none;
+        animation: slideInRight 0.3s ease;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(100px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .saving-spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #0b8552;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl my-4">
+
+    <!-- ENCABEZADO PREMIUM -->
+    <div class="page-header-modern">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <div class="page-title-icon">
+                    <i class="bi bi-buildings-fill"></i>
+                </div>
+            </div>
+            <div class="col">
+                <h1 class="page-title-text">Inventario de Planta</h1>
+                <p class="page-subtitle mb-0">Sistema de Control de Tanques en Tiempo Real</p>
+            </div>
+            <div class="col-auto ms-auto">
+                <div class="d-flex gap-2 flex-wrap justify-content-end">
+                    <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-premium btn-premium">
+                        <i class="bi bi-graph-up me-2"></i>Ver Reporte Visual
+                    </a>
+                    <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-outline-premium btn-premium">
+                        <i class="bi bi-activity me-2"></i>Variación por Tanque
+                    </a>
+                    <button type="button" onclick="guardarRegistro()" class="btn btn-success-premium btn-premium">
+                        <i class="bi bi-save2-fill me-2"></i>Guardar Registro
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS PREMIUM -->
+    <div class="filter-card-premium">
+        <form method="GET" action="{{ url_for('planta') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-6">
+                    <label class="form-label fw-bold text-muted">
+                        <i class="bi bi-calendar-date me-2"></i>Seleccionar Fecha de Inventario
+                    </label>
+                    <div class="date-input-wrapper">
+                        <i class="bi bi-calendar3 date-input-icon"></i>
+                        <input type="text" class="form-control" id="fecha_filtro" name="fecha"
+                            value="{{ fecha_seleccionada or '' }}" placeholder="Seleccione una fecha"
+                            data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <button type="submit" class="btn btn-primary-premium btn-premium w-100">
+                        <i class="bi bi-funnel-fill me-2"></i>Aplicar Filtro
+                    </button>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <a href="{{ url_for('planta') }}" class="btn btn-outline-premium btn-premium w-100">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Ver Actual
+                    </a>
+                </div>
+            </div>
+            {% if fecha_seleccionada and today_iso and fecha_seleccionada != today_iso %}
+            <div class="alert alert-info alert-modern mt-3 mb-0">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <strong>Vista Histórica:</strong> Mostrando datos del {{ fecha_seleccionada }}
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- ESTADÍSTICAS RÁPIDAS -->
+    <div class="stats-quick">
+        <div class="stat-card-mini stat-primary">
+            <div class="stat-label">Total Tanques</div>
+            <div class="stat-value" id="totalTanks">{{ planilla|length }}</div>
+        </div>
+        <div class="stat-card-mini stat-info">
+            <div class="stat-label">Con Datos</div>
+            <div class="stat-value" id="tanksWithData">0</div>
+        </div>
+        <div class="stat-card-mini stat-warning">
+            <div class="stat-label">Pendientes</div>
+            <div class="stat-value" id="tanksPending">{{ planilla|length }}</div>
+        </div>
+    </div>
+
+    <!-- LEYENDA -->
+    <div class="mb-3 d-flex gap-2 flex-wrap">
+        <div class="legend-modern">
+            <span class="legend-dot" style="--dot-color:#198754; --dot-color-rgb:25,135,84;"></span>
+            Días con registro
+        </div>
+        <div class="legend-modern">
+            <span class="legend-dot" style="--dot-color:#adb5bd; --dot-color-rgb:173,181,189;"></span>
+            Días sin registro
+        </div>
+        <div class="legend-modern" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+            <i class="bi bi-pencil-fill me-2"></i>
+            Campos editables
+        </div>
+    </div>
+
+    <!-- INDICADOR DE GUARDADO -->
+    <div class="saving-indicator" id="savingIndicator">
+        <span class="saving-spinner"></span>
+        <span class="fw-600">Guardando cambios...</span>
+    </div>
+
+    <!-- CONTENEDOR DE ALERTAS -->
+    <div id="alert-container" style="position: fixed; top: 100px; right: 20px; z-index: 1060; max-width: 400px;"></div>
+
+    <!-- TABLA PREMIUM -->
+    <div class="table-container-modern">
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th style="min-width: 120px;">
+                            <i class="bi bi-tag-fill me-2"></i>Tanque
+                        </th>
+                        <th style="min-width: 150px;">
+                            <i class="bi bi-droplet-fill me-2"></i>Producto
+                        </th>
+                        <th style="min-width: 130px;">
+                            <i class="bi bi-speedometer2 me-2"></i>Cap. Máxima
+                        </th>
+                        <th style="min-width: 130px;">
+                            <i class="bi bi-thermometer-half me-2"></i>BLS @60°F
+                        </th>
+                        <th style="min-width: 110px;">
+                            <i class="bi bi-calculator me-2"></i>Conversión
+                        </th>
+                        <th style="min-width: 100px;">
+                            <i class="bi bi-graph-up me-2"></i>API
+                        </th>
+                        <th style="min-width: 100px;">
+                            <i class="bi bi-droplet-half me-2"></i>%BSW
+                        </th>
+                        <th style="min-width: 100px;">
+                            <i class="bi bi-fire me-2"></i>%S
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in planilla %}
+                    <tr data-tk="{{ fila.TK }}">
+                        <td>
+                            <span class="tank-id-badge">{{ fila.TK }}</span>
+                        </td>
+                        <td data-field="PRODUCTO">
+                            <span class="product-label">{{ fila.PRODUCTO }}</span>
+                        </td>
+                        <td data-field="MAX_CAP" class="fw-bold">
+                            {{ fila.MAX_CAP|int if fila.MAX_CAP else 0 }} BLS
+                            {% if fila.TK == "Consumo Interno" %}
+                            <br><small class="text-muted">({{ (fila.MAX_CAP * 42)|round(2) if fila.MAX_CAP else
+                                '5240.91' }} GAL)</small>
+                            {% endif %}
+                        </td>
+                        <td contenteditable="true" class="editable-premium" data-field="BLS_60" inputmode="decimal"
+                            title="Ingrese los barriles a 60°F">{{ fila.BLS_60 }}</td>
+                        <td class="ton-col-premium" title="Calculado automáticamente">
+                            {% if fila.TK == "Consumo Interno" and fila.BLS_60 %}
+                            <span class="gal-val">{{ (fila.BLS_60|float * 42)|round(2) }} GAL</span>
+                            {% else %}
+                            —
+                            {% endif %}
+                        </td>
+                        <td contenteditable="true" class="editable-premium" data-field="API" inputmode="decimal"
+                            title="Ingrese la densidad API">{{ fila.API }}</td>
+                        <td contenteditable="{{ 'false' if fila.TK == 'Consumo Interno' else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TK != 'Consumo Interno' else 'readonly-cell' }}"
+                            data-field="BSW" inputmode="decimal"
+                            title="{{ 'No aplica para este tanque' if fila.TK == 'Consumo Interno' else 'Ingrese el % de agua y sedimento' }}">
+                            {{ fila.BSW if fila.TK != 'Consumo Interno' else 'N/A' }}
+                        </td>
+                        <td contenteditable="{{ 'false' if fila.TK == 'Consumo Interno' else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TK != 'Consumo Interno' else 'readonly-cell' }}"
+                            data-field="S" inputmode="decimal"
+                            title="{{ 'No aplica para este tanque' if fila.TK == 'Consumo Interno' else 'Ingrese el % de azufre' }}">
+                            {{ fila.S if fila.TK != 'Consumo Interno' else 'N/A' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
 
 <script>
-    // --- Inicialización del selector de fecha con colores por registro ---
-    document.addEventListener('DOMContentLoaded', function() {
+    // ==== CALENDARIO CON FLATPICKR ====
+    document.addEventListener('DOMContentLoaded', function () {
         const input = document.getElementById('fecha_filtro');
         const fechasConRegistro = input ? JSON.parse(input.getAttribute('data-fechas') || '[]') : [];
         const setFechas = new Set(fechasConRegistro);
+
         if (input) {
-            // Cargar Flatpickr desde CDN (ligero y sin dependencias)
-            const addCss = (href) => { const l = document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); };
-            const addJs = (src, cb) => { const s = document.createElement('script'); s.src=src; s.onload=cb; document.body.appendChild(s); };
+            const addCss = (href) => {
+                const l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                document.head.appendChild(l);
+            };
+            const addJs = (src, cb) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = cb;
+                document.body.appendChild(s);
+            };
+
             addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
             addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
             addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
@@ -287,15 +743,15 @@
                     dateFormat: 'Y-m-d',
                     defaultDate: input.value || '{{ today_iso }}',
                     allowInput: true,
-                    onDayCreate: function(dObj, dStr, fp, dayElem) {
-                        const dateStr = dayElem.dateObj.toISOString().slice(0,10);
+                    onDayCreate: function (dObj, dStr, fp, dayElem) {
+                        const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
                         dayElem.classList.add('fp-hint-day');
                         if (setFechas.has(dateStr)) {
                             dayElem.classList.add('fp-day-con-registro');
-                            dayElem.setAttribute('title','Con registro');
+                            dayElem.setAttribute('title', 'Con registro');
                         } else {
                             dayElem.classList.add('fp-day-sin-registro');
-                            dayElem.setAttribute('title','Sin registro');
+                            dayElem.setAttribute('title', 'Sin registro');
                         }
                     }
                 });
@@ -303,112 +759,144 @@
         }
     });
 
-    // --- FUNCIÓN DE ALERTA MEJORADA ---
+    // ==== ALERTAS MEJORADAS ====
     function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
         const alertContainer = document.getElementById('alert-container');
-        if (!alertContainer) { console.error("Contenedor de alertas no encontrado."); return; }
-        
+        if (!alertContainer) return;
+
         const wrapper = document.createElement('div');
         let iconClass = 'bi-info-circle-fill';
         if (tipo === 'success') iconClass = 'bi-check-circle-fill';
         if (tipo === 'danger') iconClass = 'bi-exclamation-triangle-fill';
         if (tipo === 'warning') iconClass = 'bi-exclamation-diamond-fill';
-        
+
         wrapper.innerHTML = `
-            <div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center shadow-lg border-0" role="alert">
-                <i class="bi ${iconClass} me-2" style="font-size: 1.2em;"></i>
-                <div>${mensaje}</div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>`;
-        
+        <div class="alert alert-${tipo} alert-modern alert-dismissible fade show d-flex align-items-center shadow-lg border-0" role="alert">
+            <i class="bi ${iconClass} me-2" style="font-size: 1.5rem;"></i>
+            <div class="flex-grow-1">${mensaje}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>`;
+
         alertContainer.appendChild(wrapper);
-        const alertElement = wrapper.firstChild;
-        
-        if (alertElement) {
-            setTimeout(() => {
-                const alertInstance = bootstrap.Alert.getOrCreateInstance(alertElement);
-                if (alertInstance) { alertInstance.close(); }
-                else if (wrapper.parentElement) { wrapper.remove(); }
-            }, duracion);
-        }
+        const alertElement = wrapper.firstElementChild;
+
+        setTimeout(() => {
+            const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+            bsAlert.close();
+        }, duracion);
     }
 
+    // ==== LÓGICA DE CELDAS EDITABLES ====
     document.addEventListener("DOMContentLoaded", function () {
-        const editableCells = document.querySelectorAll(".editable");
-        let edicionPermitida = true;
+        const editableCells = document.querySelectorAll(".editable-premium");
 
-        // --- LÓGICA PARA CELDAS EDITABLES ---
+        // Actualizar estadísticas
+        actualizarEstadisticas();
+
         editableCells.forEach(cell => {
-            // Validación de entrada (sin cambios en la lógica)
-            cell.addEventListener('keydown', function(event) {
-                if (!cell.isContentEditable) { event.preventDefault(); return; }
+            // Validación de entrada
+            cell.addEventListener('keydown', function (event) {
+                if (!cell.isContentEditable) {
+                    event.preventDefault();
+                    return;
+                }
                 const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
-                if (allowedKeys.includes(event.key)) { return; }
-                if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) { return; }
-                if ((event.key >= '0' && event.key <= '9')) { return; }
+                if (allowedKeys.includes(event.key)) return;
+                if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) return;
+                if (event.key >= '0' && event.key <= '9') return;
                 if (event.key === ',' || event.key === '.') {
-                    if (cell.innerText.includes(',') || cell.innerText.includes('.')) { event.preventDefault(); }
+                    if (cell.innerText.includes(',') || cell.innerText.includes('.')) {
+                        event.preventDefault();
+                    }
                     return;
                 }
                 event.preventDefault();
             });
 
-            cell.addEventListener('paste', function(event) {
-                if (!cell.isContentEditable) { event.preventDefault(); return; }
+            cell.addEventListener('paste', function (event) {
+                if (!cell.isContentEditable) {
+                    event.preventDefault();
+                    return;
+                }
                 event.preventDefault();
                 let paste = (event.clipboardData || window.clipboardData).getData('text');
                 paste = paste.replace(/[^\d,.]/g, '').replace(/([,.])(?=.*[,.])/g, '');
                 document.execCommand('insertText', false, paste);
             });
 
-            // Guardado automático al perder el foco (on-blur)
+            // Guardado automático
             cell.addEventListener("blur", () => {
-                // Solo guardar si la celda aún es editable
                 if (cell.isContentEditable) {
-                    const row = cell.closest("tr"); if (!row) return;
-                    const tk = row.dataset.tk;
-                    const field = cell.dataset.field;
-                    let value = cell.innerText.trim().replace(',', '.');
-
-                    // Recalcular TON en la fila cuando cambian BLS_60 o API
-                    try { actualizarToneladasFila(row); } catch (e) {}
-
-                    fetch("{{ url_for('guardar_datos_planta') }}", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ tk, field, value: value })
-                    })
-                    .then(res => {
-                        if (!res.ok) { return res.json().then(errData => { throw errData || new Error("Error HTTP: " + res.status); }); }
-                        return res.json();
-                    })
-                    .then(data => {
-                        if (data.success) {
-                            cell.classList.add('cell-save-success');
-                            setTimeout(() => { cell.classList.remove('cell-save-success'); }, 2000);
-                        } else {
-                            mostrarAlerta("Error al guardar celda: " + (data.message || "Error desconocido"), "danger");
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error fetch (guardar celda):", err);
-                        mostrarAlerta("Error al guardar celda: " + (err.message || "Error de conexión."), "danger");
-                    });
+                    guardarCelda(cell);
                 }
             });
         });
-    }); // Fin de DOMContentLoaded
 
-    // --- FUNCIÓN PARA GUARDAR REGISTRO COMPLETO ---
+        // Actualizar toneladas en todas las filas
+        document.querySelectorAll('tbody tr').forEach(actualizarToneladasFila);
+    });
+
+    // ==== GUARDAR CELDA INDIVIDUAL ====
+    function guardarCelda(cell) {
+        const row = cell.closest("tr");
+        if (!row) return;
+
+        const tk = row.dataset.tk;
+        const field = cell.dataset.field;
+        let value = cell.innerText.trim().replace(',', '.');
+
+        // Mostrar indicador de guardado
+        const indicator = document.getElementById('savingIndicator');
+        if (indicator) indicator.style.display = 'flex';
+
+        // Recalcular TON/GAL
+        actualizarToneladasFila(row);
+
+        fetch("{{ url_for('guardar_datos_planta') }}", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tk, field, value: value })
+        })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(errData => {
+                        throw errData || new Error("Error HTTP: " + res.status);
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    cell.classList.add('cell-save-success-premium');
+                    setTimeout(() => {
+                        cell.classList.remove('cell-save-success-premium');
+                    }, 800);
+                    actualizarEstadisticas();
+                } else {
+                    mostrarAlerta("Error al guardar: " + (data.message || "Error desconocido"), "danger");
+                }
+            })
+            .catch(err => {
+                console.error("Error fetch:", err);
+                mostrarAlerta("Error de conexión al guardar: " + (err.message || "Error desconocido"), "danger");
+            })
+            .finally(() => {
+                if (indicator) indicator.style.display = 'none';
+            });
+    }
+
+    // ==== GUARDAR REGISTRO COMPLETO ====
     function guardarRegistro() {
         const datosAEnviar = [];
         document.querySelectorAll("tbody tr").forEach(row => {
             const tk = row.dataset.tk;
             if (!tk) return;
+
             const getVal = (name) => {
                 const el = row.querySelector(`[data-field="${name}"]`);
                 return el ? el.innerText.trim() : '';
             };
+
             datosAEnviar.push({
                 "TK": tk,
                 "PRODUCTO": getVal('PRODUCTO'),
@@ -419,92 +907,133 @@
                 "S": getVal('S')
             });
         });
-        
-        // 2. Enviar los datos al backend con el formato correcto
+
+        const indicator = document.getElementById('savingIndicator');
+        if (indicator) indicator.style.display = 'flex';
+
         fetch("{{ url_for('guardar_registro_planta') }}", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-Requested-With": "XMLHttpRequest"
             },
-            // Asegurarse de que el cuerpo del mensaje es una cadena JSON
             body: JSON.stringify(datosAEnviar)
         })
-        .then(res => {
-            if (!res.ok) {
-                // Si la respuesta no es OK, intenta leer el error como JSON
-                return res.json().then(errData => {
-                    throw new Error(errData.message || "Error del servidor");
-                }).catch(() => {
-                    // Si falla, es porque la respuesta es HTML (como una página de error)
-                    throw new Error("Error inesperado del servidor. No se recibió una respuesta válida.");
-                });
-            }
-            return res.json();
-        })
-        .then(data => {
-            if (data.success) {
-                mostrarAlerta("¡Registro guardado exitosamente!", "success");
-                // Redirigir al reporte después de guardar
-                setTimeout(() => { window.location.href = "{{ url_for('reporte_planta') }}"; }, 1500);
-            } else {
-                throw new Error(data.message || "El servidor indicó un fallo.");
-            }
-        })
-        .catch(err => {
-            console.error("Error al guardar:", err);
-            mostrarAlerta(`Error fatal: ${err.message}`, "danger");
-        })
-        .finally(() => {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="bi bi-save2-fill me-2"></i>Guardar Registro`;
-        });
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(errData => {
+                        throw new Error(errData.message || "Error del servidor");
+                    }).catch(() => {
+                        throw new Error("Error inesperado del servidor");
+                    });
+                }
+                return res.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    mostrarAlerta("¡Registro guardado exitosamente! Redirigiendo al reporte...", "success", 2000);
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('reporte_planta') }}";
+                    }, 1500);
+                } else {
+                    throw new Error(data.message || "El servidor indicó un fallo");
+                }
+            })
+            .catch(err => {
+                console.error("Error al guardar:", err);
+                mostrarAlerta(`Error al guardar: ${err.message}`, "danger");
+            })
+            .finally(() => {
+                if (indicator) indicator.style.display = 'none';
+            });
     }
 
-    // --- CÁLCULO DE TONELADAS EN TIEMPO REAL ---
-    function calcularTons(bls60, api, tk, producto){
-        const b = parseFloat((bls60||'').toString().replace(',','.')) || 0;
-        const a = parseFloat((api||'').toString().replace(',','.'));
+    // ==== CÁLCULO DE TONELADAS Y GALONES ====
+    function calcularTons(bls60, api, tk) {
+        const b = parseFloat((bls60 || '').toString().replace(',', '.')) || 0;
+        const a = parseFloat((api || '').toString().replace(',', '.'));
         if (b <= 0) return null;
 
-        const tank = (tk||'').toUpperCase();
-        const allowed = new Set(['TK-102','TK-110','TK-108']);
-        if (!allowed.has(tank)) return null; // Solo mostrar TON para 102, 110 y 108
+        const tank = (tk || '').toUpperCase();
+        const allowed = new Set(['TK-102', 'TK-110', 'TK-108']);
+        if (!allowed.has(tank)) return null;
 
         if (!isNaN(a)) {
-            // SG = 141.5/(API+131.5); Tons = BLS_60 * SG / 6.2898
             const sg = 141.5 / (a + 131.5);
             return b * (sg / 6.2898);
         }
-        // Fallbacks específicos por tanque
+
         if (tank === 'TK-102') return b / 6.7;
         if (tank === 'TK-110') return b / 7.4;
-        if (tank === 'TK-108') return b / 6.7; // VLSFO
+        if (tank === 'TK-108') return b / 6.7;
         return null;
     }
 
-    function actualizarToneladasFila(row){
+    function actualizarToneladasFila(row) {
         const tk = row.dataset.tk || '';
-        const bls = row.querySelector('[data-field="BLS_60"]')?.innerText || '';
+        const blsRaw = row.querySelector('[data-field="BLS_60"]')?.innerText || '';
         const api = row.querySelector('[data-field="API"]')?.innerText || '';
-        const prod = row.querySelector('[data-field="PRODUCTO"]')?.innerText || '';
-        const tons = calcularTons(bls, api, tk, prod);
-        const tonCell = row.querySelector('.ton-col');
-        if (tonCell){ tonCell.textContent = (tons==null) ? '—' : tons.toFixed(2); }
+        const tonCell = row.querySelector('.ton-col-premium');
+
+        if (!tonCell) return;
+
+        const bls = parseFloat(blsRaw.replace(',', '.')) || 0;
+
+        if (tk === "Consumo Interno") {
+            if (bls > 0) {
+                const gals = (bls * 42).toFixed(2);
+                tonCell.innerHTML = `<span class="gal-val">${parseFloat(gals).toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</span>`;
+            } else {
+                tonCell.textContent = "—";
+            }
+            return;
+        }
+
+        const tons = calcularTons(blsRaw, api, tk);
+        tonCell.textContent = (tons == null) ? '—' : tons.toFixed(2);
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
-        document.querySelectorAll('tbody tr').forEach(actualizarToneladasFila);
-    });
+    // ==== ACTUALIZAR ESTADÍSTICAS ====
+    function actualizarEstadisticas() {
+        let totalWithData = 0;
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const blsVal = row.querySelector('[data-field="BLS_60"]')?.innerText.trim();
+            if (blsVal && blsVal !== '' && parseFloat(blsVal.replace(',', '.')) > 0) {
+                totalWithData++;
+            }
+        });
+
+        const total = document.querySelectorAll('tbody tr').length;
+        document.getElementById('tanksWithData').textContent = totalWithData;
+        document.getElementById('tanksPending').textContent = total - totalWithData;
+    }
 </script>
 
 <style>
-/* Indicadores visuales en el calendario */
-.flatpickr-calendar .flatpickr-day.fp-hint-day { position: relative; }
-.flatpickr-calendar .flatpickr-day.fp-day-con-registro { background: rgba(25, 135, 84, 0.2); color: #198754; border-color: rgba(25,135,84,0.45); }
-.flatpickr-calendar .flatpickr-day.fp-day-sin-registro { background: rgba(173,181,189,0.25); color: #6c757d; }
-.flatpickr-calendar .flatpickr-day.selected { background: #0b8552; border-color: #0b8552; color: #fff; }
-.flatpickr-calendar .flatpickr-day.today { border-color: #0b8552; }
-.legend-dot { width:10px; height:10px; border-radius:50%; background: var(--dot-color); display:inline-block; }
+    .flatpickr-calendar .flatpickr-day.fp-hint-day {
+        position: relative;
+    }
+
+    .flatpickr-calendar .flatpickr-day.fp-day-con-registro {
+        background: rgba(25, 135, 84, 0.2);
+        color: #198754;
+        border-color: rgba(25, 135, 84, 0.45);
+    }
+
+    .flatpickr-calendar .flatpickr-day.fp-day-sin-registro {
+        background: rgba(173, 181, 189, 0.15);
+        color: #6c757d;
+    }
+
+    .flatpickr-calendar .flatpickr-day.selected {
+        background: #0b8552;
+        border-color: #0b8552;
+        color: #fff;
+    }
+
+    .flatpickr-calendar .flatpickr-day.today {
+        border-color: #0b8552;
+        font-weight: 700;
+    }
 </style>
 {% endblock %}

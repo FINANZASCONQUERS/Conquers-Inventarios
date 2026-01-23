@@ -1,414 +1,969 @@
-    {% extends "base.html" %}
+{% extends "base.html" %}
 
-    {% block title %}Reporte de Planta - Conquers Trading{% endblock %}
+{% block title %}Reporte Visual de Planta{% endblock %}
 
-    {% block extra_css %}
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
-    <style>
-        /* Variables de diseño */
-        :root {
-            --color-primary: #0b8552;
-            --color-primary-light: rgba(11, 133, 82, 0.1);
-            --color-secondary: #2c3e50;
-            --color-success: #28a745;
-            --color-warning: #fd7e14;
-            --color-danger: #dc3545;
-            --color-info: #17a2b8;
-            --color-light: #f8f9fa;
-            --color-dark: #343a40;
-            --color-border: #e0e5ec;
-            --color-text-muted: #6c757d;
-            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-            --border-radius: 0.5rem;
-            --transition: all 0.3s ease;
+{% block extra_css %}
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+<style>
+    :root {
+        --primary: #0b8552;
+        --primary-dark: #094d32;
+        --primary-light: #0fa665;
+        --success: #28a745;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --info: #3b82f6;
+        --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+        --card-shadow-hover: 0 15px 60px rgba(0, 0, 0, 0.12);
+        --border-radius: 20px;
+        --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        --glass-bg: rgba(255, 255, 255, 0.9);
+        --glass-border: rgba(255, 255, 255, 0.3);
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: #f8f9fa;
+        color: #212529;
+        min-height: 100vh;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* Dark Mode Defaults */
+    html.dark-mode body {
+        background-color: #121212;
+        color: #e0e0e0;
+    }
+
+    /* Gradient overlay removed for cleaner look, or subtle one for dark mode */
+    html.dark-mode body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .report-container {
+        position: relative;
+        z-index: 1;
+        padding: 2rem 0;
+    }
+
+    /* ==== ENCABEZADO GLASSMORPHISM ==== */
+    .report-header-glass {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        animation: slideDown 0.6s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
         }
 
-        /* Estructura principal */
-        .report-container {
-            padding: 2rem 0;
-            background-color: #f8fafc;
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .report-icon-mega {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        box-shadow: 0 8px 24px rgba(11, 133, 82, 0.4);
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0px);
         }
 
-        /* Encabezado del reporte */
-        .report-header {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border-left: 4px solid var(--color-primary);
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .report-title-main {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #1a202c 0%, var(--primary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0;
+        letter-spacing: -1px;
+    }
+
+    .report-subtitle-main {
+        color: #64748b;
+        font-size: 1rem;
+        margin-top: 0.5rem;
+        font-weight: 500;
+    }
+
+    .report-timestamp {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        padding: 0.75rem 1.25rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    /* ==== BOTONES PREMIUM ==== */
+    .btn-glass {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border: 2px solid var(--glass-border);
+        padding: 0.75rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: var(--transition);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-glass::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        transition: left 0.6s;
+    }
+
+    .btn-glass:hover::before {
+        left: 100%;
+    }
+
+    .btn-glass:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary-glass {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        border-color: transparent;
+    }
+
+    .btn-outline-glass {
+        color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .btn-outline-glass:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    /* ==== FILTROS MEJORADOS ==== */
+    .filters-glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--card-shadow);
+        animation: fadeInUp 0.7s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
         }
 
-        .report-title {
-            display: flex;
-            flex-direction: column;
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .filter-select-premium {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        font-weight: 500;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+
+    .filter-select-premium:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1);
+        outline: none;
+    }
+
+    /* ==== GRID DE TANQUES ==== */
+    .tanks-grid-premium {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 2rem;
+        animation: fadeIn 0.8s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
         }
 
-        .report-title h1 {
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--color-secondary);
-            margin-bottom: 0.5rem;
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* ==== TARJETA DE TANQUE PREMIUM ==== */
+    .tank-card-premium {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        overflow: hidden;
+        transition: var(--transition);
+        box-shadow: var(--card-shadow);
+        animation: scaleIn 0.5s ease backwards;
+        animation-delay: calc(var(--animation-order) * 0.1s);
+    }
+
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
         }
 
-        .report-title .title-icon {
-            color: var(--color-primary);
-            font-size: 1.8rem;
-            margin-right: 0.75rem;
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .tank-card-premium:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--card-shadow-hover);
+    }
+
+    .tank-card-header-premium {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        padding: 1.25rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tank-card-header-premium::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from {
+            transform: rotate(0deg);
         }
 
-        .report-subtitle {
-            font-size: 0.9rem;
-            color: var(--color-text-muted);
-            display: flex;
-            align-items: center;
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .tank-id-premium {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        position: relative;
+        z-index: 1;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tank-product-badge {
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(10px);
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        position: relative;
+        z-index: 1;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .tank-card-body-premium {
+        padding: 2rem 1.5rem;
+        display: flex;
+        gap: 2rem;
+    }
+
+    /* ==== VISUALIZACIÓN DEL TANQUE 3D ==== */
+    .tank-visual-3d {
+        width: 120px;
+        height: 180px;
+        position: relative;
+        flex-shrink: 0;
+        perspective: 1000px;
+    }
+
+    .tank-cylinder {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
+        border-radius: 12px;
+        position: relative;
+        overflow: hidden;
+        box-shadow:
+            inset 0 2px 8px rgba(0, 0, 0, 0.1),
+            0 4px 12px rgba(0, 0, 0, 0.15);
+        transform-style: preserve-3d;
+    }
+
+    .tank-cylinder::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 20px;
+        background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
+        border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        z-index: 2;
+    }
+
+    .tank-cylinder::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 15px;
+        background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+        border-radius: 0 0 8px 8px;
+        box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .tank-liquid-premium {
+        position: absolute;
+        bottom: 15px;
+        left: 0;
+        right: 0;
+        transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 0 0 8px 8px;
+        overflow: hidden;
+    }
+
+    .tank-liquid-premium::before {
+        content: '';
+        position: absolute;
+        top: -5px;
+        left: 0;
+        right: 0;
+        height: 10px;
+        background: inherit;
+        filter: brightness(1.2);
+        animation: wave 3s ease-in-out infinite;
+    }
+
+    @keyframes wave {
+
+        0%,
+        100% {
+            transform: translateX(0%) scale(1, 1);
         }
 
-        .report-subtitle i {
-            margin-right: 0.5rem;
+        50% {
+            transform: translateX(5%) scale(1.05, 0.95);
+        }
+    }
+
+    .tank-liquid-premium.level-empty {
+        background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
+    }
+
+    .tank-liquid-premium.level-low {
+        background: linear-gradient(180deg, #fca5a5 0%, #dc2626 100%);
+        box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+    }
+
+    .tank-liquid-premium.level-medium {
+        background: linear-gradient(180deg, #fcd34d 0%, #f59e0b 100%);
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    }
+
+    .tank-liquid-premium.level-good {
+        background: linear-gradient(180deg, #6ee7b7 0%, #10b981 100%);
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    }
+
+    .tank-liquid-premium.level-full {
+        background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .tank-full-alert {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(220, 38, 38, 0.95);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+
+        0%,
+        100% {
+            opacity: 1;
         }
 
-        /* Filtros mejorados */
-        .report-filters-container {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 2rem;
-            padding: 1rem;
+        50% {
+            opacity: 0.6;
+        }
+    }
+
+    /* ==== INFORMACIÓN DEL TANQUE ==== */
+    .tank-info-premium {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .tank-volume-display {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1a202c;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: -1px;
+    }
+
+    .tank-volume-unit {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-left: 0.5rem;
+    }
+
+    .tank-conversion-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        padding: 0.4rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #1e40af;
+        margin-top: 0.25rem;
+    }
+
+    .tank-progress-premium {
+        height: 14px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        position: relative;
+    }
+
+    .tank-progress-bar-premium {
+        height: 100%;
+        border-radius: 20px;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tank-progress-bar-premium::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+        0% {
+            transform: translateX(-100%);
         }
 
-        .filter-group {
-            margin-bottom: 1rem;
+        100% {
+            transform: translateX(100%);
         }
+    }
 
-        .filter-label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: var(--color-secondary);
-            margin-bottom: 0.5rem;
-        }
+    .tank-progress-bar-premium.level-empty {
+        background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
+    }
 
-        /* Grid de tanques */
-        .tanques-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    .tank-progress-bar-premium.level-low {
+        background: linear-gradient(90deg, #fca5a5 0%, #dc2626 100%);
+    }
+
+    .tank-progress-bar-premium.level-medium {
+        background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 100%);
+    }
+
+    .tank-progress-bar-premium.level-good {
+        background: linear-gradient(90deg, #6ee7b7 0%, #10b981 100%);
+    }
+
+    .tank-progress-bar-premium.level-full {
+        background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%);
+    }
+
+    .tank-percentage-display {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+
+    .tank-percentage-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tank-percentage-value.level-empty {
+        color: #6b7280;
+    }
+
+    .tank-percentage-value.level-low {
+        color: #dc2626;
+    }
+
+    .tank-percentage-value.level-medium {
+        color: #f59e0b;
+    }
+
+    .tank-percentage-value.level-good {
+        color: #10b981;
+    }
+
+    .tank-percentage-value.level-full {
+        color: #3b82f6;
+    }
+
+    .tank-max-capacity {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    /* ==== PIE DE TARJETA ==== */
+    .tank-card-footer-premium {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        padding: 1rem 1.5rem;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .tank-stat-premium {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .tank-stat-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .tank-stat-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ==== MENSAJE SIN DATOS ==== */
+    .no-data-premium {
+        grid-column: 1 / -1;
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius);
+        padding: 4rem 2rem;
+        text-align: center;
+        border: 2px dashed #cbd5e0;
+    }
+
+    .no-data-icon {
+        font-size: 4rem;
+        color: #cbd5e0;
+        margin-bottom: 1rem;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    /* ==== TOTAL DE PRODUCTO ==== */
+    .total-product-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--glass-border);
+        padding: 2rem;
+        text-align: center;
+        box-shadow: var(--card-shadow);
+        margin-top: 2rem;
+        border-left: 5px solid var(--primary);
+    }
+
+    .total-product-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin: 0;
+    }
+
+    .total-product-value {
+        color: var(--primary);
+        font-weight: 800;
+    }
+
+    /* ==== RESPONSIVE ==== */
+    @media (max-width: 768px) {
+        .tanks-grid-premium {
+            grid-template-columns: 1fr;
             gap: 1.5rem;
         }
 
-        /* Tarjeta de tanque */
-        .tanque-card {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            transition: var(--transition);
-            display: flex;
+        .report-title-main {
+            font-size: 1.5rem;
+        }
+
+        .tank-card-body-premium {
             flex-direction: column;
-            height: 100%;
-        }
-
-        .tanque-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .tanque-card-header {
-            background-color: var(--color-primary);
-            color: white;
-            padding: 1rem 1.25rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .tanque-id {
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-
-        .tanque-producto {
-            background-color: rgba(255, 255, 255, 0.2);
-            padding: 0.25rem 0.75rem;
-            border-radius: 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .tanque-card-body {
-            padding: 1.25rem;
-            display: flex;
             gap: 1.5rem;
-            flex-grow: 1;
         }
 
-        /* Visualización del tanque */
-        .tanque-visual {
+        .tank-visual-3d {
             width: 100px;
             height: 150px;
-            background-color: #e9ecef;
-            border-radius: 0.25rem;
-            position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-            flex-shrink: 0;
+            margin: 0 auto;
         }
 
-        .tanque-visual::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 15px;
-            background-color: #d1d5db;
-            border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-            z-index: 2;
+        .tank-card-footer-premium {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
         }
+    }
 
-        .tanque-liquido {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            transition: height 0.5s ease;
-        }
+    /* ==== LEYENDA ==== */
+    .legend-premium {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
 
-        .tanque-liquido.empty { background: transparent; }
-        .tanque-liquido.green { background: linear-gradient(to top, #28a745, #40c057); }
-        .tanque-liquido.orange { background: linear-gradient(to top, #fd7e14, #ff922b); }
-        .tanque-liquido.red { background: linear-gradient(to top, #dc3545, #f03e3e); }
-        .tanque-liquido.full { background: linear-gradient(to top, #343a40, #343a40); }
+    .legend-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--dot-color);
+        box-shadow: 0 0 0 3px rgba(var(--dot-color-rgb), 0.2);
+    }
 
-        /* Información del tanque */
-        .tanque-info {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
+    /* ==== MODO OSCURO ADAPTACIONES ==== */
+    html.dark-mode .report-header-glass,
+    html.dark-mode .filters-glass-card,
+    html.dark-mode .tank-card-premium,
+    html.dark-mode .total-product-card {
+        background: rgba(30, 30, 30, 0.8);
+        border-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+    }
 
-        .tanque-volume {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--color-dark);
-            margin-bottom: 0.5rem;
-        }
+    html.dark-mode .report-title-main {
+        background: linear-gradient(135deg, #ffffff 0%, var(--primary-light) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
-        .tanque-volume-unit {
-            font-size: 1rem;
-            font-weight: 500;
-            color: var(--color-text-muted);
-        }
-        .tanque-toneladas {
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: #555;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.25rem;
-            margin-top: 0.25rem;
-        }
-        .tanque-toneladas span {
-            background: #eef2f5;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
+    html.dark-mode .report-subtitle-main,
+    html.dark-mode .tank-max-capacity,
+    html.dark-mode .tank-stat-label,
+    html.dark-mode .tank-volume-unit {
+        color: #adb5bd;
+    }
 
-        .tanque-progress {
-            height: 10px;
-            background-color: var(--color-light);
-            border-radius: 5px;
-            overflow: hidden;
-            margin: 0.75rem 0;
-        }
+    html.dark-mode .report-timestamp {
+        background: rgba(255, 255, 255, 0.05);
+        color: #e0e0e0;
+    }
 
-        .tanque-progress-bar {
-            height: 100%;
-            transition: width 0.5s ease;
-        }
+    html.dark-mode .filter-select-premium,
+    html.dark-mode .form-control {
+        background-color: #2c2c2c;
+        border-color: #444;
+        color: #fff;
+    }
 
-        .tanque-progress-bar.green { background-color: #28a745; }
-        .tanque-progress-bar.orange { background-color: #fd7e14; }
-        .tanque-progress-bar.red { background-color: #dc3545; }
-        .tanque-progress-bar.full { background-color: #343a40; }
+    html.dark-mode .form-label {
+        color: #e0e0e0 !important;
+    }
 
-        .tanque-percentage {
-            font-size: 1rem;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-        }
+    html.dark-mode .tank-id-premium {
+        color: #fff;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
 
-        .tanque-percentage.green { color: #28a745; }
-        .tanque-percentage.orange { color: #fd7e14; }
-        .tanque-percentage.red { color: #dc3545; }
-        .tanque-percentage.full { color: #343a40; }
-        .tanque-lleno-label {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,255,255,0.95);
-            color: #dc3545;
-            font-weight: bold;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 1.1rem;
-            z-index: 10;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
+    html.dark-mode .tank-volume-display,
+    html.dark-mode .tank-percentage-value {
+        color: #fff;
+    }
 
-        .tanque-max {
-            font-size: 0.85rem;
-            color: var(--color-text-muted);
-        }
+    html.dark-mode .tank-cylinder {
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
 
-        /* Footer de la tarjeta */
-        .tanque-card-footer {
-            background-color: var(--color-light);
-            padding: 0.75rem 1.25rem;
-            display: flex;
-            justify-content: space-between;
-            border-top: 1px solid var(--color-border);
-        }
+    html.dark-mode .tank-cylinder::before {
+        /* Tapa */
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+    }
 
-        .tanque-stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+    html.dark-mode .tank-cylinder::after {
+        /* Base */
+        background: linear-gradient(135deg, #1a202c 0%, #171923 100%);
+    }
 
-        .tanque-stat-label {
-            font-size: 0.75rem;
-            color: var(--color-text-muted);
-            margin-bottom: 0.25rem;
-        }
+    html.dark-mode .tank-card-footer-premium {
+        background: rgba(255, 255, 255, 0.03);
+        border-top-color: rgba(255, 255, 255, 0.1);
+    }
 
-        .tanque-stat-value {
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
+    html.dark-mode .tank-stat-value {
+        color: #e0e0e0;
+    }
 
-        /* Total de producto */
-        .total-producto {
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            padding: 1rem 1.5rem;
-            margin-top: 2rem;
-            text-align: center;
-            border-left: 4px solid var(--color-primary);
-        }
+    html.dark-mode .legend-premium {
+        background: #2c2c2c;
+        color: #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
 
-        .total-producto h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--color-secondary);
-            margin-bottom: 0;
-        }
+    html.dark-mode .btn-glass.btn-outline-glass {
+        color: var(--primary-light);
+        border-color: var(--primary-light);
+    }
 
-        .total-producto strong {
-            color: var(--color-primary);
-        }
+    html.dark-mode .btn-glass.btn-outline-glass:hover {
+        background: var(--primary-light);
+        color: #fff;
+    }
 
-        /* Mensaje cuando no hay datos */
-        .no-data-message {
-            grid-column: 1 / -1;
-            background-color: white;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            padding: 2rem;
-            text-align: center;
-        }
+    html.dark-mode .total-product-title {
+        color: #fff;
+    }
+</style>
+{% endblock %}
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .tanques-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .report-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .report-filters {
-                flex-direction: column;
-            }
-            
-            .filter-group {
-                margin-bottom: 1rem;
-                width: 100%;
-            }
-        }
-    </style>
-    {% endblock %}
+{% block content %}
+<div class="report-container">
+    <div class="container">
 
-    {% block content %}
-    <div class="report-container">
-        <div class="container">
-            <!-- Encabezado del reporte -->
-
-            <div class="report-header mb-4">
-                <div class="row g-3 align-items-center justify-content-between">
-                    <div class="col-12 col-lg-7 d-flex align-items-center gap-3 mb-2 mb-lg-0">
-                        <i class="bi bi-buildings-fill title-icon"></i>
-                        <div>
-                            <h1 class="mb-1">Reporte Visual de Planta</h1>
-                            {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error" not in fecha_actualizacion_info|lower %}
-                            <div class="report-subtitle">
-                                <i class="bi bi-info-circle"></i>{{ fecha_actualizacion_info }}
-                            </div>
-                            {% endif %}
-                        </div>
+        <!-- ENCABEZADO GLASSMORPHISM -->
+        <div class="report-header-glass">
+            <div class="row align-items-center g-3">
+                <div class="col-auto">
+                    <div class="report-icon-mega">
+                        <i class="bi bi-buildings-fill"></i>
                     </div>
-                    <div class="col-12 col-lg-5">
-                        <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                            <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-outline-primary d-flex align-items-center">
-                                <i class="bi bi-graph-up-arrow me-2"></i>Variación por Tanque
-                            </a>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-primary dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <i class="bi bi-download me-1"></i>Descargar Reporte
-                                </button>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
-                                    <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
-                                </ul>
-                            </div>
-                            {% if session.rol == 'admin' or 'planta' in session.area %}
-                            <a href="{{ url_for('planta') }}" class="btn btn-outline-secondary d-flex align-items-center">
-                                <i class="bi bi-pencil-fill me-2"></i>Volver a la Planilla
-                            </a>
-                            {% endif %}
+                </div>
+                <div class="col">
+                    <h1 class="report-title-main">Reporte Visual de Planta</h1>
+                    <p class="report-subtitle-main mb-0">Monitoreo en Tiempo Real del Inventario de Tanques</p>
+                    {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error"
+                    not in fecha_actualizacion_info|lower %}
+                    <div class="mt-2">
+                        <span class="report-timestamp">
+                            <i class="bi bi-clock-history"></i>
+                            {{ fecha_actualizacion_info }}
+                        </span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="col-auto ms-auto">
+                    <div class="d-flex gap-2 flex-wrap justify-content-end">
+                        <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-glass btn-outline-glass">
+                            <i class="bi bi-graph-up-arrow me-2"></i>Variaciones
+                        </a>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-glass btn-primary-glass dropdown-toggle"
+                                data-bs-toggle="dropdown">
+                                <i class="bi bi-download me-2"></i>Descargar
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#" data-filtro="dia">Por Día</a></li>
+                                <li><a class="dropdown-item" href="#" data-filtro="mes">Por Mes</a></li>
+                                <li><a class="dropdown-item" href="#" data-filtro="trimestre">Por Trimestre</a></li>
+                                <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
+                            </ul>
                         </div>
+                        {% if session.rol == 'admin' or 'planta' in session.area %}
+                        <a href="{{ url_for('planta') }}" class="btn btn-glass btn-outline-glass">
+                            <i class="bi bi-pencil-fill me-2"></i>Editar Planilla
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
+        </div>
 
-<div class="modal fade" id="opcionesDescargaModal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+        <!-- FILTROS GLASSMORPHISM -->
+        <div class="filters-glass-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-dark mb-2">
+                        <i class="bi bi-box-seam me-2"></i>Filtrar por Producto
+                    </label>
+                    <select id="filtroProducto" class="form-select filter-select-premium">
+                        <option value="todos" selected>Todos los productos</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-dark mb-2">
+                        <i class="bi bi-funnel me-2"></i>Filtrar por Tanque
+                    </label>
+                    <select id="filtroTanque" class="form-select filter-select-premium">
+                        <option value="todos" selected>Todos los tanques</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <form method="GET" action="{{ url_for('reporte_planta') }}">
+                        <label class="form-label fw-bold text-dark mb-2">
+                            <i class="bi bi-calendar-date me-2"></i>Fecha del Reporte
+                        </label>
+                        <div class="input-group">
+                            <input type="text" class="form-control filter-select-premium" id="fecha_filtro" name="fecha"
+                                value="{{ fecha_seleccionada or '' }}" placeholder="YYYY-MM-DD"
+                                data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
+                            <button type="submit" class="btn btn-glass btn-primary-glass">
+                                <i class="bi bi-funnel-fill"></i>
+                            </button>
+                            <a href="{{ url_for('reporte_planta') }}" class="btn btn-glass btn-outline-glass">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col d-flex gap-2 flex-wrap">
+                    <div class="legend-premium">
+                        <span class="legend-dot" style="--dot-color:#198754; --dot-color-rgb:25,135,84;"></span>
+                        Días con registro
+                    </div>
+                    <div class="legend-premium">
+                        <span class="legend-dot" style="--dot-color:#adb5bd; --dot-color-rgb:173,181,189;"></span>
+                        Días sin registro
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID DE TANQUES PREMIUM -->
+        <div id="contenedor-tanques" class="tanks-grid-premium">
+            <!-- Los tanques se cargan dinámicamente -->
+        </div>
+
+        <!-- TOTAL DE PRODUCTO -->
+        <div class="total-product-card" id="totalProductoContainer" style="display: none;">
+            <h3 class="total-product-title" id="totalProducto"></h3>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL DE OPCIONES DE DESCARGA -->
+<div class="modal fade" id="opcionesDescargaModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalLabel">Seleccione una Opción</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Seleccione una Opción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="inputDia" class="mb-3" style="display: none;">
-                    <label for="fechaValor" class="form-label"><b>Día:</b></label>
+                    <label for="fechaValor" class="form-label fw-bold">Día:</label>
                     <input type="date" id="fechaValor" class="form-control">
                 </div>
                 <div id="inputMes" class="mb-3" style="display: none;">
-                    <label for="mesValor" class="form-label"><b>Mes:</b></label>
+                    <label for="mesValor" class="form-label fw-bold">Mes:</label>
                     <input type="month" id="mesValor" class="form-control">
                 </div>
                 <div id="inputTrimestre" class="mb-3" style="display: none;">
-                    <label for="trimestreValor" class="form-label"><b>Año y Trimestre:</b></label>
+                    <label for="trimestreValor" class="form-label fw-bold">Año y Trimestre:</label>
                     <div class="d-flex">
-                        <input type="number" id="trimestreAno" class="form-control me-2" placeholder="Año" min="2020" max="2099">
+                        <input type="number" id="trimestreAno" class="form-control me-2" placeholder="Año" min="2020"
+                            max="2099">
                         <select id="trimestreNum" class="form-select">
                             <option value="1">Q1 (Ene-Mar)</option>
                             <option value="2">Q2 (Abr-Jun)</option>
@@ -418,420 +973,360 @@
                     </div>
                 </div>
                 <div id="inputAnual" class="mb-3" style="display: none;">
-                    <label for="anualValor" class="form-label"><b>Año:</b></label>
+                    <label for="anualValor" class="form-label fw-bold">Año:</label>
                     <input type="number" id="anualValor" class="form-control" placeholder="Año" min="2020" max="2099">
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" id="btnGenerarPdf" class="btn btn-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF</button>
-                <button type="button" id="btnGenerarExcel" class="btn btn-success"><i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel</button>
+                <button type="button" id="btnGenerarPdf" class="btn btn-danger">
+                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF
+                </button>
+                <button type="button" id="btnGenerarExcel" class="btn btn-success">
+                    <i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel
+                </button>
             </div>
         </div>
     </div>
 </div>
-                </div>
-            </div>
-                </div>
-            
-            <!-- Filtros mejorados -->
-            <div class="report-filters-container">
-                <div class="row align-items-end g-3">
-                    <div class="col-md-4">
-                        <div class="form-floating">
-                            <select id="filtroProducto" class="form-select border-0 bg-light">
-                                <option value="todos" selected>Todos los productos</option>
-                            </select>
-                            <label for="filtroProducto">Producto</label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="form-floating">
-                            <select id="filtroTanque" class="form-select border-0 bg-light">
-                                <option value="todos" selected>Todos los tanques</option>
-                            </select>
-                            <label for="filtroTanque">Tanque</label>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <form method="GET" action="{{ url_for('reporte_planta') }}" class="h-100">
-                            <div class="form-floating h-100">
-                                <input type="text" class="form-control border-0 bg-light h-100" id="fecha_filtro" name="fecha" value="{{ fecha_seleccionada or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
-                                <label for="fecha_filtro">Fecha del reporte</label>
-                            </div>
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="submit" class="btn btn-primary flex-grow-1">
-                                    <i class="bi bi-funnel-fill me-1"></i> Filtrar
-                                </button>
-                                <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i>
-                                </a>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="row mt-2">
-                    <div class="col d-flex align-items-center gap-3 small text-muted">
-                        <span class="legend-dot" style="--dot-color:#198754"></span> Días con registro
-                        <span class="legend-dot" style="--dot-color:#adb5bd"></span> Días sin registro
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Grid de tanques -->
-            <div id="contenedor-tanques" class="tanques-grid">
-                <!-- Los tanques se cargarán aquí dinámicamente -->
-            </div>
 
-            <!-- Total de producto -->
-            <div class="total-producto" id="totalProductoContainer" style="display: none;">
-                <h3 id="totalProducto"></h3>
-            </div>
-        </div>
-    </div>
+<script id="datos-planta" type="application/json">{{ datos_planta_para_js | default('[]') | tojson }}</script>
+<script>
+    const datosPlanta = JSON.parse(document.getElementById('datos-planta').textContent || '[]');
 
-    <script id="datos-planta" type="application/json">{{ datos_planta_para_js | default('[]') | tojson }}</script>
-    <script>
-        const datosPlanta = JSON.parse(document.getElementById('datos-planta').textContent || '[]');
+    // Elementos del DOM
+    const contenedorTanques = document.getElementById("contenedor-tanques");
+    const filtroProductoSelect = document.getElementById("filtroProducto");
+    const filtroTanqueSelect = document.getElementById("filtroTanque");
+    const totalProductoDisplay = document.getElementById("totalProducto");
+    const totalProductoContainer = document.getElementById("totalProductoContainer");
 
-        // Elementos del DOM
-        const contenedorTanques = document.getElementById("contenedor-tanques");
-        const filtroProductoSelect = document.getElementById("filtroProducto");
-        const filtroTanqueSelect = document.getElementById("filtroTanque");
-        const totalProductoDisplay = document.getElementById("totalProducto");
-        const totalProductoContainer = document.getElementById("totalProductoContainer");
+    // Cargar filtros
+    function cargarFiltros() {
+        const productos = new Set();
+        const tanques = new Set();
 
-        // Cargar los filtros
-        function cargarFiltros() {
-            const productos = new Set();
-            const tanques = new Set();
-            
-            if (Array.isArray(datosPlanta)) {
-                datosPlanta.forEach(d => {
-                    if (d && typeof d === 'object') {
-                        if (d.PRODUCTO) productos.add(d.PRODUCTO);
-                        if (d.TK) tanques.add(d.TK);
-                    }
-                });
-            }
-            
-            // Limpiar selects
-            filtroProductoSelect.innerHTML = '<option value="todos" selected>Todos los productos</option>';
-            filtroTanqueSelect.innerHTML = '<option value="todos" selected>Todos los tanques</option>';
-            
-            // Agregar opciones
-            productos.forEach(p => {
-                const op = document.createElement("option");
-                op.value = p;
-                op.textContent = p;
-                filtroProductoSelect.appendChild(op);
+        if (Array.isArray(datosPlanta)) {
+            datosPlanta.forEach(d => {
+                if (d && typeof d === 'object') {
+                    if (d.PRODUCTO) productos.add(d.PRODUCTO);
+                    if (d.TK) tanques.add(d.TK);
+                }
             });
-            
-            tanques.forEach(t => {
-                const op = document.createElement("option");
-                op.value = t;
-                op.textContent = `${t}`;
-                filtroTanqueSelect.appendChild(op);
-            });
-
-            // Agregar event listeners
-            filtroProductoSelect.addEventListener('change', filtrar);
-            filtroTanqueSelect.addEventListener('change', filtrar);
         }
 
-        // Determinar el nivel de llenado
-        function determinarNivel(porcentaje) {
-            if (porcentaje === 100) return 'full';
-            if (porcentaje >= 80) return 'red';
-            if (porcentaje >= 50) return 'orange';
-            if (porcentaje > 0) return 'green';
-            return 'empty';
-        }
+        filtroProductoSelect.innerHTML = '<option value="todos">Todos los productos</option>';
+        filtroTanqueSelect.innerHTML = '<option value="todos">Todos los tanques</option>';
 
-        document.addEventListener('DOMContentLoaded', function() {
-    const modalElement = document.getElementById('opcionesDescargaModal');
-    const descargaModal = new bootstrap.Modal(modalElement);
-    let filtroSeleccionado = '';
-
-    // Mostrar/ocultar los campos de fecha correctos en el modal
-    function prepararModal(filtro) {
-        filtroSeleccionado = filtro;
-        const hoy = new Date().toISOString();
-        const anoActual = new Date().getFullYear();
-
-        document.getElementById('inputDia').style.display = 'none';
-        document.getElementById('inputMes').style.display = 'none';
-        document.getElementById('inputTrimestre').style.display = 'none';
-        document.getElementById('inputAnual').style.display = 'none';
-
-        if (filtro === 'dia') {
-            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Día';
-            document.getElementById('inputDia').style.display = 'block';
-            document.getElementById('fechaValor').value = hoy.slice(0, 10);
-        } else if (filtro === 'mes') {
-            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Mes';
-            document.getElementById('inputMes').style.display = 'block';
-            document.getElementById('mesValor').value = hoy.slice(0, 7);
-        } else if (filtro === 'trimestre') {
-            document.getElementById('modalLabel').innerText = 'Descargar Reporte por Trimestre';
-            document.getElementById('inputTrimestre').style.display = 'block';
-            document.getElementById('trimestreAno').value = anoActual;
-        } else if (filtro === 'anual') {
-            document.getElementById('modalLabel').innerText = 'Descargar Reporte Anual';
-            document.getElementById('inputAnual').style.display = 'block';
-            document.getElementById('anualValor').value = anoActual;
-        }
-    }
-
-    // Añadir evento a cada opción del menú desplegable
-    document.querySelectorAll('.dropdown-item[data-filtro]').forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const filtro = this.getAttribute('data-filtro');
-            prepararModal(filtro);
-            descargaModal.show();
+        productos.forEach(p => {
+            const op = document.createElement("option");
+            op.value = p;
+            op.textContent = p;
+            filtroProductoSelect.appendChild(op);
         });
-    });
 
-    // Construir la URL y descargar
-    function descargar(formato) {
-        let urlBase = '';
-        if (formato === 'pdf') {
-            urlBase = "{{ url_for('descargar_reporte_planta_pdf') }}";
-        } else {
-            urlBase = "{{ url_for('exportar_excel', nombre_reporte='planta') }}";
-        }
+        tanques.forEach(t => {
+            const op = document.createElement("option");
+            op.value = t;
+            op.textContent = t;
+            filtroTanqueSelect.appendChild(op);
+        });
 
-        let params = new URLSearchParams();
-        params.append('filtro_tipo', filtroSeleccionado);
-
-        if (filtroSeleccionado === 'dia') {
-            params.append('valor', document.getElementById('fechaValor').value);
-        } else if (filtroSeleccionado === 'mes') {
-            params.append('valor', document.getElementById('mesValor').value);
-        } else if (filtroSeleccionado === 'trimestre') {
-            const ano = document.getElementById('trimestreAno').value;
-            const num = document.getElementById('trimestreNum').value;
-            params.append('valor', `${ano}-Q${num}`);
-        } else if (filtroSeleccionado === 'anual') {
-            params.append('valor', document.getElementById('anualValor').value);
-        }
-
-        window.location.href = `${urlBase}?${params.toString()}`;
-        descargaModal.hide();
+        filtroProductoSelect.addEventListener('change', filtrar);
+        filtroTanqueSelect.addEventListener('change', filtrar);
     }
 
-    // Eventos para los botones de la modal
-    document.getElementById('btnGenerarPdf').addEventListener('click', () => descargar('pdf'));
-    document.getElementById('btnGenerarExcel').addEventListener('click', () => descargar('excel'));
-});
+    // Determinar nivel
+    function determinarNivel(porcentaje) {
+        if (porcentaje >= 95) return 'full';
+        if (porcentaje >= 60) return 'good';
+        if (porcentaje >= 30) return 'medium';
+        if (porcentaje > 0) return 'low';
+        return 'empty';
+    }
 
-        // Crear tarjeta de tanque
-        function crearTarjetaTanque(data) {
-            if (typeof data !== 'object' || data === null) {
-                console.error("Datos de tanque inválidos:", data);
-                return document.createDocumentFragment();
-            }
-            
+    // Crear tarjeta de tanque
+    function crearTarjetaTanque(data, index) {
+        if (typeof data !== 'object' || data === null) {
+            console.error("Datos inválidos:", data);
+            return document.createDocumentFragment();
+        }
 
-            const bls60 = parseFloat(data.BLS_60) || 0;
-            const maxCap = parseFloat(data.MAX_CAP) || 0;
-            const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
-            const nivel = determinarNivel(porcentaje);
+        const bls60 = parseFloat(data.BLS_60) || 0;
+        const maxCap = parseFloat(data.MAX_CAP) || 0;
+        const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
+        const nivel = determinarNivel(porcentaje);
 
-            // Cálculo de toneladas (solo para TK-102, TK-110 y TK-108):
-            // 1) Preferir cálculo con API: Ton = BLS_60 * SG / 6.2898, donde SG = 141.5 / (API + 131.5)
-            // 2) Si no hay API, usar reglas específicas: TK-102 => /6.7, TK-110 => /7.4, TK-108 (VLSFO) => /6.7
-            let toneladasHTML = '';
-            const allowedTonTanks = new Set(['TK-102','TK-110','TK-108']);
+        let conversionHTML = '';
+        if (data.TK === "Consumo Interno") {
+            const gals = (bls60 * 42).toFixed(2);
+            conversionHTML = `
+            <div class="tank-conversion-info">
+                <i class="bi bi-droplet-fill"></i>
+                <strong>${parseFloat(gals).toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</strong>
+            </div>`;
+        } else {
+            const allowedTonTanks = new Set(['TK-102', 'TK-110', 'TK-108']);
             if (allowedTonTanks.has(data.TK)) {
                 const apiVal = parseFloat(data.API);
+                let tons = 0;
                 if (!isNaN(apiVal) && bls60 > 0) {
                     const sg = 141.5 / (apiVal + 131.5);
-                    const tons = bls60 * (sg / 6.2898);
-                    toneladasHTML = `
-                        <div class=\"tanque-toneladas\" title=\"Calculado con API (Ton = BLS_60 * SG / 6.2898)\">
-                            <span>Ton: ${tons.toFixed(2)}</span>
-                        </div>`;
+                    tons = bls60 * (sg / 6.2898);
                 } else if (data.TK === 'TK-102') {
-                    const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
-                    toneladasHTML = `
-                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
-                            <span>Ton: ${ton67.toFixed(2)}</span>
-                        </div>`;
+                    tons = bls60 > 0 ? (bls60 / 6.7) : 0;
                 } else if (data.TK === 'TK-110') {
-                    const ton74 = bls60 > 0 ? (bls60 / 7.4) : 0;
-                    toneladasHTML = `
-                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 7.4\">
-                            <span>Ton: ${ton74.toFixed(2)}</span>
-                        </div>`;
+                    tons = bls60 > 0 ? (bls60 / 7.4) : 0;
                 } else if (data.TK === 'TK-108') {
-                    // Fallback para TK-108 (VLSFO) cuando no hay API
-                    const ton67 = bls60 > 0 ? (bls60 / 6.7) : 0;
-                    toneladasHTML = `
-                        <div class=\"tanque-toneladas\" title=\"BLS @60 dividido entre 6.7\">
-                            <span>Ton: ${ton67.toFixed(2)}</span>
-                        </div>`;
+                    tons = bls60 > 0 ? (bls60 / 6.7) : 0;
+                }
+                if (tons > 0) {
+                    conversionHTML = `
+                    <div class="tank-conversion-info" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #047857;">
+                        <i class="bi bi-box-seam"></i>
+                        <strong>${tons.toFixed(2)} TON</strong>
+                    </div>`;
                 }
             }
-            
-            const card = document.createElement("div");
-            card.className = "tanque-card";
-            card.setAttribute("data-tk", data.TK || '');
-            card.setAttribute("data-producto", data.PRODUCTO || '');
-            card.setAttribute("title", `Capacidad: ${maxCap.toLocaleString()} BLS`);
-
-            card.innerHTML = `
-                <div class="tanque-card-header">
-                    <div class="tanque-id">${data.TK || 'N/A'}</div>
-                    <div class="tanque-producto">${data.PRODUCTO || 'N/A'}</div>
-                </div>
-                
-                <div class="tanque-card-body">
-                    <div class="tanque-visual">
-                        <div class="tanque-liquido ${nivel}" style="height:${porcentaje}%"></div>
-                        ${porcentaje === 100 ? '<div class="tanque-lleno-label">TANQUE LLENO</div>' : ''}
-                    </div>
-                    
-                    <div class="tanque-info">
-                        <div class="tanque-volume">
-                            ${bls60.toLocaleString('es-CO')} <span class="tanque-volume-unit">BLS</span>
-                        </div>
-                        ${toneladasHTML}
-                        
-                        <div class="tanque-progress">
-                            <div class="tanque-progress-bar ${nivel}" style="width: ${porcentaje}%"></div>
-                        </div>
-                        
-                        <div class="tanque-percentage ${nivel}">
-                            <span>${porcentaje.toFixed(1)}%</span>
-                            <span class="tanque-max">Max: ${maxCap.toLocaleString('es-CO')}</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="tanque-card-footer">
-                    <div class="tanque-stat">
-                        <span class="tanque-stat-label">API</span>
-                        <span class="tanque-stat-value">${data.API || 'N/A'}</span>
-                    </div>
-                    
-                    <div class="tanque-stat">
-                        <span class="tanque-stat-label">BSW</span>
-                        <span class="tanque-stat-value">${data.BSW ? data.BSW + '%' : 'N/A'}</span>
-                    </div>
-                    
-                    <div class="tanque-stat">
-                        <span class="tanque-stat-label">%S</span>
-                        <span class="tanque-stat-value">${data.S ? data.S + '%' : 'N/A'}</span>
-                    </div>
-                </div>
-            `;
-            
-            return card;
         }
 
-        // Filtrar tanques
-        function filtrar() {
-            const producto = filtroProductoSelect.value;
-            const tanque = filtroTanqueSelect.value;
-            
-            contenedorTanques.innerHTML = "";
-            let totalBLS = 0;
-            let tanquesMostrados = 0;
-            let productoFiltrado = "";
+        const card = document.createElement("div");
+        card.className = "tank-card-premium";
+        card.setAttribute("data-tk", data.TK || '');
+        card.setAttribute("data-producto", data.PRODUCTO || '');
+        card.style.setProperty('--animation-order', index);
 
-            if (Array.isArray(datosPlanta)) {
-                datosPlanta.forEach(d => {
-                    if (typeof d !== 'object' || d === null) return;
-                    
-                    const coincideProducto = producto === "todos" || d.PRODUCTO === producto;
-                    const coincideTanque = tanque === "todos" || d.TK === tanque;
-                    
-                    if (coincideProducto && coincideTanque) {
-                        contenedorTanques.appendChild(crearTarjetaTanque(d));
-                        tanquesMostrados++;
-                        
-                        if (producto !== "todos" && tanque === "todos") {
-                            totalBLS += (parseFloat(d.BLS_60) || 0);
-                            productoFiltrado = producto;
+        let maxCapLabel = `${maxCap.toLocaleString('es-CO', { maximumFractionDigits: 0 })} BLS`;
+        if (data.TK === "Consumo Interno") {
+            maxCapLabel = `${maxCap.toLocaleString('es-CO', { maximumFractionDigits: 2 })} BLS (${(maxCap * 42).toFixed(2)} GAL)`;
+        }
+
+        card.innerHTML = `
+        <div class="tank-card-header-premium">
+            <div class="tank-id-premium">${data.TK || 'N/A'}</div>
+            <div class="tank-product-badge">${data.PRODUCTO || 'N/A'}</div>
+        </div>
+        
+        <div class="tank-card-body-premium">
+            <div class="tank-visual-3d">
+                <div class="tank-cylinder">
+                    <div class="tank-liquid-premium level-${nivel}" style="height:${porcentaje}%"></div>
+                    ${porcentaje >= 95 ? '<div class="tank-full-alert"><i class="bi bi-exclamation-triangle-fill me-1"></i>LLENO</div>' : ''}
+                </div>
+            </div>
+            
+            <div class="tank-info-premium">
+                <div class="tank-volume-display">
+                    ${bls60.toLocaleString('es-CO', { maximumFractionDigits: 2 })} 
+                    <span class="tank-volume-unit">BLS</span>
+                </div>
+                ${conversionHTML}
+                
+                <div class="tank-progress-premium">
+                    <div class="tank-progress-bar-premium level-${nivel}" style="width: ${porcentaje}%"></div>
+                </div>
+                
+                <div class="tank-percentage-display">
+                    <span class="tank-percentage-value level-${nivel}">${porcentaje.toFixed(1)}%</span>
+                    <span class="tank-max-capacity">Max: ${maxCapLabel}</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tank-card-footer-premium">
+            <div class="tank-stat-premium">
+                <span class="tank-stat-label">API</span>
+                <span class="tank-stat-value">${data.API || 'N/A'}</span>
+            </div>
+            <div class="tank-stat-premium">
+                <span class="tank-stat-label">BSW</span>
+                <span class="tank-stat-value">${data.TK === 'Consumo Interno' ? 'N/A' : (data.BSW ? data.BSW + '%' : 'N/A')}</span>
+            </div>
+            <div class="tank-stat-premium">
+                <span class="tank-stat-label">%S</span>
+                <span class="tank-stat-value">${data.TK === 'Consumo Interno' ? 'N/A' : (data.S ? data.S + '%' : 'N/A')}</span>
+            </div>
+        </div>
+    `;
+
+        return card;
+    }
+
+    // Filtrar tanques
+    function filtrar() {
+        const producto = filtroProductoSelect.value;
+        const tanque = filtroTanqueSelect.value;
+
+        contenedorTanques.innerHTML = "";
+        let totalBLS = 0;
+        let tanquesMostrados = 0;
+        let productoFiltrado = "";
+
+        if (Array.isArray(datosPlanta)) {
+            datosPlanta.forEach((d, idx) => {
+                if (typeof d !== 'object' || d === null) return;
+
+                const coincideProducto = producto === "todos" || d.PRODUCTO === producto;
+                const coincideTanque = tanque === "todos" || d.TK === tanque;
+
+                if (coincideProducto && coincideTanque) {
+                    contenedorTanques.appendChild(crearTarjetaTanque(d, idx));
+                    tanquesMostrados++;
+
+                    if (producto !== "todos" && tanque === "todos") {
+                        totalBLS += (parseFloat(d.BLS_60) || 0);
+                        productoFiltrado = producto;
+                    }
+                }
+            });
+        }
+
+        // Mostrar total
+        if (productoFiltrado) {
+            totalProductoDisplay.innerHTML = `Volumen total de <span class="total-product-value">${productoFiltrado}</span>: ${totalBLS.toLocaleString('es-CO', { maximumFractionDigits: 2 })} BLS`;
+            totalProductoContainer.style.display = 'block';
+        } else {
+            totalProductoContainer.style.display = 'none';
+        }
+
+        // Mensaje sin datos
+        if (tanquesMostrados === 0) {
+            const mensaje = document.createElement("div");
+            mensaje.className = "no-data-premium";
+
+            if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
+                mensaje.innerHTML = `
+                <div class="no-data-icon"><i class="bi bi-funnel"></i></div>
+                <h3 class="h5 mb-2">No hay tanques que coincidan</h3>
+                <p class="text-muted mb-0">Intente con otros filtros de búsqueda</p>
+            `;
+            } else {
+                mensaje.innerHTML = `
+                <div class="no-data-icon"><i class="bi bi-database-exclamation"></i></div>
+                <h3 class="h5 mb-2">No hay datos disponibles</h3>
+                <p class="text-muted mb-0">Por favor, guarde un registro en la planilla primero</p>
+            `;
+            }
+
+            contenedorTanques.appendChild(mensaje);
+        }
+    }
+
+    // Inicializar
+    document.addEventListener("DOMContentLoaded", () => {
+        // Calendario
+        const input = document.getElementById('fecha_filtro');
+        if (input) {
+            const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
+            const setFechas = new Set(fechasConRegistro);
+
+            const addCss = (href) => {
+                const l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                document.head.appendChild(l);
+            };
+            const addJs = (src, cb) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = cb;
+                document.body.appendChild(s);
+            };
+
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
+            addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
+                flatpickr(input, {
+                    dateFormat: 'Y-m-d',
+                    defaultDate: input.value || new Date(),
+                    allowInput: true,
+                    onDayCreate: function (dObj, dStr, fp, dayElem) {
+                        const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
+                        if (setFechas.has(dateStr)) {
+                            dayElem.style.background = 'rgba(25, 135, 84, 0.2)';
+                            dayElem.style.color = '#198754';
+                            dayElem.setAttribute('title', 'Con registro');
+                        } else {
+                            dayElem.style.background = 'rgba(173,181,189,0.15)';
+                            dayElem.style.color = '#6c757d';
+                            dayElem.setAttribute('title', 'Sin registro');
                         }
                     }
                 });
-            }
-            
-            // Mostrar total si hay filtro por producto
-            if (productoFiltrado) {
-                totalProductoDisplay.innerHTML = `Volumen total de <strong>${productoFiltrado}</strong>: ${totalBLS.toLocaleString('es-CO')} BLS`;
-                totalProductoContainer.style.display = 'block';
-            } else {
-                totalProductoContainer.style.display = 'none';
-            }
-            
-            // Mostrar mensaje si no hay resultados
-            if (tanquesMostrados === 0) {
-                const mensaje = document.createElement("div");
-                mensaje.className = "no-data-message";
-                
-                if (Array.isArray(datosPlanta) && datosPlanta.length > 0) {
-                    mensaje.innerHTML = `
-                        <i class="bi bi-exclamation-circle-fill text-muted mb-3" style="font-size: 2rem;"></i>
-                        <h3 class="h5">No hay tanques que coincidan con los filtros</h3>
-                        <p class="text-muted">Prueba con otros criterios de búsqueda</p>
-                    `;
-                } else {
-                    mensaje.innerHTML = `
-                        <i class="bi bi-database-fill-exclamation text-muted mb-3" style="font-size: 2rem;"></i>
-                        <h3 class="h5">No hay datos disponibles</h3>
-                        <p class="text-muted">Por favor, guarde un registro primero</p>
-                    `;
-                }
-                
-                contenedorTanques.appendChild(mensaje);
+            });
+        }
+
+        cargarFiltros();
+        filtrar();
+
+        // Modal de descarga
+        const modalElement = document.getElementById('opcionesDescargaModal');
+        const descargaModal = new bootstrap.Modal(modalElement);
+        let filtroSeleccionado = '';
+
+        function prepararModal(filtro) {
+            filtroSeleccionado = filtro;
+            const hoy = new Date().toISOString();
+            const anoActual = new Date().getFullYear();
+
+            document.getElementById('inputDia').style.display = 'none';
+            document.getElementById('inputMes').style.display = 'none';
+            document.getElementById('inputTrimestre').style.display = 'none';
+            document.getElementById('inputAnual').style.display = 'none';
+
+            if (filtro === 'dia') {
+                document.getElementById('inputDia').style.display = 'block';
+                document.getElementById('fechaValor').value = hoy.slice(0, 10);
+            } else if (filtro === 'mes') {
+                document.getElementById('inputMes').style.display = 'block';
+                document.getElementById('mesValor').value = hoy.slice(0, 7);
+            } else if (filtro === 'trimestre') {
+                document.getElementById('inputTrimestre').style.display = 'block';
+                document.getElementById('trimestreAno').value = anoActual;
+            } else if (filtro === 'anual') {
+                document.getElementById('inputAnual').style.display = 'block';
+                document.getElementById('anualValor').value = anoActual;
             }
         }
 
-        // Inicializar
-        document.addEventListener("DOMContentLoaded", () => {
-            // Calendario con colores (Flatpickr)
-            const input = document.getElementById('fecha_filtro');
-            if (input) {
-                const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
-                const setFechas = new Set(fechasConRegistro);
-                const addCss = (href) => { const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); };
-                const addJs = (src, cb) => { const s=document.createElement('script'); s.src=src; s.onload=cb; document.body.appendChild(s); };
-                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
-                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
-                addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/plugins/monthSelect/style.css');
-                addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
-                    flatpickr(input, {
-                        dateFormat: 'Y-m-d',
-                        defaultDate: input.value || '{{ today_iso }}',
-                        allowInput: true,
-                        onDayCreate: function(dObj, dStr, fp, dayElem) {
-                            const dateStr = dayElem.dateObj.toISOString().slice(0,10);
-                            dayElem.classList.add('fp-hint-day');
-                            if (setFechas.has(dateStr)) {
-                                dayElem.classList.add('fp-day-con-registro');
-                                dayElem.setAttribute('title','Con registro');
-                            } else {
-                                dayElem.classList.add('fp-day-sin-registro');
-                                dayElem.setAttribute('title','Sin registro');
-                            }
-                        }
-                    });
-                });
-            }
-            cargarFiltros();
-            filtrar();
+        document.querySelectorAll('.dropdown-item[data-filtro]').forEach(item => {
+            item.addEventListener('click', function (e) {
+                e.preventDefault();
+                const filtro = this.getAttribute('data-filtro');
+                prepararModal(filtro);
+                descargaModal.show();
+            });
         });
-    </script>
-    <style>
-    .flatpickr-calendar .flatpickr-day.fp-hint-day { position: relative; }
-    .flatpickr-calendar .flatpickr-day.fp-day-con-registro { background: rgba(25, 135, 84, 0.2); color: #198754; border-color: rgba(25,135,84,0.45); }
-    .flatpickr-calendar .flatpickr-day.fp-day-sin-registro { background: rgba(173,181,189,0.25); color: #6c757d; }
-    .flatpickr-calendar .flatpickr-day.selected { background: #0b8552; border-color: #0b8552; color: #fff; }
-    .flatpickr-calendar .flatpickr-day.today { border-color: #0b8552; }
-    .legend-dot { width:10px; height:10px; border-radius:50%; background: var(--dot-color); display:inline-block; }
-    </style>
-    {% endblock %}
+
+        function descargar(formato) {
+            let urlBase = '';
+            if (formato === 'pdf') {
+                urlBase = "{{ url_for('descargar_reporte_planta_pdf') }}";
+            } else {
+                urlBase = "{{ url_for('exportar_excel', nombre_reporte='planta') }}";
+            }
+
+            let params = new URLSearchParams();
+            params.append('filtro_tipo', filtroSeleccionado);
+
+            if (filtroSeleccionado === 'dia') {
+                params.append('valor', document.getElementById('fechaValor').value);
+            } else if (filtroSeleccionado === 'mes') {
+                params.append('valor', document.getElementById('mesValor').value);
+            } else if (filtroSeleccionado === 'trimestre') {
+                const ano = document.getElementById('trimestreAno').value;
+                const num = document.getElementById('trimestreNum').value;
+                params.append('valor', `${ano}-Q${num}`);
+            } else if (filtroSeleccionado === 'anual') {
+                params.append('valor', document.getElementById('anualValor').value);
+            }
+
+            window.location.href = `${urlBase}?${params.toString()}`;
+            descargaModal.hide();
+        }
+
+        document.getElementById('btnGenerarPdf').addEventListener('click', () => descargar('pdf'));
+        document.getElementById('btnGenerarExcel').addEventListener('click', () => descargar('excel'));
+    });
+</script>
+{% endblock %}

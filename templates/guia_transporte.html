@@ -59,9 +59,12 @@
             bottom: 20px;
             right: 20px;
             z-index: 1002;
-            background: rgba(0, 64, 128, 0.95);
-            padding: 10px 15px;
-            border-radius: 8px;
+            background: rgba(13, 110, 253, 0.95);
+            /* Azul Bootstrap moderno */
+            padding: 12px 18px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
             display: flex;
             align-items: center;
@@ -157,32 +160,41 @@
             border-top: 1px solid #ddd;
         }
 
+        /* Botones Panel de Impresión - Diseño Moderno */
         .botones-panel button {
             flex: 1;
             padding: 10px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            /* Bordes más redondeados */
             cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
+            font-weight: 600;
+            /* Peso de fuente moderno */
+            font-size: 14px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .btn-imprimir-seleccion {
-            background: #28a745;
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
             color: white;
         }
 
         .btn-imprimir-seleccion:hover {
-            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
         }
 
         .btn-cancelar-parcial {
-            background: #6c757d;
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
             color: white;
         }
 
         .btn-cancelar-parcial:hover {
-            background: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
         }
 
         /* Contenedor de acciones (id histórico) */
@@ -201,61 +213,63 @@
             z-index: 1000;
         }
 
-        #acciones button {
-            padding: 8px 15px;
-            margin-right: 8px;
-            background: #004080;
-            border: none;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
+        #acciones button,
         .acciones button {
-            /* mismo estilo para la clase */
-            padding: 8px 15px;
-            margin-right: 8px;
-            background: #004080;
+            padding: 10px 20px;
+            margin-right: 12px;
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
             border: none;
             color: white;
-            font-weight: bold;
-            border-radius: 5px;
+            font-weight: 600;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        #acciones button:hover {
-            background: #0066cc;
-        }
-
+        #acciones button:hover,
         .acciones button:hover {
-            background: #0066cc;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(13, 110, 253, 0.3);
+            background: linear-gradient(135deg, #0b5ed7 0%, #0a53be 100%);
         }
 
-        /* Estilo para el botón de Cerrar Sesión */
+        /* Íconos en botones si se usan */
+        #acciones button i,
+        .acciones button i {
+            font-size: 1.1em;
+        }
+
+        /* Estilo para el botón de Cerrar Sesión - Mejorado */
         #boton-logout {
             position: fixed;
-            top: 15px;
-            right: 15px;
+            top: 20px;
+            right: 20px;
             z-index: 1001;
-            padding: 8px 15px;
-            background-color: #dc3545;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #dc3545 0%, #bb2d3b 100%);
             color: white;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 12px;
-            font-weight: bold;
-            font-family: sans-serif;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Segoe UI', system-ui, sans-serif;
             display: flex;
             align-items: center;
-            gap: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            gap: 8px;
+            box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         #boton-logout:hover {
-            background-color: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(220, 53, 69, 0.3);
+            background: linear-gradient(135deg, #c82333 0%, #a52834 100%);
         }
 
         #selloInput {
@@ -341,6 +355,31 @@
             transition: background 0.15s ease-in-out;
             color: #333;
             text-align: left;
+            display: flex;
+            /* Flex para alinear botón eliminar */
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dropdown-item-client .client-info-wrap {
+            flex-grow: 1;
+            /* Ocupa el espacio restante */
+        }
+
+        .btn-delete-client {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 5px 10px;
+            font-size: 1.2em;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .btn-delete-client:hover {
+            opacity: 1;
+            transform: scale(1.1);
         }
 
         .dropdown-item-client:hover {
@@ -388,7 +427,8 @@
                 display: none !important;
             }
 
-            .btn-agregar-conductor-interno {
+            .btn-agregar-conductor-interno,
+            .btn-agregar-cliente-interno {
                 display: none !important;
             }
 
@@ -1284,12 +1324,19 @@
             clientes.forEach((c, index) => {
                 const item = document.createElement('div');
                 item.className = 'dropdown-item-client';
+                // El clic principal selecciona al cliente
                 item.onclick = () => seleccionarCliente(index);
 
-                // Estructura bonita
+                // Estructura: Info izquierda + Botón eliminar derecha
                 item.innerHTML = `
-                    <span class="client-name">${c.NOMBRE_CLIENTE}</span>
-                    <span class="client-details">${c.CIUDAD_DEPARTAMENTO || 'Sin ciudad'} — ${c.DIRECCION || 'Sin dirección'}</span>
+                    <div class="client-info-wrap">
+                        <span class="client-name">${c.NOMBRE_CLIENTE}</span>
+                        <span class="client-details">${c.CIUDAD_DEPARTAMENTO || 'Sin ciudad'} — ${c.DIRECCION || 'Sin dirección'}</span>
+                    </div>
+                    <button class="btn-delete-client" title="Eliminar Cliente" 
+                            onclick="event.stopPropagation(); eliminarCliente('${index}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
                 `;
                 listaDiv.appendChild(item);
             });
@@ -1366,374 +1413,374 @@
             await cargarDatos();
 
             // Pasa los datos de Flask a una variable de JavaScript de forma segura.
-            const datosGuia = {{ (datos_guia | default ({})) | tojson | safe }};
+            const datosGuia = JSON.parse('{{ (datos_guia | default ({})) | tojson | safe }}');
 
-        // Asegurarse de llamar a las funciones de sync una vez cargados los datos
-        syncEmpresaTransportadoraWrap();
-        syncDestinoWrap();
-
-        if (Object.keys(datosGuia).length > 1) {
-            console.log("Rellenando guía con datos recibidos:", datosGuia);
-
-            // --- Rellenar campos de texto y selects ---
-            document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
+            // Asegurarse de llamar a las funciones de sync una vez cargados los datos
             syncEmpresaTransportadoraWrap();
-            document.getElementById('placaCabezote').value = datosGuia.placa || '';
-            // Mapear columna 'TANQUE' desde programación a 'PLACA DEL TANQUE' (acepta variantes de nombre)
-            document.getElementById('placaTanque').value = (
-                datosGuia.TANQUE || datosGuia.tanque || datosGuia.PLACA_TANQUE || datosGuia.placa_tanque || ''
-            ).toString();
-            document.getElementById('conductorSelect').value = datosGuia.conductor || '';
-            document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
-            document.getElementById('destinoDireccion').value = datosGuia.destino || '';
             syncDestinoWrap();
-            document.getElementById('galones').value = datosGuia.galones || '';
-            document.getElementById('selloInput').value = datosGuia.precintos || '';
-            // Factura/Remisión desde Programación de Cargue
-            document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
 
-            // --- Cliente y Dirección ---
-            // Reemplazo para funcionar con el Dropdown Personalizado
-            if (datosGuia.cliente) {
-                // Buscamos el indice por nombre (fallback al primero encontrado)
-                const idx = clientes.findIndex(c => c.NOMBRE_CLIENTE === datosGuia.cliente);
-                if (idx !== -1) {
-                    seleccionarCliente(idx);
-                }
-            }
+            if (Object.keys(datosGuia).length > 1) {
+                console.log("Rellenando guía con datos recibidos:", datosGuia);
 
-            // --- Producto, Temperatura y APIs ---
-            const productoSelect = document.getElementById('productoSelect');
-            if (datosGuia.producto) {
-                productoSelect.value = datosGuia.producto;
-                // Disparamos el evento para que cargue los datos por defecto del producto (Temp, API, etc.)
-                productoSelect.dispatchEvent(new Event('change'));
-            }
+                // --- Rellenar campos de texto y selects ---
+                document.getElementById('empresaTransportadoraInput').value = datosGuia.transportadora || '';
+                syncEmpresaTransportadoraWrap();
+                document.getElementById('placaCabezote').value = datosGuia.placa || '';
+                // Mapear columna 'TANQUE' desde programación a 'PLACA DEL TANQUE' (acepta variantes de nombre)
+                document.getElementById('placaTanque').value = (
+                    datosGuia.TANQUE || datosGuia.tanque || datosGuia.PLACA_TANQUE || datosGuia.placa_tanque || ''
+                ).toString();
+                document.getElementById('conductorSelect').value = datosGuia.conductor || '';
+                document.getElementById('cedulaConductor').value = datosGuia.cedula || '';
+                document.getElementById('destinoDireccion').value = datosGuia.destino || '';
+                syncDestinoWrap();
+                document.getElementById('galones').value = datosGuia.galones || '';
+                document.getElementById('selloInput').value = datosGuia.precintos || '';
+                // Factura/Remisión desde Programación de Cargue
+                document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
 
-            // Ahora, sobrescribimos los datos por defecto con los valores REALES de la programación.
-            document.getElementById('tempF').value = datosGuia.temperatura || document.getElementById('tempF').value;
-            document.getElementById('apiObs').value = datosGuia.api_obs || document.getElementById('apiObs').value;
-            document.getElementById('apiCorr').value = datosGuia.api_corregido || document.getElementById('apiCorr').value;
-
-            // Si se rellenaron los galones, disparamos la conversión a barriles.
-            if (document.getElementById('galones').value) {
-                convertirABarriles();
-            }
-        }
-
-        // 2. Definir todas las variables de los modales en un solo lugar
-        const modalElCliente = document.getElementById('modalAgregarCliente');
-        const modalCliente = new bootstrap.Modal(modalElCliente);
-        const modalElEditarCliente = document.getElementById('modalEditarCliente');
-        const modalEditarCliente = modalElEditarCliente ? new bootstrap.Modal(modalElEditarCliente) : null;
-
-        const modalElConductor = document.getElementById('modalAgregarConductor');
-        const modalConductor = new bootstrap.Modal(modalElConductor);
-
-        const modalElEmpresa = document.getElementById('modalAgregarEmpresa');
-        const modalEmpresa = new bootstrap.Modal(modalElEmpresa);
-
-        // 3. Configurar todos los eventos
-
-        // Eventos para CLIENTE
-        document.getElementById('btnAbrirModalCliente').addEventListener('click', () => {
-            document.getElementById('formAgregarCliente').reset();
-            modalCliente.show();
-        });
-        const btnEditarCliente = document.getElementById('btnEditarCliente');
-        if (btnEditarCliente && modalEditarCliente) {
-            btnEditarCliente.addEventListener('click', () => {
-                // Para editar, necesitamos saber qué cliente está seleccionado actualmente.
-                // Como quitamos el select, usamos el valor del input display para buscarlo.
-                const nombreActual = document.getElementById('clienteNombreDisplay').value;
-                if (!nombreActual) {
-                    Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
-                    return;
-                }
-
-                // Buscar el cliente por nombre exacto (y dirección si fuera posible, pero aqui asumimos nombre display)
-                // OJO: Si hay duplicados de nombre, esto podría editar el primero. 
-                // Idealmente deberíamos guardar el INDEX seleccionado en una variable global.
-                const index = clientes.findIndex(c => c.NOMBRE_CLIENTE === nombreActual);
-
-                if (index === -1) {
-                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No se encontró el cliente en la lista.' });
-                    return;
-                }
-                const clienteActual = clientes[index];
-                if (!clienteActual) {
-                    Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'Datos irrelevantes.' });
-                    return;
-                }
-                document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-                document.getElementById('originalDireccionCliente').value = clienteActual.DIRECCION || '';
-                document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-                document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
-                document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
-                modalEditarCliente.show();
-            });
-        }
-        // El evento change del select ya no existe porque el select se eliminó.
-        // La lógica de "AGREGAR_CLIENTE" ahora se maneja en el botón dentro del dropdown personalizado.
-        document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
-            const nombre = document.getElementById('nombreNuevoCliente').value.trim();
-            const direccion = document.getElementById('direccionNuevoCliente').value.trim();
-            const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
-            if (!nombre || !direccion || !ciudad) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
-
-            try {
-                const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
-                const result = await response.json();
-                if (response.ok) {
-                    clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
-                    actualizarDropdownClientes();
-                    // Encontrar el indice del nuevo cliente (por nombre y dirección para ser exactos)
-                    const newIdx = clientes.findIndex(c =>
-                        c.NOMBRE_CLIENTE === result.nuevo_cliente.NOMBRE_CLIENTE &&
-                        c.DIRECCION === result.nuevo_cliente.DIRECCION
-                    );
-                    if (newIdx !== -1) {
-                        seleccionarCliente(newIdx);
+                // --- Cliente y Dirección ---
+                // Reemplazo para funcionar con el Dropdown Personalizado
+                if (datosGuia.cliente) {
+                    // Buscamos el indice por nombre (fallback al primero encontrado)
+                    const idx = clientes.findIndex(c => c.NOMBRE_CLIENTE === datosGuia.cliente);
+                    if (idx !== -1) {
+                        seleccionarCliente(idx);
                     }
-                    modalCliente.hide();
-                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
                 }
-            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
-        });
-        const btnActualizarCliente = document.getElementById('btnActualizarCliente');
-        if (btnActualizarCliente && modalEditarCliente) {
-            btnActualizarCliente.addEventListener('click', async () => {
-                const original = document.getElementById('originalNombreCliente').value.trim();
-                const originalDireccion = document.getElementById('originalDireccionCliente').value.trim();
-                const nombre = document.getElementById('editarNombreCliente').value.trim();
-                const direccion = document.getElementById('editarDireccionCliente').value.trim();
-                const ciudad = document.getElementById('editarCiudadCliente').value.trim();
-                if (!original || !nombre || !direccion || !ciudad) {
-                    Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa todos los campos antes de guardar.' });
-                    return;
+
+                // --- Producto, Temperatura y APIs ---
+                const productoSelect = document.getElementById('productoSelect');
+                if (datosGuia.producto) {
+                    productoSelect.value = datosGuia.producto;
+                    // Disparamos el evento para que cargue los datos por defecto del producto (Temp, API, etc.)
+                    productoSelect.dispatchEvent(new Event('change'));
                 }
+
+                // Ahora, sobrescribimos los datos por defecto con los valores REALES de la programación.
+                document.getElementById('tempF').value = datosGuia.temperatura || document.getElementById('tempF').value;
+                document.getElementById('apiObs').value = datosGuia.api_obs || document.getElementById('apiObs').value;
+                document.getElementById('apiCorr').value = datosGuia.api_corregido || document.getElementById('apiCorr').value;
+
+                // Si se rellenaron los galones, disparamos la conversión a barriles.
+                if (document.getElementById('galones').value) {
+                    convertirABarriles();
+                }
+            }
+
+            // 2. Definir todas las variables de los modales en un solo lugar
+            const modalElCliente = document.getElementById('modalAgregarCliente');
+            const modalCliente = new bootstrap.Modal(modalElCliente);
+            const modalElEditarCliente = document.getElementById('modalEditarCliente');
+            const modalEditarCliente = modalElEditarCliente ? new bootstrap.Modal(modalElEditarCliente) : null;
+
+            const modalElConductor = document.getElementById('modalAgregarConductor');
+            const modalConductor = new bootstrap.Modal(modalElConductor);
+
+            const modalElEmpresa = document.getElementById('modalAgregarEmpresa');
+            const modalEmpresa = new bootstrap.Modal(modalElEmpresa);
+
+            // 3. Configurar todos los eventos
+
+            // Eventos para CLIENTE
+            document.getElementById('btnAbrirModalCliente').addEventListener('click', () => {
+                document.getElementById('formAgregarCliente').reset();
+                modalCliente.show();
+            });
+            const btnEditarCliente = document.getElementById('btnEditarCliente');
+            if (btnEditarCliente && modalEditarCliente) {
+                btnEditarCliente.addEventListener('click', () => {
+                    // Para editar, necesitamos saber qué cliente está seleccionado actualmente.
+                    // Como quitamos el select, usamos el valor del input display para buscarlo.
+                    const nombreActual = document.getElementById('clienteNombreDisplay').value;
+                    if (!nombreActual) {
+                        Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
+                        return;
+                    }
+
+                    // Buscar el cliente por nombre exacto (y dirección si fuera posible, pero aqui asumimos nombre display)
+                    // OJO: Si hay duplicados de nombre, esto podría editar el primero. 
+                    // Idealmente deberíamos guardar el INDEX seleccionado en una variable global.
+                    const index = clientes.findIndex(c => c.NOMBRE_CLIENTE === nombreActual);
+
+                    if (index === -1) {
+                        Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No se encontró el cliente en la lista.' });
+                        return;
+                    }
+                    const clienteActual = clientes[index];
+                    if (!clienteActual) {
+                        Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'Datos irrelevantes.' });
+                        return;
+                    }
+                    document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+                    document.getElementById('originalDireccionCliente').value = clienteActual.DIRECCION || '';
+                    document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+                    document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
+                    document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
+                    modalEditarCliente.show();
+                });
+            }
+            // El evento change del select ya no existe porque el select se eliminó.
+            // La lógica de "AGREGAR_CLIENTE" ahora se maneja en el botón dentro del dropdown personalizado.
+            document.getElementById('btnGuardarCliente').addEventListener('click', async () => {
+                const nombre = document.getElementById('nombreNuevoCliente').value.trim();
+                const direccion = document.getElementById('direccionNuevoCliente').value.trim();
+                const ciudad = document.getElementById('ciudadNuevoCliente').value.trim();
+                if (!nombre || !direccion || !ciudad) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
+
                 try {
-                    const response = await fetch("{{ url_for('actualizar_cliente_ajax') }}", {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            original_nombre: original,
-                            original_direccion: originalDireccion,
-                            nombre,
-                            direccion,
-                            ciudad
-                        })
-                    });
+                    const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
                     const result = await response.json();
                     if (response.ok) {
                         clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
                         actualizarDropdownClientes();
-                        // Encontrar el indice del cliente actualizado
+                        // Encontrar el indice del nuevo cliente (por nombre y dirección para ser exactos)
                         const newIdx = clientes.findIndex(c =>
-                            c.NOMBRE_CLIENTE === result.cliente.NOMBRE_CLIENTE &&
-                            c.DIRECCION === result.cliente.DIRECCION
+                            c.NOMBRE_CLIENTE === result.nuevo_cliente.NOMBRE_CLIENTE &&
+                            c.DIRECCION === result.nuevo_cliente.DIRECCION
                         );
                         if (newIdx !== -1) {
                             seleccionarCliente(newIdx);
                         }
-                        modalEditarCliente.hide();
-                        Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
+                        modalCliente.hide();
+                        Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El cliente '${result.nuevo_cliente.NOMBRE_CLIENTE}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo actualizar el cliente.' });
+                        Swal.fire({ icon: 'error', title: 'Error', text: result.message });
                     }
-                } catch (error) {
-                    Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' });
-                }
+                } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
             });
-        }
-
-        // Eventos para CONDUCTOR
-        document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
-            document.getElementById('formAgregarConductor').reset();
-            modalConductor.show();
-        });
-        document.getElementById('btnGuardarConductor').addEventListener('click', async () => {
-            const nombre = document.getElementById('nombreNuevoConductor').value.trim();
-            const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
-            const placa = document.getElementById('placaNuevoConductor').value.trim();
-            if (!nombre || !cedula || !placa) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
-
-            try {
-                const response = await fetch("{{ url_for('agregar_conductor_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, cedula, placa }) });
-                const result = await response.json();
-                if (response.ok) {
-                    conductores = await (await fetch("{{ url_for('static', filename='Conductores.json') }}?v=" + Date.now())).json();
-                    actualizarDropdownConductores();
-                    document.getElementById('conductorSelect').value = result.nuevo_conductor.CONDUCTOR;
-                    document.getElementById('conductorSelect').dispatchEvent(new Event('change'));
-                    modalConductor.hide();
-                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El conductor '${result.nuevo_conductor.CONDUCTOR}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
-                }
-            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
-        });
-
-        // Eventos para EMPRESA
-        document.getElementById('btnAbrirModalEmpresa').addEventListener('click', () => {
-            document.getElementById('formAgregarEmpresa').reset();
-            modalEmpresa.show();
-        });
-        document.getElementById('btnGuardarEmpresa').addEventListener('click', async () => {
-            const nombre = document.getElementById('nombreNuevaEmpresa').value.trim();
-            if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Por favor, ingrese el nombre de la empresa.' });
-
-            try {
-                const response = await fetch("{{ url_for('agregar_empresa_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
-                const result = await response.json();
-                if (response.ok) {
-                    empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
-                    actualizarDropdownEmpresas();
-                    document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
-                    syncEmpresaTransportadoraWrap();
-                    modalEmpresa.hide();
-                    Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Error', text: result.message });
-                }
-            } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
-        });
-
-        // Eventos para PRODUCTOS
-        const modalElProducto = document.getElementById('modalAgregarProducto');
-        const modalProducto = modalElProducto ? new bootstrap.Modal(modalElProducto) : null;
-        const modalElEditarProducto = document.getElementById('modalEditarProducto');
-        const modalEditarProducto = modalElEditarProducto ? new bootstrap.Modal(modalElEditarProducto) : null;
-
-        document.getElementById('btnAbrirModalProducto').addEventListener('click', () => {
-            if (!modalProducto) return;
-            document.getElementById('formAgregarProducto').reset();
-            modalProducto.show();
-        });
-
-        document.getElementById('btnGuardarProducto').addEventListener('click', async () => {
-            const nombre = document.getElementById('nombreNuevoProducto').value.trim();
-            const unidad = document.getElementById('unidadNuevoProducto').value.trim();
-            if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo vacío', text: 'Ingrese el nombre del producto.' });
-            const payload = { producto: nombre, unidad };
-            try {
-                const response = await fetch("{{ url_for('agregar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const result = await response.json();
-                if (response.ok) {
-                    productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
-                    actualizarDropdownProductos();
-                    document.getElementById('productoSelect').value = result.nuevo_producto.PRODUCTO || result.nuevo_producto.producto || nombre;
-                    document.getElementById('productoSelect').dispatchEvent(new Event('change'));
-                    modalProducto.hide();
-                    Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado.', timer: 2000, showConfirmButton: false });
-                    return;
-                }
-            } catch (err) {
-                // fallback local update
-                console.warn('No se pudo llamar al endpoint agregar_producto_ajax, actualizando localmente', err);
+            const btnActualizarCliente = document.getElementById('btnActualizarCliente');
+            if (btnActualizarCliente && modalEditarCliente) {
+                btnActualizarCliente.addEventListener('click', async () => {
+                    const original = document.getElementById('originalNombreCliente').value.trim();
+                    const originalDireccion = document.getElementById('originalDireccionCliente').value.trim();
+                    const nombre = document.getElementById('editarNombreCliente').value.trim();
+                    const direccion = document.getElementById('editarDireccionCliente').value.trim();
+                    const ciudad = document.getElementById('editarCiudadCliente').value.trim();
+                    if (!original || !nombre || !direccion || !ciudad) {
+                        Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa todos los campos antes de guardar.' });
+                        return;
+                    }
+                    try {
+                        const response = await fetch("{{ url_for('actualizar_cliente_ajax') }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                original_nombre: original,
+                                original_direccion: originalDireccion,
+                                nombre,
+                                direccion,
+                                ciudad
+                            })
+                        });
+                        const result = await response.json();
+                        if (response.ok) {
+                            clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                            actualizarDropdownClientes();
+                            // Encontrar el indice del cliente actualizado
+                            const newIdx = clientes.findIndex(c =>
+                                c.NOMBRE_CLIENTE === result.cliente.NOMBRE_CLIENTE &&
+                                c.DIRECCION === result.cliente.DIRECCION
+                            );
+                            if (newIdx !== -1) {
+                                seleccionarCliente(newIdx);
+                            }
+                            modalEditarCliente.hide();
+                            Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
+                        } else {
+                            Swal.fire({ icon: 'error', title: 'Error', text: result.message || 'No se pudo actualizar el cliente.' });
+                        }
+                    } catch (error) {
+                        Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' });
+                    }
+                });
             }
-            // Local fallback: añadir al arreglo y actualizar select (solo PRODUCTO y UN)
-            productos.push({ PRODUCTO: nombre, UN: unidad });
-            actualizarDropdownProductos();
-            document.getElementById('productoSelect').value = nombre;
-            document.getElementById('productoSelect').dispatchEvent(new Event('change'));
-            if (modalProducto) modalProducto.hide();
-            Swal.fire({ icon: 'success', title: 'Guardado (local)', text: 'Producto agregado localmente.', timer: 2000, showConfirmButton: false });
-        });
 
-        const btnEditarProducto = document.getElementById('btnEditarProducto');
-        if (btnEditarProducto && modalEditarProducto) {
-            btnEditarProducto.addEventListener('click', () => {
-                const select = document.getElementById('productoSelect');
-                const seleccionado = (select.value || '').trim();
-                if (!seleccionado || seleccionado === 'AGREGAR_PRODUCTO') {
-                    Swal.fire({ icon: 'info', title: 'Selecciona un producto', text: 'Elige un producto de la lista para poder editarlo.' });
-                    return;
-                }
-                const productoActual = productos.find(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === seleccionado.toUpperCase()));
-                if (!productoActual) {
-                    Swal.fire({ icon: 'error', title: 'Producto no encontrado', text: 'No pudimos cargar los datos de ese producto. Actualiza la página e inténtalo de nuevo.' });
-                    return;
-                }
-                document.getElementById('originalNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
-                document.getElementById('editarNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
-                document.getElementById('editarUnidadProducto').value = productoActual.UN || productoActual.unidad || '';
-                modalEditarProducto.show();
+            // Eventos para CONDUCTOR
+            document.getElementById('btnAbrirModalConductor').addEventListener('click', () => {
+                document.getElementById('formAgregarConductor').reset();
+                modalConductor.show();
             });
-        }
+            document.getElementById('btnGuardarConductor').addEventListener('click', async () => {
+                const nombre = document.getElementById('nombreNuevoConductor').value.trim();
+                const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
+                const placa = document.getElementById('placaNuevoConductor').value.trim();
+                if (!nombre || !cedula || !placa) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Por favor, complete todos los campos.' });
 
-        const btnActualizarProducto = document.getElementById('btnActualizarProducto');
-        if (btnActualizarProducto && modalEditarProducto) {
-            btnActualizarProducto.addEventListener('click', async () => {
-                const original = document.getElementById('originalNombreProducto').value.trim();
-                const nombre = document.getElementById('editarNombreProducto').value.trim();
-                const unidad = document.getElementById('editarUnidadProducto').value.trim();
-                if (!original || !nombre) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa los campos antes de guardar.' });
-                const payload = { original_producto: original, producto: nombre, unidad };
                 try {
-                    const response = await fetch("{{ url_for('actualizar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const response = await fetch("{{ url_for('agregar_conductor_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, cedula, placa }) });
+                    const result = await response.json();
+                    if (response.ok) {
+                        conductores = await (await fetch("{{ url_for('static', filename='Conductores.json') }}?v=" + Date.now())).json();
+                        actualizarDropdownConductores();
+                        document.getElementById('conductorSelect').value = result.nuevo_conductor.CONDUCTOR;
+                        document.getElementById('conductorSelect').dispatchEvent(new Event('change'));
+                        modalConductor.hide();
+                        Swal.fire({ icon: 'success', title: '¡Guardado!', text: `El conductor '${result.nuevo_conductor.CONDUCTOR}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+                    }
+                } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
+            });
+
+            // Eventos para EMPRESA
+            document.getElementById('btnAbrirModalEmpresa').addEventListener('click', () => {
+                document.getElementById('formAgregarEmpresa').reset();
+                modalEmpresa.show();
+            });
+            document.getElementById('btnGuardarEmpresa').addEventListener('click', async () => {
+                const nombre = document.getElementById('nombreNuevaEmpresa').value.trim();
+                if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo Vacío', text: 'Por favor, ingrese el nombre de la empresa.' });
+
+                try {
+                    const response = await fetch("{{ url_for('agregar_empresa_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre }) });
+                    const result = await response.json();
+                    if (response.ok) {
+                        empresas = await (await fetch("{{ url_for('static', filename='EmpresasTransportadoras.json') }}?v=" + Date.now())).json();
+                        actualizarDropdownEmpresas();
+                        document.getElementById('empresaTransportadoraInput').value = result.nueva_empresa.NOMBRE_EMPRESA;
+                        syncEmpresaTransportadoraWrap();
+                        modalEmpresa.hide();
+                        Swal.fire({ icon: 'success', title: '¡Guardado!', text: `La empresa '${result.nueva_empresa.NOMBRE_EMPRESA}' se agregó con éxito.`, timer: 2500, showConfirmButton: false });
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: result.message });
+                    }
+                } catch (error) { Swal.fire({ icon: 'error', title: 'Error de Conexión', text: 'No se pudo comunicar con el servidor.' }); }
+            });
+
+            // Eventos para PRODUCTOS
+            const modalElProducto = document.getElementById('modalAgregarProducto');
+            const modalProducto = modalElProducto ? new bootstrap.Modal(modalElProducto) : null;
+            const modalElEditarProducto = document.getElementById('modalEditarProducto');
+            const modalEditarProducto = modalElEditarProducto ? new bootstrap.Modal(modalElEditarProducto) : null;
+
+            document.getElementById('btnAbrirModalProducto').addEventListener('click', () => {
+                if (!modalProducto) return;
+                document.getElementById('formAgregarProducto').reset();
+                modalProducto.show();
+            });
+
+            document.getElementById('btnGuardarProducto').addEventListener('click', async () => {
+                const nombre = document.getElementById('nombreNuevoProducto').value.trim();
+                const unidad = document.getElementById('unidadNuevoProducto').value.trim();
+                if (!nombre) return Swal.fire({ icon: 'warning', title: 'Campo vacío', text: 'Ingrese el nombre del producto.' });
+                const payload = { producto: nombre, unidad };
+                try {
+                    const response = await fetch("{{ url_for('agregar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const result = await response.json();
                     if (response.ok) {
                         productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
                         actualizarDropdownProductos();
-                        const select = document.getElementById('productoSelect');
-                        select.value = result.producto.PRODUCTO || result.producto.producto || nombre;
-                        select.dispatchEvent(new Event('change'));
-                        modalEditarProducto.hide();
-                        Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message || 'Producto actualizado.', timer: 2000, showConfirmButton: false });
+                        document.getElementById('productoSelect').value = result.nuevo_producto.PRODUCTO || result.nuevo_producto.producto || nombre;
+                        document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+                        modalProducto.hide();
+                        Swal.fire({ icon: 'success', title: 'Guardado', text: 'Producto agregado.', timer: 2000, showConfirmButton: false });
                         return;
                     }
                 } catch (err) {
-                    console.warn('No se pudo llamar al endpoint actualizar_producto_ajax, actualizando localmente', err);
+                    // fallback local update
+                    console.warn('No se pudo llamar al endpoint agregar_producto_ajax, actualizando localmente', err);
                 }
-                // Fallback local update
-                const idx = productos.findIndex(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === original.toUpperCase()));
-                if (idx !== -1) {
-                    productos[idx].PRODUCTO = nombre;
-                    productos[idx].UN = unidad;
-                }
+                // Local fallback: añadir al arreglo y actualizar select (solo PRODUCTO y UN)
+                productos.push({ PRODUCTO: nombre, UN: unidad });
                 actualizarDropdownProductos();
-                const select = document.getElementById('productoSelect');
-                select.value = nombre;
-                select.dispatchEvent(new Event('change'));
-                modalEditarProducto.hide();
-                Swal.fire({ icon: 'success', title: 'Actualizado (local)', text: 'Producto actualizado localmente.', timer: 2000, showConfirmButton: false });
+                document.getElementById('productoSelect').value = nombre;
+                document.getElementById('productoSelect').dispatchEvent(new Event('change'));
+                if (modalProducto) modalProducto.hide();
+                Swal.fire({ icon: 'success', title: 'Guardado (local)', text: 'Producto agregado localmente.', timer: 2000, showConfirmButton: false });
             });
-        }
 
-        // Actualiza el wrap al editar manualmente el campo
-        const empresaInput = document.getElementById('empresaTransportadoraInput');
-        if (empresaInput) {
-            empresaInput.addEventListener('input', syncEmpresaTransportadoraWrap);
-            empresaInput.addEventListener('change', syncEmpresaTransportadoraWrap);
-        }
-
-        // Asegurar sincronización antes de imprimir
-        window.addEventListener('beforeprint', () => {
-            syncEmpresaTransportadoraWrap();
-            syncDestinoWrap();
-            // RESETEAR ZOOM ANTES DE IMPRIMIR
-            const contenedor = document.getElementById('contenedor-guia');
-            if (contenedor) {
-                contenedor.style.transform = 'none';
+            const btnEditarProducto = document.getElementById('btnEditarProducto');
+            if (btnEditarProducto && modalEditarProducto) {
+                btnEditarProducto.addEventListener('click', () => {
+                    const select = document.getElementById('productoSelect');
+                    const seleccionado = (select.value || '').trim();
+                    if (!seleccionado || seleccionado === 'AGREGAR_PRODUCTO') {
+                        Swal.fire({ icon: 'info', title: 'Selecciona un producto', text: 'Elige un producto de la lista para poder editarlo.' });
+                        return;
+                    }
+                    const productoActual = productos.find(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === seleccionado.toUpperCase()));
+                    if (!productoActual) {
+                        Swal.fire({ icon: 'error', title: 'Producto no encontrado', text: 'No pudimos cargar los datos de ese producto. Actualiza la página e inténtalo de nuevo.' });
+                        return;
+                    }
+                    document.getElementById('originalNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+                    document.getElementById('editarNombreProducto').value = productoActual.PRODUCTO || productoActual.producto || '';
+                    document.getElementById('editarUnidadProducto').value = productoActual.UN || productoActual.unidad || '';
+                    modalEditarProducto.show();
+                });
             }
-        });
 
-        // Restaurar zoom después de imprimir
-        window.addEventListener('afterprint', () => {
-            aplicarZoom();
-        });
+            const btnActualizarProducto = document.getElementById('btnActualizarProducto');
+            if (btnActualizarProducto && modalEditarProducto) {
+                btnActualizarProducto.addEventListener('click', async () => {
+                    const original = document.getElementById('originalNombreProducto').value.trim();
+                    const nombre = document.getElementById('editarNombreProducto').value.trim();
+                    const unidad = document.getElementById('editarUnidadProducto').value.trim();
+                    if (!original || !nombre) return Swal.fire({ icon: 'warning', title: 'Campos Vacíos', text: 'Completa los campos antes de guardar.' });
+                    const payload = { original_producto: original, producto: nombre, unidad };
+                    try {
+                        const response = await fetch("{{ url_for('actualizar_producto_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        const result = await response.json();
+                        if (response.ok) {
+                            productos = await (await fetch("{{ url_for('static', filename='Producto.json') }}?v=" + Date.now())).json();
+                            actualizarDropdownProductos();
+                            const select = document.getElementById('productoSelect');
+                            select.value = result.producto.PRODUCTO || result.producto.producto || nombre;
+                            select.dispatchEvent(new Event('change'));
+                            modalEditarProducto.hide();
+                            Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message || 'Producto actualizado.', timer: 2000, showConfirmButton: false });
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn('No se pudo llamar al endpoint actualizar_producto_ajax, actualizando localmente', err);
+                    }
+                    // Fallback local update
+                    const idx = productos.findIndex(p => ((p.PRODUCTO || p.producto || '').toUpperCase() === original.toUpperCase()));
+                    if (idx !== -1) {
+                        productos[idx].PRODUCTO = nombre;
+                        productos[idx].UN = unidad;
+                    }
+                    actualizarDropdownProductos();
+                    const select = document.getElementById('productoSelect');
+                    select.value = nombre;
+                    select.dispatchEvent(new Event('change'));
+                    modalEditarProducto.hide();
+                    Swal.fire({ icon: 'success', title: 'Actualizado (local)', text: 'Producto actualizado localmente.', timer: 2000, showConfirmButton: false });
+                });
+            }
 
-        // Actualiza el wrap de DESTINO al editar manualmente
-        const destinoInput = document.getElementById('destinoDireccion');
-        if (destinoInput) {
-            destinoInput.addEventListener('input', syncDestinoWrap);
-            destinoInput.addEventListener('change', syncDestinoWrap);
-        }
+            // Actualiza el wrap al editar manualmente el campo
+            const empresaInput = document.getElementById('empresaTransportadoraInput');
+            if (empresaInput) {
+                empresaInput.addEventListener('input', syncEmpresaTransportadoraWrap);
+                empresaInput.addEventListener('change', syncEmpresaTransportadoraWrap);
+            }
 
-}); // Fin del primer DOMContentLoaded
+            // Asegurar sincronización antes de imprimir
+            window.addEventListener('beforeprint', () => {
+                syncEmpresaTransportadoraWrap();
+                syncDestinoWrap();
+                // RESETEAR ZOOM ANTES DE IMPRIMIR
+                const contenedor = document.getElementById('contenedor-guia');
+                if (contenedor) {
+                    contenedor.style.transform = 'none';
+                }
+            });
+
+            // Restaurar zoom después de imprimir
+            window.addEventListener('afterprint', () => {
+                aplicarZoom();
+            });
+
+            // Actualiza el wrap de DESTINO al editar manualmente
+            const destinoInput = document.getElementById('destinoDireccion');
+            if (destinoInput) {
+                destinoInput.addEventListener('input', syncDestinoWrap);
+                destinoInput.addEventListener('change', syncDestinoWrap);
+            }
+
+        }); // Fin del primer DOMContentLoaded
 
         // Otro listener para asegurar que la inicialización de Fecha/Hora corra sin depender del async anterior
         window.addEventListener('DOMContentLoaded', () => {
@@ -1800,6 +1847,38 @@
             }
         });
 
+        // Renderizar item de conductor en lista
+        function renderItemConductor(c, index) {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item-client';
+            item.onclick = () => seleccionarConductor(index);
+
+            item.innerHTML = `
+                <div class="client-info-wrap">
+                    <span class="client-name">${c.NOMBRE_CONDUCTOR}</span>
+                    <span class="client-details">CC: ${c.CEDULA} — Placa: ${c.PLACA_CABEZOTE} / ${c.PLACA_TANQUE}</span>
+                    <span class="client-details" style="font-size:0.75em; color:#888;">Transp: ${c.EMPRESA_TRANSPORTADORA || 'N/A'}</span>
+                </div>
+                <!-- Botón Eliminar Conductor -->
+                <button class="btn-delete-client" title="Eliminar Conductor" 
+                        onclick="event.stopPropagation(); eliminarConductor('${index}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            return item;
+        }
+
+        // Agregar botón de nuevo conductor al final del menú
+        function agregarBotonNuevoConductor(listaDiv) {
+            const btnNew = document.createElement('div');
+            btnNew.className = 'btn-add-client-item btn-agregar-conductor-interno'; // Clase para ocultar en impresión
+            btnNew.innerHTML = '<i class="bi bi-plus-circle me-2"></i>Agregar Nuevo Conductor';
+            btnNew.onclick = (e) => {
+                e.stopPropagation();
+                abrirModalCrearConductor();
+            };
+            listaDiv.appendChild(btnNew);
+        }
         function seleccionarCliente(index) {
             const cli = clientes[index];
             if (!cli) return;
@@ -1822,7 +1901,56 @@
         }
 
         // DEPRECATED: autocompletarCliente (se reemplaza por seleccionarCliente y la lógica UI nueva)
-        function autocompletarCliente() { /* Vacio por compatiblidad si alguien lo llama */ }
+        // Función para eliminar cliente
+        function eliminarCliente(index) {
+            const cli = clientes[index];
+            if (!cli) return;
+
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: `Vas a eliminar a "${cli.NOMBRE_CLIENTE}". Esta acción no se puede deshacer.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const response = await fetch("{{ url_for('eliminar_cliente_ajax') }}", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                nombre: cli.NOMBRE_CLIENTE,
+                                direccion: cli.DIRECCION
+                            })
+                        });
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            Swal.fire('¡Eliminado!', data.message, 'success');
+                            // Recargar lista de clientes
+                            clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                            actualizarDropdownClientes();
+
+                            // Limpiar selección si era el eliminado
+                            const currentDisplay = document.getElementById('clienteNombreDisplay').value;
+                            if (currentDisplay === cli.NOMBRE_CLIENTE) {
+                                document.getElementById('clienteNombreDisplay').value = '';
+                                document.getElementById('direccionCliente').value = '';
+                                document.getElementById('ciudadCliente').value = '';
+                                document.getElementById('destinoDireccion').value = '';
+                            }
+                        } else {
+                            Swal.fire('Error', data.message || 'No se pudo eliminar.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Error', 'Error de conexión con el servidor.', 'error');
+                    }
+                }
+            });
+        }
 
         function mostrarProducto() {
             const nom = document.getElementById('productoSelect').value;
