@@ -130,60 +130,65 @@ def update_prices():
             import time
             import random
             
+            # Intento de descarga robusta con yfinance para historial completo 2025-2026
             max_retries = 3
-            attempts = 0
             success = False
-            fetch_start = start_date - timedelta(days=7)
             
-            while attempts < max_retries and not success:
-                attempts += 1
+            for attempts in range(1, max_retries + 1):
                 try:
-                    ticker = yf.Ticker("BZ=F")
-                    brent_df_yf = ticker.history(start=fetch_start, interval="1d")
-                    
-                    if brent_df_yf.empty:
-                        brent_df_yf = yf.download("BZ=F", start=fetch_start, progress=False, timeout=10)
-                    
+                    # RANGO: Desde 2025 para asegurar historial completo y variaciones
+                    # yf.download es más confiable que Ticker.history para rangos largos en batch
+                    brent_df_yf = yf.download("BZ=F", start="2025-01-01", progress=False, timeout=20)
+
                     if not brent_df_yf.empty:
                         success = True
                         
-                        # Fix MultiIndex
+                        # Limpieza de MultiIndex (comun en versiones recientes yfinance)
                         if isinstance(brent_df_yf.columns, pd.MultiIndex):
                             try:
-                                brent_df_yf = brent_df_yf.xs('Close', level=0, axis=1)
+                                # Prioridad: Close o Adj Close
+                                if 'Close' in brent_df_yf.columns.get_level_values(0):
+                                     brent_df_yf = brent_df_yf.xs('Close', level=0, axis=1)
+                                elif 'Adj Close' in brent_df_yf.columns.get_level_values(0):
+                                     brent_df_yf = brent_df_yf.xs('Adj Close', level=0, axis=1)
                             except:
                                 brent_df_yf.columns = [c[0] for c in brent_df_yf.columns]
+
+                        # Asegurar normalización a una sola columna 'brent'
+                        if isinstance(brent_df_yf, pd.DataFrame) and brent_df_yf.shape[1] >= 1:
+                            # Tomar la primera columna si quedo alguna limpieza pendiente explícita
+                            val_series = brent_df_yf.iloc[:, 0]
+                        else:
+                            val_series = brent_df_yf # Ya es serie
+
+                        brent_df = pd.DataFrame({'brent': val_series})
                         
-                        last_valid_idx = brent_df_yf.last_valid_index()
-                        if last_valid_idx:
-                            val = brent_df_yf.loc[last_valid_idx]
-                            if isinstance(val, pd.Series): val = val.iloc[0]
-                            latest_brent = float(val)
-                            
-                            # Convertir a formato estándar
-                            brent_df = pd.DataFrame({'brent': brent_df_yf.iloc[:, 0]})
-                            
-                            # CRITICO: Eliminar zona horaria para coincidir con fechas naive (date)
-                            if brent_df.index.tz is not None:
-                                brent_df.index = brent_df.index.tz_localize(None)
-                            
-                            print(f"✓ Yahoo: Último Brent = {latest_brent} ({last_valid_idx.date()})")
+                        # CRITICO: Eliminar zona horaria
+                        if brent_df.index.tz is not None:
+                             brent_df.index = brent_df.index.tz_localize(None)
+
+                        latest_valid = brent_df['brent'].last_valid_index()
+                        if latest_valid:
+                             latest_brent = float(brent_df.loc[latest_valid, 'brent'])
+                             print(f"✓ Yahoo Download Completo (2025-Pres). Último: {latest_brent} ({latest_valid})")
+                        break 
                     else:
-                        raise ValueError("Yahoo data empty")
-                        
-                except Exception as e_retry:
-                    print(f"✗ Yahoo intento {attempts}/{max_retries}: {e_retry}")
-                    if attempts < max_retries:
-                        time.sleep(random.uniform(1.0, 3.0))
+                        print(f"⚠ Yahoo devolvió vacío en intento {attempts}")
+                        time.sleep(2)
+                except Exception as e_down:
+                    print(f"⚠ Yahoo intento {attempts} falló: {e_down}")
+                    time.sleep(random.uniform(1.0, 3.0))
             
             if not success:
-                raise ValueError("Yahoo failed all retries")
+                 print("✗ Yahoo Finance falló definitivamente tras reintentos.")
                 
         except Exception as e_yahoo:
             print(f"✗ Yahoo Finance falló: {e_yahoo}")
             print(f"⚠ Usando último valor conocido de BD: {latest_brent}")
     
-    # FUENTE 3: Si todo falla, brent_df queda vacío y se usa latest_brent de BD
+    
+    # Asegurar orden
+    brent_df = brent_df.sort_index()
 
 
     # 2. TRM (Datos.gov.co) - Fuente Oficial
@@ -371,32 +376,6 @@ def update_prices():
                  d_fin_hint = d_inicio.year if d_inicio else None
                  d_fin = parse_spanish_date(fecha_fin_raw, year_hint=d_fin_hint)
                  
-                 # CRITERIO DE ACEPTACIÓN: Ambas deben ser fechas válidas
-                 # MEJORA: Validar Año Incorrecto (Ecopetrol a veces deja 2025 en 2026)
-                 
-                 # Si la fecha parseada es 2025 pero estamos en 2026, y es Enero/Febrero, asumir error de año en Excel
-                 current_real_year = datetime.now().year
-                 if d_inicio and d_inicio.year == (current_real_year - 1):
-                      # Heurística: Si la fecha es de este año o el anterior, corregir al actual
-                      # Solo corregir si el mes coincide con la ventana actual de actualización (Enero)
-                      if d_inicio.month == datetime.now().month or d_inicio.month == (datetime.now().month - 1):
-                           d_inicio = d_inicio.replace(year=current_real_year)
-                           print(f"DEBUG: Corrigiendo año {current_real_year-1} -> {current_real_year} para {d_inicio}")
-                           
-                           # CRÍTICO: Si corregimos d_inicio, también debemos corregir d_fin si tiene el año viejo
-                           # o si por consecuencia d_fin quedó menor que d_inicio.
-                           if d_fin:
-                               # Si d_fin tiene el mismo año viejo, actualizarlo
-                               if d_fin.year == (current_real_year - 1):
-                                   d_fin = d_fin.replace(year=current_real_year)
-                                   print(f"DEBUG: Corrigiendo año fin -> {d_fin}")
-                               
-                               # Si aun así d_fin es menor (ej. cambio de año en rango), forzar consistencia
-                               if d_fin < d_inicio:
-                                   # Intentar mover d_fin al año siguiente si parece ser un rango que cruza año (Dic->Ene)
-                                   # pero como estamos corrigiendo "2025" a "2026", es probable que simplemente necesite ser >=
-                                   if d_fin.year < d_inicio.year:
-                                        d_fin = d_fin.replace(year=d_inicio.year)                 
                  if not d_inicio:
                     # Debug solo para fechas recientes (potenciales) para no ensuciar log
                     if "2025" in fecha_inicio_raw or "25" in fecha_inicio_raw:
@@ -727,12 +706,24 @@ def update_prices():
         # Datos Ecopetrol (F04)
         f04_data = eco_data_f04.get(current_date)
         
-        if not f04_data:
-            f04_base_cop = 0.0
-            f04_imp_cop = 0.0
-        else:
+        # Variables persistentes para el bucle (inicializar fuera del loop si se quisiera estricto)
+        # Pero aqui usamos last_known si falla
+        
+        if f04_data:
             f04_base_cop = f04_data['base']       
-            f04_imp_cop = f04_data['impuestos']   
+            f04_imp_cop = f04_data['impuestos']
+            
+            # Actualizar ultimos conocidos
+            last_known_f04_base = f04_base_cop
+            last_known_f04_imp = f04_imp_cop
+        else:
+            # Carry-Forward: Usar ultimo conocido si existe (llenar huecos 14-19 Ene)
+            if 'last_known_f04_base' in locals() and last_known_f04_base > 0:
+                 f04_base_cop = last_known_f04_base
+                 f04_imp_cop = last_known_f04_imp
+            else:
+                 f04_base_cop = 0.0
+                 f04_imp_cop = 0.0
 
         # Cálculos F04
         f04_total_cop = f04_base_cop + f04_imp_cop
