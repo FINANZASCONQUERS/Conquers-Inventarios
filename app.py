@@ -743,8 +743,11 @@ def _ensure_programacion_imagen_text():
 
 _ensure_programacion_imagen_text()
 
-# Asegurar que la columna tipo_guia existe
 def _ensure_tipo_guia_column():
+    """Asegura que la columna `tipo_guia` exista en `programacion_cargue`.
+
+    Añade la columna como VARCHAR(20) con valor por defecto 'Física' si no existe.
+    """
     from sqlalchemy import inspect, text
     with app.app_context():
         insp = inspect(db.engine)
@@ -753,13 +756,73 @@ def _ensure_tipo_guia_column():
         cols = [c['name'] for c in insp.get_columns('programacion_cargue')]
         if 'tipo_guia' not in cols:
             try:
-                with db.engine.begin() as con:
-                    con.execute(text("ALTER TABLE programacion_cargue ADD COLUMN tipo_guia VARCHAR(20) DEFAULT 'Física'"))
-                print("[INIT] Columna tipo_guia agregada exitosamente")
+                dialect = db.engine.dialect.name
+                if dialect == 'postgresql':
+                    col_type = "VARCHAR(20)"
+                elif dialect == 'mysql':
+                    col_type = "VARCHAR(20)"
+                else:
+                    col_type = "VARCHAR(20)"
+                # Añadir columna con valor por defecto 'Física'
+                ddl = f"ALTER TABLE programacion_cargue ADD COLUMN tipo_guia {col_type} DEFAULT 'Física'"
+                with db.engine.begin() as conn:
+                    conn.execute(text(ddl))
+                print("[INIT] Columna tipo_guia añadida a programacion_cargue")
             except Exception as e:
-                print("[INIT] No se pudo agregar columna tipo_guia:", e)
+                print("[INIT] No se pudo añadir columna tipo_guia:", e)
 
 _ensure_tipo_guia_column()
+
+# Asegurar que las tablas de SIZA tengan todas sus columnas
+def _ensure_siza_schema():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        
+        # 1. Verificar inventario_siza_diario
+        if 'inventario_siza_diario' in insp.get_table_names():
+            cols = [c['name'] for c in insp.get_columns('inventario_siza_diario')]
+            columnas_inv = {
+                'volumen_agua_generada': 'FLOAT DEFAULT 0.0',
+                'volumen_desperdicio_generado': 'FLOAT DEFAULT 0.0'
+            }
+            for col_name, col_def in columnas_inv.items():
+                if col_name not in cols:
+                    try:
+                        with db.engine.begin() as con:
+                            con.execute(text(f"ALTER TABLE inventario_siza_diario ADD COLUMN {col_name} {col_def}"))
+                        print(f"[INIT] Columna {col_name} agregada a inventario_siza_diario")
+                    except Exception as e:
+                        print(f"[INIT] No se pudo agregar columna {col_name} a inventario_siza_diario:", e)
+
+        # 2. Verificar recargas_siza
+        if 'recargas_siza' in insp.get_table_names():
+            cols = [c['name'] for c in insp.get_columns('recargas_siza')]
+            columnas_rec = {
+                'volumen_merma': 'FLOAT DEFAULT 0.0',
+                'descontado_dian': 'BOOLEAN DEFAULT FALSE'
+            }
+            for col_name, col_def in columnas_rec.items():
+                if col_name not in cols:
+                    try:
+                        with db.engine.begin() as con:
+                            con.execute(text(f"ALTER TABLE recargas_siza ADD COLUMN {col_name} {col_def}"))
+                        print(f"[INIT] Columna {col_name} agregada a recargas_siza")
+                    except Exception as e:
+                        print(f"[INIT] No se pudo agregar columna {col_name} a recargas_siza:", e)
+
+        # 3. Verificar volumen_pendiente_dian
+        if 'volumen_pendiente_dian' in insp.get_table_names():
+            cols = [c['name'] for c in insp.get_columns('volumen_pendiente_dian')]
+            if 'volumen_por_aprobar' not in cols:
+                try:
+                    with db.engine.begin() as con:
+                        con.execute(text("ALTER TABLE volumen_pendiente_dian ADD COLUMN volumen_por_aprobar FLOAT DEFAULT 0.0"))
+                    print("[INIT] Columna volumen_por_aprobar agregada a volumen_pendiente_dian")
+                except Exception as e:
+                    print("[INIT] No se pudo agregar columna volumen_por_aprobar a volumen_pendiente_dian:", e)
+
+_ensure_siza_schema()
 
 # ---------------- EDICIONES EN VIVO (NO PERSISTIDAS) -----------------
 # Estructura en memoria para broadcast simple (clave: (registro_id,campo))
@@ -4040,6 +4103,11 @@ def modelo_optimizacion_page():
         return redirect(url_for('home'))
     resultados = None
     grafico_base64 = None
+    grafico_div = None
+    grafico_div = None
+    grafico_div = None
+    grafico_div = None
+    grafico_div = None
     excel_descargable = False
     # Importes numéricos (el template aplica el formato)
     total_volumen = 0.0
@@ -9452,10 +9520,59 @@ def home_programacion():
 @app.route('/programacion-cargue')
 def programacion_cargue():
     """Muestra la página de programación de vehículos."""
+    clientes = cargar_clientes()
+    conductores = cargar_conductores()
     return render_template('programacion_cargue.html', 
                            rol_usuario=session.get('rol'), 
                            email_usuario=session.get('email'),
-                           nombre=session.get('nombre'))
+                           nombre=session.get('nombre'),
+                           lista_clientes=clientes,
+                           lista_conductores=conductores)
+
+@login_required
+@app.route('/api/conductores', methods=['POST'])
+def agregar_conductor():
+    try:
+        data = request.get_json()
+        nuevo_conductor = {
+            "PLACA": data.get('placa', '').upper(),
+            "PLACA REMOLQUE": data.get('tanque', '').upper(),
+            "NOMBRE CONDUCTOR": data.get('nombre', '').upper(),
+            "N° DOCUMENTO": data.get('cedula', ''),
+            "CELULAR": data.get('celular', ''),
+            "EMPRESA": data.get('empresa', '').upper()
+        }
+        
+        # Validar campos mínimos
+        if not nuevo_conductor['NOMBRE CONDUCTOR'] or not nuevo_conductor['N° DOCUMENTO']:
+            return jsonify(success=False, message="Nombre y Cédula son obligatorios"), 400
+
+        # Ruta del archivo JSON
+        json_path = os.path.join(current_app.root_path, 'static', 'Conductores.json')
+        
+        conductores = []
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                try:
+                    conductores = json.load(f)
+                except json.JSONDecodeError:
+                    conductores = []
+
+        # Verificar duplicados (por cédula)
+        for c in conductores:
+            if str(c.get("N° DOCUMENTO")) == str(nuevo_conductor["N° DOCUMENTO"]):
+                return jsonify(success=False, message="El conductor ya existe (Cédula duplicada)"), 409
+
+        conductores.append(nuevo_conductor)
+        
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(conductores, f, ensure_ascii=False, indent=4)
+            
+        return jsonify(success=True, message="Conductor guardado correctamente")
+
+    except Exception as e:
+        current_app.logger.error(f"Error guardando conductor: {e}")
+        return jsonify(success=False, message=str(e)), 500
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -10107,7 +10224,8 @@ def reporte_grafico_despachos():
     mes_str = request.args.get('mes', '')  # formato esperado YYYY-MM
     cliente_filtro = request.args.get('cliente', '')
     tipo_grafico = request.args.get('tipo', 'bar')  # 'bar' (horizontal) o 'pie'
-    producto_filtro = request.args.get('producto', 'ambos').lower()  # 'ambos' | 'fo4' | 'diluyente'
+    producto_filtro = request.args.get('producto', 'todos').lower()  # 'todos' | 'fo4' | 'diluyente' | 'vlsfo'
+    if producto_filtro == 'ambos': producto_filtro = 'todos'  # Compatibilidad backwards
 
     # Prioridad: si se elige mes, se ignoran fechas individuales
     fecha_inicio = None
@@ -10150,14 +10268,19 @@ def reporte_grafico_despachos():
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None)
     )
-    # Filtro por producto (FO4, Diluyente, Ambos)
+    # Filtro por producto (FO4, Diluyente, VLSFO, Todos)
     if producto_filtro == 'fo4':
         query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
     elif producto_filtro == 'diluyente':
         query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
-    else:  # ambos
-        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), (
-            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%')
+    elif producto_filtro == 'vlsfo':
+        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%VLSFO%'))
+    else:  # todos/ambos
+        # Incluir todos los productos relevantes (o no filtrar por producto para mostrar todo)
+         query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), (
+            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | 
+            ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%') |
+            ProgramacionCargue.producto_a_cargar.ilike('%VLSFO%')
         ))
     if fecha_inicio:
         query = query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
@@ -10186,6 +10309,7 @@ def reporte_grafico_despachos():
         resumen_productos = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
     grafico_base64 = None
+    grafico_div = None
     total_box_text = None  # Texto para tarjeta externa (solo barras)
     total_barriles_general = 0
     if datos_despacho:
@@ -10202,63 +10326,78 @@ def reporte_grafico_despachos():
         else:
             periodo = "Todo el periodo"
 
-        # ---- Calcular FO4 y Diluyente por cliente (solo si se muestran ambos) ----
+        # ---- Calcular FO4, Diluyente y VLSFO por cliente ----
         fo4_vals = []
         diluyente_vals = []
+        vlsfo_vals = []
         fo4_total_general = 0
         diluyente_total_general = 0
-        if producto_filtro == 'ambos':
+        vlsfo_total_general = 0
+
+        if producto_filtro in ['ambos', 'todos']:
             base_filters = [
                 ProgramacionCargue.estado == 'DESPACHADO',
                 ProgramacionCargue.cliente.isnot(None),
                 ProgramacionCargue.barriles.isnot(None),
                 ProgramacionCargue.producto_a_cargar.isnot(None)
             ]
-            fo4_query = db.session.query(
-                ProgramacionCargue.cliente,
-                func.sum(ProgramacionCargue.barriles).label('fo4_barriles')
-            ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
-            dil_query = db.session.query(
-                ProgramacionCargue.cliente,
-                func.sum(ProgramacionCargue.barriles).label('dil_barriles')
-            ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
-            if fecha_inicio:
-                fo4_query = fo4_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-                dil_query = dil_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-            if fecha_fin:
-                fo4_query = fo4_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-                dil_query = dil_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-            if cliente_filtro:
-                fo4_query = fo4_query.filter(ProgramacionCargue.cliente == cliente_filtro)
-                dil_query = dil_query.filter(ProgramacionCargue.cliente == cliente_filtro)
-            fo4_map = {c: float(v) for c, v in fo4_query.group_by(ProgramacionCargue.cliente).all()}
-            dil_map = {c: float(v) for c, v in dil_query.group_by(ProgramacionCargue.cliente).all()}
+            
+            def get_product_data(pattern):
+                q = db.session.query(
+                    ProgramacionCargue.cliente,
+                    func.sum(ProgramacionCargue.barriles).label('barriles')
+                ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike(pattern))
+                
+                if fecha_inicio:
+                    q = q.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+                if fecha_fin:
+                    q = q.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
+                if cliente_filtro:
+                    q = q.filter(ProgramacionCargue.cliente == cliente_filtro)
+                return {c: float(v) for c, v in q.group_by(ProgramacionCargue.cliente).all()}
+
+            fo4_map = get_product_data('%FO4%')
+            dil_map = get_product_data('%DILUYENTE%')
+            vlsfo_map = get_product_data('%VLSFO%')
+
             fo4_vals = [fo4_map.get(c, 0.0) for c in clientes_graf]
             diluyente_vals = [dil_map.get(c, 0.0) for c in clientes_graf]
+            vlsfo_vals = [vlsfo_map.get(c, 0.0) for c in clientes_graf]
+            
             fo4_total_general = sum(fo4_vals)
             diluyente_total_general = sum(diluyente_vals)
+            vlsfo_total_general = sum(vlsfo_vals)
 
         if tipo_grafico == 'pie':
             import numpy as np
             from matplotlib import cm
             fig, ax = plt.subplots(figsize=(16, 16))
-            # Paletas según producto seleccionado
+            
+            # Paleta de colores actualizada
+            color_fo4 = '#00A896'    # Verde agua/turquesa
+            color_dil = '#F77F00'    # Naranja/ámbar
+            color_vlsfo = '#06AED5'  # Azul petróleo
+            
+            # Asignar colores según selección
             if producto_filtro == 'fo4':
-                colors = ['#ff9f43'] * len(barriles)
+                colors = [color_fo4] * len(barriles)
             elif producto_filtro == 'diluyente':
-                colors = ['#1d7ed6'] * len(barriles)
-            else:  # ambos
-                colors = cm.Blues(np.linspace(0.35, 0.85, len(barriles)))
+                colors = [color_dil] * len(barriles)
+            elif producto_filtro == 'vlsfo':
+                colors = [color_vlsfo] * len(barriles)
+            else:  # todos
+                # Para pie chart 'todos', usamos una paleta generada o colores específicos si es posible
+                # Al ser por cliente, usamos una variación de azules/verdes para distinguir
+                colors = cm.GnBu(np.linspace(0.4, 0.9, len(barriles)))
 
-            # Etiquetas incluyendo FO4 cuando exista
+            # Etiquetas
             etiquetas = []
-            if producto_filtro == 'ambos':
+            if producto_filtro in ['ambos', 'todos']:
                 for i, c in enumerate(clientes_graf):
                     partes = []
-                    if fo4_vals[i] > 0:
-                        partes.append(f"FO4 {fo4_vals[i]:,.0f}")
-                    if diluyente_vals[i] > 0:
-                        partes.append(f"DIL {diluyente_vals[i]:,.0f}")
+                    if fo4_vals[i] > 0: partes.append(f"FO4 {fo4_vals[i]:,.0f}")
+                    if diluyente_vals[i] > 0: partes.append(f"DIL {diluyente_vals[i]:,.0f}")
+                    if vlsfo_vals[i] > 0: partes.append(f"VLSFO {vlsfo_vals[i]:,.0f}")
                     etiquetas.append(f"{c}\n" + ' | '.join(partes) if partes else c)
             else:
                 etiquetas = clientes_graf
@@ -10281,87 +10420,112 @@ def reporte_grafico_despachos():
             centro = plt.Circle((0, 0), 0.48, fc='white')
             fig.gca().add_artist(centro)
             texto_centro = f"TOTAL\n{total_barriles_general:,.0f} BBL"
-            fig.text(0.5, 0.5, texto_centro, ha='center', va='center', fontsize=18, fontweight='bold', color='#0b8552')
+            fig.text(0.5, 0.5, texto_centro, ha='center', va='center', fontsize=18, fontweight='bold', color=color_fo4)
+            
             titulo = "Distribución de Despachos (Donut)"
-            if producto_filtro == 'fo4':
-                titulo += " – FO4"
-            elif producto_filtro == 'diluyente':
-                titulo += " – Diluyente"
-            elif fo4_total_general > 0 or diluyente_total_general > 0:
-                titulo += " – FO4 + Diluyente"
+            if producto_filtro == 'fo4': titulo += " – FO4"
+            elif producto_filtro == 'diluyente': titulo += " – Diluyente"
+            elif producto_filtro == 'vlsfo': titulo += " – VLSFO"
+            
             ax.set_title(f"{titulo}\nPeriodo: {periodo}", fontsize=20, pad=28, fontweight='bold')
-            for t in texts:
-                t.set_fontsize(9.5)
-            for at in autotexts:
-                at.set_fontsize(9)
+            for t in texts: t.set_fontsize(9.5)
+            for at in autotexts: at.set_fontsize(9)
+            
         else:
-            # --- Barras horizontales mejoradas ---
+            # --- Barras horizontales mejoradas (Updated) ---
             from matplotlib.ticker import FuncFormatter
-            from matplotlib.colors import LinearSegmentedColormap
-            altura = max(10, len(clientes_graf) * 0.75)
-            fig, ax = plt.subplots(figsize=(32, altura))
-            cmap = LinearSegmentedColormap.from_list('verde_prof', ['#0b8552', '#3bbf84'])
-            max_val = max(barriles)
-            min_val = min(barriles)
-            if max_val == min_val:
-                norm_vals = [0.6 for _ in barriles]
-            else:
-                norm_vals = [(v - min_val) / (max_val - min_val) for v in barriles]
+            
+            # Nuevos Colores
+            c_fo4 = '#00A896'    # Verde agua
+            c_dil = '#F77F00'    # Naranja
+            c_vlsfo = '#06AED5'  # Azul petróleo
+            c_border = '#2C3E50' # Oscuro para bordes
+            
+            # Cálculo de altura dinámica según requerimiento usuario
+            # Fórmula: (num_clientes * 45px) + 200px
+            # Convertimos px a pulgadas asumiendo 100 DPI (aprox) para matplotlib
+            calculated_height_px = (len(clientes_graf) * 45) + 200
+            final_height_px = max(600, min(1500, calculated_height_px))
+            figsize_height = final_height_px / 100.0
+            
+            # Ancho maximizado (Aumentado de 32 a 48 para ocupar más espacio horizontal)
+            fig, ax = plt.subplots(figsize=(48, figsize_height))
+            
             y_pos = list(range(len(clientes_graf)))
             labels_rank = [f"{i+1}. {c}" for i, c in enumerate(clientes_graf)]
-            if producto_filtro == 'ambos':
-                # Barras apiladas FO4 y Diluyente
-                bars_dil = ax.barh(
-                    y_pos,
-                    diluyente_vals,
-                    color=[cmap(n) for n in norm_vals],
-                    edgecolor='#0b8552', linewidth=0.5, height=0.72, label='Diluyente'
-                )
-                bars_fo4 = ax.barh(
-                    y_pos,
-                    fo4_vals,
-                    left=diluyente_vals,
-                    color='#ff9f43', edgecolor='#c86e00', linewidth=0.5, height=0.72, label='FO4'
-                )
-                # Etiquetas internas por segmento (Diluyente y FO4)
+            
+            max_val = max(barriles) if barriles else 0
+            if producto_filtro in ['ambos', 'todos']:
+                # Barras apiladas: Diluyente base, luego FO4, luego VLSFO
+                # 1. Diluyente
+                p1 = ax.barh(y_pos, diluyente_vals, color=c_dil, edgecolor=c_border, linewidth=0.5, height=0.65, label='Diluyente')
+                
+                # 2. FO4 (bottom = diluyente)
+                p2 = ax.barh(y_pos, fo4_vals, left=diluyente_vals, color=c_fo4, edgecolor=c_border, linewidth=0.5, height=0.65, label='FO4')
+                
+                # 3. VLSFO (bottom = diluyente + fo4)
+                # Necesitamos sumar dil + fo4 para el 'left' del vlsfo
+                left_vlsfo = [d + f for d, f in zip(diluyente_vals, fo4_vals)]
+                p3 = ax.barh(y_pos, vlsfo_vals, left=left_vlsfo, color=c_vlsfo, edgecolor=c_border, linewidth=0.5, height=0.65, label='VLSFO')
+                
+                # Etiquetas internas
                 umbral_seg = max_val * 0.035 if max_val > 0 else 0
-                for i, (dil, fo4) in enumerate(zip(diluyente_vals, fo4_vals)):
-                    if dil > 0 and dil >= umbral_seg:
-                        ax.text(dil / 2, i, f"DIL {dil:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
-                    if fo4 > 0 and fo4 >= umbral_seg:
-                        ax.text(dil + fo4 / 2, i, f"FO4 {fo4:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                
+                for i, (dil, fo4, vlsfo) in enumerate(zip(diluyente_vals, fo4_vals, vlsfo_vals)):
+                    # DIL
+                    if dil > umbral_seg:
+                        ax.text(dil/2, i, f"{dil:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                    # FO4
+                    if fo4 > umbral_seg:
+                        ax.text(dil + fo4/2, i, f"{fo4:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                    # VLSFO
+                    if vlsfo > umbral_seg:
+                        ax.text(dil + fo4 + vlsfo/2, i, f"{vlsfo:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                        
             else:
-                color_single = '#ff9f43' if producto_filtro == 'fo4' else '#1d7ed6'
+                # Individual
+                color_map = {'fo4': c_fo4, 'diluyente': c_dil, 'vlsfo': c_vlsfo}
+                use_color = color_map.get(producto_filtro, c_fo4)
+                lbl_map = {'fo4': 'FO4', 'diluyente': 'Diluyente', 'vlsfo': 'VLSFO'}
+                
                 bars_single = ax.barh(
                     y_pos,
                     barriles,
-                    color=[color_single] * len(barriles),
-                    edgecolor='#0b8552', linewidth=0.6, height=0.72,
-                    label='FO4' if producto_filtro == 'fo4' else 'Diluyente'
+                    color=use_color,
+                    edgecolor=c_border, linewidth=0.6, height=0.65,
+                    label=lbl_map.get(producto_filtro, producto_filtro.upper())
                 )
+            
             ax.set_yticks(y_pos)
-            ax.set_yticklabels(labels_rank, fontsize=12)
+            ax.set_yticklabels(labels_rank, fontsize=12, fontweight='500')
             ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _ : f'{x:,.0f}'))
             ax.set_xlabel('Barriles despachados', fontweight='bold', fontsize=14, labelpad=12)
+            
             titulo_bar = "Total de Barriles Despachados por Cliente"
-            if producto_filtro == 'fo4':
-                titulo_bar += " – FO4"
-            elif producto_filtro == 'diluyente':
-                titulo_bar += " – Diluyente"
-            elif producto_filtro == 'ambos':
-                titulo_bar += " – FO4 + Diluyente"
-            ax.set_title(f"{titulo_bar}\nPeriodo: {periodo}", fontsize=20, pad=22, fontweight='bold')
-            total_box_text = f"TOTAL {total_barriles_general:,.2f} BBL"
-            if producto_filtro == 'ambos':
-                for i, (dil, fo4) in enumerate(zip(diluyente_vals, fo4_vals)):
-                    total_width = dil + fo4
-                    ax.text(total_width + (max_val * 0.008), i, f'{total_width:,.2f}', ha='left', va='center', color='#0b8552', fontweight='bold', fontsize=11)
-                ax.legend(loc='lower right')
+            # Subtítulo dinámico
+            prod_names = []
+            if producto_filtro in ['ambos', 'todos']:
+                if sum(diluyente_vals)>0: prod_names.append("Diluyente")
+                if sum(fo4_vals)>0: prod_names.append("FO4")
+                if sum(vlsfo_vals)>0: prod_names.append("VLSFO")
+                if not prod_names: prod_names = ["Todos"]
+                titulo_bar += f" – {' + '.join(prod_names)}"
             else:
-                for i, total_width in enumerate(barriles):
-                    ax.text(total_width + (max_val * 0.008), i, f'{total_width:,.2f}', ha='left', va='center', color='#0b8552', fontweight='bold', fontsize=11)
-                ax.legend(loc='lower right')
+                 titulo_bar += f" – {producto_filtro.upper()}"
+
+            ax.set_title(f"{titulo_bar}\nPeriodo: {periodo}", fontsize=20, pad=22, fontweight='bold')
+            
+            total_box_text = f"TOTAL {total_barriles_general:,.2f} BBL"
+            
+            # Etiquetas de totales a la derecha
+            for i, total_width in enumerate(barriles):
+                offset = max_val * 0.005 if max_val > 0 else 0
+                ax.text(total_width + offset, i, f'{total_width:,.2f}', ha='left', va='center', color=c_border, fontweight='bold', fontsize=11)
+            
+            ax.legend(loc='lower right', frameon=True, facecolor='white', framealpha=0.9, fontsize=12)
             ax.invert_yaxis()
+            
+            # Estilos limpios
             for spine in ['top', 'right', 'left']:
                 ax.spines[spine].set_visible(False)
             ax.spines['bottom'].set_color('#9aa0ac')
@@ -10371,28 +10535,51 @@ def reporte_grafico_despachos():
             ax.set_facecolor('#fcfdfd')
             fig.patch.set_facecolor('#ffffff')
 
-    # Margen y ajuste de layout
-    plt.tight_layout(rect=[0.03, 0.02, 0.98, 0.95])
-    grafico_base64 = convertir_plot_a_base64(fig)
+        # Margen ajustado para full width visual (Menos margen lateral)
+        plt.tight_layout(rect=[0.005, 0.01, 0.995, 0.98])
+        grafico_base64 = convertir_plot_a_base64(fig)
+
+    # --- Datos para ApexCharts (JSON) ---
+    apex_data = []
+    if datos_despacho:
+        if producto_filtro in ['ambos', 'todos']:
+            # Para barras y pie en 'todos', pasamos los desglose por cliente
+            for i, c in enumerate(clientes_graf):
+                apex_data.append({
+                    'cliente': c,
+                    'total': float(barriles[i]),
+                    'fo4': float(fo4_vals[i]),
+                    'diluyente': float(diluyente_vals[i]),
+                    'vlsfo': float(vlsfo_vals[i])
+                })
+        else:
+            # Individual
+            for i, c in enumerate(clientes_graf):
+                apex_data.append({
+                    'cliente': c,
+                    'total': float(barriles[i])
+                })
 
     return render_template(
         'reporte_grafico_despachos.html',
         grafico_base64=grafico_base64,
+        grafico_div=grafico_div,
+        apex_data=apex_data,
         datos_tabla=datos_despacho,
         total_barriles=total_barriles_general,
-    total_box_text=total_box_text,
+        total_box_text=total_box_text,
         filtros={
             'fecha_inicio': fecha_inicio.isoformat() if (fecha_inicio_str and fecha_inicio and not mes_str) else '',
             'fecha_fin': fecha_fin.isoformat() if (fecha_fin_str and fecha_fin and not mes_str) else '',
             'mes': mes_str,
-        'cliente': cliente_filtro,
+            'cliente': cliente_filtro,
             'producto': producto_filtro
         },
         clientes=clientes,
         resumen_productos=resumen_productos,
-    now=datetime.now(),
-    tipo=tipo_grafico,
-    producto=producto_filtro
+        now=datetime.now(),
+        tipo=tipo_grafico,
+        producto=producto_filtro
     )
 
 @login_required

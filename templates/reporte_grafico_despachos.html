@@ -1,344 +1,1570 @@
 {% extends 'base.html' %}
 
-{% block title %}Reporte Gráfico de Despachos{% endblock %}
+{% block title %}Reporte Analítico de Despachos | Conquers{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <!-- Header mejorado -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-1 text-gray-900"><i class="fas fa-chart-pie me-2 text-primary"></i>Reporte Gráfico de Despachos</h1>
-            <p class="text-gray-600 mb-0">Visualización analítica de los despachos realizados</p>
-        </div>
-        <div>
-            <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin) }}" 
-               class="btn btn-danger btn-icon-split shadow-sm" target="_blank">
-                <span class="icon text-white-50">
+<!-- Estilos Premium Mejorados v2.0 -->
+<style>
+    :root {
+        --conquers-primary: #00A896;
+        --conquers-primary-dark: #008577;
+        --conquers-secondary: #2C3E50;
+        --conquers-accent: #F77F00;
+        --conquers-purple: #667eea;
+        --conquers-blue: #06AED5;
+        --conquers-bg: #f8fafc;
+        --card-bg: #ffffff;
+        --card-border: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+        background-color: var(--conquers-bg);
+        color: var(--text-primary);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    /* Animaciones Personalizadas */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes shimmer {
+        0% {
+            background-position: -1000px 0;
+        }
+
+        100% {
+            background-position: 1000px 0;
+        }
+    }
+
+    .animate-slide-up {
+        animation: slideInUp 0.6s ease-out forwards;
+    }
+
+    /* Header Section Mejorado */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--conquers-secondary) 0%, #1a252f 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        color: white;
+        box-shadow: var(--shadow-xl);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(0, 168, 150, 0.2) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+
+    .dashboard-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--conquers-primary), var(--conquers-accent), var(--conquers-blue));
+    }
+
+    .header-icon {
+        background: rgba(255, 255, 255, 0.15);
+        width: 72px;
+        height: 72px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Stats Section Mejorado */
+    .stat-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 1.75rem;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-sm);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: var(--conquers-primary);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+        border-color: var(--conquers-primary);
+    }
+
+    .stat-card:hover::before {
+        transform: scaleY(1);
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon.primary {
+        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
+        color: white;
+    }
+
+    .stat-icon.secondary {
+        background: linear-gradient(135deg, var(--conquers-accent), #e56b00);
+        color: white;
+    }
+
+    .stat-icon.tertiary {
+        background: linear-gradient(135deg, var(--conquers-purple), #764ba2);
+        color: white;
+    }
+
+    .stat-icon.quaternary {
+        background: linear-gradient(135deg, var(--conquers-blue), #0396b8);
+        color: white;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--conquers-secondary);
+        margin-bottom: 0.5rem;
+        line-height: 1;
+    }
+
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+
+    .stat-badge.success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+    }
+
+    .stat-badge.info {
+        background: rgba(59, 130, 246, 0.1);
+        color: #2563eb;
+    }
+
+    /* Filtros Mejorados */
+    .filter-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-md);
+        margin-bottom: 2rem;
+    }
+
+    .filter-header {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--card-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(to right, #fafbfc, #ffffff);
+    }
+
+    .filter-header-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .filter-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .filter-body {
+        padding: 2rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .form-select,
+    .form-control {
+        border-radius: 10px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 0.9375rem;
+        transition: all 0.2s ease;
+        background-color: #fafbfc;
+    }
+
+    .form-select:focus,
+    .form-control:focus {
+        border-color: var(--conquers-primary);
+        box-shadow: 0 0 0 4px rgba(0, 168, 150, 0.1);
+        background-color: white;
+    }
+
+    .btn-search {
+        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 168, 150, 0.3);
+    }
+
+    .btn-search:hover {
+        background: linear-gradient(135deg, var(--conquers-primary-dark), #006b5f);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0, 168, 150, 0.4);
+        color: white;
+    }
+
+    .btn-search:active {
+        transform: translateY(0);
+    }
+
+    .btn-export {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-export:hover {
+        background: white;
+        color: var(--conquers-secondary);
+        border-color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+    }
+
+    .btn-reset {
+        background: #f1f5f9;
+        color: var(--text-secondary);
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #e2e8f0;
+        color: var(--text-primary);
+        border-color: #cbd5e1;
+    }
+
+    /* Chart Section Mejorado */
+    .chart-main-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        margin-bottom: 2rem;
+    }
+
+    .chart-header {
+        padding: 1.75rem 2rem;
+        border-bottom: 1px solid var(--card-border);
+        background: linear-gradient(to right, #fafbfc, #ffffff);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .chart-title-section {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .chart-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .chart-icon.bar {
+        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
+        color: white;
+    }
+
+    .chart-icon.pie {
+        background: linear-gradient(135deg, var(--conquers-accent), #e56b00);
+        color: white;
+    }
+
+    .chart-body {
+        padding: 2.5rem;
+        min-height: 500px;
+        position: relative;
+    }
+
+    .chart-type-selector {
+        background: #f1f5f9;
+        padding: 6px;
+        border-radius: 12px;
+        display: flex;
+        gap: 6px;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .type-btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        border: none;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: transparent;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .type-btn:hover {
+        color: var(--text-primary);
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    .type-btn.active {
+        background: white;
+        color: var(--conquers-primary);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Loading State */
+    .chart-loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #e2e8f0;
+        border-top-color: var(--conquers-primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Table Section Mejorado */
+    .table-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-md);
+        overflow: hidden;
+    }
+
+    .dashboard-table {
+        margin-bottom: 0;
+    }
+
+    .dashboard-table th {
+        background: linear-gradient(to right, #fafbfc, #ffffff);
+        border-top: none;
+        border-bottom: 2px solid var(--card-border);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        letter-spacing: 0.05em;
+        padding: 1.25rem 1.75rem;
+    }
+
+    .dashboard-table td {
+        padding: 1.25rem 1.75rem;
+        vertical-align: middle;
+        font-size: 0.9375rem;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .dashboard-table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .dashboard-table tbody tr:hover {
+        background-color: #fafbfc;
+        transform: scale(1.01);
+    }
+
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.875rem;
+    }
+
+    .rank-badge.top-1 {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #7c6700;
+    }
+
+    .rank-badge.top-2 {
+        background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+        color: #5a5a5a;
+    }
+
+    .rank-badge.top-3 {
+        background: linear-gradient(135deg, #cd7f32, #e69850);
+        color: #6b4423;
+    }
+
+    .rank-badge.other {
+        background: #f1f5f9;
+        color: var(--text-secondary);
+    }
+
+    .client-badge {
+        font-weight: 600;
+        color: var(--conquers-secondary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .volume-cell {
+        font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+        font-weight: 700;
+        color: var(--conquers-primary);
+        font-size: 1rem;
+    }
+
+    .percentage-bar {
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+
+    .percentage-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--conquers-primary), var(--conquers-blue));
+        border-radius: 3px;
+        transition: width 0.6s ease;
+    }
+
+    /* Empty State Mejorado */
+    .empty-state {
+        padding: 6rem 2rem;
+        text-align: center;
+    }
+
+    .empty-icon {
+        font-size: 5rem;
+        color: #cbd5e1;
+        margin-bottom: 1.5rem;
+        opacity: 0.5;
+    }
+
+    .empty-state h5 {
+        color: var(--text-primary);
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        margin-bottom: 1.5rem;
+    }
+
+    /* Información adicional para gráficos */
+    .chart-info-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        background: rgba(0, 168, 150, 0.1);
+        color: var(--conquers-primary);
+        margin-top: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-header {
+            padding: 2rem 1.5rem;
+        }
+
+        .stat-card {
+            margin-bottom: 1rem;
+        }
+
+        .filter-body {
+            padding: 1.5rem;
+        }
+
+        .chart-body {
+            padding: 1.5rem;
+        }
+
+        .chart-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+
+    /* Tooltip personalizado */
+    .info-tooltip {
+        position: relative;
+        display: inline-block;
+        cursor: help;
+        color: var(--text-secondary);
+        margin-left: 0.25rem;
+    }
+
+    /* Accessibility improvements */
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+
+    /* Print styles */
+    @media print {
+
+        .filter-card,
+        .btn-export,
+        .chart-type-selector {
+            display: none;
+        }
+    }
+</style>
+
+<div class="container-fluid px-4 py-4">
+    <!-- Header Principal -->
+    <div class="dashboard-header animate-slide-up">
+        <div
+            class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4">
+            <div class="d-flex align-items-center gap-4">
+                <div class="header-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div>
+                    <h1 class="h2 fw-bold mb-1">Analítica de Despachos</h1>
+                    <p class="mb-0 text-white-50">Monitoreo dinámico de volúmenes por cliente y producto</p>
+                </div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, producto=filtros.producto, cliente=filtros.cliente, tipo='bar') }}"
+                    class="btn btn-export" target="_blank" aria-label="Exportar informe a PDF">
                     <i class="fas fa-file-pdf"></i>
-                </span>
-                <span class="text">Exportar PDF</span>
-            </a>
+                    <span>Exportar PDF</span>
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Tarjeta de filtros mejorada -->
-    <div class="card shadow mb-4 border-left-primary">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between bg-white border-bottom-0">
-            <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-filter me-1"></i> Filtros de Búsqueda</h6>
-            <div class="dropdown no-arrow">
-                <a class="dropdown-toggle" href="#" role="button" id="dropdownMenuLink" 
-                   data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end shadow animated--fade-in" 
-                    aria-labelledby="dropdownMenuLink">
-                    <li><a class="dropdown-item" href="#" onclick="resetFilters()">
-                        <i class="fas fa-undo fa-sm me-2"></i>Restablecer filtros
-                    </a></li>
-                </ul>
+    <!-- Stats Flash Mejorado -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="stat-card animate-slide-up" style="animation-delay: 0.1s" role="region"
+                aria-label="Total de barriles despachados">
+                <div class="stat-icon primary">
+                    <i class="fas fa-drum-oil"></i>
+                </div>
+                <div class="stat-label">Total Barriles</div>
+                <div class="stat-value">{{ "{:,.2f}".format(total_barriles) }}</div>
+                <div class="stat-badge success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Período Completo</span>
+                </div>
             </div>
         </div>
-        <div class="card-body pt-0">
-            <form method="GET" action="{{ url_for('reporte_grafico_despachos') }}" class="row g-3 mt-2">
-                <div class="col-md-3">
-                    <label for="fecha_inicio" class="form-label text-gray-700 small font-weight-bold">Fecha de Inicio</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light"><i class="fas fa-calendar-alt text-primary"></i></span>
-                        <input type="date" class="form-control form-control-sm" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.fecha_inicio }}">
+        <div class="col-md-3">
+            <div class="stat-card animate-slide-up" style="animation-delay: 0.2s" role="region"
+                aria-label="Clientes activos">
+                <div class="stat-icon secondary">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-label">Clientes Activos</div>
+                <div class="stat-value">{{ datos_tabla|length }}</div>
+                <div class="stat-badge info">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>En Distribución</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card animate-slide-up" style="animation-delay: 0.3s" role="region"
+                aria-label="Promedio por cliente">
+                <div class="stat-icon tertiary">
+                    <i class="fas fa-balance-scale"></i>
+                </div>
+                <div class="stat-label">Promedio / Cliente</div>
+                <div class="stat-value">{{ "{:,.2f}".format(total_barriles / datos_tabla|length if datos_tabla|length >
+                    0 else 0) }}</div>
+                <div class="stat-badge info">
+                    <i class="fas fa-calculator"></i>
+                    <span>BBL por Entidad</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card animate-slide-up" style="animation-delay: 0.4s" role="region"
+                aria-label="Producto líder">
+                <div class="stat-icon quaternary">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <div class="stat-label">Producto Líder</div>
+                <div class="stat-value text-uppercase" style="font-size: 1.5rem;">
+                    {% if resumen_productos %}
+                    {{ resumen_productos[0][0] }}
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </div>
+                <div class="stat-badge success">
+                    <i class="fas fa-crown"></i>
+                    <span>Mayor Volumen</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros Inteligentes Mejorados -->
+    <div class="filter-card animate-slide-up">
+        <div class="filter-header">
+            <div class="filter-header-title">
+                <div class="filter-icon">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold">Filtros de Análisis</h6>
+                    <small class="text-muted">Personaliza tu reporte</small>
+                </div>
+            </div>
+            <button type="button" class="btn btn-reset btn-sm" onclick="resetFilters()"
+                aria-label="Restablecer filtros">
+                <i class="fas fa-redo me-1"></i>
+                Restablecer
+            </button>
+        </div>
+        <div class="filter-body">
+            <form method="GET" id="filterForm" aria-label="Formulario de filtros">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label for="smartDateSelector" class="form-label">
+                            <i class="fas fa-calendar-alt"></i>
+                            Rango Predefinido
+                        </label>
+                        <select class="form-select" id="smartDateSelector" onchange="handleDateRange(this.value)"
+                            aria-label="Seleccionar rango de fechas predefinido">
+                            <option value="custom">Personalizado</option>
+                            <option value="today">Hoy</option>
+                            <option value="this_week">Esta semana</option>
+                            <option value="this_month">Este mes</option>
+                            <option value="last_month">Mes pasado</option>
+                            <option value="this_year">Este año</option>
+                        </select>
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="fecha_fin" class="form-label text-gray-700 small font-weight-bold">Fecha de Fin</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light"><i class="fas fa-calendar-alt text-primary"></i></span>
-                        <input type="date" class="form-control form-control-sm" id="fecha_fin" name="fecha_fin" value="{{ filtros.fecha_fin }}">
+
+                    <div class="col-md-2">
+                        <label for="fecha_inicio" class="form-label">
+                            <i class="fas fa-calendar-day"></i>
+                            Desde
+                        </label>
+                        <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio"
+                            value="{{ filtros.fecha_inicio }}" aria-label="Fecha de inicio" required>
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <label for="mes" class="form-label text-gray-700 small font-weight-bold">Mes</label>
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-light"><i class="fas fa-calendar text-primary"></i></span>
-                        <input type="month" class="form-control form-control-sm" id="mes" name="mes" value="{{ filtros.mes }}">
+
+                    <div class="col-md-2">
+                        <label for="fecha_fin" class="form-label">
+                            <i class="fas fa-calendar-check"></i>
+                            Hasta
+                        </label>
+                        <input type="date" class="form-control" name="fecha_fin" id="fecha_fin"
+                            value="{{ filtros.fecha_fin }}" aria-label="Fecha de fin" required>
                     </div>
-                </div>
-                <div class="col-md-2">
-                    <label for="cliente" class="form-label text-gray-700 small font-weight-bold">Cliente</label>
-                    <select class="form-select form-select-sm" id="cliente" name="cliente">
-                        <option value="">Todos los clientes</option>
-                        {% for cli in clientes %}
-                        <option value="{{ cli }}" {% if filtros.cliente == cli %}selected{% endif %}>{{ cli }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label for="producto" class="form-label text-gray-700 small font-weight-bold">Producto</label>
-                    <select class="form-select form-select-sm" id="producto" name="producto">
-                        <option value="ambos" {% if filtros.producto=='ambos' %}selected{% endif %}>Ambos (FO4 + Diluyente)</option>
-                        <option value="fo4" {% if filtros.producto=='fo4' %}selected{% endif %}>FO4</option>
-                        <option value="diluyente" {% if filtros.producto=='diluyente' %}selected{% endif %}>Diluyente</option>
-                    </select>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary btn-sm btn-block w-100 shadow-sm"><i class="fas fa-search me-1"></i> Buscar</button>
+
+                    <div class="col-md-2">
+                        <label for="cliente" class="form-label">
+                            <i class="fas fa-building"></i>
+                            Cliente
+                        </label>
+                        <select class="form-select" name="cliente" id="cliente" aria-label="Seleccionar cliente">
+                            <option value="">Todos los Clientes</option>
+                            {% for cli in clientes %}
+                            <option value="{{ cli }}" {% if filtros.cliente==cli %}selected{% endif %}>{{ cli }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label for="producto" class="form-label">
+                            <i class="fas fa-flask"></i>
+                            Producto
+                        </label>
+                        <select class="form-select" name="producto" id="producto" aria-label="Seleccionar producto">
+                            <option value="todos" {% if filtros.producto in ['todos', 'ambos' ] %}selected{% endif %}>
+                                Todos</option>
+                            <option value="fo4" {% if filtros.producto=='fo4' %}selected{% endif %}>FO4</option>
+                            <option value="diluyente" {% if filtros.producto=='diluyente' %}selected{% endif %}>
+                                Diluyente</option>
+                            <option value="vlsfo" {% if filtros.producto=='vlsfo' %}selected{% endif %}>VLSFO</option>
+                        </select>
+                    </div>
+
+                    <input type="hidden" name="tipo" value="{{ tipo }}">
+
+                    <div class="col-md-1 d-flex align-items-end">
+                        <button type="submit" class="btn btn-search w-100" aria-label="Aplicar filtros">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Tabla de resumen de productos (si aplica) -->
-    {% if resumen_productos and filtros.cliente %}
-    <div class="row mt-4">
-        <div class="col-lg-8 mx-auto">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-gradient-primary text-white py-2 border-0">
-                    <h6 class="mb-0"><i class="fas fa-table me-1"></i> Cantidad Despachada por Producto para <b>{{ filtros.cliente }}</b></h6>
+    <!-- Gráfico Principal Mejorado -->
+    <div class="chart-main-card animate-slide-up">
+        <div class="chart-header">
+            <div class="chart-title-section">
+                <div class="chart-icon {% if tipo == 'pie' %}pie{% else %}bar{% endif %}">
+                    <i class="fas fa-chart-{% if tipo == 'pie' %}pie{% else %}bar{% endif %}"></i>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover table-striped mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th class="text-center ps-4">Producto</th>
-                                    <th class="text-center pe-4">Barriles</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for producto, total in resumen_productos %}
-                                <tr>
-                                    <td class="text-truncate ps-4" style="max-width: 150px;" title="{{ producto }}">{{ producto }}</td>
-                                    <td class="text-end font-weight-bold pe-4">{{ "%.2f"|format(total) }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div>
+                    <h5 class="mb-0 fw-bold">
+                        {% if tipo == 'pie' %}
+                        Distribución Porcentual
+                        {% else %}
+                        Comparativa de Volúmenes
+                        {% endif %}
+                    </h5>
+                    <span class="text-muted small">
+                        {% if tipo == 'pie' %}
+                        Participación relativa de cada cliente en el total
+                        {% else %}
+                        Volúmenes absolutos acumulados por cliente
+                        {% endif %}
+                    </span>
+                    {% if tipo != 'pie' and filtros.producto in ['todos', 'ambos'] %}
+                    <div class="chart-info-badge">
+                        <i class="fas fa-layer-group"></i>
+                        Vista apilada por producto
                     </div>
+                    {% endif %}
                 </div>
             </div>
+            <div class="chart-type-selector">
+                <a href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, cliente=filtros.cliente, producto=filtros.producto, tipo='bar') }}"
+                    class="type-btn {% if tipo != 'pie' %}active{% endif %}" aria-label="Ver gráfico de barras">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Barras</span>
+                </a>
+                <a href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, cliente=filtros.cliente, producto=filtros.producto, tipo='pie') }}"
+                    class="type-btn {% if tipo == 'pie' %}active{% endif %}" aria-label="Ver gráfico de donut">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Donut</span>
+                </a>
+            </div>
+        </div>
+        <div class="chart-body">
+            <!-- Loading State -->
+            <div id="chartLoader" class="chart-loader" style="display: none;" role="status" aria-live="polite">
+                <div class="spinner" aria-hidden="true"></div>
+                <p class="mt-3 text-muted">Cargando gráfico...</p>
+                <span class="visually-hidden">Cargando visualización de datos</span>
+            </div>
+
+            {% if apex_data %}
+            <div id="apexDispatchChart" style="width: 100%;" role="img" aria-label="Gráfico de despachos"></div>
+            {% else %}
+            <div class="empty-state" role="status">
+                <div class="empty-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h5>Sin datos para mostrar</h5>
+                <p class="text-muted">No se encontraron despachos para los filtros seleccionados.<br>Intenta ajustar el
+                    rango de fechas o los criterios de búsqueda.</p>
+                <button type="button" class="btn btn-primary" onclick="resetFilters()">
+                    <i class="fas fa-redo me-2"></i>
+                    Restablecer Filtros
+                </button>
+            </div>
+            {% endif %}
         </div>
     </div>
-    {% endif %}
 
-    <!-- Gráfico o mensaje de no datos -->
-    {% if grafico_base64 %}
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow border-0">
-                <div class="card-header py-3 d-flex flex-column flex-lg-row gap-3 align-items-lg-center justify-content-between bg-white border-0">
-                    <div class="d-flex flex-column">
-                        <h5 class="m-0 font-weight-bold text-primary d-flex align-items-center gap-2">
-                            <i class="fas fa-chart-bar"></i>
-                            Distribución de Despachos por Cliente
-                        </h5>
-                        <small class="text-muted">Formato: {{ 'Barras Horizontales' if tipo!='pie' else 'Donut (Pie)' }} | Vista: {% if producto=='fo4' %}FO4{% elif producto=='diluyente' %}Diluyente{% else %}FO4 + Diluyente{% endif %}</small>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Formato">
-                            <a class="btn btn-outline-primary {% if tipo!='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='bar') }}">Barras</a>
-                            <a class="btn btn-outline-primary {% if tipo=='pie' %}active{% endif %}" href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, mes=filtros.mes, cliente=filtros.cliente, producto=filtros.producto, tipo='pie') }}">Donut</a>
-                        </div>
-                        <div class="d-flex align-items-center gap-1 ms-1" id="zoomControls">
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Zoom">
-                                <button type="button" class="btn btn-outline-secondary" id="zoomOutBtn" title="Alejar">-</button>
-                                <span class="btn btn-light disabled px-2" id="zoomPct" style="min-width:64px;">100%</span>
-                                <button type="button" class="btn btn-outline-secondary" id="zoomInBtn" title="Acercar">+</button>
-                                <button type="button" class="btn btn-outline-secondary" id="zoomResetBtn" title="Restablecer"><i class="fas fa-undo"></i></button>
-                                <button type="button" class="btn btn-outline-secondary" id="zoomFsBtn" title="Pantalla completa"><i class="fas fa-expand"></i></button>
-                            </div>
-                            <input type="range" class="form-range ms-2" id="zoomRange" min="50" max="300" step="10" value="100" style="width:160px;" />
-                        </div>
-                        <button class="btn btn-success btn-sm" onclick="downloadChart()"><i class="fas fa-image me-1"></i>PNG</button>
-                    </div>
+    <!-- Detalle en Tabla Mejorado -->
+    {% if datos_tabla %}
+    <div class="table-card animate-slide-up">
+        <div class="filter-header">
+            <div class="filter-header-title">
+                <div class="filter-icon" style="background: linear-gradient(135deg, var(--conquers-accent), #e56b00);">
+                    <i class="fas fa-list-ol"></i>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="chart-area mb-3 border rounded bg-light p-3 position-relative" id="chartArea" title="Usa Ctrl + rueda del mouse para hacer zoom">
-                                {% set altura_bar = (datos_tabla|length * 55 + 240) if datos_tabla|length>8 else 820 %}
-                                <img src="data:image/png;base64,{{ grafico_base64 }}" class="w-100 grafico-img {% if tipo=='pie' %}grafico-pie{% else %}grafico-bar{% endif %}" alt="Gráfico de Despachos" id="chartImage" data-altura-bar="{{ altura_bar }}" />
-                                <div class="position-absolute top-0 end-0 m-2">
-                                    <span class="badge bg-success text-start" style="white-space:normal; line-height:1.1; font-size:0.75rem;">
-                                        {% if total_box_text %}{{ total_box_text|safe }}{% else %}TOTAL {{ '%.2f'|format(total_barriles) }} BBL{% endif %}
-                                    </span>
+                <div>
+                    <h6 class="mb-0 fw-bold">Ranking de Despachos</h6>
+                    <small class="text-muted">Clasificación por volumen total</small>
+                </div>
+            </div>
+            <div class="stat-badge info">
+                <i class="fas fa-table"></i>
+                {{ datos_tabla|length }} registros
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table dashboard-table table-hover" role="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Posición</th>
+                        <th scope="col">Cliente Destinatario</th>
+                        <th scope="col" class="text-end">Total Barriles</th>
+                        <th scope="col" class="text-end">% Participación</th>
+                        <th scope="col">Distribución</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in datos_tabla %}
+                    <tr>
+                        <td>
+                            <div
+                                class="rank-badge {% if loop.index == 1 %}top-1{% elif loop.index == 2 %}top-2{% elif loop.index == 3 %}top-3{% else %}other{% endif %}">
+                                {% if loop.index <= 3 %}<i class="fas fa-medal"></i>{% else %}{{ loop.index }}{% endif
+                                    %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="client-badge">
+                                <i class="fas fa-building text-primary"></i>
+                                <span>{{ row[0] }}</span>
+                            </div>
+                        </td>
+                        <td class="text-end volume-cell">{{ "{:,.2f}".format(row[1]) }} <small
+                                class="text-muted">BBL</small></td>
+                        <td class="text-end">
+                            <span class="fw-bold" style="color: var(--conquers-primary);">
+                                {{ "{:,.2f}%".format((row[1] / total_barriles) * 100) }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="percentage-bar">
+                                <div class="percentage-fill" style="width: {{ (row[1] / total_barriles) * 100 }}%">
                                 </div>
                             </div>
-                            <div class="small text-muted text-center mt-3">
-                                <i class="fas fa-info-circle me-1"></i> Generado el {{ now.strftime('%d/%m/%Y %H:%M') }} — Puedes cambiar el formato arriba.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="card shadow mb-4 border-0">
-        <div class="card-header py-3 bg-white border-0">
-            <h6 class="m-0 font-weight-bold text-primary">
-                <i class="fas fa-exclamation-triangle me-1"></i> Información no disponible
-            </h6>
-        </div>
-        <div class="card-body text-center py-5">
-            <i class="fas fa-chart-pie fa-4x mb-3 text-gray-300"></i>
-            <h5 class="text-gray-800">No se encontraron datos de despachos</h5>
-            <p class="text-gray-600 mb-0">Para el rango de fechas seleccionado no existen registros de despachos.</p>
-            <p class="text-gray-600">Por favor, intente con otro período.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {% endif %}
 </div>
 
+<!-- Scripts de Visualización Mejorados -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-function downloadChart() {
-    const link = document.createElement('a');
-    link.download = 'grafico_despachos_{{ now.strftime("%Y%m%d_%H%M") }}.png';
-    link.href = document.getElementById('chartImage').src;
-    link.click();
-}
+    // Variables globales
+    let chartInstance = null;
+    const chartElement = document.querySelector("#apexDispatchChart");
+    const chartLoader = document.getElementById('chartLoader');
 
-function resetFilters() {
-    document.getElementById('fecha_inicio').value = '';
-    document.getElementById('fecha_fin').value = '';
-    document.getElementById('mes').value = '';
-    document.getElementById('cliente').selectedIndex = 0;
-    document.getElementById('producto').selectedIndex = 0;
-}
-
-// Exclusividad: si se elige mes, limpiar fechas; si se ajusta una fecha, limpiar mes
-document.addEventListener('DOMContentLoaded', () => {
-    const mesInput = document.getElementById('mes');
-    const fi = document.getElementById('fecha_inicio');
-    const ff = document.getElementById('fecha_fin');
-    const img = document.getElementById('chartImage');
-    const chartArea = document.getElementById('chartArea');
-    const zoomOutBtn = document.getElementById('zoomOutBtn');
-    const zoomInBtn = document.getElementById('zoomInBtn');
-    const zoomResetBtn = document.getElementById('zoomResetBtn');
-    const zoomFsBtn = document.getElementById('zoomFsBtn');
-    const zoomRange = document.getElementById('zoomRange');
-    const zoomPct = document.getElementById('zoomPct');
-    let scale = 1;
-    let naturalWidth = null;
-    function updateZoomUI(){
-        zoomPct && (zoomPct.textContent = Math.round(scale*100) + '%');
-        zoomRange && (zoomRange.value = Math.round(scale*100));
-    }
-    function applyScale(){
-        if(!img) return;
-        if(naturalWidth == null){ naturalWidth = img.naturalWidth || img.width; }
-        if(scale === 1){
-            img.classList.remove('zoom-mode');
-            img.style.removeProperty('max-width');
-            img.style.removeProperty('width');
-            img.style.removeProperty('height');
-        } else {
-            img.classList.add('zoom-mode');
-            img.style.maxWidth = 'none';
-            img.style.width = (naturalWidth * scale) + 'px';
-            img.style.height = 'auto';
+    // Función para mostrar/ocultar loader
+    function toggleLoader(show) {
+        if (chartLoader) {
+            chartLoader.style.display = show ? 'block' : 'none';
         }
-        updateZoomUI();
     }
-    function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
-    if (chartArea) { chartArea.style.overflow = 'auto'; }
-    if (img) {
-        if (img.complete) { applyScale(); }
-        else { img.addEventListener('load', applyScale); }
+
+    // Función para destruir chart anterior
+    function destroyChart() {
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
     }
-    // Ctrl + rueda del mouse para zoom con enfoque bajo el cursor
-    if (chartArea && img) {
-        chartArea.addEventListener('wheel', (e) => {
-            if (!(e.ctrlKey || e.metaKey)) return; // solo si mantiene Ctrl/Cmd
-            e.preventDefault();
-            const factor = e.deltaY < 0 ? 1.1 : 0.9;
-            const areaRect = chartArea.getBoundingClientRect();
-            const imgRect = img.getBoundingClientRect();
-            const relX = (e.clientX - imgRect.left + chartArea.scrollLeft) / imgRect.width;
-            const relY = (e.clientY - imgRect.top + chartArea.scrollTop) / imgRect.height;
-            scale = clamp(scale * factor, 0.5, 3);
-            applyScale();
-            const newW = (img.naturalWidth || img.width) * scale;
-            const newH = (img.naturalHeight || img.height) * scale;
-            chartArea.scrollLeft = relX * newW - (e.clientX - areaRect.left);
-            chartArea.scrollTop  = relY * newH - (e.clientY - areaRect.top);
-        }, { passive: false });
-    }
-    if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => { scale = clamp(scale - 0.1, 0.5, 3); applyScale(); });
-    if (zoomInBtn) zoomInBtn.addEventListener('click', () => { scale = clamp(scale + 0.1, 0.5, 3); applyScale(); });
-    if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => { scale = 1; applyScale(); });
-    if (zoomRange) zoomRange.addEventListener('input', (e) => { scale = clamp(e.target.value/100, 0.5, 3); applyScale(); });
-    if (zoomFsBtn && chartArea) {
-        zoomFsBtn.addEventListener('click', async () => {
-            try {
-                if (!document.fullscreenElement) {
-                    await chartArea.requestFullscreen();
-                } else {
-                    await document.exitFullscreen();
-                }
-            } catch(err) { /* noop */ }
-        });
-    }
-    if(mesInput){
-        mesInput.addEventListener('input', () => {
-            if(mesInput.value){
-                fi.value='';
-                ff.value='';
+
+    // Validación de fechas
+    function validateDates() {
+        const startDate = document.getElementById('fecha_inicio');
+        const endDate = document.getElementById('fecha_fin');
+
+        if (startDate && endDate) {
+            if (new Date(startDate.value) > new Date(endDate.value)) {
+                alert('⚠️ La fecha de inicio no puede ser mayor que la fecha fin');
+                return false;
             }
-        });
-    }
-    [fi, ff].forEach(el => el && el.addEventListener('input', () => {
-        if(fi.value || ff.value){
-            document.getElementById('mes').value='';
         }
-    }));
-});
+        return true;
+    }
+
+    // Manejar envío del formulario
+    document.getElementById('filterForm')?.addEventListener('submit', function (e) {
+        if (!validateDates()) {
+            e.preventDefault();
+            return false;
+        }
+        toggleLoader(true);
+    });
+
+    // Función para resetear filtros
+    function resetFilters() {
+        const form = document.getElementById('filterForm');
+        if (form) {
+            // Resetear todos los campos
+            form.reset();
+
+            // Establecer valores por defecto
+            const today = new Date();
+            const firstDayMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDayMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+            document.getElementById('fecha_inicio').value = formatDate(firstDayMonth);
+            document.getElementById('fecha_fin').value = formatDate(lastDayMonth);
+            document.getElementById('smartDateSelector').value = 'this_month';
+
+            form.submit();
+        }
+    }
+
+    // Función auxiliar para formatear fechas
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    // Renderizado del gráfico
+    document.addEventListener('DOMContentLoaded', function () {
+        const apexData = {{ apex_data | tojson | safe
+    }};
+    const chartType = "{{ tipo }}";
+    const isStacked = {{ (filtros.producto in ['todos', 'ambos']) | tojson }};
+
+    if (!chartElement || apexData.length === 0) {
+        toggleLoader(false);
+        return;
+    }
+
+    toggleLoader(true);
+
+    // Destruir chart anterior si existe
+    destroyChart();
+
+    let options = {};
+
+    if (chartType === 'pie') {
+        // ============================================
+        // GRÁFICO DONUT - Para ver distribución porcentual
+        // ============================================
+        options = {
+            series: apexData.map(d => d.total),
+            chart: {
+                type: 'donut',
+                height: 600,
+                fontFamily: 'Inter, sans-serif',
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800,
+                    animateGradually: {
+                        enabled: true,
+                        delay: 150
+                    },
+                    dynamicAnimation: {
+                        enabled: true,
+                        speed: 350
+                    }
+                },
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: true
+                    }
+                }
+            },
+            labels: apexData.map(d => d.cliente),
+            colors: ['#00A896', '#F77F00', '#06AED5', '#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b'],
+            plotOptions: {
+                pie: {
+                    startAngle: -90,
+                    endAngle: 270,
+                    expandOnClick: true,
+                    donut: {
+                        size: '70%',
+                        background: 'transparent',
+                        labels: {
+                            show: true,
+                            name: {
+                                show: true,
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                color: '#2C3E50',
+                                offsetY: -10
+                            },
+                            value: {
+                                show: true,
+                                fontSize: '28px',
+                                fontWeight: 700,
+                                color: '#00A896',
+                                offsetY: 10,
+                                formatter: function (val) {
+                                    return parseFloat(val).toLocaleString('es-ES', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }) + ' BBL';
+                                }
+                            },
+                            total: {
+                                show: true,
+                                showAlways: true,
+                                label: 'TOTAL GENERAL',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: '#64748b',
+                                formatter: function (w) {
+                                    return total.toLocaleString('es-ES', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }) + ' BBL';
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function (val, opts) {
+                    const name = opts.w.globals.labels[opts.seriesIndex];
+                    return [name, val.toFixed(2) + '%'];
+                },
+                style: {
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    colors: ['#ffffff']
+                },
+                background: {
+                    enabled: true,
+                    foreColor: '#2C3E50',
+                    borderRadius: 4,
+                    padding: 4,
+                    opacity: 0.9
+                },
+                dropShadow: {
+                    enabled: true,
+                    blur: 3,
+                    opacity: 0.3
+                }
+            },
+            legend: {
+                position: 'bottom',
+                horizontalAlign: 'center',
+                fontSize: '13px',
+                fontWeight: 500,
+                offsetY: 10,
+                markers: {
+                    width: 12,
+                    height: 12,
+                    radius: 3
+                },
+                itemMargin: {
+                    horizontal: 12,
+                    vertical: 8
+                },
+                formatter: function (seriesName, opts) {
+                    const value = opts.w.globals.series[opts.seriesIndex];
+                    const total = opts.w.globals.series.reduce((a, b) => a + b, 0);
+                    const percentage = ((value / total) * 100).toFixed(2);
+                    return seriesName + ' - ' + percentage + '%';
+                }
+            },
+            stroke: {
+                show: true,
+                width: 3,
+                colors: ['#ffffff']
+            },
+            tooltip: {
+                enabled: true,
+                theme: 'light',
+                style: {
+                    fontSize: '13px',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                y: {
+                    formatter: function (val, opts) {
+                        const total = opts.w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                        const percentage = ((val / total) * 100).toFixed(2);
+                        return val.toLocaleString('es-ES') + ' BBL (' + percentage + '%)';
+                    }
+                }
+            },
+            responsive: [{
+                breakpoint: 768,
+                options: {
+                    chart: {
+                        height: 500
+                    },
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }]
+        };
+
+    } else {
+        // ============================================
+        // GRÁFICO DE BARRAS - Para comparar volúmenes absolutos
+        // ============================================
+        const categories = apexData.map(d => d.cliente);
+
+        if (isStacked) {
+            // Barras apiladas por producto
+            options = {
+                series: [
+                    {
+                        name: 'FO4',
+                        data: apexData.map(d => d.fo4),
+                        color: '#00A896'
+                    },
+                    {
+                        name: 'DILUYENTE',
+                        data: apexData.map(d => d.diluyente),
+                        color: '#F77F00'
+                    },
+                    {
+                        name: 'VLSFO',
+                        data: apexData.map(d => d.vlsfo),
+                        color: '#06AED5'
+                    }
+                ],
+                chart: {
+                    type: 'bar',
+                    height: Math.max(550, apexData.length * 50),
+                    stacked: true,
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: {
+                        show: true,
+                        tools: {
+                            download: true,
+                            selection: false,
+                            zoom: false,
+                            zoomin: false,
+                            zoomout: false,
+                            pan: false,
+                            reset: false
+                        }
+                    },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800,
+                        animateGradually: {
+                            enabled: true,
+                            delay: 150
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '75%',
+                        borderRadius: 6,
+                        borderRadiusApplication: 'end',
+                        dataLabels: {
+                            total: {
+                                enabled: true,
+                                offsetX: 10,
+                                style: {
+                                    fontSize: '13px',
+                                    fontWeight: 700,
+                                    color: '#2C3E50'
+                                },
+                                formatter: function (val) {
+                                    return val.toLocaleString('es-ES', {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    }) + ' BBL';
+                                }
+                            }
+                        }
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: function (val) {
+                        return val.toLocaleString('es-ES', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        });
+                    },
+                    style: {
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        colors: ['#ffffff']
+                    },
+                    dropShadow: {
+                        enabled: true,
+                        blur: 2,
+                        opacity: 0.3
+                    }
+                },
+                xaxis: {
+                    categories: categories,
+                    labels: {
+                        formatter: function (val) {
+                            return val.toLocaleString('es-ES', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        },
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500
+                        }
+                    },
+                    title: {
+                        text: 'Barriles (BBL)',
+                        style: {
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#64748b'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: '#f1f5f9',
+                    strokeDashArray: 3,
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'left',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    offsetY: 0,
+                    markers: {
+                        width: 12,
+                        height: 12,
+                        radius: 3
+                    },
+                    itemMargin: {
+                        horizontal: 15,
+                        vertical: 5
+                    }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    theme: 'light',
+                    style: {
+                        fontSize: '13px'
+                    },
+                    y: {
+                        formatter: function (val) {
+                            if (val === 0) return 'N/A';
+                            return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
+                        }
+                    }
+                }
+            };
+        } else {
+            // Barras simples
+            options = {
+                series: [{
+                    name: 'Barriles',
+                    data: apexData.map(d => d.total)
+                }],
+                chart: {
+                    type: 'bar',
+                    height: Math.max(550, apexData.length * 45),
+                    fontFamily: 'Inter, sans-serif',
+                    toolbar: {
+                        show: true,
+                        tools: {
+                            download: true
+                        }
+                    },
+                    animations: {
+                        enabled: true,
+                        easing: 'easeinout',
+                        speed: 800
+                    }
+                },
+                colors: ['#00A896'],
+                plotOptions: {
+                    bar: {
+                        horizontal: true,
+                        barHeight: '70%',
+                        borderRadius: 6,
+                        borderRadiusApplication: 'end',
+                        distributed: false,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    }
+                },
+                dataLabels: {
+                    enabled: true,
+                    formatter: function (val) {
+                        return val.toLocaleString('es-ES', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }) + ' BBL';
+                    },
+                    offsetX: 10,
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        colors: ['#2C3E50']
+                    }
+                },
+                xaxis: {
+                    categories: categories,
+                    labels: {
+                        formatter: function (val) {
+                            return val.toLocaleString('es-ES', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                        },
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500
+                        }
+                    },
+                    title: {
+                        text: 'Barriles (BBL)',
+                        style: {
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            color: '#64748b'
+                        }
+                    }
+                },
+                yaxis: {
+                    labels: {
+                        style: {
+                            fontSize: '12px',
+                            fontWeight: 500
+                        }
+                    }
+                },
+                grid: {
+                    borderColor: '#f1f5f9',
+                    strokeDashArray: 3,
+                    xaxis: {
+                        lines: {
+                            show: true
+                        }
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    theme: 'light',
+                    style: {
+                        fontSize: '13px'
+                    },
+                    y: {
+                        formatter: function (val) {
+                            return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
+                        }
+                    }
+                }
+            };
+        }
+    }
+
+    // Renderizar el gráfico
+    try {
+        chartInstance = new ApexCharts(chartElement, options);
+        chartInstance.render().then(() => {
+            toggleLoader(false);
+        }).catch(error => {
+            console.error('Error al renderizar el gráfico:', error);
+            toggleLoader(false);
+        });
+    } catch (error) {
+        console.error('Error al crear el gráfico:', error);
+        toggleLoader(false);
+    }
+    });
+
+    // Manejo de rangos de fecha predefinidos
+    function handleDateRange(selection) {
+        const fi = document.getElementById('fecha_inicio');
+        const ff = document.getElementById('fecha_fin');
+
+        if (!fi || !ff) return;
+
+        const today = new Date();
+        let start = new Date();
+        let end = new Date();
+
+        switch (selection) {
+            case 'today':
+                start = today;
+                end = today;
+                break;
+            case 'this_week':
+                const day = today.getDay() || 7;
+                start.setDate(today.getDate() - (day - 1));
+                end = today;
+                break;
+            case 'this_month':
+                start = new Date(today.getFullYear(), today.getMonth(), 1);
+                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                break;
+            case 'last_month':
+                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                end = new Date(today.getFullYear(), today.getMonth(), 0);
+                break;
+            case 'this_year':
+                start = new Date(today.getFullYear(), 0, 1);
+                end = new Date(today.getFullYear(), 11, 31);
+                break;
+            default:
+                return;
+        }
+
+        fi.value = formatDate(start);
+        ff.value = formatDate(end);
+
+        if (validateDates()) {
+            document.getElementById('filterForm').submit();
+        }
+    }
+
+    // Animación de las barras de porcentaje en la tabla
+    document.addEventListener('DOMContentLoaded', function () {
+        const percentageFills = document.querySelectorAll('.percentage-fill');
+        percentageFills.forEach((fill, index) => {
+            setTimeout(() => {
+                fill.style.width = fill.style.width; // Trigger animation
+            }, index * 100);
+        });
+    });
 </script>
 
-<style>
-    .border-left-primary {
-        border-left: 0.35rem solid #4e73df !important;
-    }
-    .card {
-        border-radius: 0.5rem;
-    }
-    .card-header:first-child {
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
-    .btn {
-        border-radius: 0.35rem;
-    }
-    .form-control, .form-select {
-        border-radius: 0.35rem;
-    }
-    .table thead th {
-        vertical-align: middle;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-top: 0;
-    }
-    .table tbody td {
-        vertical-align: middle;
-    }
-    .bg-gradient-primary {
-        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
-    }
-    .shadow-sm {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-    }
-</style>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-    img.grafico-img { object-fit: contain; width:100%; }
-    /* Cuando se activa el zoom, permitimos que la imagen crezca y se desplace */
-    img.grafico-img.zoom-mode { width:auto !important; max-width:none !important; }
-    .chart-area { overflow:auto; }
-    img.grafico-bar { max-height: 820px; }
-    img.grafico-pie { max-height: 1100px; }
-    @media (min-width:1400px){
-        img.grafico-bar { max-height: 1000px; }
-        img.grafico-pie { max-height: 1300px; }
-    }
-</style>
 {% endblock %}

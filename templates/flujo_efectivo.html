@@ -595,154 +595,9 @@
 
 {% block scripts %}
 <script>
-    // Modal de confirmación de actualización (Análisis previo)
-    const updateModalHtml = `
-    <div class="modal fade" id="modalConfirmUpdate" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white">
-                    <h6 class="modal-title"><i class="bi bi-search me-1"></i>Análisis del Archivo</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="small mb-2">Se encontraron los siguientes periodos en el archivo. Solo se actualizarán (eliminarán y volverán a insertar) los marcados:</p>
-                    <div id="analysis-results" class="mb-3" style="max-height:300px; overflow-y:auto;">
-                        <!-- Checkboxes dinámicos -->
-                    </div>
-                    <div class="alert alert-info py-2 small mb-0"><i class="bi bi-info-circle me-1"></i>Los periodos NO listados (ej. otros años) permanecerán intactos en el sistema.</div>
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" id="btn-process-confirmed" class="btn btn-primary fw-bold">Confirmar Actualización</button>
-                </div>
-            </div>
-        </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', updateModalHtml);
-    let updateModalInstance = null;
-    let pendingUploadFile = null;
-
     document.getElementById('file-upload').addEventListener('change', handleFile, false);
     document.getElementById('file-facturacion').addEventListener('change', handleFacturacion, false);
     const btnGuardar = document.getElementById('btn-guardar-dataset');
-
-    // Listener para botón confirmar actualización
-    document.addEventListener('click', (ev) => {
-        if (ev.target && ev.target.id === 'btn-process-confirmed') {
-            if (!pendingUploadFile) return;
-            const checks = document.querySelectorAll('.period-check:checked');
-            if (checks.length === 0) {
-                alert('Selecciona al menos un periodo para procesar.');
-                return;
-            }
-            const selected = [];
-            checks.forEach(c => {
-                const [y, m] = c.value.split('-').map(Number);
-                selected.push([y, m]);
-            });
-            processFile(pendingUploadFile, selected);
-            if (updateModalInstance) updateModalInstance.hide();
-        }
-    });
-
-    async function handleFile(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        pendingUploadFile = file;
-
-        // Reset inputs
-        e.target.value = '';
-
-        const loadingSpinner = document.getElementById('loading-spinner');
-        loadingSpinner.classList.remove('d-none');
-        document.getElementById('report-output').classList.add('d-none');
-
-        const formData = new FormData();
-        formData.append('archivo_excel', file);
-
-        try {
-            // Paso 1: Analizar
-            loadingSpinner.innerHTML = '<div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-primary fw-bold">Analizando archivo...</div>';
-
-            const resp = await fetch('/api/analyze_flujo_file', { method: 'POST', body: formData });
-            const result = await resp.json();
-
-            if (!result.success) throw new Error(result.message);
-
-            // Paso 2: Mostrar Modal
-            const container = document.getElementById('analysis-results');
-            container.innerHTML = '';
-
-            // Construir árbol
-            const periods = result.found_periods || {};
-            const years = Object.keys(periods).sort();
-
-            if (years.length === 0) {
-                container.innerHTML = '<div class="text-muted small">No se encontraron fechas válidas en el archivo (Bancos/Odoo).</div>';
-            } else {
-                years.forEach(year => {
-                    const months = periods[year];
-                    const div = document.createElement('div');
-                    div.className = 'card mb-2 border-light bg-light';
-                    div.innerHTML = `
-                        <div class="card-header py-1 px-2 d-flex justify-content-between align-items-center">
-                             <strong>${year}</strong>
-                        </div>
-                        <div class="card-body p-2 d-flex flex-wrap gap-2">
-                            ${months.map(m => {
-                        const mName = new Date(year, m - 1, 1).toLocaleString('es-CO', { month: 'short' }).toUpperCase();
-                        return `
-                                    <div class="form-check form-check-inline m-0 border bg-white rounded px-2 py-1">
-                                        <input class="form-check-input period-check" type="checkbox" id="chk-${year}-${m}" value="${year}-${m}" checked>
-                                        <label class="form-check-label small fw-bold" for="chk-${year}-${m}">${mName}</label>
-                                    </div>
-                                `;
-                    }).join('')}
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-
-            loadingSpinner.classList.add('d-none');
-            if (!updateModalInstance) updateModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmUpdate'));
-            updateModalInstance.show();
-
-        } catch (error) {
-            loadingSpinner.classList.add('d-none');
-            pushAlert('danger', `Error: ${error.message}`);
-        }
-    }
-
-    async function processFile(file, selectedPeriods) {
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const reportOutput = document.getElementById('report-output');
-        loadingSpinner.innerHTML = '<div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-primary fw-bold">Procesando y Guardando...</div>';
-        loadingSpinner.classList.remove('d-none');
-        reportOutput.classList.add('d-none');
-        reportOutput.innerHTML = '';
-
-        const formData = new FormData();
-        formData.append('archivo_excel', file);
-        if (selectedPeriods) {
-            formData.append('selected_periods', JSON.stringify(selectedPeriods));
-        }
-
-        try {
-            const response = await fetch('/api/procesar_flujo_efectivo', { method: 'POST', body: formData });
-            const result = await response.json();
-            if (!result.success) throw new Error(result.message);
-
-            displayReport(result);
-            reportOutput.classList.remove('d-none');
-            pushAlert('success', 'Datos actualizados exitosamente.');
-        } catch (error) {
-            reportOutput.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
-            reportOutput.classList.remove('d-none');
-        } finally {
-            loadingSpinner.classList.add('d-none');
-        }
-    }
     const btnCargarGuardado = document.getElementById('btn-cargar-guardado');
     const btnEliminarDatos = document.getElementById('btn-eliminar-datos');
 
@@ -771,99 +626,58 @@
     }
     if (btnCargarGuardado) { btnCargarGuardado.addEventListener('click', () => cargarGuardado(false)); }
     // Modal confirmación eliminación
-    // Modal dinámico de eliminación (Año vs Todo)
     const deleteModalHtml = `
         <div class="modal fade" id="modalConfirmDelete" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content border-0 shadow-lg">
                     <div class="modal-header bg-danger text-white">
-                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>Opciones de Limpieza</h6>
+                        <h6 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>Confirmar limpieza</h6>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                     </div>
                     <div class="modal-body">
-                        <p class="mb-3">Selecciona qué datos deseas eliminar del sistema:</p>
-                        <div id="delete-years-options" class="d-grid gap-2 mb-3">
-                            <!-- Botones insertados dinámicamente -->
-                        </div>
-                        <div class="alert alert-warning py-2 small mb-0"><i class="bi bi-info-circle me-1"></i> "Vaciar Todo" borrará absolutamente todos los registros.</div>
+                        <p class="mb-2">Vas a eliminar <strong>todos</strong> los datos actuales del Flujo de Efectivo (bancos y Odoo).</p>
+                        <ul class="small text-muted mb-3">
+                            <li>La acción no se puede deshacer.</li>
+                            <li>Luego podrás subir un nuevo archivo consolidado.</li>
+                        </ul>
+                        <div class="alert alert-warning py-2 mb-0"><i class="bi bi-info-circle me-1"></i>Recomendado: asegúrate de tener el Excel completo antes de vaciar.</div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" id="confirm-delete-all" class="btn btn-danger"><i class="bi bi-trash"></i> Vaciar datos</button>
                     </div>
                 </div>
             </div>
         </div>`;
     document.body.insertAdjacentHTML('beforeend', deleteModalHtml);
     let deleteModalInstance = null;
-
     if (btnEliminarDatos) {
         btnEliminarDatos.addEventListener('click', () => {
-            // Detectar años disponibles
-            const container = document.getElementById('delete-years-options');
-            container.innerHTML = '';
-            const years = new Set();
-
-            if (globalReportData && globalReportData.daily_comparison) {
-                globalReportData.daily_comparison.forEach(r => {
-                    if (r.fecha && r.fecha.length >= 4) years.add(r.fecha.substring(0, 4));
-                });
-            }
-
-            // Botones por año
-            const sortedYears = [...years].sort();
-            sortedYears.forEach(y => {
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-outline-danger text-start';
-                btn.innerHTML = `<i class="bi bi-calendar-x me-2"></i>Eliminar solo <strong>${y}</strong>`;
-                btn.onclick = () => executeDelete(y);
-                container.appendChild(btn);
-            });
-
-            // Botón Eliminar Todo (siempre presente)
-            const btnAll = document.createElement('button');
-            btnAll.className = 'btn btn-danger text-start fw-bold mt-2';
-            btnAll.innerHTML = `<i class="bi bi-trash-fill me-2"></i>Vaciar TODO (Reset Completo)`;
-            btnAll.onclick = () => executeDelete(null); // null = borrar todo
-            container.appendChild(btnAll);
-
             if (!deleteModalInstance) { deleteModalInstance = new bootstrap.Modal(document.getElementById('modalConfirmDelete')); }
             deleteModalInstance.show();
         });
-    }
-
-    async function executeDelete(year) {
-        const originalText = document.activeElement.innerHTML;
-        document.activeElement.disabled = true;
-        document.activeElement.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Procesando...';
-
-        try {
-            const headers = { 'Content-Type': 'application/json' };
-            const body = year ? JSON.stringify({ year: year }) : '{}';
-
-            const resp = await fetch('/api/flujo_efectivo_delete_all', {
-                method: 'DELETE',
-                headers: headers,
-                body: body
-            });
-            const data = await resp.json();
-
-            if (!data.success) {
-                pushAlert('danger', data.message || 'Error eliminando');
-            } else {
-                pushAlert('success', data.message);
-                if (data.mode === 'all') {
-                    // Reset total
-                    globalReportData = null;
-                    document.getElementById('report-output').innerHTML = '<div class="alert alert-info">No hay datos. Sube un nuevo archivo para iniciar.</div>';
-                    document.getElementById('report-output').classList.remove('d-none');
-                    document.getElementById('charts-view').classList.add('d-none');
-                    document.getElementById('resumen-directo').classList.add('d-none');
-                } else {
-                    // Reset parcial: volver a cargar datos para refrescar la vista
-                    cargarGuardado(true);
+        document.addEventListener('click', async (ev) => {
+            if (ev.target && ev.target.id === 'confirm-delete-all') {
+                const btn = ev.target; btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Eliminando';
+                try {
+                    const resp = await fetch('/api/flujo_efectivo_delete_all', { method: 'DELETE' });
+                    const data = await resp.json();
+                    if (!data.success) { pushAlert('danger', data.message || 'Error eliminando'); }
+                    else {
+                        pushAlert('success', 'Datos eliminados: Bancos ' + data.eliminados_bancos + ' | Odoo ' + data.eliminados_odoo);
+                        globalReportData = null;
+                        document.getElementById('report-output').innerHTML = '<div class="alert alert-info">No hay datos. Sube un nuevo archivo para iniciar.</div>';
+                        document.getElementById('report-output').classList.remove('d-none');
+                        document.getElementById('charts-view').classList.add('d-none');
+                        document.getElementById('resumen-directo').classList.add('d-none');
+                    }
+                } catch (e) { pushAlert('danger', 'Error: ' + e.message); }
+                finally {
+                    btn.disabled = false; btn.innerHTML = '<i class="bi bi-trash"></i> Vaciar datos';
+                    if (deleteModalInstance) deleteModalInstance.hide();
                 }
             }
-        } catch (e) { pushAlert('danger', 'Error: ' + e.message); }
-        finally {
-            if (deleteModalInstance) deleteModalInstance.hide();
-        }
+        });
     }
     // Auto al cargar página
     document.addEventListener('DOMContentLoaded', () => cargarGuardado(true));
@@ -895,7 +709,33 @@
         style: 'currency', currency: 'COP', minimumFractionDigits: 2
     });
 
+    async function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const reportOutput = document.getElementById('report-output');
+        loadingSpinner.classList.remove('d-none');
+        reportOutput.classList.add('d-none');
+        reportOutput.innerHTML = '';
+
+        const formData = new FormData();
+        formData.append('archivo_excel', file);
+
+        try {
+            const response = await fetch('/api/procesar_flujo_efectivo', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
+
+            displayReport(result);
+            reportOutput.classList.remove('d-none');
+        } catch (error) {
+            reportOutput.innerHTML = `<div class="alert alert-danger"><strong>Error:</strong> ${error.message}</div>`;
+            reportOutput.classList.remove('d-none');
+        } finally {
+            loadingSpinner.classList.add('d-none');
+        }
+    }
 
     function createComparisonTable(data) {
         if (!data || data.length === 0) return '';

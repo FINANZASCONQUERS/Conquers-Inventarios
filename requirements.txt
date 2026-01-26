@@ -44,3 +44,4 @@ google-cloud-dialogflow
 python-dotenv
 # https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.5.0/es_core_news_sm-3.5.0.tar.gz#egg=es_core_news_sm
 yfinance
+plotly==5.16.0

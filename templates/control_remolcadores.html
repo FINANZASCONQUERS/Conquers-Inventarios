@@ -6,122 +6,134 @@
 {{ super() }}
 <style>
     /* === Estilos Generales === */
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-    
-    .container-fluid { max-width: 1400px; }
-    
+    body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+    }
+
+    .container-fluid {
+        max-width: 1400px;
+    }
+
     /* === Header === */
     .page-header {
         background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
         border-radius: 15px;
         padding: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         margin-bottom: 2rem;
         color: white;
     }
-    
+
     .page-header h2 {
         font-weight: 700;
         margin: 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
     }
-    
+
     /* === Cards === */
     .card {
         border: none;
         border-radius: 15px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         backdrop-filter: blur(10px);
-        background: rgba(255,255,255,0.95);
+        background: rgba(255, 255, 255, 0.95);
         overflow: hidden;
     }
-    
-    .card-body { padding: 1.5rem; }
-    
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
     /* === Botones === */
     .btn {
         border-radius: 8px;
         font-weight: 600;
         padding: 0.5rem 1rem;
         transition: all 0.3s ease;
-        border: none;
     }
-    
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
     .btn-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
-    
+
     .btn-success {
         background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
     }
-    
+
     .btn-warning {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         color: white;
     }
-    
+
     .btn-info {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     }
-    
+
     /* === Grupos de Maniobra === */
     .maniobra-group {
         border: none;
         border-radius: 15px;
         margin-bottom: 1.5rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         overflow: hidden;
         background: white;
         transition: transform 0.3s ease;
     }
-    
-    .maniobra-group:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
-    
+
+    .maniobra-group:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
     .maniobra-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 1rem 1.5rem;
         color: white;
     }
-    
+
     .maniobra-header h5 {
         color: white;
         font-weight: 700;
         margin: 0;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
     }
-    
+
     .maniobra-header label {
-        color: rgba(255,255,255,0.9);
+        color: rgba(255, 255, 255, 0.9);
         font-weight: 600;
         font-size: 0.75rem;
         margin-bottom: 0.25rem;
     }
-    
+
     .maniobra-header .form-control,
     .maniobra-header .form-select {
-        background: rgba(255,255,255,0.95);
-        border: 1px solid rgba(255,255,255,0.3);
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         font-size: 0.875rem;
     }
-    
+
     .maniobra-body {
         padding: 1rem;
         background: white;
     }
-    
+
     /* === Tabla === */
     .table-responsive {
         border-radius: 8px;
         overflow-x: auto;
     }
-    
+
     .table {
         margin-bottom: 0;
         font-size: 0.875rem;
     }
-    
+
     .table th {
         font-weight: 700;
         font-size: 0.75rem;
@@ -133,21 +145,21 @@
         padding: 0.75rem 0.5rem;
         white-space: nowrap;
     }
-    
+
     .table td {
         vertical-align: middle;
         padding: 0.5rem;
         border-color: #e9ecef;
     }
-    
+
     .table tbody tr {
         transition: background-color 0.2s ease;
     }
-    
+
     .table tbody tr:hover {
         background-color: #f8f9fa;
     }
-    
+
     /* === Inputs Editables === */
     [contenteditable="true"],
     .form-select:not([disabled]),
@@ -156,155 +168,208 @@
         border: 2px solid #90caf9;
         transition: all 0.3s ease;
     }
-    
+
     .form-control:focus,
     .form-select:focus {
         background-color: #fff;
         border-color: #667eea;
         box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
     }
-    
+
     /* === Total Horas Destacado === */
     .total-horas {
         font-weight: 700;
         font-size: 1.1rem;
         color: #667eea;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
     }
-    
+
     /* === Filtros === */
     .filtros-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     }
-    
+
     /* === Estados Vacío === */
     .text-muted {
         color: #6c757d !important;
     }
-    
+
     /* === Mobile Responsive === */
     @media (max-width: 768px) {
         .page-header {
             padding: 1rem;
             margin-bottom: 1rem;
         }
-        
+
         .page-header h2 {
             font-size: 1.5rem;
         }
-        
+
         .page-header .d-flex {
             flex-direction: column;
             align-items: stretch !important;
             gap: 0.5rem;
         }
-        
+
         .page-header .btn {
             width: 100%;
         }
-        
+
         .card-body {
             padding: 1rem;
         }
-        
+
         .maniobra-header {
             padding: 1rem;
         }
-        
+
         .maniobra-header .row {
             row-gap: 0.75rem;
         }
-        
+
         .maniobra-header h5 {
             font-size: 1.1rem;
         }
-        
+
         .btn-group-mobile {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
             width: 100%;
         }
-        
+
         .btn-group-mobile .btn {
             width: 100%;
             margin: 0;
         }
-        
-        .table {
-            font-size: 0.75rem;
+
+        /* --- Transformación de Tabla a Cards --- */
+        .table thead {
+            display: none;
+            /* Ocultar encabezados de tabla */
         }
-        
-        .table th,
+
+        .table,
+        .table tbody,
+        .table tr,
         .table td {
-            padding: 0.4rem 0.25rem;
-            font-size: 0.7rem;
-        }
-        
-        .table .btn-sm {
-            font-size: 0.7rem;
-            padding: 0.25rem 0.4rem;
-        }
-        
-        .form-control-sm,
-        .form-select-sm {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-        
-        .col-md-3,
-        .col-md-2,
-        .col-md-auto {
+            display: block;
             width: 100%;
         }
+
+        .table tr {
+            margin-bottom: 1rem;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
+            padding: 0.5rem;
+        }
+
+        .table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f1f1f1;
+            text-align: right;
+        }
+
+        .table td:last-child {
+            border-bottom: none;
+            justify-content: flex-end;
+            /* Botones a la derecha */
+            padding-top: 1rem;
+        }
+
+        .table td .btn {
+            flex-shrink: 0;
+            /* Evitar que los botones se aplasten */
+            margin-left: 0.5rem;
+        }
+
+        .table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            margin-right: 1rem;
+            text-align: left;
+            flex: 1;
+        }
+
+        /* Ajustes específicos para inputs en móvil */
+        .table .form-control,
+        .table .form-select {
+            width: 100%;
+            /* Ocupar todo el ancho disponible */
+            min-width: 150px;
+            /* Asegurar un ancho mínimo */
+        }
+
+        /* Ocultar celdas vacías que no aportan valor en card view */
+        .table td:empty {
+            display: none;
+        }
+
+        /* Estilar el total de horas si está presente */
+        .total-horas {
+            color: #667eea;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
     }
-    
+
     @media (max-width: 576px) {
         .container-fluid {
             padding-left: 0.5rem;
             padding-right: 0.5rem;
         }
-        
+
         .maniobra-body {
             padding: 0.5rem;
         }
-        
+
         .table-responsive {
             margin: 0 -0.5rem;
-        }
-        
-        /* Hacer tabla más compacta en móviles */
-        .table th:nth-child(5), /* Duración */
-        .table td:nth-child(5) {
-            display: none;
+            overflow: visible;
+            /* Permitir que las cards se vean completas */
         }
     }
-    
+
     /* === Animaciones === */
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
-    
+
     .maniobra-group {
         animation: fadeIn 0.4s ease;
     }
-    
+
     /* === Scrollbar Personalizado === */
     .table-responsive::-webkit-scrollbar {
         height: 8px;
     }
-    
+
     .table-responsive::-webkit-scrollbar-track {
         background: #f1f1f1;
         border-radius: 10px;
     }
-    
+
     .table-responsive::-webkit-scrollbar-thumb {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 10px;
     }
-    
+
     .table-responsive::-webkit-scrollbar-thumb:hover {
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
     }
@@ -315,90 +380,101 @@
 <div class="container-fluid mt-4">
     <div class="page-header d-flex justify-content-between align-items-center">
         <h2><i class="fas fa-ship me-2"></i>Control de Tiempos de Remolcadores</h2>
-    {% if session.email in ['ops@conquerstrading.com', 'finance@conquerstrading.com'] or session.get('rol') == 'admin' %}
-            <div class="d-flex gap-2">
-                <a href="{{ url_for('reporte_analisis_remolcadores') }}" class="btn btn-warning"><i class="fas fa-chart-line me-2"></i>Ver Reporte</a>
-            </div>
+        {% if session.email in ['ops@conquerstrading.com', 'finance@conquerstrading.com'] or session.get('rol') ==
+        'admin' %}
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('reporte_analisis_remolcadores') }}" class="btn btn-warning"><i
+                    class="fas fa-chart-line me-2"></i>Ver Reporte</a>
+        </div>
         {% endif %}
     </div>
 
     <div class="card filtros-card shadow-sm mb-4">
-    <div class="card-body">
-        <div class="row g-3 align-items-end">
-    <div class="col-md-3 col-12">
-        <label for="filtro_mes" class="form-label fw-semibold"><i class="fas fa-calendar-alt me-1"></i>Mes:</label>
-        <input type="month" class="form-control form-control-sm" id="filtro_mes">
-    </div>
-    <div class="col-md-3 col-12">
-        <label for="fecha_inicio" class="form-label fw-semibold"><i class="fas fa-calendar-day me-1"></i>Fecha de Inicio:</label>
-        <input type="date" class="form-control form-control-sm" id="fecha_inicio">
-    </div>
-    <div class="col-md-3 col-12">
-        <label for="fecha_fin" class="form-label fw-semibold"><i class="fas fa-calendar-check me-1"></i>Fecha de Fin:</label>
-        <input type="date" class="form-control form-control-sm" id="fecha_fin">
-    </div>
-    <div class="col-md-3 col-12">
-        <div class="d-flex gap-2 flex-column flex-md-row">
-            <button id="btn-filtrar" class="btn btn-primary btn-sm flex-fill">
-                <i class="fas fa-filter me-1"></i>Filtrar
-            </button>
-            <button id="btn-limpiar-filtro" class="btn btn-outline-secondary btn-sm flex-fill">
-                <i class="fas fa-times me-1"></i>Limpiar
-            </button>
-        </div>
-    </div>
-<script>
-// Si el usuario selecciona un mes, limpia los campos de fecha
-document.addEventListener('DOMContentLoaded', function() {
-    const mesInput = document.getElementById('filtro_mes');
-    const fechaInicio = document.getElementById('fecha_inicio');
-    const fechaFin = document.getElementById('fecha_fin');
-    if (mesInput) {
-        mesInput.addEventListener('input', function() {
-            if (mesInput.value) {
-                fechaInicio.value = '';
-                fechaFin.value = '';
-            }
-        });
-    }
-});
-</script>
-    </div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3 col-12">
+                    <label for="filtro_mes" class="form-label fw-semibold"><i
+                            class="fas fa-calendar-alt me-1"></i>Mes:</label>
+                    <input type="month" class="form-control form-control-sm" id="filtro_mes">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label for="fecha_inicio" class="form-label fw-semibold"><i
+                            class="fas fa-calendar-day me-1"></i>Fecha de Inicio:</label>
+                    <input type="date" class="form-control form-control-sm" id="fecha_inicio">
+                </div>
+                <div class="col-md-3 col-12">
+                    <label for="fecha_fin" class="form-label fw-semibold"><i
+                            class="fas fa-calendar-check me-1"></i>Fecha de Fin:</label>
+                    <input type="date" class="form-control form-control-sm" id="fecha_fin">
+                </div>
+                <div class="col-md-3 col-12">
+                    <div class="d-flex gap-2 flex-column flex-md-row">
+                        <button id="btn-filtrar" class="btn btn-primary btn-sm flex-fill">
+                            <i class="fas fa-filter me-1"></i>Filtrar
+                        </button>
+                        <button id="btn-limpiar-filtro" class="btn btn-outline-secondary btn-sm flex-fill">
+                            <i class="fas fa-times me-1"></i>Limpiar
+                        </button>
+                    </div>
+                </div>
+                <script>
+                    // Si el usuario selecciona un mes, limpia los campos de fecha
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const mesInput = document.getElementById('filtro_mes');
+                        const fechaInicio = document.getElementById('fecha_inicio');
+                        const fechaFin = document.getElementById('fecha_fin');
+                        if (mesInput) {
+                            mesInput.addEventListener('input', function () {
+                                if (mesInput.value) {
+                                    fechaInicio.value = '';
+                                    fechaFin.value = '';
+                                }
+                            });
+                        }
+                    });
+                </script>
+            </div>
         </div>
     </div>
 </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <div class="d-flex gap-2 mb-3 flex-wrap">
-                <button class="btn btn-primary flex-fill flex-md-grow-0" id="btn-iniciar-maniobra">
-                    <i class="fas fa-plus me-2"></i>Iniciar Maniobra
-                </button>
-                <button type="button" class="btn btn-info text-white flex-fill flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#uploadExcelModal">
-                    <i class="fas fa-file-excel me-2"></i>Cargar Excel
-                </button>
-                <a id="btn-descargar-excel" href="{{ url_for('download_remolcadores_excel') }}" class="btn btn-success flex-fill flex-md-grow-0">
-                    <i class="fas fa-file-download me-2"></i>Descargar Excel
-                </a>
-            </div>
-            <div id="contenedor-maniobras">
-                <div class="text-center text-muted py-5">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p>Cargando registros...</p>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+            <button class="btn btn-primary flex-fill flex-md-grow-0" id="btn-iniciar-maniobra">
+                <i class="fas fa-plus me-2"></i>Iniciar Maniobra
+            </button>
+            <button type="button" class="btn btn-info text-white flex-fill flex-md-grow-0" data-bs-toggle="modal"
+                data-bs-target="#uploadExcelModal">
+                <i class="fas fa-file-excel me-2"></i>Cargar Excel
+            </button>
+            <a id="btn-descargar-excel" href="{{ url_for('download_remolcadores_excel') }}"
+                class="btn btn-success flex-fill flex-md-grow-0">
+                <i class="fas fa-file-download me-2"></i>Descargar Excel
+            </a>
+        </div>
+        <div id="contenedor-maniobras">
+            <div class="text-center text-muted py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Cargando...</span>
                 </div>
+                <p>Cargando registros...</p>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <div class="modal fade" id="uploadExcelModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Cargar Datos desde Excel</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title">Cargar Datos desde Excel</h5><button type="button" class="btn-close"
+                    data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
-                <p class="small text-muted">Asegúrese que el archivo .xlsx tenga las columnas: Id, Barcaza, Mt Entregadas, Evento Anterior, Hora Inicio, Evento Actual, Hora Fin, Carga.</p>
+                <p class="small text-muted">Asegúrese que el archivo .xlsx tenga las columnas: Id, Barcaza, Mt
+                    Entregadas, Evento Anterior, Hora Inicio, Evento Actual, Hora Fin, Carga.</p>
                 <form id="upload-excel-form">
                     <input class="form-control" type="file" id="excel_file" name="excel_file" accept=".xlsx" required>
                     <button type="submit" class="btn btn-primary mt-3">Subir Archivo</button>
@@ -411,9 +487,13 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal fade" id="uploadPdfModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Cargar Datos desde PDF</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-header">
+                <h5 class="modal-title">Cargar Datos desde PDF</h5><button type="button" class="btn-close"
+                    data-bs-dismiss="modal"></button>
+            </div>
             <div class="modal-body">
-                <p class="small text-muted">Sube el archivo <strong>.json</strong> generado a partir del análisis del PDF.</p>
+                <p class="small text-muted">Sube el archivo <strong>.json</strong> generado a partir del análisis del
+                    PDF.</p>
                 <form id="upload-pdf-form">
                     <input class="form-control" type="file" id="pdf_file" name="pdf_file" accept=".json" required>
                     <button type="submit" class="btn btn-danger mt-3">Subir y Procesar Archivo</button>
@@ -426,162 +506,172 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // --- SETUP DE PERMISOS Y VARIABLES ---
-    const userEmail = "{{ session.email }}";
-      const eventoAnteriorOptions = [
-        "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
-        "INICIO BASE OPS","INICIO BITA", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC", "INICIO PUERTO BAHIA",
-        "LLEGADA BASE OPS","LLEGADA BITA", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
-        "LLEGADA PUERTO BAHIA","LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
-    ];
-    const eventoActualOptions = [
-    "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION",
-    "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR",
-    "INICIO FONDEO", "INICIO PUERTO BAHIA", "INICIO SPRC", "LLEGADA BASE OPS", "LLEGADA BITA",
-    "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD", "LLEGADA PUERTO BAHIA", "LLEGADA SPRC",
-    "REUBICACION BARCAZAS", "TANQUEO",
-    ];
-    const esAdminOJuliana = "{{ session.rol }}" === 'admin' || userEmail === 'ops@conquerstrading.com';
-    const esOperadorOpensea = userEmail === 'opensea@conquerstrading.com';
-    
-    const contenedor = document.getElementById('contenedor-maniobras');
-    const btnLimpiarFiltro = document.getElementById('btn-limpiar-filtro');
-    const fechaInicioInput = document.getElementById('fecha_inicio');
-    const fechaFinInput = document.getElementById('fecha_fin');
-    const btnIniciarManiobra = document.getElementById('btn-iniciar-maniobra');
-    const btnFiltrar = document.getElementById('btn-filtrar');
-    btnLimpiarFiltro.addEventListener('click', function() {
-        // 1. Limpia los campos de fecha
-        fechaInicioInput.value = '';
-        fechaFinInput.value = '';
-        
-        // 2. Vuelve a cargar todos los datos sin filtros
-        fetchAndRenderRemolcadores();
-    });
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- SETUP DE PERMISOS Y VARIABLES ---
+        const userEmail = "{{ session.email }}";
+        const eventoAnteriorOptions = [
+            "AUTORIZADO", "CAMBIO DE RR", "CANCELACION", "ESPERAR AUTORIZACION",
+            "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR", "INICIO FONDEO", "INICIO SPRC", "INICIO PUERTO BAHIA",
+            "LLEGADA BASE OPS", "LLEGADA BITA", "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD",
+            "LLEGADA PUERTO BAHIA", "LLEGADA SPRC", "REPOSICIONAMIENTO BARCAZAS"
+        ];
+        const eventoActualOptions = [
+            "ACODERADO", "AUTORIZADO", "CAMBIO DE RR", "CANCELACION",
+            "ESPERAR AUTORIZACION", "INICIO BASE OPS", "INICIO BITA", "INICIO CONTECAR",
+            "INICIO FONDEO", "INICIO PUERTO BAHIA", "INICIO SPRC", "LLEGADA BASE OPS", "LLEGADA BITA",
+            "LLEGADA CONTECAR", "LLEGADA FONDEO", "LLEGADA SPD", "LLEGADA PUERTO BAHIA", "LLEGADA SPRC",
+            "REUBICACION BARCAZAS", "TANQUEO",
+        ];
+        const esAdminOJuliana = "{{ session.rol }}" === 'admin' || userEmail === 'ops@conquerstrading.com';
+        const esOperadorOpensea = userEmail === 'opensea@conquerstrading.com';
 
-    const barcazas = ["MANZANILLO", "CR", "MARGOTH", "ODISEA", "MARINSE", "OIL TECH"];
-    const estadosCarga = ["LLENO", "VACIO", "N/A"];
-    const camposEditablesOperador = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'barcaza', 'carga_estado'];
-    
-    // --- FUNCIONES DE RENDERIZADO (VISTA) ---
+        const contenedor = document.getElementById('contenedor-maniobras');
+        const btnLimpiarFiltro = document.getElementById('btn-limpiar-filtro');
+        const fechaInicioInput = document.getElementById('fecha_inicio');
+        const fechaFinInput = document.getElementById('fecha_fin');
+        const btnIniciarManiobra = document.getElementById('btn-iniciar-maniobra');
+        const btnFiltrar = document.getElementById('btn-filtrar');
+        btnLimpiarFiltro.addEventListener('click', function () {
+            // 1. Limpia los campos de fecha
+            fechaInicioInput.value = '';
+            fechaFinInput.value = '';
 
-    function fetchAndRenderRemolcadores() {
-        const fechaInicio = fechaInicioInput.value;
-        const fechaFin = fechaFinInput.value;
-        const filtroMes = document.getElementById('filtro_mes').value;
+            // 2. Vuelve a cargar todos los datos sin filtros
+            fetchAndRenderRemolcadores();
+        });
 
-        const params = new URLSearchParams();
-        if (filtroMes) {
-            params.append('filtro_mes', filtroMes);
-        } else {
-            if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-            if (fechaFin) params.append('fecha_fin', fechaFin);
+        const barcazas = ["MANZANILLO", "CR", "MARGOTH", "ODISEA", "MARINSE", "OIL TECH"];
+        const estadosCarga = ["LLENO", "VACIO", "N/A"];
+        const camposEditablesOperador = ['evento_anterior', 'hora_inicio', 'evento_actual', 'hora_fin', 'barcaza', 'carga_estado'];
+
+        // --- FUNCIONES DE RENDERIZADO (VISTA) ---
+
+        function fetchAndRenderRemolcadores() {
+            const fechaInicio = fechaInicioInput.value;
+            const fechaFin = fechaFinInput.value;
+            const filtroMes = document.getElementById('filtro_mes').value;
+
+            const params = new URLSearchParams();
+            if (filtroMes) {
+                params.append('filtro_mes', filtroMes);
+            } else {
+                if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+                if (fechaFin) params.append('fecha_fin', fechaFin);
+            }
+
+            const apiUrl = `/api/registros_remolcadores?${params.toString()}`;
+
+            contenedor.innerHTML = '<p class="text-center text-muted py-5">Cargando registros...</p>';
+
+            fetch(apiUrl)
+                .then(response => response.ok ? response.json() : Promise.reject('Error de red'))
+                .then(data => {
+                    renderizarGrupos(data); // Llama a la función que dibuja las maniobras
+                })
+                .catch(error => {
+                    console.error('Error al cargar los datos:', error);
+                    contenedor.innerHTML = '<p class="text-center text-danger py-5">Error al cargar la información.</p>';
+                });
         }
 
-        const apiUrl = `/api/registros_remolcadores?${params.toString()}`;
+        function renderizarFila(r, esUltimoEvento = false) {
+            const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensea && camposEditablesOperador.includes(campo));
 
-        contenedor.innerHTML = '<p class="text-center text-muted py-5">Cargando registros...</p>';
-
-        fetch(apiUrl)
-            .then(response => response.ok ? response.json() : Promise.reject('Error de red'))
-            .then(data => {
-                renderizarGrupos(data); // Llama a la función que dibuja las maniobras
-            })
-            .catch(error => {
-                console.error('Error al cargar los datos:', error);
-                contenedor.innerHTML = '<p class="text-center text-danger py-5">Error al cargar la información.</p>';
-            });
-    }
-    
-    function renderizarFila(r, esUltimoEvento = false) {
-    const esEditable = (campo) => esAdminOJuliana || (esOperadorOpensea && camposEditablesOperador.includes(campo));
-    
-    const datalistAnteriorId = 'eventoAnteriorList';
-    const datalistActualId = 'eventoActualList';
-    const datalistAnteriorHTML = `<datalist id="${datalistAnteriorId}">${eventoAnteriorOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
-    const datalistActualHTML = `<datalist id="${datalistActualId}">${eventoActualOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
-    const eventoAnteriorDropdown = `<td>
+            const datalistAnteriorId = 'eventoAnteriorList';
+            const datalistActualId = 'eventoActualList';
+            const datalistAnteriorHTML = `<datalist id="${datalistAnteriorId}">${eventoAnteriorOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
+            const datalistActualHTML = `<datalist id="${datalistActualId}">${eventoActualOptions.map(opt => `<option value='${opt}'>`).join('')}</datalist>`;
+            const eventoAnteriorDropdown = `<td data-label="Evento Anterior">
         <input type="text" class="form-control form-control-sm" data-field="evento_anterior" list="${datalistAnteriorId}" value="${r.evento_anterior || ''}" ${!esEditable('evento_anterior') ? 'readonly' : ''} autocomplete="off">${datalistAnteriorHTML}
     </td>`;
-    const eventoActualDropdown = `<td>
+            const eventoActualDropdown = `<td data-label="Evento Actual">
         <input type="text" class="form-control form-control-sm" data-field="evento_actual" list="${datalistActualId}" value="${r.evento_actual || ''}" ${!esEditable('evento_actual') ? 'readonly' : ''} autocomplete="off">${datalistActualHTML}
     </td>`;
 
-    const cargaSeleccionada = r.carga_estado || 'N/A';
-    const selectCargaHTML = estadosCarga.map(opt => `<option value="${opt}" ${cargaSeleccionada === opt ? 'selected' : ''}>${opt}</option>`).join('');
-    const cargaHtml = `<td>
+            const cargaSeleccionada = r.carga_estado || 'N/A';
+            const selectCargaHTML = estadosCarga.map(opt => `<option value="${opt}" ${cargaSeleccionada === opt ? 'selected' : ''}>${opt}</option>`).join('');
+            const cargaHtml = `<td data-label="Carga">
         <select class="form-select form-select-sm" data-field="carga_estado" ${!esEditable('carga_estado') ? 'disabled' : ''}>
             ${selectCargaHTML}
         </select>
     </td>`;
 
-    const totalHorasHtml = esUltimoEvento ? `<td class="total-horas">${r.total_horas || ''}</td>` : '<td></td>';
+            const totalHorasHtml = esUltimoEvento ? `<td class="total-horas" data-label="Total Horas">${r.total_horas || ''}</td>` : '<td data-label="Total Horas"></td>';
 
-    let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class=\"evento-actual\"' : ''}>
+            let filaHtml = `<tr data-id="${r.id || 'new'}" data-maniobra-id="${r.maniobra_id}" ${esUltimoEvento ? 'class=\"evento-actual\"' : ''}>
         ${eventoAnteriorDropdown}
-        <td><input type="text" data-field="hora_inicio" class="form-control form-control-sm input-hora-militar" value="${r.hora_inicio ? formatear24h(r.hora_inicio) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_inicio') ? 'readonly' : ''}></td>
+        <td data-label="Hora Inicio">
+            <div class="input-group input-group-sm">
+                <input type="text" data-field="hora_inicio" class="form-control input-hora-militar" value="${r.hora_inicio ? formatear24h(r.hora_inicio) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_inicio') ? 'readonly' : ''}>
+                <button class="btn btn-primary btn-set-now" type="button" title="Fijar Hora Actual" ${!esEditable('hora_inicio') ? 'disabled' : ''}><i class="fas fa-clock"></i></button>
+            </div>
+        </td>
         ${eventoActualDropdown}
-        <td><input type="text" data-field="hora_fin" class="form-control form-control-sm input-hora-militar" value="${r.hora_fin ? formatear24h(r.hora_fin) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_fin') ? 'readonly' : ''}></td>
-        <td class="text-muted">${r.duracion || ''}</td>
+        <td data-label="Hora Fin">
+            <div class="input-group input-group-sm">
+                <input type="text" data-field="hora_fin" class="form-control input-hora-militar" value="${r.hora_fin ? formatear24h(r.hora_fin) : ''}" placeholder="YYYY-MM-DD HH:MM" pattern="\\d{4}-\\d{2}-\\d{2} ([01]\\d|2[0-3]):[0-5][0-9]" ${!esEditable('hora_fin') ? 'readonly' : ''}>
+                <button class="btn btn-primary btn-set-now" type="button" title="Fijar Hora Actual" ${!esEditable('hora_fin') ? 'disabled' : ''}><i class="fas fa-clock"></i></button>
+            </div>
+        </td>
+        <td class="text-muted" data-label="Duración">${r.duracion || ''}</td>
         ${totalHorasHtml}
         ${cargaHtml}
-        <td>
-            <button class="btn btn-sm btn-primary btn-save-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}>Guardar</button>
-            <button class="btn btn-sm btn-outline-danger btn-remove-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-times"></i></button>
+        <td data-label="Acciones">
+            <button class="btn btn-sm btn-success btn-save-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-save"></i></button>
+            <button class="btn btn-sm btn-danger btn-remove-evento" ${!esEditable('evento_anterior') ? 'disabled' : ''}><i class="fas fa-trash"></i></button>
         </td>
     </tr>`;
-    return filaHtml;
-// Formatea string tipo ISO a "YYYY-MM-DD HH:MM" en 24h
-function formatear24h(isoString) {
-    if (!isoString) return '';
-    // Si ya está en formato texto, solo retorna
-    if (/\d{4}-\d{2}-\d{2} [0-2]\d:[0-5]\d/.test(isoString)) return isoString;
-    // Si viene como "YYYY-MM-DDTHH:MM"
-    const match = isoString.match(/(\d{4}-\d{2}-\d{2})[T ]([0-2]\d):([0-5]\d)/);
-    if (!match) return isoString;
-    return `${match[1]} ${match[2]}:${match[3]}`;
-}
+            return filaHtml;
+            // Formatea string tipo ISO a "YYYY-MM-DD HH:MM" en 24h
+            function formatear24h(isoString) {
+                if (!isoString) return '';
+                // Si ya está en formato texto, solo retorna
+                if (/\d{4}-\d{2}-\d{2} [0-2]\d:[0-5]\d/.test(isoString)) return isoString;
+                // Si viene como "YYYY-MM-DDTHH:MM"
+                const match = isoString.match(/(\d{4}-\d{2}-\d{2})[T ]([0-2]\d):([0-5]\d)/);
+                if (!match) return isoString;
+                return `${match[1]} ${match[2]}:${match[3]}`;
+            }
 
-// Validación para solo minutos múltiplos de 6 y formato correcto
-document.addEventListener('input', function(e) {
-    if (e.target.classList.contains('input-hora-militar')) {
-        const val = e.target.value;
-        // Validar formato general
-        const regex = /^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):([0-5][0-9])$/;
-        if (!regex.test(val)) {
-            e.target.setCustomValidity('Formato: YYYY-MM-DD HH:MM (24h)');
-            return;
-        }
-        // Validar minutos múltiplos de 6
-        const minutos = parseInt(val.slice(-2));
-        if (minutos % 6 !== 0) {
-            e.target.setCustomValidity('Los minutos deben ser múltiplo de 6 (00, 06, 12, ..., 54)');
-        } else {
-            e.target.setCustomValidity('');
-        }
-    }
-});
-}
-
-    function renderizarGrupos(data) {
-        contenedor.innerHTML = '';
-        const grupos = data.reduce((acc, r) => { (acc[r.maniobra_id] = acc[r.maniobra_id] || []).push(r); return acc; }, {});
-
-        if (Object.keys(grupos).length === 0) {
-            contenedor.innerHTML = '<p class="text-center text-muted py-4">No hay maniobras registradas.</p>';
+            // Validación para solo minutos múltiplos de 6 y formato correcto
+            document.addEventListener('input', function (e) {
+                if (e.target.classList.contains('input-hora-militar')) {
+                    const val = e.target.value;
+                    // Validar formato general
+                    const regex = /^\d{4}-\d{2}-\d{2} ([01]\d|2[0-3]):([0-5][0-9])$/;
+                    if (!regex.test(val)) {
+                        e.target.setCustomValidity('Formato: YYYY-MM-DD HH:MM (24h)');
+                        return;
+                    }
+                    // Validar minutos múltiplos de 6
+                    const minutos = parseInt(val.slice(-2));
+                    if (minutos % 6 !== 0) {
+                        e.target.setCustomValidity('Los minutos deben ser múltiplo de 6 (00, 06, 12, ..., 54)');
+                    } else {
+                        e.target.setCustomValidity('');
+                    }
+                }
+            });
         }
 
-        Object.keys(grupos).sort((a, b) => Number(b) - Number(a)).forEach(maniobra_id => {
-            const eventos = grupos[maniobra_id];
-            const grupoDiv = document.createElement('div');
-            grupoDiv.className = 'maniobra-group';
-            grupoDiv.dataset.maniobraId = maniobra_id;
-            
-            const barcazaOptions = barcazas.map(b => `<option value="${b}" ${b === eventos[0].barcaza ? 'selected' : ''}>${b}</option>`).join('');
-            const puedeEditarHeader = esAdminOJuliana || esOperadorOpensea;
-            
-            let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
+        function renderizarGrupos(data) {
+            contenedor.innerHTML = '';
+            const grupos = data.reduce((acc, r) => { (acc[r.maniobra_id] = acc[r.maniobra_id] || []).push(r); return acc; }, {});
+
+            if (Object.keys(grupos).length === 0) {
+                contenedor.innerHTML = '<p class="text-center text-muted py-4">No hay maniobras registradas.</p>';
+            }
+
+            Object.keys(grupos).sort((a, b) => Number(b) - Number(a)).forEach(maniobra_id => {
+                const eventos = grupos[maniobra_id];
+                const grupoDiv = document.createElement('div');
+                grupoDiv.className = 'maniobra-group';
+                grupoDiv.dataset.maniobraId = maniobra_id;
+
+                const barcazaOptions = barcazas.map(b => `<option value="${b}" ${b === eventos[0].barcaza ? 'selected' : ''}>${b}</option>`).join('');
+                const puedeEditarHeader = esAdminOJuliana || esOperadorOpensea;
+
+                let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
                 <div class="col-12 col-md-auto"><h5><i class="fas fa-anchor me-2"></i>Maniobra #${maniobra_id}</h5></div>
                 <div class="col-12 col-md-2"><label class="form-label-sm">Barcaza</label>
                     <select class="form-select form-select-sm barcaza-maniobra-input" ${!puedeEditarHeader ? 'disabled' : ''}>
@@ -591,182 +681,209 @@ document.addEventListener('input', function(e) {
                 <div class="col-12 col-md-3"><label class="form-label-sm">Nombre Del Barco</label>
                     <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input" value="${eventos[0].nombre_barco || ''}" ${!puedeEditarHeader ? 'disabled' : ''}>
                 </div>`;
-                
-            if (esAdminOJuliana) {
-                cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
+
+                if (esAdminOJuliana) {
+                    cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
                     <input type="number" step="0.01" class="form-control form-control-sm mt-maniobra-input" value="${eventos[0].mt_entregadas || ''}">
                 </div>`;
-            }
-            
-            cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
+                }
+
+                cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
                 <div class="btn-group-mobile d-flex gap-2 flex-wrap">
-                    <button class="btn btn-sm btn-outline-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
-                    ${puedeEditarHeader ? 
-                      `<button class="btn btn-sm btn-light btn-guardar-maniobra flex-fill">Guardar</button>
-                       <button class="btn btn-sm btn-outline-light btn-eliminar-maniobra flex-fill"><i class="fas fa-trash"></i></button>` : ''}
+                    <button class="btn btn-sm btn-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
+                    ${puedeEditarHeader ?
+                        `<button class="btn btn-sm btn-light btn-guardar-maniobra flex-fill">Guardar</button>
+                       <button class="btn btn-sm btn-light btn-eliminar-maniobra flex-fill"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div></div></div>`;
-            
-            let tablaHtml = `<div class="maniobra-body"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr>
+
+                let tablaHtml = `<div class="maniobra-body"><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr>
                 <th>Evento Anterior</th><th>Hora Inicio</th><th>Evento Actual</th><th>Hora Fin</th>
                 <th>Duración</th><th>Total Horas</th><th>Carga</th><th>Acciones</th></tr></thead><tbody>`;
 
-            eventos.forEach((r, index) => { 
-                tablaHtml += renderizarFila(r, index === eventos.length - 1); 
+                eventos.forEach((r, index) => {
+                    tablaHtml += renderizarFila(r, index === eventos.length - 1);
+                });
+                tablaHtml += `</tbody></table></div></div>`;
+
+                grupoDiv.innerHTML = cabeceraHtml + tablaHtml;
+                contenedor.appendChild(grupoDiv);
             });
-            tablaHtml += `</tbody></table></div></div>`;
-            
-            grupoDiv.innerHTML = cabeceraHtml + tablaHtml;
-            contenedor.appendChild(grupoDiv);
+        }
+
+        // --- EVENTOS DE CLICK ---
+        btnFiltrar.addEventListener('click', fetchAndRenderRemolcadores);
+        btnLimpiarFiltro.addEventListener('click', () => {
+            fechaInicioInput.value = '';
+            fechaFinInput.value = '';
+            fetchAndRenderRemolcadores();
         });
-    }
-
-    // --- EVENTOS DE CLICK ---
-    btnFiltrar.addEventListener('click', fetchAndRenderRemolcadores);
-    btnLimpiarFiltro.addEventListener('click', () => {
-        fechaInicioInput.value = '';
-        fechaFinInput.value = '';
-        fetchAndRenderRemolcadores();
-    });
-    // --- LÓGICA DE EVENTOS ---
-    async function apiRequest(url, options) {
-        try {
-            const response = await fetch(url, options);
-            const result = await response.json();
-            alert(result.message);
-            if (result.success) cargarRegistros();
-        } catch (error) { alert('Error de conexión.'); }
-    }
-
-    contenedor.addEventListener('click', function(e) {
-        const target = e.target.closest('button');
-        if (!target) return;
-        
-        const grupoDiv = target.closest('.maniobra-group');
-        const maniobra_id = grupoDiv.dataset.maniobraId;
-
-        if (target.classList.contains('btn-agregar-evento-grupo')) {
-            const tbody = grupoDiv.querySelector('tbody');
-            const ultimaFila = tbody.querySelector('tr:last-child');
-            let eventoAnteriorNuevo = '';
-            let horaInicioNueva = '';
-
-            if (ultimaFila) {
-                const eventoActualPrevio = ultimaFila.querySelector('[data-field="evento_actual"]').value;
-                const horaFinPrevia = ultimaFila.querySelector('[data-field="hora_fin"]').value;
-                eventoAnteriorNuevo = eventoActualPrevio;
-                horaInicioNueva = horaFinPrevia;
-            }
-
-            const datosNuevaFila = {
-                id: 'new', maniobra_id: maniobra_id,
-                evento_anterior: eventoAnteriorNuevo, hora_inicio: horaInicioNueva
-            };
-
-            tbody.insertAdjacentHTML('beforeend', renderizarFila(datosNuevaFila));
-        } else if (target.classList.contains('btn-remove-evento')) {
-            const tr = target.closest('tr');
-            if (tr.dataset.id === 'new') {
-                tr.remove();
-            } else if (confirm('¿Eliminar este evento?')) {
-                apiRequest(`/api/registros_remolcadores/${tr.dataset.id}`, { method: 'DELETE' });
-            }
-        } else if (target.classList.contains('btn-save-evento')) {
-            const tr = target.closest('tr');
-            const datosFila = {};
-            tr.querySelectorAll('[data-field]').forEach(el => datosFila[el.dataset.field] = el.value);
-            
-            const barcazaInput = grupoDiv.querySelector('.barcaza-maniobra-input');
-            if (barcazaInput) datosFila.barcaza = barcazaInput.value;
-
-            const nombreBarcoInput = grupoDiv.querySelector('.nombre-barco-maniobra-input');
-            if (nombreBarcoInput) datosFila.nombre_barco = nombreBarcoInput.value;
-            
-            const mtEntregadasInput = grupoDiv.querySelector('.mt-maniobra-input');
-            if (mtEntregadasInput && esAdminOJuliana) datosFila.mt_entregadas = mtEntregadasInput.value;
-
-            datosFila.maniobra_id = maniobra_id === 'NUEVA' ? null : maniobra_id;
-            const id = tr.dataset.id;
-            const url = id !== 'new' ? `/api/registros_remolcadores/${id}` : '/api/registros_remolcadores';
-            const method = id !== 'new' ? 'PUT' : 'POST';
-            apiRequest(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datosFila) });
-        } else if (target.classList.contains('btn-eliminar-maniobra')) {
-            if (confirm(`¿Seguro que quieres eliminar la Maniobra #${maniobra_id}?`)) {
-                apiRequest(`/api/maniobra/${maniobra_id}`, { method: 'DELETE' });
-            }
-        } else if (target.classList.contains('btn-guardar-maniobra')) {
-            const barcaza = grupoDiv.querySelector('.barcaza-maniobra-input').value;
-            const nombreBarco = grupoDiv.querySelector('.nombre-barco-maniobra-input').value;
-            
-            const datos = { barcaza: barcaza, nombre_barco: nombreBarco };
-            
-            if (esAdminOJuliana) {
-                const mtEntregadas = grupoDiv.querySelector('.mt-maniobra-input').value;
-                datos.mt_entregadas = mtEntregadas;
-            }
-            
-            apiRequest(`/api/maniobra/${maniobra_id}`, { 
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(datos) 
-            });
+        // --- LÓGICA DE EVENTOS ---
+        async function apiRequest(url, options) {
+            try {
+                const response = await fetch(url, options);
+                const result = await response.json();
+                alert(result.message);
+                if (result.success) cargarRegistros();
+            } catch (error) { alert('Error de conexión.'); }
         }
-    });
 
-    // Manejar el envío del formulario de Excel
-    document.getElementById('upload-excel-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const fileInput = document.getElementById('excel_file');
-        const file = fileInput.files[0];
-        if (!file) { alert('Por favor seleccione un archivo Excel'); return; }
-        
-        const formData = new FormData();
-        formData.append('excel_file', file);
-        
-        fetch('/api/remolcadores/upload_excel', { method: 'POST', body: formData })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) {
-                cargarRegistros();
-                bootstrap.Modal.getInstance(document.getElementById('uploadExcelModal')).hide();
-            }
-        })
-        .catch(error => alert('Error al cargar el archivo Excel'));
-    });
+        // Función para obtener la hora actual redondeada a 6 minutos
+        function getRoundedTime() {
+            const now = new Date();
+            const coeff = 1000 * 60 * 6; // 6 minutos en milisegundos
+            const rounded = new Date(Math.round(now.getTime() / coeff) * coeff);
 
-    // --- NUEVO MANEJADOR PARA EL FORMULARIO DE PDF ---
-    document.getElementById('upload-pdf-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const fileInput = document.getElementById('pdf_file');
-        const file = fileInput.files[0];
-        if (!file) { alert('Por favor seleccione un archivo JSON'); return; }
+            const year = rounded.getFullYear();
+            const month = String(rounded.getMonth() + 1).padStart(2, '0');
+            const day = String(rounded.getDate()).padStart(2, '0');
+            const hours = String(rounded.getHours()).padStart(2, '0');
+            const minutes = String(rounded.getMinutes()).padStart(2, '0');
 
-        const formData = new FormData();
-        formData.append('pdf_file', file);
-
-        fetch('/api/remolcadores/upload_pdf', { method: 'POST', body: formData })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) {
-                cargarRegistros();
-                bootstrap.Modal.getInstance(document.getElementById('uploadPdfModal')).hide();
-            }
-        })
-        .catch(error => alert('Error al cargar el archivo.'));
-    });
-
-    document.getElementById('btn-iniciar-maniobra').addEventListener('click', function() {
-        if (document.querySelector(`[data-maniobra-id="NUEVA"]`)) {
-            alert("Ya hay una nueva maniobra sin guardar."); return;
+            return `${year}-${month}-${day} ${hours}:${minutes}`;
         }
-        const grupoDiv = document.createElement('div');
-        grupoDiv.className = 'maniobra-group';
-        grupoDiv.dataset.maniobraId = 'NUEVA';
-        
-        // Se construye la cabecera
-        let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
+
+        // Delegación de eventos para el botón "Set Now"
+        contenedor.addEventListener('click', function (e) {
+            const btn = e.target.closest('.btn-set-now');
+            if (btn) {
+                const inputGroup = btn.closest('.input-group');
+                const input = inputGroup.querySelector('input');
+                if (input && !input.readOnly) {
+                    input.value = getRoundedTime();
+                    // Disparar evento input para validaciones si las hay
+                    input.dispatchEvent(new Event('input'));
+                }
+            }
+
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            const grupoDiv = target.closest('.maniobra-group');
+            const maniobra_id = grupoDiv.dataset.maniobraId;
+
+            if (target.classList.contains('btn-agregar-evento-grupo')) {
+                const tbody = grupoDiv.querySelector('tbody');
+                const ultimaFila = tbody.querySelector('tr:last-child');
+                let eventoAnteriorNuevo = '';
+                let horaInicioNueva = '';
+
+                if (ultimaFila) {
+                    const eventoActualPrevio = ultimaFila.querySelector('[data-field="evento_actual"]').value;
+                    const horaFinPrevia = ultimaFila.querySelector('[data-field="hora_fin"]').value;
+                    eventoAnteriorNuevo = eventoActualPrevio;
+                    horaInicioNueva = horaFinPrevia;
+                }
+
+                const datosNuevaFila = {
+                    id: 'new', maniobra_id: maniobra_id,
+                    evento_anterior: eventoAnteriorNuevo, hora_inicio: horaInicioNueva
+                };
+
+                tbody.insertAdjacentHTML('beforeend', renderizarFila(datosNuevaFila));
+            } else if (target.classList.contains('btn-remove-evento')) {
+                const tr = target.closest('tr');
+                if (tr.dataset.id === 'new') {
+                    tr.remove();
+                } else if (confirm('¿Eliminar este evento?')) {
+                    apiRequest(`/api/registros_remolcadores/${tr.dataset.id}`, { method: 'DELETE' });
+                }
+            } else if (target.classList.contains('btn-save-evento')) {
+                const tr = target.closest('tr');
+                const datosFila = {};
+                tr.querySelectorAll('[data-field]').forEach(el => datosFila[el.dataset.field] = el.value);
+
+                const barcazaInput = grupoDiv.querySelector('.barcaza-maniobra-input');
+                if (barcazaInput) datosFila.barcaza = barcazaInput.value;
+
+                const nombreBarcoInput = grupoDiv.querySelector('.nombre-barco-maniobra-input');
+                if (nombreBarcoInput) datosFila.nombre_barco = nombreBarcoInput.value;
+
+                const mtEntregadasInput = grupoDiv.querySelector('.mt-maniobra-input');
+                if (mtEntregadasInput && esAdminOJuliana) datosFila.mt_entregadas = mtEntregadasInput.value;
+
+                datosFila.maniobra_id = maniobra_id === 'NUEVA' ? null : maniobra_id;
+                const id = tr.dataset.id;
+                const url = id !== 'new' ? `/api/registros_remolcadores/${id}` : '/api/registros_remolcadores';
+                const method = id !== 'new' ? 'PUT' : 'POST';
+                apiRequest(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(datosFila) });
+            } else if (target.classList.contains('btn-eliminar-maniobra')) {
+                if (confirm(`¿Seguro que quieres eliminar la Maniobra #${maniobra_id}?`)) {
+                    apiRequest(`/api/maniobra/${maniobra_id}`, { method: 'DELETE' });
+                }
+            } else if (target.classList.contains('btn-guardar-maniobra')) {
+                const barcaza = grupoDiv.querySelector('.barcaza-maniobra-input').value;
+                const nombreBarco = grupoDiv.querySelector('.nombre-barco-maniobra-input').value;
+
+                const datos = { barcaza: barcaza, nombre_barco: nombreBarco };
+
+                if (esAdminOJuliana) {
+                    const mtEntregadas = grupoDiv.querySelector('.mt-maniobra-input').value;
+                    datos.mt_entregadas = mtEntregadas;
+                }
+
+                apiRequest(`/api/maniobra/${maniobra_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+            }
+        });
+
+        // Manejar el envío del formulario de Excel
+        document.getElementById('upload-excel-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('excel_file');
+            const file = fileInput.files[0];
+            if (!file) { alert('Por favor seleccione un archivo Excel'); return; }
+
+            const formData = new FormData();
+            formData.append('excel_file', file);
+
+            fetch('/api/remolcadores/upload_excel', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        cargarRegistros();
+                        bootstrap.Modal.getInstance(document.getElementById('uploadExcelModal')).hide();
+                    }
+                })
+                .catch(error => alert('Error al cargar el archivo Excel'));
+        });
+
+        // --- NUEVO MANEJADOR PARA EL FORMULARIO DE PDF ---
+        document.getElementById('upload-pdf-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('pdf_file');
+            const file = fileInput.files[0];
+            if (!file) { alert('Por favor seleccione un archivo JSON'); return; }
+
+            const formData = new FormData();
+            formData.append('pdf_file', file);
+
+            fetch('/api/remolcadores/upload_pdf', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        cargarRegistros();
+                        bootstrap.Modal.getInstance(document.getElementById('uploadPdfModal')).hide();
+                    }
+                })
+                .catch(error => alert('Error al cargar el archivo.'));
+        });
+
+        document.getElementById('btn-iniciar-maniobra').addEventListener('click', function () {
+            if (document.querySelector(`[data-maniobra-id="NUEVA"]`)) {
+                alert("Ya hay una nueva maniobra sin guardar."); return;
+            }
+            const grupoDiv = document.createElement('div');
+            grupoDiv.className = 'maniobra-group';
+            grupoDiv.dataset.maniobraId = 'NUEVA';
+
+            // Se construye la cabecera
+            let cabeceraHtml = `<div class="maniobra-header"><div class="row align-items-center g-3">
             <div class="col-12 col-md-auto"><h5><i class="fas fa-plus-circle me-2"></i>Nueva Maniobra</h5></div>
             <div class="col-12 col-md-3"><label class="form-label-sm">Barcaza</label>
                 <select class="form-select form-select-sm barcaza-maniobra-input">
@@ -777,47 +894,47 @@ document.addEventListener('input', function(e) {
                 <input type="text" class="form-control form-control-sm nombre-barco-maniobra-input">
             </div>`;
 
-        // ✅ Se añade el campo MT Entregadas SOLO si el usuario tiene permiso
-        if (esAdminOJuliana) {
-            cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
+            // ✅ Se añade el campo MT Entregadas SOLO si el usuario tiene permiso
+            if (esAdminOJuliana) {
+                cabeceraHtml += `<div class="col-12 col-md-2"><label class="form-label-sm">MT Entregadas</label>
                 <input type="number" step="0.01" class="form-control form-control-sm mt-maniobra-input">
             </div>`;
-        }
-            
-        cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
+            }
+
+            cabeceraHtml += `<div class="col-12 col-md-auto ms-auto">
                 <div class="btn-group-mobile d-flex gap-2 flex-wrap">
-                    <button class="btn btn-sm btn-outline-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
+                    <button class="btn btn-sm btn-light btn-agregar-evento-grupo flex-fill"><i class="fas fa-plus"></i> Evento</button>
                     <button class="btn btn-sm btn-light btn-guardar-maniobra flex-fill">Guardar</button>
                 </div>
             </div>
         </div></div>`;
-        
-        let tablaHtml = `<div class="maniobra-body"><table class="table table-sm mb-0"><thead><tr>
+
+            let tablaHtml = `<div class="maniobra-body"><table class="table table-sm mb-0"><thead><tr>
             <th>Evento Anterior</th><th>Hora Inicio</th><th>Evento Actual</th><th>Hora Fin</th>
             <th>Duración</th><th>Total Horas</th><th>Carga</th><th>Acciones</th>
         </tr></thead><tbody>${renderizarFila({ id: 'new', maniobra_id: 'NUEVA' })}</tbody></table></div>`;
 
-        grupoDiv.innerHTML = cabeceraHtml + tablaHtml;
-        contenedor.insertAdjacentElement('afterbegin', grupoDiv);
+            grupoDiv.innerHTML = cabeceraHtml + tablaHtml;
+            contenedor.insertAdjacentElement('afterbegin', grupoDiv);
+        });
+
+        document.getElementById('btn-filtrar').addEventListener('click', function () {
+            const fechaInicio = fechaInicioInput.value;
+            const fechaFin = fechaFinInput.value;
+            const btnDescargar = document.getElementById('btn-descargar-excel');
+
+            const baseUrl = "{{ url_for('download_remolcadores_excel') }}";
+            const params = new URLSearchParams();
+            if (fechaInicio) params.append('fecha_inicio', fechaInicio);
+            if (fechaFin) params.append('fecha_fin', fechaFin);
+
+            btnDescargar.href = `${baseUrl}?${params.toString()}`;
+        });
+
+        function cargarRegistros() {
+            fetch('/api/registros_remolcadores').then(res => res.json()).then(renderizarGrupos);
+        }
+        cargarRegistros();
     });
-
-    document.getElementById('btn-filtrar').addEventListener('click', function() {
-    const fechaInicio = fechaInicioInput.value;
-    const fechaFin = fechaFinInput.value;
-    const btnDescargar = document.getElementById('btn-descargar-excel');
-    
-    const baseUrl = "{{ url_for('download_remolcadores_excel') }}";
-    const params = new URLSearchParams();
-    if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-    if (fechaFin) params.append('fecha_fin', fechaFin);
-    
-    btnDescargar.href = `${baseUrl}?${params.toString()}`;
-});
-
-    function cargarRegistros() {
-        fetch('/api/registros_remolcadores').then(res => res.json()).then(renderizarGrupos);
-    }
-    cargarRegistros();
-});
 </script>
 {% endblock %}
