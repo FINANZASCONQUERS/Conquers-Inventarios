@@ -133,228 +133,232 @@
             margin: 4px 0;
         }
 
-/* ========================================
+        /* ========================================
    MEJORAS DE USABILIDAD Y DISEÑO
    ======================================== */
 
-/* Botón + más visible y accesible */
-.btn-add-new-item {
-    position: absolute !important;
-    right: 2px;
-    top: 50%;
-    transform: translateY(-50%);
-    padding: 0.35rem 0.5rem !important;
-    border-radius: 0.35rem !important;
-    background: white !important;
-    border: 2px solid #28a745 !important;
-    color: #28a745 !important;
-    font-size: 0.875rem !important;
-    font-weight: 700 !important;
-    transition: all 0.2s ease !important;
-    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2) !important;
-    z-index: 10 !important;
-}
+        /* Botón + más visible y accesible */
+        .btn-add-new-item {
+            position: absolute !important;
+            right: 2px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 0.35rem 0.5rem !important;
+            border-radius: 0.35rem !important;
+            background: white !important;
+            border: 2px solid #28a745 !important;
+            color: #28a745 !important;
+            font-size: 0.875rem !important;
+            font-weight: 700 !important;
+            transition: all 0.2s ease !important;
+            box-shadow: 0 2px 6px rgba(40, 167, 69, 0.2) !important;
+            z-index: 10 !important;
+        }
 
-.btn-add-new-item:hover {
-    background: #28a745 !important;
-    color: white !important;
-    transform: translateY(-50%) scale(1.1) !important;
-    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
-}
+        .btn-add-new-item:hover {
+            background: #28a745 !important;
+            color: white !important;
+            transform: translateY(-50%) scale(1.1) !important;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4) !important;
+        }
 
-.btn-add-new-item i {
-    font-size: 0.9rem;
-}
+        .btn-add-new-item i {
+            font-size: 0.9rem;
+        }
 
-/* Input con espacio para el botón + */
-td[data-field="nombre_conductor"] .input-group input,
-td[data-field="cliente"] .input-group input,
-td[data-field="placa"] .input-group input,
-td[data-field="cedula_conductor"] .input-group input {
-    padding-right: 45px !important;
-}
+        /* Input con espacio para el botón + */
+        td[data-field="nombre_conductor"] .input-group input,
+        td[data-field="cliente"] .input-group input,
+        td[data-field="placa"] .input-group input,
+        td[data-field="cedula_conductor"] .input-group input {
+            padding-right: 45px !important;
+        }
 
-/* Mejorar contraste de inputs editables */
-.editable-input {
-    border: 1px solid transparent !important;
-    background: rgba(11, 133, 82, 0.03) !important;
-}
+        /* Mejorar contraste de inputs editables */
+        .editable-input {
+            border: 1px solid transparent !important;
+            background: rgba(11, 133, 82, 0.03) !important;
+        }
 
-.editable-input:hover {
-    background: rgba(11, 133, 82, 0.06) !important;
-    border-color: rgba(11, 133, 82, 0.15) !important;
-}
+        .editable-input:hover {
+            background: rgba(11, 133, 82, 0.06) !important;
+            border-color: rgba(11, 133, 82, 0.15) !important;
+        }
 
-.editable-input:focus {
-    background: white !important;
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.1) !important;
-}
+        .editable-input:focus {
+            background: white !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.1) !important;
+        }
 
-/* Placeholder más visible */
-.editable-input::placeholder {
-    color: #9ca3af;
-    font-style: italic;
-    font-size: 0.85rem;
-}
+        /* Placeholder más visible */
+        .editable-input::placeholder {
+            color: #9ca3af;
+            font-style: italic;
+            font-size: 0.85rem;
+        }
 
-/* Resaltar celdas editables al pasar el mouse */
-.editable-cell:hover,
-td[data-field] .input-group:hover {
-    background: rgba(11, 133, 82, 0.08) !important;
-}
+        /* Resaltar celdas editables al pasar el mouse */
+        .editable-cell:hover,
+        td[data-field] .input-group:hover {
+            background: rgba(11, 133, 82, 0.08) !important;
+        }
 
-/* Indicador visual de campo editable */
-.editable-cell::before,
-td[data-field]:has(.editable-input)::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--primary-color);
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
+        /* Indicador visual de campo editable */
+        .editable-cell::before,
+        td[data-field]:has(.editable-input)::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--primary-color);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
 
-.editable-cell:hover::before,
-td[data-field]:has(.editable-input):hover::before {
-    opacity: 0.5;
-}
+        .editable-cell:hover::before,
+        td[data-field]:has(.editable-input):hover::before {
+            opacity: 0.5;
+        }
 
-/* Mejorar tabla responsive */
-.table-responsive-modern {
-    border: 2px solid #e3e6f0;
-    border-radius: 0.75rem;
-}
+        /* Mejorar tabla responsive */
+        .table-responsive-modern {
+            border: 2px solid #e3e6f0;
+            border-radius: 0.75rem;
+        }
 
-/* Header de tabla más compacto y legible */
-.thead-modern th {
-    font-size: 0.8rem !important;
-    padding: 0.875rem 0.75rem !important;
-    white-space: nowrap;
-}
+        /* Header de tabla más compacto y legible */
+        .thead-modern th {
+            font-size: 0.8rem !important;
+            padding: 0.875rem 0.75rem !important;
+            white-space: nowrap;
+        }
 
-/* Mejor espaciado de celdas */
-.tbody-modern td {
-    padding: 0.5rem !important;
-}
+        /* Mejor espaciado de celdas */
+        .tbody-modern td {
+            padding: 0.5rem !important;
+        }
 
-/* Input group sin borde visible */
-.input-group.border-0 {
-    background: transparent;
-}
+        /* Input group sin borde visible */
+        .input-group.border-0 {
+            background: transparent;
+        }
 
-/* Tooltip mejorado para botones */
-.btn-xs[title] {
-    position: relative;
-}
+        /* Tooltip mejorado para botones */
+        .btn-xs[title] {
+            position: relative;
+        }
 
-.btn-xs[title]:hover::before {
-    content: attr(title);
-    position: absolute;
-    bottom: calc(100% + 5px);
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 0.4rem 0.75rem;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    font-size: 0.75rem;
-    border-radius: 0.375rem;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
+        .btn-xs[title]:hover::before {
+            content: attr(title);
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.4rem 0.75rem;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            font-size: 0.75rem;
+            border-radius: 0.375rem;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
 
-/* Animación para el botón + cuando aparece */
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: translateY(-50%) scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(-50%) scale(1);
-    }
-}
+        /* Animación para el botón + cuando aparece */
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: translateY(-50%) scale(0.8);
+            }
 
-.btn-add-new-item[style*="display: block"],
-.btn-add-new-item[style*="display:block"] {
-    animation: fadeInScale 0.2s ease !important;
-}
+            to {
+                opacity: 1;
+                transform: translateY(-50%) scale(1);
+            }
+        }
 
-/* Mejorar selectores (tipo_guia, estado) */
-.editable-select {
-    background: rgba(11, 133, 82, 0.03) !important;
-    border: 1px solid rgba(11, 133, 82, 0.1) !important;
-    cursor: pointer !important;
-}
+        .btn-add-new-item[style*="display: block"],
+        .btn-add-new-item[style*="display:block"] {
+            animation: fadeInScale 0.2s ease !important;
+        }
 
-.editable-select:hover {
-    background: rgba(11, 133, 82, 0.08) !important;
-    border-color: rgba(11, 133, 82, 0.2) !important;
-}
+        /* Mejorar selectores (tipo_guia, estado) */
+        .editable-select {
+            background: rgba(11, 133, 82, 0.03) !important;
+            border: 1px solid rgba(11, 133, 82, 0.1) !important;
+            cursor: pointer !important;
+        }
 
-.editable-select:focus {
-    background: white !important;
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.1) !important;
-}
+        .editable-select:hover {
+            background: rgba(11, 133, 82, 0.08) !important;
+            border-color: rgba(11, 133, 82, 0.2) !important;
+        }
 
-/* Mejorar legibilidad de números */
-td[data-field="galones"] .cell-editor,
-td[data-field="barriles"] .cell-editor,
-td[data-field="temperatura"] .cell-editor,
-td[data-field="api_obs"] .cell-editor,
-td[data-field="api_corregido"] .cell-editor {
-    font-family: 'Courier New', monospace;
-    font-weight: 600;
-    color: #2c3e50;
-}
+        .editable-select:focus {
+            background: white !important;
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.1) !important;
+        }
 
-/* Resaltar campos importantes */
-td[data-field="placa"],
-td[data-field="producto_a_cargar"],
-td[data-field="cliente"] {
-    font-weight: 500;
-}
+        /* Mejorar legibilidad de números */
+        td[data-field="galones"] .cell-editor,
+        td[data-field="barriles"] .cell-editor,
+        td[data-field="temperatura"] .cell-editor,
+        td[data-field="api_obs"] .cell-editor,
+        td[data-field="api_corregido"] .cell-editor {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2c3e50;
+        }
 
-/* Icono de información en headers */
-.thead-modern th[title] {
-    cursor: help;
-}
+        /* Resaltar campos importantes */
+        td[data-field="placa"],
+        td[data-field="producto_a_cargar"],
+        td[data-field="cliente"] {
+            font-weight: 500;
+        }
 
-/* Responsive mejorado */
-@media (max-width: 992px) {
-    .thead-modern th {
-        font-size: 0.7rem !important;
-        padding: 0.75rem 0.5rem !important;
-    }
-    
-    .btn-add-new-item {
-        padding: 0.25rem 0.4rem !important;
-        font-size: 0.8rem !important;
-    }
-}
+        /* Icono de información en headers */
+        .thead-modern th[title] {
+            cursor: help;
+        }
 
-/* Loading state para inputs */
-.editable-input.loading {
-    background: repeating-linear-gradient(
-        90deg,
-        rgba(11, 133, 82, 0.05),
-        rgba(11, 133, 82, 0.05) 10px,
-        rgba(11, 133, 82, 0.08) 10px,
-        rgba(11, 133, 82, 0.08) 20px
-    );
-    animation: loading-shimmer 1.5s infinite;
-}
+        /* Responsive mejorado */
+        @media (max-width: 992px) {
+            .thead-modern th {
+                font-size: 0.7rem !important;
+                padding: 0.75rem 0.5rem !important;
+            }
 
-@keyframes loading-shimmer {
-    0% { background-position: -100px 0; }
-    100% { background-position: 100px 0; }
-}
+            .btn-add-new-item {
+                padding: 0.25rem 0.4rem !important;
+                font-size: 0.8rem !important;
+            }
+        }
+
+        /* Loading state para inputs */
+        .editable-input.loading {
+            background: repeating-linear-gradient(90deg,
+                    rgba(11, 133, 82, 0.05),
+                    rgba(11, 133, 82, 0.05) 10px,
+                    rgba(11, 133, 82, 0.08) 10px,
+                    rgba(11, 133, 82, 0.08) 20px);
+            animation: loading-shimmer 1.5s infinite;
+        }
+
+        @keyframes loading-shimmer {
+            0% {
+                background-position: -100px 0;
+            }
+
+            100% {
+                background-position: 100px 0;
+            }
+        }
     </style>
     <!-- Header Mejorado -->
     <div class="page-header mb-4">
@@ -925,11 +929,11 @@ td[data-field="cliente"] {
             'cliente': { width: '220px' },
             'destino': { width: '180px' },
             'hora_llegada_estimada': { width: '100px', type: 'time' },
-            'placa': { width: '120px' },
+            'placa': { width: '150px' },
             'tanque': { width: '100px' },
             'empresa_transportadora': { width: '180px' },
-            'nombre_conductor': { width: '220px' },
-            'cedula_conductor': { width: '140px' },
+            'nombre_conductor': { width: '350px' },
+            'cedula_conductor': { width: '160px' },
             'celular_conductor': { width: '140px' },
             'estado': { width: '150px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'DESPACHADO'] },
             'galones': { width: '120px', type: 'number' },
@@ -1289,7 +1293,7 @@ td[data-field="cliente"] {
             exists = clientes.some(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
         } else if (field === 'nombre_conductor') {
             // Búsqueda flexible: nombre, cédula o placa
-            exists = conductores.some(c => 
+            exists = conductores.some(c =>
                 (c["NOMBRE CONDUCTOR"] || '').toUpperCase() === val ||
                 String(c["N° DOCUMENTO"] || '').toUpperCase() === val ||
                 (c["PLACA"] || '').toUpperCase() === val
