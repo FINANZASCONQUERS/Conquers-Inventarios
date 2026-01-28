@@ -53,7 +53,7 @@
 
     /* Header mejorado */
     .dashboard-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border-radius: 16px;
         padding: 2rem;
         margin-bottom: 2rem;
@@ -82,14 +82,14 @@
     }
 
     .filter-tab:hover {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
     }
 
     .filter-tab.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         color: white;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
     /* Botones mejorados */
@@ -176,8 +176,8 @@
     }
 
     .dashboard-accordion .accordion-button:not(.collapsed) {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-        color: #667eea;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);
+        color: #10b981;
     }
 
     /* Responsive improvements */
@@ -227,8 +227,8 @@
     }
 
     .form-select-dashboard:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        border-color: #10b981;
+        box-shadow: 0 0 0 0.2rem rgba(16, 185, 129, 0.25);
     }
 </style>
 
@@ -240,20 +240,22 @@
                 <i class="bi bi-graph-up-arrow fs-2 text-white"></i>
             </div>
             <div>
-                <h2 class="fw-bold text-white mb-1">Dashboard Premium FUELOIL</h2>
-                <p class="text-white text-opacity-75 mb-0 fs-6">Ecopetrol - Análisis de Premiums y Diferenciales</p>
+                <h2 class="fw-bold text-white mb-1">Dashboard Premium GASOIL</h2>
+                <p class="text-white text-opacity-75 mb-0 fs-6">Análisis de Premiums y Diferenciales GASOIL</p>
             </div>
         </div>
         <div class="d-flex gap-2">
-            <form method="POST" action="{{ url_for('pricing_bp.reset_prices') }}"
-                onsubmit="return confirm('¿Está seguro de eliminar TODO el historial de FuelOil? Esta acción no se puede deshacer.')">
-
+            <form method="POST" action="{{ url_for('pricing_bp.reset_gasoil') }}"
+                onsubmit="return confirm('¿Está seguro de eliminar TODO el historial de Gasoil? Esta acción no se puede deshacer.')">
                 <button type="submit" class="btn btn-danger btn-dashboard">
                     <i class="bi bi-trash3"></i>
                     <span class="d-none d-sm-inline">Reset</span>
                 </button>
             </form>
-            <form method="POST" action="{{ url_for('pricing_bp.update_prices') }}">
+            <button class="btn btn-warning btn-dashboard" data-bs-toggle="modal" data-bs-target="#modalGranConsumidor">
+                <i class="bi bi-upload me-2"></i>Cargar Gran Consumidor
+            </button>
+            <form method="POST" action="{{ url_for('pricing_bp.update_gasoil') }}">
                 <button type="submit" class="btn btn-light btn-dashboard">
                     <i class="bi bi-arrow-clockwise"></i>
                     <span class="d-none d-sm-inline">Actualizar</span>
@@ -262,6 +264,172 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Gran Consumidor -->
+<div class="modal fade" id="modalGranConsumidor" tabindex="-1" aria-labelledby="modalGranConsumidorLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title fw-bold" id="modalGranConsumidorLabel">
+                    <i class="bi bi-upload me-2"></i>Cargar Precios Gran Consumidor
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="gcTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual"
+                            type="button" role="tab" aria-controls="manual" aria-selected="true">
+                            <i class="bi bi-pencil-square me-2"></i>Entrada Manual
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="file-tab" data-bs-toggle="tab" data-bs-target="#file" type="button"
+                            role="tab" aria-controls="file" aria-selected="false">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Archivo Excel
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="gcTabsContent">
+                    <!-- Manual Input Tab -->
+                    <div class="tab-pane fade show active" id="manual" role="tabpanel" aria-labelledby="manual-tab">
+                        <form method="POST" action="{{ url_for('pricing_bp.upload_gran_consumidor') }}"
+                            id="formGranConsumidor">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Importante:</strong> Puedes agregar múltiples semanas a la vez. Los precios se
+                                aplicarán a TODAS las fechas entre inicio y fin de cada rango.
+                            </div>
+
+                            <!-- Container for dynamic week entries -->
+                            <div id="weekEntriesContainer">
+                                <!-- First week entry (template) -->
+                                <div class="week-entry border rounded p-3 mb-3 bg-light" data-week-index="0">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0 fw-bold text-primary">
+                                            <i class="bi bi-calendar-week me-2"></i>Semana #<span
+                                                class="week-number">1</span>
+                                        </h6>
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-week-btn"
+                                            style="display: none;">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                    </div>
+
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold">Fecha Inicio <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="date" name="start_date[]" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-semibold">Fecha Fin <span
+                                                    class="text-danger">*</span></label>
+                                            <input type="date" name="end_date[]" class="form-control" required>
+                                        </div>
+                                    </div>
+
+                                    <h6 class="border-bottom pb-2 mb-3">
+                                        <i class="bi bi-currency-dollar me-2"></i>Componentes del Precio (COP/Galón)
+                                    </h6>
+                                    <div class="row g-3 mb-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Valor Producto <span
+                                                    class="text-danger">*</span></label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" step="0.01" name="val_prod[]" class="form-control"
+                                                    placeholder="Ej: 12914.53" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Sobretasa</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" step="0.01" name="sobretasa[]" class="form-control"
+                                                    placeholder="Ej: 413.00" value="0">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <h6 class="border-bottom pb-2 mb-3">
+                                        <i class="bi bi-percent me-2"></i>Componentes del IVA (COP/Galón)
+                                    </h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">IVA Productor (5%)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" step="0.0001" name="iva_prod[]"
+                                                    class="form-control" placeholder="Ej: 531.38" value="0">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">IVA Mayorista (19%)</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                <input type="number" step="0.0001" name="iva_mayor[]"
+                                                    class="form-control" placeholder="Ej: 111.28" value="0">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Add Week Button -->
+                            <div class="text-center mb-3">
+                                <button type="button" class="btn btn-outline-primary" id="btnAddWeek">
+                                    <i class="bi bi-plus-circle me-2"></i>Agregar Otra Semana
+                                </button>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-check-circle me-2"></i>Guardar Todo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- File Upload Tab -->
+                    <div class="tab-pane fade" id="file" role="tabpanel" aria-labelledby="file-tab">
+                        <form method="POST" action="{{ url_for('pricing_bp.upload_gran_consumidor') }}"
+                            enctype="multipart/form-data">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Formato del Archivo:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>Columnas requeridas: <code>FECHA</code>, <code>COP/GL</code> (o
+                                        <code>Precio</code>)
+                                    </li>
+                                    <li>Columna opcional: <code>IVA</code></li>
+                                    <li>Formato de fecha: DD/MM/YYYY o similar</li>
+                                    <li>Extensiones soportadas: .xlsx, .xls, .csv</li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Seleccionar Archivo <span
+                                        class="text-danger">*</span></label>
+                                <input type="file" name="file" class="form-control form-control-lg"
+                                    accept=".csv, .xlsx, .xls" required>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-cloud-upload me-2"></i>Subir Archivo
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Mensajes Flash -->
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -419,7 +587,7 @@
                 data-bs-target="#collapseTables">
                 <i class="bi bi-table me-2"></i>
                 Tablas Detalladas de Datos
-                <span class="badge bg-primary bg-opacity-10 text-primary ms-3">3 tablas</span>
+                <span class="badge bg-success bg-opacity-10 text-success ms-3">3 tablas</span>
             </button>
         </h2>
         <div id="collapseTables" class="accordion-collapse collapse">
@@ -441,19 +609,20 @@
                                             <tr>
                                                 <th>Fecha</th>
                                                 <th>Brent</th>
-                                                <th class="text-primary">F04 Base</th>
-                                                <th class="text-primary">F04 + IVA</th>
-                                                <th class="text-danger">Fuel Oil</th>
-                                                <th class="text-success">BPI</th>
+                                                <th class="text-warning">Ecopetrol</th>
+                                                <th class="text-primary">Gasoil</th>
+                                                <th class="text-success">GC Sin IVA</th>
+                                                <th class="text-danger">GC Con IVA</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for r in records %}
                                             {% set prev_r = records[loop.index] if loop.index < records|length else None
                                                 %} <tr>
-                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') }}
-                                                </td>
-                                                <td class="font-monospace text-muted">{{ "{:,.2f}".format(r.brent) }}
+                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') if
+                                                    r.fecha.strftime is defined else r.fecha }}</td>
+                                                <td class="font-monospace text-muted">{{ "{:,.2f}".format(r.brent or 0)
+                                                    }}
                                                 </td>
 
                                                 {% macro render_trend(curr_val, prev_val) %}
@@ -480,13 +649,15 @@
                                                 {% endif %}
                                                 {% endmacro %}
 
-                                                <td>{{ render_trend(r.diff_f04_base, prev_r.diff_f04_base if prev_r else
+                                                <td>{{ render_trend(r.premium_eco, prev_r.premium_eco if prev_r else
                                                     None) }}</td>
-                                                <td>{{ render_trend(r.diff_f04_total, prev_r.diff_f04_total if prev_r
+                                                <td>{{ render_trend(r.premium_gasoil, prev_r.premium_gasoil if prev_r
                                                     else None) }}</td>
-                                                <td>{{ render_trend(r.diff_fuel_oil, prev_r.diff_fuel_oil if prev_r else
+                                                <td>{{ render_trend(r.premium_gran_cons_sin_iva,
+                                                    prev_r.premium_gran_cons_sin_iva if prev_r else
                                                     None) }}</td>
-                                                <td>{{ render_trend(r.diff_bpi, prev_r.diff_bpi if prev_r else None) }}
+                                                <td>{{ render_trend(r.premium_gran_cons_con_iva,
+                                                    prev_r.premium_gran_cons_con_iva if prev_r else None) }}
                                                 </td>
                                                 </tr>
                                                 {% endfor %}
@@ -513,27 +684,27 @@
                                             <tr>
                                                 <th>Fecha</th>
                                                 <th>TRM</th>
-                                                <th class="text-primary">F04 Base</th>
-                                                <th class="text-primary">F04 Total</th>
-                                                <th class="text-danger">Fuel Oil</th>
-                                                <th class="text-success">BPI</th>
+                                                <th class="text-warning">Ecopetrol</th>
+                                                <th class="text-primary">Gasoil</th>
+                                                <th class="text-success">GC Sin IVA</th>
+                                                <th class="text-danger">GC Con IVA</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for r in records %}
                                             <tr>
-                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') }}
-                                                </td>
+                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') if
+                                                    r.fecha.strftime is defined else r.fecha }}</td>
                                                 <td class="font-monospace text-muted small">$ {{
                                                     "{:,.2f}".format(r.trm_mensual_used or 0) }}</td>
                                                 <td class="fw-semibold font-monospace">$ {{
-                                                    "{:,.2f}".format(r.premium_cop_f04_base or 0) }}</td>
+                                                    "{:,.2f}".format(r.premium_cop_eco or 0) }}</td>
                                                 <td class="fw-semibold font-monospace">$ {{
-                                                    "{:,.2f}".format(r.premium_cop_f04_total or 0) }}</td>
-                                                <td class="font-monospace text-danger">$ {{
-                                                    "{:,.2f}".format(r.premium_cop_fuel_oil or 0) }}</td>
+                                                    "{:,.2f}".format(r.premium_cop_gasoil or 0) }}</td>
                                                 <td class="font-monospace text-success">$ {{
-                                                    "{:,.2f}".format(r.premium_cop_bpi or 0) }}</td>
+                                                    "{:,.2f}".format(r.premium_cop_gran_cons_sin_iva or 0) }}</td>
+                                                <td class="font-monospace text-danger fw-bold">$ {{
+                                                    "{:,.2f}".format(r.premium_cop_gran_cons_con_iva or 0) }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -550,9 +721,10 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <h6 class="fw-bold mb-0">
                                         <i class="bi bi-receipt text-dark me-2"></i>
-                                        Precios Base (Detalle Ecopetrol)
+                                        Precios Base (Detalle GASOIL)
                                     </h6>
                                     <span class="badge bg-dark">Última: {{ records[0].fecha.strftime('%d/%m/%Y') if
+                                        records and records[0].fecha.strftime is defined else records[0].fecha if
                                         records else 'N/A' }}</span>
                                 </div>
                             </div>
@@ -564,49 +736,60 @@
                                                 <th rowspan="2">FECHA</th>
                                                 <th rowspan="2">TRM</th>
                                                 <th rowspan="2">BRENT</th>
-                                                <th colspan="5" class="text-center bg-primary bg-opacity-10">F04</th>
-                                                <th rowspan="2">FUEL OIL</th>
-                                                <th colspan="4" class="text-center bg-info bg-opacity-10">BPI</th>
+                                                <th colspan="3" class="text-center bg-warning bg-opacity-10">DIESEL
+                                                    ECOPETROL</th>
+                                                <th colspan="2" class="text-center bg-primary bg-opacity-10">GASOIL</th>
+                                                <th colspan="6" class="text-center bg-success bg-opacity-10">GRAN
+                                                    CONSUMIDOR</th>
                                             </tr>
                                             <tr>
-                                                <th class="small">COP/BLL</th>
-                                                <th class="small">IVA+IMP</th>
-                                                <th class="small">TOTAL COP</th>
+                                                <th class="small">COP/GL</th>
+                                                <th class="small">USD/GL</th>
                                                 <th class="small">USD/BLL</th>
-                                                <th class="small">TOTAL USD</th>
-                                                <th class="small">COP/KG</th>
-                                                <th class="small">USD/KG</th>
                                                 <th class="small">USD/MT</th>
                                                 <th class="small">USD/BLL</th>
+                                                <th class="small">COP/GL</th>
+                                                <th class="small">IVA</th>
+                                                <th class="small">TOTAL COP</th>
+                                                <th class="small">USD/BLL</th>
+                                                <th class="small">IVA</th>
+                                                <th class="small">TOTAL USD</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for r in records %}
                                             <tr>
-                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') }}
+                                                <td class="fw-semibold text-nowrap">{{ r.fecha.strftime('%d/%m/%Y') if
+                                                    r.fecha.strftime is defined else r.fecha }}</td>
+                                                <td class="font-monospace">$ {{ "{:,.2f}".format(r.trm or 0) }}</td>
+                                                <td class="fw-bold font-monospace">{{ "{:,.2f}".format(r.brent or 0) }}
                                                 </td>
-                                                <td class="font-monospace">$ {{ "{:,.2f}".format(r.trm) }}</td>
-                                                <td class="fw-bold font-monospace">{{ "{:,.2f}".format(r.brent) }}</td>
-                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.f04_base_cop or 0) }}
+                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.diesel_eco_cop_gl or
+                                                    0) }}
                                                 </td>
-                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.f04_impuesto_cop or
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.diesel_eco_usd_gl or 0)
+                                                    }}</td>
+                                                <td class="fw-semibold font-monospace">{{
+                                                    "{:,.2f}".format(r.diesel_eco_usd_bll or 0) }}</td>
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.gasoil_price or 0) }}
+                                                </td>
+                                                <td class="fw-semibold font-monospace">{{
+                                                    "{:,.2f}".format(r.gasoil_usd_bll or 0) }}</td>
+                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.gran_cons_cop_gl or
+                                                    0) }}
+                                                </td>
+                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.gran_cons_iva_cop or
                                                     0) }}</td>
                                                 <td class="fw-semibold font-monospace">$ {{
-                                                    "{:,.0f}".format(r.f04_total_cop or 0) }}</td>
-                                                <td class="font-monospace">$ {{ "{:,.2f}".format(r.f04_base_usd or 0) }}
+                                                    "{:,.0f}".format(r.gran_cons_total_cop or 0) }}</td>
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.gran_cons_usd_bll or 0)
+                                                    }}
                                                 </td>
-                                                <td class="fw-semibold font-monospace">$ {{
-                                                    "{:,.2f}".format(r.f04_total_usd or 0) }}</td>
-                                                <td class="fw-bold font-monospace">$ {{ "{:,.2f}".format(r.fuel_oil_usd
-                                                    or 0) }}</td>
-                                                <td class="font-monospace">$ {{ "{:,.0f}".format(r.bpi_cop_kg or 0) }}
+                                                <td class="font-monospace">{{ "{:,.2f}".format(r.gran_cons_iva_usd or 0)
+                                                    }}
                                                 </td>
-                                                <td class="font-monospace">{{ "{:,.2f}".format(r.bpi_usd_kg or 0) }}
-                                                </td>
-                                                <td class="font-monospace">{{ "{:,.2f}".format(r.bpi_usd_mt or 0) }}
-                                                </td>
-                                                <td class="fw-semibold font-monospace">$ {{
-                                                    "{:,.2f}".format(r.bpi_usd_bll or 0) }}</td>
+                                                <td class="fw-semibold font-monospace">{{
+                                                    "{:,.2f}".format(r.gran_cons_total_usd or 0) }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -638,22 +821,24 @@
 
         // Preparar datos
         const dates = [];
-        const f04BaseUSD = [], f04TotalUSD = [], bpiUSD = [], fuelOilUSD = [];
-        const f04BaseCOP = [], f04TotalCOP = [], bpiCOP = [], fuelOilCOP = [];
+        const ecoUSD = [], gasoilUSD = [], gcSinUSD = [], gcConUSD = [];
+        const ecoCOP = [], gasoilCOP = [], gcSinCOP = [], gcConCOP = [];
 
         {% for r in records | reverse %}
-        var ts = new Date("{{ r.fecha.isoformat() }}T00:00:00").getTime();
-        dates.push("{{ r.fecha.isoformat() }}T00:00:00");
+        {% if r.premium_gran_cons_sin_iva and r.premium_gran_cons_sin_iva != 0 %}
+        var ts = new Date("{{ r.fecha.isoformat() if r.fecha.isoformat is defined else r.fecha }}T00:00:00").getTime();
+        dates.push("{{ r.fecha.isoformat() if r.fecha.isoformat is defined else r.fecha }}T00:00:00");
 
-        f04BaseUSD.push([ts, {{ r.diff_f04_base or 0 }}]);
-    f04TotalUSD.push([ts, {{ r.diff_f04_total or 0 }}]);
-    bpiUSD.push([ts, {{ r.diff_bpi or 0 }}]);
-    fuelOilUSD.push([ts, {{ r.diff_fuel_oil or 0 }}]);
+        ecoUSD.push([ts, {{ r.premium_eco or 0 }}]);
+    gasoilUSD.push([ts, {{ r.premium_gasoil or 0 }}]);
+    gcSinUSD.push([ts, {{ r.premium_gran_cons_sin_iva or 0 }}]);
+    gcConUSD.push([ts, {{ r.premium_gran_cons_con_iva or 0 }}]);
 
-    f04BaseCOP.push([ts, {{ r.premium_cop_f04_base or 0 }}]);
-    f04TotalCOP.push([ts, {{ r.premium_cop_f04_total or 0 }}]);
-    bpiCOP.push([ts, {{ r.premium_cop_bpi or 0 }}]);
-    fuelOilCOP.push([ts, {{ r.premium_cop_fuel_oil or 0 }}]);
+    ecoCOP.push([ts, {{ r.premium_cop_eco or 0 }}]);
+    gasoilCOP.push([ts, {{ r.premium_cop_gasoil or 0 }}]);
+    gcSinCOP.push([ts, {{ r.premium_cop_gran_cons_sin_iva or 0 }}]);
+    gcConCOP.push([ts, {{ r.premium_cop_gran_cons_con_iva or 0 }}]);
+    {% endif %}
     {% endfor %}
 
     // Configuración de idioma español
@@ -679,10 +864,10 @@
     // Configuración del gráfico
     var options = {
         series: [
-            { name: 'Premium F04', data: f04BaseUSD },
-            { name: 'Premium F04+IVA', data: f04TotalUSD },
-            { name: 'Premium BPI', data: bpiUSD },
-            { name: 'Premium Fuel Oil', data: fuelOilUSD }
+            { name: 'Premium Ecopetrol', data: ecoUSD },
+            { name: 'Premium GASOIL', data: gasoilUSD },
+            { name: 'Premium GC Sin IVA', data: gcSinUSD },
+            { name: 'Premium GC Con IVA', data: gcConUSD }
         ],
         chart: {
             type: 'area',
@@ -711,7 +896,7 @@
                 speed: 800
             }
         },
-        colors: ['#667eea', '#0dcaf0', '#ff9800', '#dc3545'],
+        colors: ['#ffc107', '#0d6efd', '#198754', '#dc3545'],
         dataLabels: { enabled: false },
         stroke: {
             curve: 'smooth',
@@ -772,14 +957,14 @@
                 const fmtUSD = (v) => v != null ? "$ " + v.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A";
                 const fmtCOP = (v) => v != null ? "$ " + v.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A";
 
-                const valBaseUSD = f04BaseUSD[dataIndex] ? f04BaseUSD[dataIndex][1] : null;
-                const valBaseCOP = f04BaseCOP[dataIndex] ? f04BaseCOP[dataIndex][1] : null;
-                const valTotalUSD = f04TotalUSD[dataIndex] ? f04TotalUSD[dataIndex][1] : null;
-                const valTotalCOP = f04TotalCOP[dataIndex] ? f04TotalCOP[dataIndex][1] : null;
-                const valBpiUSD = bpiUSD[dataIndex] ? bpiUSD[dataIndex][1] : null;
-                const valBpiCOP = bpiCOP[dataIndex] ? bpiCOP[dataIndex][1] : null;
-                const valFuelUSD = fuelOilUSD[dataIndex] ? fuelOilUSD[dataIndex][1] : null;
-                const valFuelCOP = fuelOilCOP[dataIndex] ? fuelOilCOP[dataIndex][1] : null;
+                const valEcoUSD = ecoUSD[dataIndex] ? ecoUSD[dataIndex][1] : null;
+                const valEcoCOP = ecoCOP[dataIndex] ? ecoCOP[dataIndex][1] : null;
+                const valGasoilUSD = gasoilUSD[dataIndex] ? gasoilUSD[dataIndex][1] : null;
+                const valGasoilCOP = gasoilCOP[dataIndex] ? gasoilCOP[dataIndex][1] : null;
+                const valGCSinUSD = gcSinUSD[dataIndex] ? gcSinUSD[dataIndex][1] : null;
+                const valGCSinCOP = gcSinCOP[dataIndex] ? gcSinCOP[dataIndex][1] : null;
+                const valGCConUSD = gcConUSD[dataIndex] ? gcConUSD[dataIndex][1] : null;
+                const valGCConCOP = gcConCOP[dataIndex] ? gcConCOP[dataIndex][1] : null;
 
                 const bgColor = isDarkMode ? '#25292e' : '#ffffff';
                 const borderColor = isDarkMode ? '#3a3f47' : '#e9ecef';
@@ -787,52 +972,52 @@
                 const mutedColor = isDarkMode ? '#adb5bd' : '#6c757d';
 
                 return `
-                    <div class="px-3 py-2 rounded shadow-sm" style="background: ${bgColor}; border: 1px solid ${borderColor}; font-size: 12px; min-width: 300px;">
-                        <div class="fw-bold border-bottom pb-2 mb-2 text-center" style="color: ${mutedColor};">${fullDate}</div>
-                        
-                        <div class="d-flex justify-content-between fw-bold mb-2" style="font-size: 10px; color: ${mutedColor};">
-                            <span style="width: 40%;">Concepto</span>
-                            <span style="width: 28%; text-align: right;">USD/Bbl</span>
-                            <span style="width: 32%; text-align: right;">COP/Gal</span>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #667eea;"></span>
-                                <span style="color: ${textColor};">F04 Base</span>
+                        <div class="px-3 py-2 rounded shadow-sm" style="background: ${bgColor}; border: 1px solid ${borderColor}; font-size: 12px; min-width: 300px;">
+                            <div class="fw-bold border-bottom pb-2 mb-2 text-center" style="color: ${mutedColor};">${fullDate}</div>
+                            
+                            <div class="d-flex justify-content-between fw-bold mb-2" style="font-size: 10px; color: ${mutedColor};">
+                                <span style="width: 40%;">Concepto</span>
+                                <span style="width: 28%; text-align: right;">USD/Bbl</span>
+                                <span style="width: 32%; text-align: right;">COP/Gal</span>
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valBaseUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valBaseCOP)}</span>
-                        </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #0dcaf0;"></span>
-                                <span style="color: ${textColor};">F04 + IVA</span>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2" style="width: 40%;">
+                                    <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #ffc107;"></span>
+                                    <span style="color: ${textColor};">Ecopetrol</span>
+                                </div>
+                                <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valEcoUSD)}</span>
+                                <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valEcoCOP)}</span>
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valTotalUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valTotalCOP)}</span>
-                        </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #ff9800;"></span>
-                                <span style="color: ${textColor};">BPI</span>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2" style="width: 40%;">
+                                    <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #0d6efd;"></span>
+                                    <span style="color: ${textColor};">GASOIL</span>
+                                </div>
+                                <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valGasoilUSD)}</span>
+                                <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valGasoilCOP)}</span>
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valBpiUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valBpiCOP)}</span>
-                        </div>
 
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #dc3545;"></span>
-                                <span style="color: ${textColor};">Fuel Oil</span>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <div class="d-flex align-items-center gap-2" style="width: 40%;">
+                                    <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #198754;"></span>
+                                    <span style="color: ${textColor};">GC Sin IVA</span>
+                                </div>
+                                <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valGCSinUSD)}</span>
+                                <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valGCSinCOP)}</span>
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valFuelUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valFuelCOP)}</span>
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2" style="width: 40%;">
+                                    <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #dc3545;"></span>
+                                    <span style="color: ${textColor};">GC Con IVA</span>
+                                </div>
+                                <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valGCConUSD)}</span>
+                                <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valGCConCOP)}</span>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
             }
         },
         grid: {
@@ -875,10 +1060,10 @@
 
         // Actualizar datos del gráfico
         chart.updateSeries([
-            { name: 'Premium F04', data: isUSD ? f04BaseUSD : f04BaseCOP },
-            { name: 'Premium F04+IVA', data: isUSD ? f04TotalUSD : f04TotalCOP },
-            { name: 'Premium BPI', data: isUSD ? bpiUSD : bpiCOP },
-            { name: 'Premium Fuel Oil', data: isUSD ? fuelOilUSD : fuelOilCOP }
+            { name: 'Premium Ecopetrol', data: isUSD ? ecoUSD : ecoCOP },
+            { name: 'Premium GASOIL', data: isUSD ? gasoilUSD : gasoilCOP },
+            { name: 'Premium GC Sin IVA', data: isUSD ? gcSinUSD : gcSinCOP },
+            { name: 'Premium GC Con IVA', data: isUSD ? gcConUSD : gcConCOP }
         ]);
 
         // Actualizar etiqueta del eje Y
@@ -1008,6 +1193,70 @@
     document.getElementById('btnResetFilter').addEventListener('click', () => {
         chart.zoomX(new Date(dates[0]).getTime(), new Date(dates[dates.length - 1]).getTime());
     });
-});
+
+    // ===== GRAN CONSUMIDOR MULTI-WEEK FUNCTIONALITY =====
+    let weekCounter = 1;
+
+    // Add Week Button
+    document.getElementById('btnAddWeek').addEventListener('click', function () {
+        const container = document.getElementById('weekEntriesContainer');
+        const firstWeek = container.querySelector('.week-entry');
+        const newWeek = firstWeek.cloneNode(true);
+
+        // Update week number
+        weekCounter++;
+        newWeek.setAttribute('data-week-index', weekCounter - 1);
+        newWeek.querySelector('.week-number').textContent = weekCounter;
+
+        // Clear all input values
+        newWeek.querySelectorAll('input[type="date"]').forEach(input => input.value = '');
+        newWeek.querySelectorAll('input[type="number"]').forEach(input => {
+            if (input.name.includes('val_prod')) {
+                input.value = '';
+            } else {
+                input.value = '0';
+            }
+        });
+
+        // Show remove button
+        const removeBtn = newWeek.querySelector('.remove-week-btn');
+        removeBtn.style.display = 'inline-block';
+
+        // Add remove functionality
+        removeBtn.addEventListener('click', function () {
+            newWeek.remove();
+            updateWeekNumbers();
+        });
+
+        // Append to container
+        container.appendChild(newWeek);
+
+        // Show remove buttons on all but first
+        updateRemoveButtons();
+    });
+
+    // Update week numbers after removal
+    function updateWeekNumbers() {
+        const weeks = document.querySelectorAll('.week-entry');
+        weekCounter = weeks.length;
+        weeks.forEach((week, index) => {
+            week.setAttribute('data-week-index', index);
+            week.querySelector('.week-number').textContent = index + 1;
+        });
+    }
+
+    // Update remove button visibility
+    function updateRemoveButtons() {
+        const weeks = document.querySelectorAll('.week-entry');
+        weeks.forEach((week, index) => {
+            const removeBtn = week.querySelector('.remove-week-btn');
+            if (index === 0 && weeks.length === 1) {
+                removeBtn.style.display = 'none';
+            } else if (index > 0) {
+                removeBtn.style.display = 'inline-block';
+            }
+        });
+    }
+    });
 </script>
 {% endblock %}

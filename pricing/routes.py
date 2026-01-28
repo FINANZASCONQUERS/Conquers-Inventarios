@@ -4,6 +4,7 @@ import pandas as pd
 import yfinance as yf
 import requests
 from io import BytesIO
+import io
 
 # Definicion del Blueprint
 pricing_bp = Blueprint('pricing_bp', __name__, template_folder='templates')
@@ -22,6 +23,7 @@ def index():
             key = (r.fecha.year, r.fecha.month)
             trm_sums[key] = trm_sums.get(key, 0) + r.trm
             trm_counts[key] = trm_counts.get(key, 0) + 1
+
             
     trm_avgs = {k: trm_sums[k]/trm_counts[k] for k in trm_sums}
     
@@ -830,3 +832,583 @@ def update_prices():
     db.session.commit()
     flash(f"Actualización completada. {processed} registros procesados.", "success")
     return redirect(url_for('pricing_bp.index'))
+
+# --- GASOIL PREMIUM ROUTES ---
+
+@pricing_bp.route('/gasoil-premium', methods=['GET'])
+def gasoil_index():
+    from pricing.models import HistorialGasoil
+    records = HistorialGasoil.query.order_by(HistorialGasoil.fecha.desc()).all()
+    
+    # 1. Calcular TRM Promedio Mensual (basado en registros)
+    trm_sums = {}
+    trm_counts = {}
+    
+    for r in records:
+        if r.trm and r.trm > 0:
+            key = (r.fecha.year, r.fecha.month)
+            trm_sums[key] = trm_sums.get(key, 0) + r.trm
+            trm_counts[key] = trm_counts.get(key, 0) + 1
+            
+    trm_avgs = {k: trm_sums[k]/trm_counts[k] for k in trm_sums}
+    
+    # 2. Enriquecer registros con "Premium COP" (Que en F04 son Precios Base convertidos)
+    # Formula: (Precio USD/Bbl / 42.0) * TRM_Mensual
+    for r in records:
+        trm_mes = trm_avgs.get((r.fecha.year, r.fecha.month), r.trm or 0)
+        r.trm_mensual_used = trm_mes
+        
+        # Helper interno
+        def to_cop_gal_monthly(usd_bbl_val):
+            if not usd_bbl_val: return 0.0
+            # USD/Bbl -> USD/Gal -> COP/Gal
+            # (Val / 42) * TRM Promedio Mensual
+            return (usd_bbl_val / 42.0) * trm_mes
+            
+        # Usamos los PRECIOS ABSOLUTOS (NO los diferenciales/spreads) para coincidir con F04
+        r.premium_cop_eco = to_cop_gal_monthly(r.diesel_eco_usd_bll)
+        r.premium_cop_gasoil = to_cop_gal_monthly(r.gasoil_usd_bll)
+        r.premium_cop_gran_cons_sin_iva = to_cop_gal_monthly(r.gran_cons_usd_bll)
+        r.premium_cop_gran_cons_con_iva = to_cop_gal_monthly(r.gran_cons_total_usd)
+
+    return render_template('pricing/gasoil_premium.html', records=records)
+
+    
+
+
+@pricing_bp.route('/gasoil-premium/reset', methods=['POST'])
+def reset_gasoil():
+    from extensions import db
+    from pricing.models import HistorialGasoil
+    try:
+        num_deleted = db.session.query(HistorialGasoil).delete()
+        db.session.commit()
+        flash(f"Historial Gasoil eliminado correctamente ({num_deleted} registros).", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error eliminando historial Gasoil: {e}", "danger")
+    return redirect(url_for('pricing_bp.gasoil_index'))
+
+@pricing_bp.route('/gasoil-premium/update', methods=['POST'])
+def update_gasoil():
+    from extensions import db
+    from pricing.models import HistorialGasoil
+    from sqlalchemy import or_
+
+    # Optimización: Buscar última fecha registrada
+    try:
+        latest_record = HistorialGasoil.query.order_by(HistorialGasoil.fecha.desc()).first()
+    except:
+        latest_record = None # Tabla podria no existir aun si no se corrio migracion
+
+    start_date = date(2025, 1, 1)
+    if latest_record:
+        start_date = latest_record.fecha + timedelta(days=1)
+    
+    today = date.today()
+    
+    # Verificar si ya está actualizado
+    if start_date > today:
+        flash("La base de datos Gasoil ya está actualizada hasta hoy.", "info")
+        return redirect(url_for('pricing_bp.gasoil_index'))
+
+    # 1. BRENT (Reutilizamos lógica de F04, simplificada aquí)
+    brent_df = pd.DataFrame()
+    latest_brent = latest_record.brent if (latest_record and latest_record.brent) else 75.0
+    
+    # Intentar Yahoo Finance para Brent (BZ=F)
+    try:
+        print(f"Intentando Yahoo Finance para Brent desde {start_date}...")
+        # Descargar solo desde la última fecha registrada
+        brent_df_yf = yf.download("BZ=F", start=start_date.strftime('%Y-%m-%d'), progress=False)
+        if not brent_df_yf.empty:
+            # Limpieza MultiIndex
+            if isinstance(brent_df_yf.columns, pd.MultiIndex):
+                try:
+                    if 'Close' in brent_df_yf.columns.get_level_values(0):
+                         brent_df_yf = brent_df_yf.xs('Close', level=0, axis=1)
+                    elif 'Adj Close' in brent_df_yf.columns.get_level_values(0):
+                         brent_df_yf = brent_df_yf.xs('Adj Close', level=0, axis=1)
+                    else:
+                         brent_df_yf.columns = [c[0] for c in brent_df_yf.columns]
+                except: pass
+            
+            # Asegurar serie
+            if isinstance(brent_df_yf, pd.DataFrame):
+                 val_series = brent_df_yf.iloc[:, 0]
+            else:
+                 val_series = brent_df_yf
+            
+            brent_df = pd.DataFrame({'brent': val_series})
+            if brent_df.index.tz is not None:
+                 brent_df.index = brent_df.index.tz_localize(None)
+            
+            latest_valid = brent_df['brent'].last_valid_index()
+            if latest_valid:
+                 latest_brent = float(brent_df.loc[latest_valid, 'brent'])
+        else:
+            print("⚠ Yahoo Brent vacío")
+    except Exception as e:
+        print(f"Error Yahoo Brent: {e}")
+
+    # 2. TRM (Datos.gov.co)
+    trm_map = {}
+    latest_trm = 4000.0
+    try:
+        # Buscar desde un poco antes por si hay gaps
+        fetch_start = start_date - timedelta(days=3)
+        f_str = fetch_start.strftime('%Y-%m-%d')
+        print(f"Descargando TRM desde {fetch_start}...")
+        url_trm = f"https://www.datos.gov.co/resource/32sa-8pi3.json?$where=vigenciadesde >= '{f_str}T00:00:00.000'"
+        resp_trm = requests.get(url_trm, timeout=30)
+        if resp_trm.status_code == 200:
+            data_trm = resp_trm.json()
+            for item in data_trm:
+                f_desde_str = item.get('vigenciadesde')
+                f_hasta_str = item.get('vigenciahasta')
+                val = float(item.get('valor', 0))
+                if f_desde_str and f_hasta_str:
+                    d_desde = datetime.strptime(f_desde_str[:10], '%Y-%m-%d').date()
+                    d_hasta = datetime.strptime(f_hasta_str[:10], '%Y-%m-%d').date()
+                    curr_trm = d_desde
+                    while curr_trm <= d_hasta:
+                        trm_map[curr_trm] = val
+                        curr_trm += timedelta(days=1)
+                    if d_hasta >= fetch_start: latest_trm = val
+    except Exception as e:
+        print(f"Error TRM: {e}")
+
+    # 3. GASOIL (Yahoo Finance: LGO=F - ICE Gasoil Futures)
+    gasoil_df = pd.DataFrame()
+    # Default Gasoil Price ~700 USD/MT
+    latest_gasoil = latest_record.gasoil_price if (latest_record and latest_record.gasoil_price) else 700.0
+    
+    try:
+        print(f"Intentando Yahoo Finance para Gasoil desde {start_date}...")
+        # Primero intentamos LGO=F (ICE Gasoil)
+        gasoil_df_yf = yf.download("LGO=F", start=start_date.strftime('%Y-%m-%d'), progress=False)
+        
+        # Si LGO=F falla o está vacío, intentamos HO=F (Heating Oil) como proxy
+        source_used = "LGO"
+        if gasoil_df_yf.empty:
+            print("⚠ Yahoo LGO=F vacío/falló. Intentando HO=F (Heating Oil) como proxy...")
+            gasoil_df_yf = yf.download("HO=F", start=start_date.strftime('%Y-%m-%d'), progress=False)
+            source_used = "HO"
+
+        if not gasoil_df_yf.empty:
+            if isinstance(gasoil_df_yf.columns, pd.MultiIndex):
+                try:
+                    if 'Close' in gasoil_df_yf.columns.get_level_values(0):
+                         gasoil_df_yf = gasoil_df_yf.xs('Close', level=0, axis=1)
+                    elif 'Adj Close' in gasoil_df_yf.columns.get_level_values(0):
+                         gasoil_df_yf = gasoil_df_yf.xs('Adj Close', level=0, axis=1)
+                    else:
+                         gasoil_df_yf.columns = [c[0] for c in gasoil_df_yf.columns]
+                except: pass
+            
+            if isinstance(gasoil_df_yf, pd.DataFrame):
+                val_series = gasoil_df_yf.iloc[:, 0]
+            else:
+                val_series = gasoil_df_yf
+            
+            # Si usamos Heating Oil (USD/Gal), convertir a USD/MT aproximado para mantener consistencia
+            # 1 Bbl = 42 Gal
+            # 1 MT Gasoil ~ 7.4 Bbl
+            # => USD/MT = (USD/Gal * 42) * 7.4
+            if source_used == "HO":
+                 val_series = val_series * 42 * 7.4
+            
+            gasoil_df = pd.DataFrame({'gasoil': val_series})
+            if gasoil_df.index.tz is not None:
+                 gasoil_df.index = gasoil_df.index.tz_localize(None)
+
+            latest_valid_g = gasoil_df['gasoil'].last_valid_index()
+            if latest_valid_g:
+                 latest_gasoil = float(gasoil_df.loc[latest_valid_g, 'gasoil'])
+        else:
+            print("⚠ Yahoo Gasoil (LGO y HO) vacíos")
+    except Exception as e:
+        print(f"Error Yahoo Gasoil: {e}")
+
+
+    # 3. GASOIL (Yahoo Finance)
+    # ... (Existing Gasoil logic remains above) ...
+
+    # 4. DIESEL ECOPETROL (Diesel Marino - Nueva URL)
+    # URL provided by user: PME-V-DIESELMARINO_15.xls
+    ECOPETROL_URL = "https://www.ecopetrol.com.co/wps/wcm/connect/07bb0dc0-7c62-4ef2-88d1-5e0379530ce8/PME-V-DIESELMARINO_15.xls?MOD=AJPERES&attachment=true&id=1588803550108"
+    
+    eco_map = {} # date -> price_cop_gl
+    
+    try:
+        print("Descargando archivo Ecopetrol Diesel Marino...")
+        resp_eco = requests.get(ECOPETROL_URL, verify=False, timeout=60)
+        if resp_eco.status_code == 200:
+            try:
+                xl = pd.ExcelFile(io.BytesIO(resp_eco.content))
+                target_sheet = None
+                for s in xl.sheet_names:
+                    if "cartagena" in s.lower(): # Match Cartagena (with or without 'a')
+                        target_sheet = s
+                        break
+                
+                if target_sheet:
+                    print(f"Hoja encontrada: {target_sheet}")
+                    # Parsear hoja
+                    df_eco = xl.parse(target_sheet, header=None)
+                    
+                    for index, row in df_eco.iterrows():
+                        try:
+                            # Intento 1: Bloque Izquierdo (Cols 0, 1, 6)
+                            date_found = False
+                            price_found = 0.0
+                            
+                            s_d = row[0]
+                            e_d = row[1]
+                            p_val = row[6]
+                            
+                            if isinstance(s_d, (datetime, pd.Timestamp)) and isinstance(e_d, (datetime, pd.Timestamp)):
+                                if isinstance(p_val, (int, float)) and not pd.isna(p_val):
+                                    date_found = True
+                                    price_found = float(p_val)
+                                    start_final = s_d
+                                    end_final = e_d
+
+                            # Intento 2: Bloque Derecho (Cols 8, 9, 15) - Si Bloque Izq falló o está vacío
+                            if not date_found:
+                                try:
+                                    s_d2 = row[8]
+                                    e_d2 = row[9]
+                                    # Probar col 15 (o 14 si 15 falla)
+                                    p_val2 = row[15] if (len(row) > 15 and not pd.isna(row[15])) else row[14]
+                                    
+                                    if isinstance(s_d2, (datetime, pd.Timestamp)) and isinstance(e_d2, (datetime, pd.Timestamp)):
+                                        if isinstance(p_val2, (int, float)) and not pd.isna(p_val2):
+                                            date_found = True
+                                            price_found = float(p_val2)
+                                            start_final = s_d2
+                                            end_final = e_d2
+                                            # Debug print only occasionally or for first find
+                                            # print(f"DEBUG: Found Right Block Data: {s_d2} | {price_found}")
+                                except: pass
+                            
+                            if date_found:
+                                # Deteccion de Unidad y Conversion
+                                # Si precio > 1000 => Probablemente COP/Gal (Historico)
+                                # Si precio < 500 => Probablemente USD/Bbl (Internacional)
+                                
+                                final_cop_gl = 0.0
+                                
+                                if price_found > 1000:
+                                    final_cop_gl = price_found
+                                else:
+                                    # Asumimos USD/Bbl. Convertir a COP/Gal
+                                    # Necesitamos TRM del dia. Usamos trm_map o latest
+                                    
+                                    curr_date = start_final.date() if isinstance(start_final, datetime) else start_final
+                                    trm_for_conv = trm_map.get(curr_date, latest_trm)
+                                    
+                                    if trm_for_conv is None or trm_for_conv == 0:
+                                        trm_for_conv = 3800.0 # Fallback safety
+                                    
+                                    # USD/Bbl -> USD/Gal = USD/Bbl / 42
+                                    # USD/Gal -> COP/Gal = USD/Gal * TRM
+                                    final_cop_gl = (price_found / 42.0) * trm_for_conv
+                                    # print(f"DEBUG: Converted {price_found} USD/Bbl to {final_cop_gl} COP/GL (TRM: {trm_for_conv})")
+
+                                # Llenar rango
+                                curr = start_final.date() if isinstance(start_final, datetime) else start_final
+                                fin = end_final.date() if isinstance(end_final, datetime) else end_final
+                                
+                                if fin >= date(2024, 1, 1):
+                                    while curr <= fin:
+                                        eco_map[curr] = final_cop_gl
+                                        curr += timedelta(days=1)
+
+
+                        except:
+                            continue
+                else:
+                    print("No se encontró hoja Cartagena")
+            except Exception as e_parse:
+               print(f"Error parseando Excel Eco: {e_parse}")
+        else:
+            print(f"Error descarga Ecopetrol: {resp_eco.status_code}")
+    except Exception as e:
+        print(f"Error request Ecopetrol: {e}") 
+
+    # 5. Consolidar y Guardar
+    # ... (rest of logic) ...
+
+
+    # 5. Consolidar y Guardar
+    # (Existing consolidation loop needs to be updated to include eco_map) ...
+    
+    delta = (today - start_date).days
+    count_new = 0
+    
+    for i in range(delta + 1):
+        current_date = start_date + timedelta(days=i)
+        date_ts = pd.Timestamp(current_date)
+        
+        # --- Fetch Values ---
+        # Brent, TRM, Gasoil (Existing logic)
+        
+        # Brent
+        brent_val = latest_brent
+        try:
+            if not brent_df.empty:
+                if date_ts in brent_df.index:
+                    val = brent_df.loc[date_ts]
+                    brent_val = float(val.iloc[0] if isinstance(val, (pd.Series, pd.DataFrame)) else val)
+                else:
+                    # ffill
+                    idx_loc = brent_df.index.searchsorted(date_ts, side='right') - 1
+                    if idx_loc >= 0:
+                        val = brent_df.iloc[idx_loc]
+                        brent_val = float(val.iloc[0] if isinstance(val, (pd.Series, pd.DataFrame)) else val)
+            if brent_val > 0: latest_brent = brent_val
+        except: pass
+
+        # TRM
+        trm_val = trm_map.get(current_date, latest_trm)
+        if trm_val > 0: latest_trm = trm_val
+        
+        # Gasoil
+        gasoil_val_mt = latest_gasoil
+        try:
+            if not gasoil_df.empty:
+                if date_ts in gasoil_df.index:
+                    val = gasoil_df.loc[date_ts]
+                    gasoil_val_mt = float(val.iloc[0] if isinstance(val, (pd.Series, pd.DataFrame)) else val)
+                else:
+                    idx_loc = gasoil_df.index.searchsorted(date_ts, side='right') - 1
+                    if idx_loc >= 0:
+                        val = gasoil_df.iloc[idx_loc]
+                        gasoil_val_mt = float(val.iloc[0] if isinstance(val, (pd.Series, pd.DataFrame)) else val)
+            if gasoil_val_mt > 0: latest_gasoil = gasoil_val_mt
+        except: pass
+        
+        # Diesel Ecopetrol (ALC)
+        eco_cop_gl = eco_map.get(current_date, 0.0)
+        # Si falta dato hoy, usar ultimo conocido?
+        if eco_cop_gl == 0 and i > 0:
+             # Look back logic or just keep 0 if unknown
+             pass
+
+        # Calculos
+        gasoil_bll = gasoil_val_mt / 7.4 if gasoil_val_mt > 0 else 0.0 # From MT to BLL
+        premium = (gasoil_bll - brent_val) if (brent_val > 0 and gasoil_bll > 0) else 0.0
+        
+        # Diesel Eco Conversions
+        eco_usd_gl = eco_cop_gl / trm_val if (trm_val and trm_val > 0) else 0.0
+        eco_usd_bll = eco_usd_gl * 42.0
+
+        # Guardar
+        try:
+            record = HistorialGasoil.query.get(current_date)
+            if not record:
+                record = HistorialGasoil(fecha=current_date)
+                db.session.add(record)
+            
+            record.trm = trm_val
+            record.brent = brent_val
+            record.gasoil_price = gasoil_val_mt
+            record.gasoil_usd_bll = gasoil_bll
+            record.gasoil_premium = premium  # This is Gasoil - Brent
+            record.premium_gasoil = premium  # Explicit alias for consistency
+            
+            # Ecopetrol Data
+            record.diesel_eco_cop_gl = eco_cop_gl
+            record.diesel_eco_usd_gl = eco_usd_gl
+            record.diesel_eco_usd_bll = eco_usd_bll
+            record.premium_eco = (eco_usd_bll - brent_val) if (brent_val > 0 and eco_usd_bll > 0) else 0.0
+
+            # Gran Consumidor Premiums (Recalculate if GC data exists)
+            # Gran Cons data might have been loaded manually, so we check if it exists
+            if record.gran_cons_usd_bll and record.gran_cons_usd_bll > 0 and brent_val > 0:
+                record.premium_gran_cons_sin_iva = record.gran_cons_usd_bll - brent_val
+            
+            if record.gran_cons_total_usd and record.gran_cons_total_usd > 0 and brent_val > 0:
+                record.premium_gran_cons_con_iva = record.gran_cons_total_usd - brent_val
+            record.diesel_eco_cop_gl = eco_cop_gl
+            record.diesel_eco_usd_gl = eco_usd_gl
+            record.diesel_eco_usd_bll = eco_usd_bll
+            
+            count_new += 1
+        except Exception as e:
+            print(f"Error guardando {current_date}: {e}")
+
+    try:
+        db.session.commit()
+        if count_new > 0:
+            flash(f"✅ Se actualizaron {count_new} registros de Gasoil (desde {start_date.strftime('%d/%m/%Y')} hasta {today.strftime('%d/%m/%Y')}).", "success")
+        else:
+            flash("✅ La base de datos ya está actualizada. No hay nuevos registros.", "info")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error guardando en BD: {e}", "danger")
+
+    return redirect(url_for('pricing_bp.gasoil_index'))
+
+
+@pricing_bp.route('/gasoil-premium/upload-gran-consumidor', methods=['POST'])
+def upload_gran_consumidor():
+    from pricing.models import HistorialGasoil
+    from extensions import db
+    
+    try:
+        # Check if File or Manual
+        if 'file' in request.files and request.files['file'].filename != '':
+            # --- FILE UPLOAD LOGIC ---
+            file = request.files['file']
+            filename = file.filename
+            
+            if filename.endswith('.csv'):
+                df = pd.read_csv(file)
+            elif filename.endswith(('.xls', '.xlsx')):
+                df = pd.read_excel(file)
+            else:
+                flash("Formato de archivo no soportado. Use CSV o Excel.", "danger")
+                return redirect(url_for('pricing_bp.gasoil_index'))
+            
+            # Expected columns: 'Fecha', 'Precio', 'IVA' (Optional)
+            # Map common names
+            df.columns = df.columns.str.lower()
+            
+            # Find date column
+            date_col = next((c for c in df.columns if 'fecha' in c or 'date' in c), None)
+            price_col = next((c for c in df.columns if 'precio' in c or 'cop/gl' in c or 'valor' in c), None)
+            iva_col = next((c for c in df.columns if 'iva' in c or 'impuesto' in c), None)
+            
+            if not date_col or not price_col:
+                flash("El archivo debe tener al menos columnas 'Fecha' y 'Precio' (o COP/GL).", "danger")
+                return redirect(url_for('pricing_bp.gasoil_index'))
+
+            count = 0
+            for _, row in df.iterrows():
+                try:
+                    fecha_val = row[date_col]
+                    if pd.isna(fecha_val): continue
+                    
+                    if isinstance(fecha_val, (pd.Timestamp, datetime)):
+                        fecha_row = fecha_val.date()
+                    else:
+                        fecha_row = pd.to_datetime(fecha_val).date()
+
+                    price_cop = float(row[price_col]) if pd.notnull(row[price_col]) else 0.0
+                    iva_cop = float(row[iva_col]) if (iva_col and pd.notnull(row[iva_col])) else 0.0
+                    
+                    if price_cop > 0:
+                        process_gran_consumidor_update(fecha_row, price_cop, iva_cop)
+                        count += 1
+                except Exception as e:
+                    print(f"Error processing row: {e}")
+                    continue
+            
+            flash(f"Carga Masiva Exitosa: {count} registros actualizados.", "success")
+
+        else:
+            # --- MANUAL RANGE LOGIC (supports multiple weeks) ---
+            start_dates = request.form.getlist('start_date[]')
+            end_dates = request.form.getlist('end_date[]')
+            val_prods = request.form.getlist('val_prod[]')
+            sobretasas = request.form.getlist('sobretasa[]')
+            iva_prods = request.form.getlist('iva_prod[]')
+            iva_mayors = request.form.getlist('iva_mayor[]')
+            
+            # Check if we got arrays (new multi-week form) or single values (fallback)
+            if not start_dates:
+                # Fallback to single value mode
+                start_dates = [request.form.get('start_date')]
+                end_dates = [request.form.get('end_date')]
+                val_prods = [request.form.get('val_prod', 0)]
+                sobretasas = [request.form.get('sobretasa', 0)]
+                iva_prods = [request.form.get('iva_prod', 0)]
+                iva_mayors = [request.form.get('iva_mayor', 0)]
+            
+            total_count = 0
+            
+            # Process each week entry
+            for i in range(len(start_dates)):
+                try:
+                    start_date_str = start_dates[i]
+                    end_date_str = end_dates[i]
+                    
+                    # Get values for this week
+                    val_prod = float(val_prods[i]) if i < len(val_prods) and val_prods[i] else 0
+                    sobretasa = float(sobretasas[i]) if i < len(sobretasas) and sobretasas[i] else 0
+                    iva_prod = float(iva_prods[i]) if i < len(iva_prods) and iva_prods[i] else 0
+                    iva_mayor = float(iva_mayors[i]) if i < len(iva_mayors) and iva_mayors[i] else 0
+                    
+                    # Calculate totals
+                    price_cop = val_prod + sobretasa
+                    iva_cop = iva_prod + iva_mayor
+                    
+                    if start_date_str and end_date_str and price_cop > 0:
+                        s_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                        e_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                        
+                        curr = s_date
+                        while curr <= e_date:
+                            process_gran_consumidor_update(curr, price_cop, iva_cop)
+                            curr += timedelta(days=1)
+                            total_count += 1
+                except Exception as e:
+                    print(f"Error processing week {i+1}: {e}")
+                    continue
+            
+            if total_count > 0:
+                flash(f"Actualización Manual Exitosa: {total_count} registros actualizados.", "success")
+            else:
+                flash("Datos inválidos. Verifique fechas y precios.", "warning")
+
+    except Exception as e:
+        flash(f"Error actualizando Gran Consumidor: {e}", "danger")
+        print(f"Error GC Update: {e}")
+
+    return redirect(url_for('pricing_bp.gasoil_index'))
+
+
+def process_gran_consumidor_update(fecha_gl, price_cop, iva_cop):
+    from pricing.models import HistorialGasoil
+    from extensions import db
+    
+    record = HistorialGasoil.query.get(fecha_gl)
+    if not record:
+        record = HistorialGasoil(fecha=fecha_gl)
+        db.session.add(record)
+    
+    total_cop = price_cop + iva_cop
+    
+    record.gran_cons_cop_gl = price_cop
+    record.gran_cons_iva_cop = iva_cop
+    record.gran_cons_total_cop = total_cop
+    
+    # Calculate USD if TRM exists
+    trm_val = record.trm
+    
+    # TRM Safety Check
+    if not trm_val or trm_val == 0:
+        # Fallback or leave as 0? 
+        # Ideally we should fetch TRM if missing, but for now we proceed.
+        pass
+
+    if trm_val and trm_val > 0:
+        # USD/Gal = COP/Gal / TRM
+        usd_gl = price_cop / trm_val
+        usd_iva_gl = iva_cop / trm_val
+        usd_total_gl = total_cop / trm_val
+        
+        # USD/Bbl = USD/Gal * 42
+        record.gran_cons_usd_bll = usd_gl * 42.0
+        record.gran_cons_iva_usd = usd_iva_gl * 42.0
+        record.gran_cons_total_usd = usd_total_gl * 42.0
+        
+        # Calculate Premiums if Brent is available
+        if record.brent and record.brent > 0:
+            record.premium_gran_cons_sin_iva = record.gran_cons_usd_bll - record.brent
+            record.premium_gran_cons_con_iva = record.gran_cons_total_usd - record.brent
+    
+    db.session.commit()
+
