@@ -245,6 +245,10 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ url_for('pricing_bp.gasoil_index') }}" class="btn btn-outline-light btn-dashboard">
+                <i class="bi bi-fuel-pump"></i>
+                <span class="d-none d-sm-inline">Ir a Gasoil</span>
+            </a>
             <form method="POST" action="{{ url_for('pricing_bp.reset_prices') }}"
                 onsubmit="return confirm('¿Está seguro de eliminar TODO el historial de FuelOil? Esta acción no se puede deshacer.')">
 

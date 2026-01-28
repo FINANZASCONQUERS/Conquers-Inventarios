@@ -385,9 +385,28 @@ defecto seguros. #}
                                 </h6>
                             </li>
                             {% if 'planilla_precios' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'pricing_bp.index' %}active{% endif %}"
-                                    href="{{ url_for('pricing_bp.index') }}"><i
-                                        class="bi bi-currency-exchange me-2 text-success"></i>Planilla Precios</a></li>
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                    data-bs-toggle="collapse" href="#collapsePricingUser" role="button"
+                                    aria-expanded="{% if 'pricing_bp' in request.endpoint %}true{% else %}false{% endif %}"
+                                    onclick="event.stopPropagation();">
+                                    <span><i class="bi bi-currency-exchange me-2 text-success"></i>Planilla
+                                        Precios</span>
+                                    <i class="bi bi-chevron-down text-muted small"></i>
+                                </a>
+                                <div class="collapse {% if 'pricing_bp' in request.endpoint %}show{% endif %}"
+                                    id="collapsePricingUser" style="background-color: rgba(0,0,0,0.02);">
+                                    <ul class="list-unstyled m-0 border-start border-2 ms-4 my-1">
+                                        <li><a class="dropdown-item ps-3 py-1 small {% if request.endpoint == 'pricing_bp.index' %}active fw-bold{% endif %}"
+                                                href="{{ url_for('pricing_bp.index') }}"><i
+                                                    class="bi bi-fire me-2 text-danger"></i>F04 Premium</a></li>
+                                        <li><a class="dropdown-item ps-3 py-1 small {% if request.endpoint == 'pricing_bp.gasoil_index' %}active fw-bold{% endif %}"
+                                                href="{{ url_for('pricing_bp.gasoil_index') }}"><i
+                                                    class="bi bi-droplet-fill me-2 text-primary"></i>Gasoil Premium</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
                             {% endif %}
                             {% if 'flujo_efectivo' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'flujo_efectivo' %}active{% endif %}"
@@ -532,8 +551,27 @@ defecto seguros. #}
                                 <h6 class="dropdown-header text-primary"><i
                                         class="bi bi-currency-dollar me-2"></i>Finanzas</h6>
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('pricing_bp.index') }}"><i
-                                        class="bi bi-currency-exchange me-2 text-success"></i>Planilla de Precios</a>
+                            <li>
+                                <a class="dropdown-item d-flex justify-content-between align-items-center"
+                                    data-bs-toggle="collapse" href="#collapsePricingAdmin" role="button"
+                                    aria-expanded="{% if 'pricing_bp' in request.endpoint %}true{% else %}false{% endif %}"
+                                    onclick="event.stopPropagation();">
+                                    <span><i class="bi bi-currency-exchange me-2 text-success"></i>Planilla
+                                        Precios</span>
+                                    <i class="bi bi-chevron-down text-muted small"></i>
+                                </a>
+                                <div class="collapse {% if 'pricing_bp' in request.endpoint %}show{% endif %}"
+                                    id="collapsePricingAdmin" style="background-color: rgba(0,0,0,0.02);">
+                                    <ul class="list-unstyled m-0 border-start border-2 ms-4 my-1">
+                                        <li><a class="dropdown-item ps-3 py-1 small {% if request.endpoint == 'pricing_bp.index' %}active fw-bold{% endif %}"
+                                                href="{{ url_for('pricing_bp.index') }}"><i
+                                                    class="bi bi-fire me-2 text-danger"></i>F04 Premium</a></li>
+                                        <li><a class="dropdown-item ps-3 py-1 small {% if request.endpoint == 'pricing_bp.gasoil_index' %}active fw-bold{% endif %}"
+                                                href="{{ url_for('pricing_bp.gasoil_index') }}"><i
+                                                    class="bi bi-droplet-fill me-2 text-primary"></i>Gasoil Premium</a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('flujo_efectivo') }}"><i
                                         class="bi bi-cash-coin me-2 text-warning"></i>Flujo de Efectivo</a></li>

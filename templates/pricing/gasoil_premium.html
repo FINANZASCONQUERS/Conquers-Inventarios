@@ -245,6 +245,10 @@
             </div>
         </div>
         <div class="d-flex gap-2">
+            <a href="{{ url_for('pricing_bp.index') }}" class="btn btn-outline-light btn-dashboard">
+                <i class="bi bi-droplet-half"></i>
+                <span class="d-none d-sm-inline">Ir a F04</span>
+            </a>
             <form method="POST" action="{{ url_for('pricing_bp.reset_gasoil') }}"
                 onsubmit="return confirm('¿Está seguro de eliminar TODO el historial de Gasoil? Esta acción no se puede deshacer.')">
                 <button type="submit" class="btn btn-danger btn-dashboard">
