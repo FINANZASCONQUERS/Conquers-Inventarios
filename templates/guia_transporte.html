@@ -865,7 +865,7 @@
 
         .lugar-fecha {
             position: relative;
-            left: -100px;
+            left: -95px;
             width: 10.5cm;
             height: 1.1cm;
             font-size: 14pt
@@ -1028,10 +1028,10 @@
         .observaciones {
             position: relative;
             left: -78px;
+            top: 15px;
             width: 26cm;
             height: 1.6cm;
             font-size: 18pt;
-            position: relative;
             overflow: hidden !important;
         }
 
@@ -1159,12 +1159,26 @@
                 </div>
             </div>
             <div class="fila pequeno">
-                <div class="campo nombre-conductor sin-borde" data-campo="conductor">
+                <div class="campo nombre-conductor sin-borde" data-campo="conductor" style="position: relative;">
                     <input id="conductorSelect" list="listaConductores" placeholder="NOMBRE DEL CONDUCTOR">
+                    <button class="btn btn-sm btn-success no-print btn-action-conductor btn-add" id="btnAddConductor"
+                        onclick="abrirModalConductor('nombre')"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 12px;">+</button>
+                    <button class="btn btn-sm btn-warning no-print btn-action-conductor btn-edit" id="btnEditConductor"
+                        onclick="abrirModalConductor('nombre', true)"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 10px;"><i
+                            class="bi bi-pencil"></i></button>
                     <datalist id="listaConductores"></datalist>
                 </div>
-                <div class="campo cedula sin-borde" data-campo="cedula">
+                <div class="campo cedula sin-borde" data-campo="cedula" style="position: relative;">
                     <input id="cedulaConductor" list="listaCedulas" placeholder="CÉDULA DEL CONDUCTOR">
+                    <button class="btn btn-sm btn-success no-print btn-action-conductor btn-add" id="btnAddCedula"
+                        onclick="abrirModalConductor('cedula')"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 12px;">+</button>
+                    <button class="btn btn-sm btn-warning no-print btn-action-conductor btn-edit" id="btnEditCedula"
+                        onclick="abrirModalConductor('cedula', true)"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 10px;"><i
+                            class="bi bi-pencil"></i></button>
                     <datalist id="listaCedulas"></datalist>
                 </div>
             </div>
@@ -1174,8 +1188,16 @@
                     <div class="empresa-transportadora-wrap" aria-hidden="true"></div>
                     <datalist id="listaEmpresas"></datalist>
                 </div>
-                <div class="campo placa-cabezote sin-borde" data-campo="placaCabezote"><input id="placaCabezote"
-                        placeholder="PLACA DEL CABEZOTE"></div>
+                <div class="campo placa-cabezote sin-borde" data-campo="placaCabezote" style="position: relative;">
+                    <input id="placaCabezote" placeholder="PLACA DEL CABEZOTE">
+                    <button class="btn btn-sm btn-success no-print btn-action-conductor btn-add" id="btnAddPlaca"
+                        onclick="abrirModalConductor('placa')"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 12px;">+</button>
+                    <button class="btn btn-sm btn-warning no-print btn-action-conductor btn-edit" id="btnEditPlaca"
+                        onclick="abrirModalConductor('placa', true)"
+                        style="display:none; position:absolute; right:2px; top:50%; transform:translateY(-50%); padding: 0px 5px; z-index:100; font-size: 10px;"><i
+                            class="bi bi-pencil"></i></button>
+                </div>
                 <div class="campo placa-tanque sin-borde" data-campo="placaTanque"><input id="placaTanque"
                         placeholder="PLACA DEL TANQUE"></div>
             </div>
@@ -1318,6 +1340,14 @@
                             <label for="placaNuevoConductor" class="form-label">Placa del Cabezote</label>
                             <input type="text" class="form-control" id="placaNuevoConductor" required>
                         </div>
+                        <div class="mb-3">
+                            <label for="placaTanqueConductor" class="form-label">Placa del Tanque</label>
+                            <input type="text" class="form-control" id="placaTanqueConductor">
+                        </div>
+                        <div class="mb-3">
+                            <label for="empresaConductor" class="form-label">Empresa Transportadora</label>
+                            <input type="text" class="form-control" id="empresaConductor">
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -1457,6 +1487,252 @@
             productos.forEach(p => prodSel.insertAdjacentHTML('beforeend', `<option value="${p.PRODUCTO}">${p.PRODUCTO}</option>`));
 
             configurarEventosConductores();
+        }
+
+        // --- GESTIÓN DE CONDUCTORES (NUEVO) ---
+
+        function abrirModalConductor(origen, esEdicion = false) {
+            const modalEl = document.getElementById('modalAgregarConductor');
+            const form = document.getElementById('formAgregarConductor');
+            form.reset();
+            const btnGuardar = document.getElementById('btnGuardarConductor');
+
+            // Obtener valor actual según origen
+            let val = '';
+            if (origen === 'nombre') val = document.getElementById('conductorSelect').value.trim();
+            else if (origen === 'cedula') val = document.getElementById('cedulaConductor').value.trim();
+            else if (origen === 'placa') val = document.getElementById('placaCabezote').value.trim();
+
+            if (esEdicion) {
+                // Modo EDICION
+                document.getElementById('modalLabelConductor').textContent = 'Editar Conductor';
+                btnGuardar.textContent = 'Actualizar Conductor';
+                btnGuardar.dataset.mode = 'edit';
+
+                // Buscar conductor existente para pre-llenar
+                let match = null;
+                const vUpper = val.toUpperCase();
+
+                if (origen === 'nombre') {
+                    const cleanVal = val.split('|')[0].trim();
+                    match = conductores.find(c => (c.CONDUCTOR || c["NOMBRE CONDUCTOR"] || '').toUpperCase() === cleanVal.toUpperCase());
+                }
+                else if (origen === 'cedula') match = conductores.find(c => String(c.CEDULA || c["N° DOCUMENTO"] || '').toUpperCase() === vUpper);
+                else if (origen === 'placa') match = conductores.find(c => (c.PLACA || '').toUpperCase() === vUpper);
+
+                if (match) {
+                    document.getElementById('nombreNuevoConductor').value = match.CONDUCTOR || match["NOMBRE CONDUCTOR"] || '';
+                    document.getElementById('cedulaNuevoConductor').value = match.CEDULA || match["N° DOCUMENTO"] || '';
+
+                    // LÓGICA INTELIGENTE (COHERENCIA CON PROGRAMACIÓN):
+                    // Si abrimos desde CÉDULA o NOMBRE, bloqueamos la cédula para proteger la identidad y actualizar al conductor.
+                    // Pero si abrimos desde PLACA, puede ser que queramos asignar esa placa a OTRO conductor.
+                    if (origen === 'placa') {
+                        document.getElementById('cedulaNuevoConductor').disabled = false;
+                    } else {
+                        document.getElementById('cedulaNuevoConductor').disabled = true;
+                    }
+
+                    document.getElementById('placaNuevoConductor').value = match.PLACA || '';
+                    document.getElementById('placaTanqueConductor').value = match.TANQUE || match["PLACA REMOLQUE"] || '';
+                    document.getElementById('empresaConductor').value = match.EMPRESA || '';
+                } else {
+                    // Si no hay match (caso raro), permitir llenar manualmente pero habilitar cedula
+                    document.getElementById('nombreNuevoConductor').value = (origen === 'nombre' ? val : '');
+                    document.getElementById('cedulaNuevoConductor').value = (origen === 'cedula' ? val : '');
+                    document.getElementById('placaNuevoConductor').value = (origen === 'placa' ? val : '');
+                    document.getElementById('cedulaNuevoConductor').disabled = false;
+                }
+            } else {
+                // Modo CREACION
+                document.getElementById('modalLabelConductor').textContent = 'Agregar Nuevo Conductor';
+                btnGuardar.textContent = 'Guardar Conductor';
+                btnGuardar.dataset.mode = 'create';
+                document.getElementById('cedulaNuevoConductor').disabled = false;
+
+                // Pre-llenar solo el campo desde donde se invocó
+                if (origen === 'nombre') document.getElementById('nombreNuevoConductor').value = val;
+                else if (origen === 'cedula') document.getElementById('cedulaNuevoConductor').value = val;
+                else if (origen === 'placa') document.getElementById('placaNuevoConductor').value = val;
+            }
+
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+        function configurarEventosConductores() {
+            const inputs = [
+                { id: 'conductorSelect', type: 'nombre' },
+                { id: 'cedulaConductor', type: 'cedula' },
+                { id: 'placaCabezote', type: 'placa' }
+            ];
+
+            inputs.forEach(item => {
+                const el = document.getElementById(item.id);
+                if (!el) return;
+
+                // Evento input para detectar cambios
+                el.addEventListener('input', () => verificarExistenciaConductor(item.id, item.type));
+                // Verificar inicial
+                // verificarExistenciaConductor(item.id, item.type);
+            });
+
+            // Configurar botón guardar del modal
+            const btnGuardar = document.getElementById('btnGuardarConductor');
+            if (btnGuardar) {
+                // Remover listeners anteriores para evitar duplicados si se llama configurarEventosConductores multiples veces
+                const nuevoBtn = btnGuardar.cloneNode(true);
+                btnGuardar.parentNode.replaceChild(nuevoBtn, btnGuardar);
+
+                nuevoBtn.addEventListener('click', function () {
+                    guardarOActualizarConductor(this);
+                });
+            }
+        }
+
+        function verificarExistenciaConductor(elementId, type) {
+            const input = document.getElementById(elementId);
+            const val = input.value.trim().toUpperCase();
+            const parent = input.parentElement;
+
+            const btnAdd = parent.querySelector('.btn-add');
+            const btnEdit = parent.querySelector('.btn-edit');
+
+            if (val.length === 0) {
+                btnAdd.style.display = 'none';
+                btnEdit.style.display = 'none';
+                return;
+            }
+
+            let exists = false;
+            if (type === 'nombre') {
+                exists = conductores.some(c => (c.CONDUCTOR || c["NOMBRE CONDUCTOR"] || '').toUpperCase() === val);
+            } else if (type === 'cedula') {
+                exists = conductores.some(c => String(c.CEDULA || c["N° DOCUMENTO"] || '').toUpperCase() === val);
+            } else if (type === 'placa') {
+                exists = conductores.some(c => (c.PLACA || '').toUpperCase() === val);
+            }
+
+            if (exists) {
+                btnAdd.style.display = 'none';
+                btnEdit.style.display = 'block';
+            } else {
+                btnAdd.style.display = 'block';
+                btnEdit.style.display = 'none';
+            }
+        }
+
+        function guardarOActualizarConductor(btn) {
+            const nombre = document.getElementById('nombreNuevoConductor').value.trim();
+            const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
+            const placa = document.getElementById('placaNuevoConductor').value.trim();
+            const tanque = document.getElementById('placaTanqueConductor').value.trim();
+            const empresa = document.getElementById('empresaConductor').value.trim();
+
+            const mode = btn.dataset.mode || 'create';
+
+            if (!nombre || !cedula) {
+                Swal.fire('Error', 'Nombre y Cédula son obligatorios', 'warning');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Procesando...';
+
+            let url = '/api/conductores';
+            let method = 'POST';
+
+            if (mode === 'edit') {
+                url = `/api/conductores/${cedula}`;
+                method = 'PUT';
+            }
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nombre, cedula, placa, tanque, empresa })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Éxito',
+                            text: mode === 'edit' ? 'Conductor actualizado' : 'Conductor creado',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+
+                        // LÓGICA ANTI-DUPLICADOS LOCAL:
+                        // Si la placa no está vacía, buscar quien la tenía antés y quitársela.
+                        if (placa && placa.length > 3) {
+                            conductores.forEach(c => {
+                                // Si tiene la misma placa Y NO ES el que estamos editando (por cédula)
+                                if ((c["PLACA"] || '').toUpperCase() === placa.toUpperCase() && String(c.CEDULA || c["N° DOCUMENTO"]) !== String(cedula)) {
+                                    c["PLACA"] = "";
+                                    c["PLACA REMOLQUE"] = ""; // Asumimos tanque también
+                                    c["TANQUE"] = "";
+                                }
+                            });
+                        }
+
+                        // Actualizar lista local
+                        const nuevoDatos = {
+                            "CONDUCTOR": nombre.toUpperCase(),
+                            "NOMBRE CONDUCTOR": nombre.toUpperCase(), // Compatibilidad
+                            "CEDULA": cedula,
+                            "N° DOCUMENTO": cedula, // Compatibilidad
+                            "PLACA": placa.toUpperCase(),
+                            "TANQUE": tanque.toUpperCase(),
+                            "PLACA REMOLQUE": tanque.toUpperCase(), // Compatibilidad
+                            "EMPRESA": empresa.toUpperCase()
+                        };
+
+                        if (mode === 'edit') {
+                            const idx = conductores.findIndex(c => String(c.CEDULA || c["N° DOCUMENTO"]) === String(cedula));
+                            if (idx !== -1) {
+                                conductores[idx] = { ...conductores[idx], ...nuevoDatos };
+                            }
+                        } else {
+                            conductores.push(nuevoDatos);
+                        }
+
+                        // Refrescar UI
+                        actualizarDropdownConductores();
+
+                        // Si estábamos editando/creando lo que está en los inputs, actualizar inputs también
+                        if (document.getElementById('conductorSelect').value.toUpperCase() === nombre.toUpperCase() || mode === 'create') {
+                            document.getElementById('conductorSelect').value = nombre.toUpperCase();
+                            document.getElementById('cedulaConductor').value = cedula;
+                            document.getElementById('placaCabezote').value = placa.toUpperCase();
+                            document.getElementById('placaTanque').value = tanque.toUpperCase();
+
+                            // Re-verificar botones
+                            verificarExistenciaConductor('conductorSelect', 'nombre');
+                            verificarExistenciaConductor('cedulaConductor', 'cedula');
+                            verificarExistenciaConductor('placaCabezote', 'placa');
+                        }
+
+                        // Cerrar modal
+                        // const modalEl = document.getElementById('modalAgregarConductor');
+                        // const modal = bootstrap.Modal.getInstance(modalEl);
+                        // modal.hide(); 
+                        // Bootstrap 5 form, la instancia se puede obtener o usar elemento DOM directo para cerrar
+                        const modalEl = document.getElementById('modalAgregarConductor');
+                        bootstrap.Modal.getInstance(modalEl).hide();
+
+                    } else {
+                        Swal.fire('Error', data.message || 'Error al guardar', 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    Swal.fire('Error', 'Error de conexión', 'error');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = mode === 'edit' ? 'Actualizar Conductor' : 'Guardar Conductor';
+                });
         }
 
         // Función actualizada para usar el menú personalizado

@@ -1156,7 +1156,7 @@
         let conductores = {{ lista_conductores | default ([]) | tojson | safe
     }};
 
-    // --- Nuevo: Guardar Conductor ---
+    // --- Nuevo: Guardar/Actualizar Conductor ---
     const btnGuardarConductor = document.getElementById('btnGuardarConductor');
     if (btnGuardarConductor) {
         btnGuardarConductor.addEventListener('click', function () {
@@ -1166,6 +1166,9 @@
             const tanque = document.getElementById('placaTanqueConductor').value.trim();
             const empresa = document.getElementById('empresaConductor').value.trim();
 
+            // Determinar modo
+            const mode = this.dataset.mode || 'create';
+
             if (!nombre || !cedula) {
                 showToast('warning', 'Nombre y Cédula son obligatorios');
                 return;
@@ -1174,28 +1177,65 @@
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
-            fetch('/api/conductores', {
-                method: 'POST',
+            let url = '/api/conductores';
+            let method = 'POST';
+
+            if (mode === 'edit') {
+                url = `/api/conductores/${cedula}`;
+                method = 'PUT';
+            }
+
+            fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nombre, cedula, placa, tanque, empresa })
             })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        showToast('success', 'Conductor guardado correctamente');
-                        const nuevo = {
+                        showToast('success', mode === 'edit' ? 'Conductor actualizado correctamente' : 'Conductor guardado correctamente');
+
+                        // LÓGICA ANTI-DUPLICADOS LOCAL:
+                        // Si la placa no está vacía, buscar quien la tenía antés y quitársela.
+                        if (placa && placa.length > 3) {
+                            conductores.forEach(c => {
+                                // Si tiene la misma placa Y NO ES el que estamos editando (por cédula)
+                                if ((c["PLACA"] || '').toUpperCase() === placa.toUpperCase() && String(c["N° DOCUMENTO"]) !== String(cedula)) {
+                                    c["PLACA"] = "";
+                                    c["PLACA REMOLQUE"] = ""; // Asumimos tanque también
+                                    c["TANQUE"] = "";
+                                }
+                            });
+                        }
+
+                        const nuevoDatos = {
                             "NOMBRE CONDUCTOR": nombre.toUpperCase(),
                             "N° DOCUMENTO": cedula,
                             "PLACA": placa.toUpperCase(),
                             "PLACA REMOLQUE": tanque.toUpperCase(),
                             "EMPRESA": empresa.toUpperCase(),
-                            "CELULAR": ""
+                            "CELULAR": "" // Si tuvieramos input para celular en modal, agregarlo
                         };
-                        conductores.push(nuevo);
+
+                        if (mode === 'edit') {
+                            // Actualizar en array local
+                            const idx = conductores.findIndex(c => String(c["N° DOCUMENTO"]) === String(cedula));
+                            if (idx !== -1) {
+                                conductores[idx] = { ...conductores[idx], ...nuevoDatos };
+                            }
+                        } else {
+                            conductores.push(nuevoDatos);
+                        }
+
+                        // Cerrar modal
                         const modalEl = document.getElementById('modalAgregarConductor');
                         const modalInstance = bootstrap.Modal.getInstance(modalEl);
                         if (modalInstance) modalInstance.hide();
                         document.getElementById('formAgregarConductor').reset();
+
+                        // Opcional: Refrescar tabla o datalists si fuera necesario
+                        actualizarDatalistConductores();
+
                     } else {
                         showToast('danger', data.message || 'Error al guardar');
                     }
@@ -1206,7 +1246,7 @@
                 })
                 .finally(() => {
                     this.disabled = false;
-                    this.innerHTML = 'Guardar Conductor';
+                    this.innerHTML = mode === 'edit' ? 'Actualizar Conductor' : 'Guardar Conductor';
                 });
         });
     }
@@ -1356,7 +1396,7 @@
         }
     });
 
-    // --- Lógica para mostrar botón '+' si no existe ---
+    // --- Lógica para mostrar botón '+' o 'Editar' si existe ---
     tbody.addEventListener('input', function (e) {
         const input = e.target;
         if (!input.classList.contains('editable-input')) return;
@@ -1365,15 +1405,15 @@
         const val = input.value.trim().toUpperCase();
         const td = input.closest('td');
         const btnAdd = td.querySelector('.btn-add-new-item');
+        const btnEdit = td.querySelector('.btn-edit-item');
 
-        if (!btnAdd) return;
+        if (!btnAdd) return; // Si no hay botón add, asumimos que no es columna soportada
 
         let exists = false;
 
         if (field === 'cliente') {
             exists = clientes.some(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
         } else if (field === 'nombre_conductor') {
-            // Búsqueda flexible: nombre, cédula o placa
             exists = conductores.some(c =>
                 (c["NOMBRE CONDUCTOR"] || '').toUpperCase() === val ||
                 String(c["N° DOCUMENTO"] || '').toUpperCase() === val ||
@@ -1385,47 +1425,119 @@
             exists = conductores.some(c => String(c["N° DOCUMENTO"] || '').trim().toUpperCase() === val);
         }
 
-        // Mostrar botón solo si hay texto y NO existe coincidencia
-        if (val.length > 0 && !exists) {
-            btnAdd.style.display = 'block';
+        // Mostrar botones según existencia
+        if (val.length > 0) {
+            if (exists) {
+                btnAdd.style.display = 'none';
+                if (btnEdit) btnEdit.style.display = 'block';
+            } else {
+                btnAdd.style.display = 'block';
+                if (btnEdit) btnEdit.style.display = 'none';
+            }
         } else {
             btnAdd.style.display = 'none';
+            if (btnEdit) btnEdit.style.display = 'none';
         }
     });
 
-    // --- Click en el botón '+' ---
+    // --- Click en el botón '+' o 'Editar' ---
     tbody.addEventListener('click', function (e) {
-        const btn = e.target.closest('.btn-add-new-item');
-        if (!btn) return;
+        const btnAdd = e.target.closest('.btn-add-new-item');
+        const btnEdit = e.target.closest('.btn-edit-item');
 
-        const td = btn.closest('td');
+        if (!btnAdd && !btnEdit) return;
+
+        const td = (btnAdd || btnEdit).closest('td');
         const input = td.querySelector('input');
         const field = input.dataset.col;
-        const val = input.value.trim(); // Mantener capitalización original para pre-llenar forms
+        const val = input.value.trim();
 
-        if (field === 'cliente') {
-            const modalEl = document.getElementById('modalAgregarCliente');
-            const form = document.getElementById('formAgregarCliente');
-            form.reset();
-            document.getElementById('nombreNuevoCliente').value = val;
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
-        } else {
-            // Es conductor (nombre, placa o cédula)
-            const modalEl = document.getElementById('modalAgregarConductor');
-            const form = document.getElementById('formAgregarConductor');
-            form.reset();
+        if (btnAdd) {
+            // Lógica existente para Agregar Nuevo
+            if (field === 'cliente') {
+                const modalEl = document.getElementById('modalAgregarCliente');
+                const form = document.getElementById('formAgregarCliente');
+                form.reset();
+                document.getElementById('nombreNuevoCliente').value = val;
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                const modalEl = document.getElementById('modalAgregarConductor');
+                const form = document.getElementById('formAgregarConductor');
+                form.reset();
+
+                // Modo CREAR
+                const btnGuardar = document.getElementById('btnGuardarConductor');
+                if (btnGuardar) {
+                    btnGuardar.dataset.mode = 'create';
+                    btnGuardar.textContent = 'Guardar Conductor';
+                }
+                document.querySelector('#modalAgregarConductor .modal-title').textContent = 'Agregar Nuevo Conductor';
+                document.getElementById('cedulaNuevoConductor').disabled = false; // Cédula editable al crear
+
+                if (field === 'nombre_conductor') {
+                    document.getElementById('nombreNuevoConductor').value = val;
+                } else if (field === 'placa') {
+                    document.getElementById('placaNuevoConductor').value = val;
+                } else if (field === 'cedula_conductor') {
+                    document.getElementById('cedulaNuevoConductor').value = val;
+                }
+
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        } else if (btnEdit) {
+            // Nuevo: Lógica para Editar Existente
+            // Buscar el conductor correspondiente
+            let conductorMatch = null;
+            const valUpper = val.toUpperCase();
 
             if (field === 'nombre_conductor') {
-                document.getElementById('nombreNuevoConductor').value = val;
+                // Limpiar posibles pipes si viene de datalist
+                const cleanVal = valUpper.split('|')[0].trim();
+                conductorMatch = conductores.find(c => (c["NOMBRE CONDUCTOR"] || '').toUpperCase() === cleanVal);
             } else if (field === 'placa') {
-                document.getElementById('placaNuevoConductor').value = val;
+                // Buscar exacto primero
+                conductorMatch = conductores.find(c => (c["PLACA"] || '').toUpperCase() === valUpper);
             } else if (field === 'cedula_conductor') {
-                document.getElementById('cedulaNuevoConductor').value = val;
+                conductorMatch = conductores.find(c => String(c["N° DOCUMENTO"] || '').toUpperCase() === valUpper);
             }
 
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
+            if (conductorMatch) {
+                const modalEl = document.getElementById('modalAgregarConductor');
+                const form = document.getElementById('formAgregarConductor');
+                form.reset();
+
+                // Modo EDITAR
+                const btnGuardar = document.getElementById('btnGuardarConductor');
+                if (btnGuardar) {
+                    btnGuardar.dataset.mode = 'edit';
+                    btnGuardar.textContent = 'Actualizar Conductor';
+                }
+                document.querySelector('#modalAgregarConductor .modal-title').textContent = 'Editar Conductor';
+
+                document.getElementById('nombreNuevoConductor').value = conductorMatch["NOMBRE CONDUCTOR"] || '';
+                document.getElementById('cedulaNuevoConductor').value = conductorMatch["N° DOCUMENTO"] || '';
+
+                // LÓGICA INTELIGENTE:
+                // Si abrimos desde CÉDULA o NOMBRE, bloqueamos la cédula para proteger la identidad.
+                // Pero si abrimos desde PLACA, puede ser que el usuario quiera asignar esa placa a OTRO conductor.
+                // En ese caso, debe poder editar Cédula y Nombre.
+                if (field === 'placa') {
+                    document.getElementById('cedulaNuevoConductor').disabled = false;
+                } else {
+                    document.getElementById('cedulaNuevoConductor').disabled = true; // No editar cédula si venimos de nombre/cédula
+                }
+
+                document.getElementById('placaNuevoConductor').value = conductorMatch["PLACA"] || '';
+                document.getElementById('placaTanqueConductor').value = conductorMatch["PLACA REMOLQUE"] || '';
+                document.getElementById('empresaConductor').value = conductorMatch["EMPRESA"] || '';
+
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                showToast('warning', 'No se encontró la información del conductor en la base de datos local.');
+            }
         }
     });
 
@@ -1516,7 +1628,7 @@
             // Buscar conductor por Cédula
             const match = conductores.find(c => String(c["N° DOCUMENTO"] || '').trim() === val);
             if (match) {
-                // **REEMPLAZO TOTAL**: Actualizar TODOS los campos
+                // Actualizar todos los datos asociados
                 if (match["NOMBRE CONDUCTOR"]) updateAndSave('nombre_conductor', match["NOMBRE CONDUCTOR"]);
                 if (match["PLACA"]) updateAndSave('placa', match["PLACA"]);
                 if (match["PLACA REMOLQUE"]) updateAndSave('tanque', match["PLACA REMOLQUE"]);
@@ -1714,6 +1826,7 @@
                                     <div class="input-group input-group-sm border-0">
                                         <input list="datalist-conductores" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar conductor...">
                                         <button class="btn btn-outline-success btn-xs btn-add-new-item" style="display:none; z-index: 5;" type="button" title="Agregar Nuevo Conductor"><i class="fas fa-plus"></i></button>
+                                        <button class="btn btn-outline-warning btn-xs btn-edit-item" style="display:none; z-index: 5;" type="button" title="Editar Conductor"><i class="fas fa-edit"></i></button>
                                     </div>
                                 </td>`;
                 } else if (col === 'cedula_conductor' && finalEditable) {
@@ -1722,6 +1835,7 @@
                                     <div class="input-group input-group-sm border-0">
                                         <input type="text" list="datalist-cedulas" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar CC...">
                                         <button class="btn btn-outline-success btn-xs btn-add-new-item" style="display:none; z-index: 5;" type="button" title="Agregar Nuevo"><i class="fas fa-plus"></i></button>
+                                        <button class="btn btn-outline-warning btn-xs btn-edit-item" style="display:none; z-index: 5;" type="button" title="Editar Conductor"><i class="fas fa-edit"></i></button>
                                     </div>
                                 </td>`;
                 } else if (col === 'placa' && finalEditable) {
@@ -1730,6 +1844,7 @@
                                     <div class="input-group input-group-sm border-0">
                                         <input type="text" list="datalist-placas" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar placa...">
                                         <button class="btn btn-outline-success btn-xs btn-add-new-item" style="display:none; z-index: 5;" type="button" title="Agregar Nuevo"><i class="fas fa-plus"></i></button>
+                                        <button class="btn btn-outline-warning btn-xs btn-edit-item" style="display:none; z-index: 5;" type="button" title="Editar Conductor"><i class="fas fa-edit"></i></button>
                                     </div>
                                 </td>`;
                 } else {

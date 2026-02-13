@@ -2086,11 +2086,12 @@
         "CELULAR": 3204005259
     },
     {
-        "PLACA": "SKY709",
-        "PLACA REMOLQUE": "R78271",
-        "NOMBRE CONDUCTOR": "CARLOS ARMANDO GARZON MORENO ",
-        "N° DOCUMENTO": 2968522,
-        "CELULAR": 3107730872
+        "PLACA": "SZK528",
+        "PLACA REMOLQUE": "S-84222",
+        "NOMBRE CONDUCTOR": "CARLOS ARMANDO GARZON MORENO",
+        "N° DOCUMENTO": "2968522",
+        "CELULAR": "",
+        "EMPRESA": ""
     },
     {
         "PLACA": "WGZ622",
@@ -2478,8 +2479,8 @@
         "CELULAR": 3105718180
     },
     {
-        "PLACA": "SZK528",
-        "PLACA REMOLQUE": "S-84222",
+        "PLACA": "",
+        "PLACA REMOLQUE": "",
         "NOMBRE CONDUCTOR": "RAUL ANDRES LARA BALLESTEROS",
         "N° DOCUMENTO": 74344591,
         "CELULAR": 3136250968

@@ -9567,10 +9567,22 @@ def agregar_conductor():
                 except json.JSONDecodeError:
                     conductores = []
 
-        # Verificar duplicados (por cédula)
+        # 1. Verificar duplicados de Cédula (NO permitir crear si ya existe la cédula)
         for c in conductores:
             if str(c.get("N° DOCUMENTO")) == str(nuevo_conductor["N° DOCUMENTO"]):
                 return jsonify(success=False, message="El conductor ya existe (Cédula duplicada)"), 409
+
+        # 2. LOGICA ANTI-DUPLICADOS DE PLACA:
+        # Si la PLACA nueva tiene valor, buscar si alguien más la tiene y QUITARSELA.
+        placa_nueva = nuevo_conductor['PLACA']
+        if placa_nueva and len(placa_nueva) > 3: # Validación básica de longitud
+            for c in conductores:
+                if c.get("PLACA") == placa_nueva:
+                    # Encontramos al conductor viejo con esta placa. Se la quitamos.
+                    c["PLACA"] = ""
+                    c["PLACA REMOLQUE"] = "" # Asumimos que tanque también se libera
+                    # Opcional: Loggear esto
+                    current_app.logger.info(f"Placa {placa_nueva} reasignada de {c.get('NOMBRE CONDUCTOR')} a {nuevo_conductor['NOMBRE CONDUCTOR']}")
 
         conductores.append(nuevo_conductor)
         
@@ -9581,6 +9593,85 @@ def agregar_conductor():
 
     except Exception as e:
         current_app.logger.error(f"Error guardando conductor: {e}")
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/api/conductores/<cedula>', methods=['PUT'])
+def actualizar_conductor(cedula):
+    try:
+        data = request.get_json()
+        # Campos permitidos para actualizar
+        nuevos_datos = {
+            "PLACA": data.get('placa', '').upper(),
+            "PLACA REMOLQUE": data.get('tanque', '').upper(),
+            "NOMBRE CONDUCTOR": data.get('nombre', '').upper(),
+            "N° DOCUMENTO": cedula, 
+            "CELULAR": data.get('celular', ''),
+            "EMPRESA": data.get('empresa', '').upper()
+        }
+
+        # Validar campos mínimos
+        if not nuevos_datos['NOMBRE CONDUCTOR']:
+            return jsonify(success=False, message="Nombre es obligatorio"), 400
+
+        # Ruta del archivo JSON
+        json_path = os.path.join(current_app.root_path, 'static', 'Conductores.json')
+        
+        conductores = []
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                try:
+                    conductores = json.load(f)
+                except json.JSONDecodeError:
+                    conductores = []
+
+        # Buscar y actualizar
+        # Buscar y actualizar
+        encontrado = False
+        idx_conductor_actual = -1
+
+        # Primero encontramos al conductor que estamos editando
+        for i, c in enumerate(conductores):
+            if str(c.get("N° DOCUMENTO")) == str(cedula):
+                idx_conductor_actual = i
+                encontrado = True
+                break
+        
+        if not encontrado:
+             return jsonify(success=False, message="Conductor no encontrado para actualizar"), 404
+
+        # 2. LOGICA ANTI-DUPLICADOS DE PLACA (UPDATE):
+        # Antes de guardar, verificar si la nueva PLACA la tiene otro conductor diferente.
+        placa_nueva = data.get('placa', '').upper()
+        
+        if placa_nueva and len(placa_nueva) > 3:
+            for i, c in enumerate(conductores):
+                # Si tiene la misma placa Y NO ES el conductor que estamos editando
+                if c.get("PLACA") == placa_nueva and i != idx_conductor_actual:
+                    # Se la quitamos al otro
+                    c["PLACA"] = ""
+                    c["PLACA REMOLQUE"] = ""
+                    current_app.logger.info(f"Placa {placa_nueva} reasignada de {c.get('NOMBRE CONDUCTOR')} a {data.get('nombre')}")
+
+        # Aplicar actualización
+        conductores[idx_conductor_actual] = {
+            "PLACA": placa_nueva,
+             # Si el usuario mandó tanque vacío pero sí placa, a lo mejor quiere conserva el tanque viejo????
+             # NO, asumimos sobrescritura total por seguridad y consistencia con el formulario.
+            "PLACA REMOLQUE": data.get('tanque', '').upper(),
+            "NOMBRE CONDUCTOR": data.get('nombre', '').upper(),
+            "N° DOCUMENTO": cedula, 
+            "CELULAR": data.get('celular', ''),
+            "EMPRESA": data.get('empresa', '').upper()
+        }
+
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(conductores, f, ensure_ascii=False, indent=4)
+            
+        return jsonify(success=True, message="Conductor actualizado correctamente")
+
+    except Exception as e:
+        current_app.logger.error(f"Error actualizando conductor: {e}")
         return jsonify(success=False, message=str(e)), 500
 
 @login_required
