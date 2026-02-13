@@ -165,6 +165,74 @@
         position: relative;
     }
 
+    /* Premium Input - Inline Filter Style */
+    .premium-filter-input {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: linear-gradient(135deg, rgba(255, 152, 0, 0.06) 0%, rgba(255, 193, 7, 0.06) 100%);
+        border: 2px solid rgba(255, 152, 0, 0.2);
+        border-radius: 10px;
+        padding: 0.45rem 0.75rem;
+        transition: all 0.3s ease;
+        min-width: 130px;
+    }
+
+    .premium-filter-input:focus-within {
+        border-color: #ff9800;
+        box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.1);
+        background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+    }
+
+    .premium-filter-input .premium-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #ff9800 0%, #ffc107 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .premium-filter-input .premium-icon i {
+        color: white;
+        font-size: 0.75rem;
+    }
+
+    .premium-filter-input input {
+        border: none;
+        background: transparent;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        width: 70px;
+        text-align: center;
+        outline: none;
+        font-family: 'Inter', monospace;
+        padding: 0;
+    }
+
+    .premium-filter-input input::placeholder {
+        color: var(--text-muted);
+        font-weight: 400;
+        font-size: 0.85rem;
+    }
+
+    /* Hide number input arrows */
+    .premium-filter-input input[type=number]::-webkit-inner-spin-button,
+    .premium-filter-input input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    .premium-filter-input input[type=number] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+    }
+
+
     /* Accordion mejorado */
     .dashboard-accordion .accordion-button {
         background: var(--card-bg);
@@ -372,6 +440,23 @@
                 <div id="daySelector" class="d-none">
                     <label class="form-label text-muted small fw-semibold mb-2">FECHA</label>
                     <input type="date" class="form-control form-select-dashboard" id="dayInput" value="2025-01-19">
+                </div>
+            </div>
+
+            <div class="col-auto d-none d-lg-block">
+                <div class="vr" style="height: 60px; opacity: 0.2;"></div>
+            </div>
+
+            <!-- Premium Input -->
+            <div class="col-12 col-sm-6 col-lg-auto">
+                <label class="form-label small fw-semibold mb-2" style="color: #ff9800;">PREMIUM</label>
+                <div class="premium-filter-input">
+                    <div class="premium-icon">
+                        <i class="bi bi-plus-lg"></i>
+                    </div>
+                    <input type="number" id="premiumInput" step="0.01" placeholder="0.00" value="">
+                    <span
+                        style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600; white-space: nowrap;">USD/Bbl</span>
                 </div>
             </div>
 
@@ -644,6 +729,7 @@
         const dates = [];
         const f04BaseUSD = [], f04TotalUSD = [], bpiUSD = [], fuelOilUSD = [];
         const f04BaseCOP = [], f04TotalCOP = [], bpiCOP = [], fuelOilCOP = [];
+        const trmMensualArr = []; // TRM para cada punto de dato (para recalcular COP con premium)
 
         {% for r in records | reverse %}
         var ts = new Date("{{ r.fecha.isoformat() }}T00:00:00").getTime();
@@ -658,7 +744,20 @@
     f04TotalCOP.push([ts, {{ r.premium_cop_f04_total or 0 }}]);
     bpiCOP.push([ts, {{ r.premium_cop_bpi or 0 }}]);
     fuelOilCOP.push([ts, {{ r.premium_cop_fuel_oil or 0 }}]);
+    trmMensualArr.push({{ r.trm_mensual_used or 0 }});
     {% endfor %}
+
+    // Premium helper: obtener valor actual del input
+    function getPremiumValue() {
+        const val = parseFloat(document.getElementById('premiumInput').value);
+        return isNaN(val) ? 0 : val;
+    }
+
+    // Convertir USD/Bbl a COP/Gal: (usd_bbl / 42) * TRM
+    function usdBblToCopGal(usdBbl, trm) {
+        if (!trm || trm <= 0) return 0;
+        return (usdBbl / 42.0) * trm;
+    }
 
     // Configuración de idioma español
     const spanishLocale = {
@@ -767,6 +866,9 @@
                 const dateVal = dates[dataIndex];
                 if (!dateVal) return '';
 
+                const premium = getPremiumValue();
+                const trm = trmMensualArr[dataIndex] || 0;
+
                 const dateObj = new Date(dateVal);
                 const day = dateObj.getDate();
                 const month = spanishLocale.options.months[dateObj.getMonth()];
@@ -776,64 +878,98 @@
                 const fmtUSD = (v) => v != null ? "$ " + v.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A";
                 const fmtCOP = (v) => v != null ? "$ " + v.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "N/A";
 
-                const valBaseUSD = f04BaseUSD[dataIndex] ? f04BaseUSD[dataIndex][1] : null;
-                const valBaseCOP = f04BaseCOP[dataIndex] ? f04BaseCOP[dataIndex][1] : null;
-                const valTotalUSD = f04TotalUSD[dataIndex] ? f04TotalUSD[dataIndex][1] : null;
-                const valTotalCOP = f04TotalCOP[dataIndex] ? f04TotalCOP[dataIndex][1] : null;
-                const valBpiUSD = bpiUSD[dataIndex] ? bpiUSD[dataIndex][1] : null;
-                const valBpiCOP = bpiCOP[dataIndex] ? bpiCOP[dataIndex][1] : null;
-                const valFuelUSD = fuelOilUSD[dataIndex] ? fuelOilUSD[dataIndex][1] : null;
-                const valFuelCOP = fuelOilCOP[dataIndex] ? fuelOilCOP[dataIndex][1] : null;
+                // Valores originales (siempre)
+                const origBaseUSD = f04BaseUSD[dataIndex] ? f04BaseUSD[dataIndex][1] : null;
+                const origTotalUSD = f04TotalUSD[dataIndex] ? f04TotalUSD[dataIndex][1] : null;
+                const origBpiUSD = bpiUSD[dataIndex] ? bpiUSD[dataIndex][1] : null;
+                const origFuelUSD = fuelOilUSD[dataIndex] ? fuelOilUSD[dataIndex][1] : null;
+
+                const origBaseCOP = f04BaseCOP[dataIndex] ? f04BaseCOP[dataIndex][1] : null;
+                const origTotalCOP = f04TotalCOP[dataIndex] ? f04TotalCOP[dataIndex][1] : null;
+                const origBpiCOP = bpiCOP[dataIndex] ? bpiCOP[dataIndex][1] : null;
+                const origFuelCOP = fuelOilCOP[dataIndex] ? fuelOilCOP[dataIndex][1] : null;
 
                 const bgColor = isDarkMode ? '#25292e' : '#ffffff';
+                const bgColor2 = isDarkMode ? '#1e2126' : '#fefcf7';
                 const borderColor = isDarkMode ? '#3a3f47' : '#e9ecef';
                 const textColor = isDarkMode ? '#e9ecef' : '#212529';
                 const mutedColor = isDarkMode ? '#adb5bd' : '#6c757d';
+                const dividerColor = isDarkMode ? '#3a3f47' : '#e9ecef';
+
+                // Helper: Genera un bloque de tabla con 4 conceptos
+                const makePanel = (items, titleStyle) => {
+                    const rows = [
+                        { dot: '#667eea', name: 'F04 Base', usd: items.baseUSD, cop: items.baseCOP },
+                        { dot: '#0dcaf0', name: 'F04 + IVA', usd: items.totalUSD, cop: items.totalCOP },
+                        { dot: '#ff9800', name: 'BPI', usd: items.bpiUSD, cop: items.bpiCOP },
+                        { dot: '#dc3545', name: 'Fuel Oil', usd: items.fuelUSD, cop: items.fuelCOP }
+                    ];
+                    return rows.map((r, i) => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; ${i < 3 ? 'border-bottom: 1px solid ' + dividerColor + ';' : ''}">
+                            <div style="display: flex; align-items: center; gap: 5px; width: 38%;">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: ${r.dot}; flex-shrink: 0;"></span>
+                                <span style="color: ${textColor}; font-size: 11px;">${r.name}</span>
+                            </div>
+                            <span style="width: 30%; text-align: right; font-weight: 700; font-family: monospace; font-size: 11px; color: ${textColor};">${fmtUSD(r.usd)}</span>
+                            <span style="width: 32%; text-align: right; font-weight: 600; font-family: monospace; font-size: 10px; color: ${mutedColor};">${fmtCOP(r.cop)}</span>
+                        </div>
+                    `).join('');
+                };
+
+                // Sin premium: un solo cuadro normal
+                if (premium === 0) {
+                    return `
+                        <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 10px; font-size: 12px; min-width: 300px; padding: 10px 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+                            <div style="font-weight: 700; text-align: center; color: ${mutedColor}; padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid ${dividerColor};">${fullDate}</div>
+                            <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 6px; font-size: 9px; color: ${mutedColor}; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <span style="width: 38%;">Concepto</span>
+                                <span style="width: 30%; text-align: right;">USD/Bbl</span>
+                                <span style="width: 32%; text-align: right;">COP/Gal</span>
+                            </div>
+                            ${makePanel({ baseUSD: origBaseUSD, totalUSD: origTotalUSD, bpiUSD: origBpiUSD, fuelUSD: origFuelUSD, baseCOP: origBaseCOP, totalCOP: origTotalCOP, bpiCOP: origBpiCOP, fuelCOP: origFuelCOP })}
+                        </div>
+                    `;
+                }
+
+                // CON premium: dos cuadros lado a lado
+                const premBaseUSD = origBaseUSD != null ? origBaseUSD + premium : null;
+                const premTotalUSD = origTotalUSD != null ? origTotalUSD + premium : null;
+                const premBpiUSD = origBpiUSD != null ? origBpiUSD + premium : null;
+                const premFuelUSD = origFuelUSD != null ? origFuelUSD + premium : null;
+
+                const premBaseCOP = premBaseUSD != null && trm > 0 ? usdBblToCopGal(premBaseUSD, trm) : null;
+                const premTotalCOP = premTotalUSD != null && trm > 0 ? usdBblToCopGal(premTotalUSD, trm) : null;
+                const premBpiCOP = premBpiUSD != null && trm > 0 ? usdBblToCopGal(premBpiUSD, trm) : null;
+                const premFuelCOP = premFuelUSD != null && trm > 0 ? usdBblToCopGal(premFuelUSD, trm) : null;
 
                 return `
-                    <div class="px-3 py-2 rounded shadow-sm" style="background: ${bgColor}; border: 1px solid ${borderColor}; font-size: 12px; min-width: 300px;">
-                        <div class="fw-bold border-bottom pb-2 mb-2 text-center" style="color: ${mutedColor};">${fullDate}</div>
+                    <div style="background: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 12px; font-size: 12px; min-width: 620px; padding: 10px 14px; box-shadow: 0 6px 24px rgba(0,0,0,0.15);">
+                        <div style="font-weight: 700; text-align: center; color: ${mutedColor}; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid ${dividerColor}; font-size: 12px;">${fullDate}</div>
                         
-                        <div class="d-flex justify-content-between fw-bold mb-2" style="font-size: 10px; color: ${mutedColor};">
-                            <span style="width: 40%;">Concepto</span>
-                            <span style="width: 28%; text-align: right;">USD/Bbl</span>
-                            <span style="width: 32%; text-align: right;">COP/Gal</span>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #667eea;"></span>
-                                <span style="color: ${textColor};">F04 Base</span>
+                        <div style="display: flex; gap: 10px;">
+                            <!-- Panel ORIGINAL -->
+                            <div style="flex: 1; background: ${bgColor}; border: 1px solid ${dividerColor}; border-radius: 8px; padding: 8px 10px;">
+                                <div style="font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: ${mutedColor}; margin-bottom: 6px; text-align: center;">Original</div>
+                                <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px; font-size: 8px; color: ${mutedColor}; text-transform: uppercase; letter-spacing: 0.3px;">
+                                    <span style="width: 38%;">Concepto</span>
+                                    <span style="width: 30%; text-align: right;">USD/Bbl</span>
+                                    <span style="width: 32%; text-align: right;">COP/Gal</span>
+                                </div>
+                                ${makePanel({ baseUSD: origBaseUSD, totalUSD: origTotalUSD, bpiUSD: origBpiUSD, fuelUSD: origFuelUSD, baseCOP: origBaseCOP, totalCOP: origTotalCOP, bpiCOP: origBpiCOP, fuelCOP: origFuelCOP })}
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valBaseUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valBaseCOP)}</span>
-                        </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #0dcaf0;"></span>
-                                <span style="color: ${textColor};">F04 + IVA</span>
+                            <!-- Panel CON PREMIUM -->
+                            <div style="flex: 1; background: ${bgColor2}; border: 2px solid rgba(255,152,0,0.3); border-radius: 8px; padding: 8px 10px; position: relative;">
+                                <div style="font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #ff9800; margin-bottom: 6px; text-align: center;">
+                                    Con Premium <span style="background: linear-gradient(135deg, #ff9800, #ffc107); color: #fff; font-size: 8px; padding: 1px 6px; border-radius: 10px; font-weight: 700; margin-left: 3px;">+${premium.toFixed(2)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 5px; font-size: 8px; color: ${mutedColor}; text-transform: uppercase; letter-spacing: 0.3px;">
+                                    <span style="width: 38%;">Concepto</span>
+                                    <span style="width: 30%; text-align: right;">USD/Bbl</span>
+                                    <span style="width: 32%; text-align: right;">COP/Gal</span>
+                                </div>
+                                ${makePanel({ baseUSD: premBaseUSD, totalUSD: premTotalUSD, bpiUSD: premBpiUSD, fuelUSD: premFuelUSD, baseCOP: premBaseCOP, totalCOP: premTotalCOP, bpiCOP: premBpiCOP, fuelCOP: premFuelCOP })}
                             </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valTotalUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valTotalCOP)}</span>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #ff9800;"></span>
-                                <span style="color: ${textColor};">BPI</span>
-                            </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valBpiUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valBpiCOP)}</span>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2" style="width: 40%;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; background-color: #dc3545;"></span>
-                                <span style="color: ${textColor};">Fuel Oil</span>
-                            </div>
-                            <span class="fw-bold font-monospace" style="width: 28%; text-align: right; color: ${textColor};">${fmtUSD(valFuelUSD)}</span>
-                            <span class="fw-bold font-monospace" style="width: 32%; text-align: right; color: ${mutedColor};">${fmtCOP(valFuelCOP)}</span>
                         </div>
                     </div>
                 `;
@@ -1012,6 +1148,8 @@
     document.getElementById('btnResetFilter').addEventListener('click', () => {
         chart.zoomX(new Date(dates[0]).getTime(), new Date(dates[dates.length - 1]).getTime());
     });
+
+
 });
 </script>
 {% endblock %}

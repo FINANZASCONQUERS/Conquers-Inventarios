@@ -2126,10 +2126,10 @@ USUARIOS = {
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-108", "PRODUCTO": "VLSFO",    "MAX_CAP": 28000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-108", "PRODUCTO": "FO6",    "MAX_CAP": 28000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-102", "PRODUCTO": "FO6",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-102", "PRODUCTO": "IFO",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 PLANILLA_BARCAZA_ORION = [
@@ -3672,7 +3672,15 @@ def reporte_variaciones_tanques():
             # Convertir fechas a strings ISO para JS
             etiquetas = [f.isoformat() for f in fechas_ord]
             max_cap = next((mapa[f]['max_cap'] for f in fechas_ord if mapa[f]['max_cap'] > 0), 0)
-            producto = next((mapa[f]['producto'] for f in fechas_ord if (mapa[f]['producto'] or '').strip()), '')
+            
+            # Buscamos el producto en PLANILLA_PLANTA primero
+            defaults_map = {fila["TK"]: fila for fila in PLANILLA_PLANTA}
+            producto = defaults_map.get(tk, {}).get("PRODUCTO")
+            
+            # Si no está en planilla, buscamos en los registros históricos
+            if not producto:
+                producto = next((mapa[f]['producto'] for f in fechas_ord if (mapa[f]['producto'] or '').strip()), '')
+
             series[tk] = {
                 'labels': etiquetas,
                 'bls_60': valores,
@@ -3769,7 +3777,8 @@ def reporte_planta():
 
         mapa_js = {r.tk: {
             "TK": r.tk,
-            "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (r.producto or defaults_map.get(r.tk, {}).get("PRODUCTO")),
+            # Priorizamos el producto de la planilla si existe, sino usamos el histórico
+            "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto),
             "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP")),
             "BLS_60": r.bls_60,
             "API": r.api,
@@ -10175,6 +10184,60 @@ def delete_programacion_image(id):
 
 @login_required
 @permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/buscar-reemplazar', methods=['POST'])
+def buscar_reemplazar_programacion():
+    """Buscar y reemplazar valores en los registros de programación de cargue."""
+    # Solo admins y usuarios con permisos amplios pueden hacer esto
+    usuarios_permitidos = [
+        'ops@conquerstrading.com',
+        'logistic@conquerstrading.com',
+        'production@conquerstrading.com',
+        'oci@conquerstrading.com',
+        'amariagallo@conquerstrading.com'
+    ]
+    if session.get('rol') != 'admin' and session.get('email') not in usuarios_permitidos:
+        return jsonify(success=False, message="No tienes permisos para realizar esta acción."), 403
+
+    data = request.get_json() or {}
+    campo = data.get('campo', '').strip()
+    buscar = data.get('buscar', '').strip()
+    reemplazar = data.get('reemplazar', '').strip()
+
+    if not campo or not buscar:
+        return jsonify(success=False, message="Debes indicar el campo y el texto a buscar."), 400
+
+    # Campos permitidos para buscar y reemplazar
+    campos_permitidos = ['cliente', 'producto_a_cargar', 'nombre_conductor', 'destino',
+                         'empresa_transportadora', 'placa', 'tanque', 'precintos', 'numero_guia']
+    if campo not in campos_permitidos:
+        return jsonify(success=False, message=f"No se permite buscar/reemplazar en el campo '{campo}'."), 400
+
+    try:
+        col = getattr(ProgramacionCargue, campo)
+        # Buscar registros con coincidencia exacta (case-insensitive)
+        registros = ProgramacionCargue.query.filter(
+            db.func.upper(col) == buscar.upper()
+        ).all()
+
+        if not registros:
+            return jsonify(success=False, message=f"No se encontraron registros con '{buscar}' en '{campo}'."), 404
+
+        count = len(registros)
+        for r in registros:
+            setattr(r, campo, reemplazar)
+            r.ultimo_editor = session.get('nombre')
+
+        db.session.commit()
+        return jsonify(success=True, message=f"Se actualizaron {count} registro(s). '{buscar}' → '{reemplazar}'", count=count)
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERROR en buscar-reemplazar: {e}")
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+
+@login_required
+@permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>/importar-sharepoint', methods=['POST'])
 def importar_guia_sharepoint(id):
     """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
@@ -10259,6 +10322,14 @@ def reporte_grafico_despachos():
     clientes = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
     clientes = sorted(clientes)
 
+    # Obtener lista de productos únicos (despachados, con barriles)
+    productos_disponibles = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(
+        ProgramacionCargue.producto_a_cargar.isnot(None),
+        ProgramacionCargue.estado == 'DESPACHADO',
+        ProgramacionCargue.barriles.isnot(None)
+    ).all() if p[0] and p[0].strip()]
+    productos_disponibles = sorted(productos_disponibles)
+
     # Consulta agrupada por cliente (para el gráfico principal)
     query = db.session.query(
         ProgramacionCargue.cliente,
@@ -10268,20 +10339,10 @@ def reporte_grafico_despachos():
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None)
     )
-    # Filtro por producto (FO4, Diluyente, VLSFO, Todos)
-    if producto_filtro == 'fo4':
-        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
-    elif producto_filtro == 'diluyente':
-        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
-    elif producto_filtro == 'vlsfo':
-        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), ProgramacionCargue.producto_a_cargar.ilike('%VLSFO%'))
-    else:  # todos/ambos
-        # Incluir todos los productos relevantes (o no filtrar por producto para mostrar todo)
-         query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), (
-            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | 
-            ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%') |
-            ProgramacionCargue.producto_a_cargar.ilike('%VLSFO%')
-        ))
+    # Filtro por producto (dinámico)
+    if producto_filtro not in ['todos', 'ambos', '']:
+        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), 
+                             ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
     if fecha_inicio:
         query = query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
     if fecha_fin:
@@ -10326,15 +10387,12 @@ def reporte_grafico_despachos():
         else:
             periodo = "Todo el periodo"
 
-        # ---- Calcular FO4, Diluyente y VLSFO por cliente ----
-        fo4_vals = []
-        diluyente_vals = []
-        vlsfo_vals = []
-        fo4_total_general = 0
-        diluyente_total_general = 0
-        vlsfo_total_general = 0
+        # ---- Calcular desglose por producto por cliente (DINÁMICO) ----
+        product_maps = {}  # {producto_nombre: {cliente: barriles, ...}}
+        product_vals = {}  # {producto_nombre: [valores_por_cliente]}
+        product_totals = {}  # {producto_nombre: total}
 
-        if producto_filtro in ['ambos', 'todos']:
+        if producto_filtro in ['ambos', 'todos', '']:
             base_filters = [
                 ProgramacionCargue.estado == 'DESPACHADO',
                 ProgramacionCargue.cliente.isnot(None),
@@ -10342,11 +10400,11 @@ def reporte_grafico_despachos():
                 ProgramacionCargue.producto_a_cargar.isnot(None)
             ]
             
-            def get_product_data(pattern):
+            def get_product_data(product_name):
                 q = db.session.query(
                     ProgramacionCargue.cliente,
                     func.sum(ProgramacionCargue.barriles).label('barriles')
-                ).filter(*base_filters, ProgramacionCargue.producto_a_cargar.ilike(pattern))
+                ).filter(*base_filters, ProgramacionCargue.producto_a_cargar == product_name)
                 
                 if fecha_inicio:
                     q = q.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
@@ -10356,17 +10414,20 @@ def reporte_grafico_despachos():
                     q = q.filter(ProgramacionCargue.cliente == cliente_filtro)
                 return {c: float(v) for c, v in q.group_by(ProgramacionCargue.cliente).all()}
 
-            fo4_map = get_product_data('%FO4%')
-            dil_map = get_product_data('%DILUYENTE%')
-            vlsfo_map = get_product_data('%VLSFO%')
+            for prod in productos_disponibles:
+                pmap = get_product_data(prod)
+                if any(pmap.values()):  # solo incluir si tiene datos
+                    product_maps[prod] = pmap
+                    product_vals[prod] = [pmap.get(c, 0.0) for c in clientes_graf]
+                    product_totals[prod] = sum(product_vals[prod])
 
-            fo4_vals = [fo4_map.get(c, 0.0) for c in clientes_graf]
-            diluyente_vals = [dil_map.get(c, 0.0) for c in clientes_graf]
-            vlsfo_vals = [vlsfo_map.get(c, 0.0) for c in clientes_graf]
-            
-            fo4_total_general = sum(fo4_vals)
-            diluyente_total_general = sum(diluyente_vals)
-            vlsfo_total_general = sum(vlsfo_vals)
+        # Variables de compatibilidad (para matplotlib pie que aún puede usar estos)
+        fo4_vals = product_vals.get('FUEL OIL 4', [0.0] * len(clientes_graf))
+        diluyente_vals = product_vals.get('DILUYENTE', [0.0] * len(clientes_graf))
+        vlsfo_vals = product_vals.get('VLSFO', [0.0] * len(clientes_graf))
+        fo4_total_general = sum(fo4_vals)
+        diluyente_total_general = sum(diluyente_vals)
+        vlsfo_total_general = sum(vlsfo_vals)
 
         if tipo_grafico == 'pie':
             import numpy as np
@@ -10392,12 +10453,13 @@ def reporte_grafico_despachos():
 
             # Etiquetas
             etiquetas = []
-            if producto_filtro in ['ambos', 'todos']:
+            if producto_filtro in ['ambos', 'todos', '']:
                 for i, c in enumerate(clientes_graf):
                     partes = []
-                    if fo4_vals[i] > 0: partes.append(f"FO4 {fo4_vals[i]:,.0f}")
-                    if diluyente_vals[i] > 0: partes.append(f"DIL {diluyente_vals[i]:,.0f}")
-                    if vlsfo_vals[i] > 0: partes.append(f"VLSFO {vlsfo_vals[i]:,.0f}")
+                    # Iterar dinámicamente sobre los productos disponibles en product_vals
+                    for p_name, p_vals in product_vals.items():
+                        if p_vals[i] > 0:
+                            partes.append(f"{p_name} {p_vals[i]:,.0f}")
                     etiquetas.append(f"{c}\n" + ' | '.join(partes) if partes else c)
             else:
                 etiquetas = clientes_graf
@@ -10455,32 +10517,29 @@ def reporte_grafico_despachos():
             labels_rank = [f"{i+1}. {c}" for i, c in enumerate(clientes_graf)]
             
             max_val = max(barriles) if barriles else 0
-            if producto_filtro in ['ambos', 'todos']:
-                # Barras apiladas: Diluyente base, luego FO4, luego VLSFO
-                # 1. Diluyente
-                p1 = ax.barh(y_pos, diluyente_vals, color=c_dil, edgecolor=c_border, linewidth=0.5, height=0.65, label='Diluyente')
-                
-                # 2. FO4 (bottom = diluyente)
-                p2 = ax.barh(y_pos, fo4_vals, left=diluyente_vals, color=c_fo4, edgecolor=c_border, linewidth=0.5, height=0.65, label='FO4')
-                
-                # 3. VLSFO (bottom = diluyente + fo4)
-                # Necesitamos sumar dil + fo4 para el 'left' del vlsfo
-                left_vlsfo = [d + f for d, f in zip(diluyente_vals, fo4_vals)]
-                p3 = ax.barh(y_pos, vlsfo_vals, left=left_vlsfo, color=c_vlsfo, edgecolor=c_border, linewidth=0.5, height=0.65, label='VLSFO')
-                
-                # Etiquetas internas
+            if producto_filtro in ['ambos', 'todos', '']:
+                # Barras apiladas dinámicas
+                left_stack = [0.0] * len(y_pos)
+                colors_cycle = ['#00A896', '#F77F00', '#06AED5', '#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#e17055', '#2d3436']
+                color_idx = 0
                 umbral_seg = max_val * 0.035 if max_val > 0 else 0
-                
-                for i, (dil, fo4, vlsfo) in enumerate(zip(diluyente_vals, fo4_vals, vlsfo_vals)):
-                    # DIL
-                    if dil > umbral_seg:
-                        ax.text(dil/2, i, f"{dil:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
-                    # FO4
-                    if fo4 > umbral_seg:
-                        ax.text(dil + fo4/2, i, f"{fo4:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
-                    # VLSFO
-                    if vlsfo > umbral_seg:
-                        ax.text(dil + fo4 + vlsfo/2, i, f"{vlsfo:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+
+                for prod_name, vals in product_vals.items():
+                    color = colors_cycle[color_idx % len(colors_cycle)]
+                    
+                    # Dibujar barra del producto actual
+                    ax.barh(y_pos, vals, left=left_stack, color=color, edgecolor=c_border, linewidth=0.5, height=0.65, label=prod_name)
+                    
+                    # Etiquetas internas
+                    for i, val in enumerate(vals):
+                        if val > umbral_seg:
+                            # Posición centrada en el segmento actual
+                            center_pos = left_stack[i] + (val / 2)
+                            ax.text(center_pos, i, f"{val:,.0f}", ha='center', va='center', color='white', fontsize=10, fontweight='bold')
+                    
+                    # Actualizar stack para el siguiente producto
+                    left_stack = [l + v for l, v in zip(left_stack, vals)]
+                    color_idx += 1
                         
             else:
                 # Individual
@@ -10504,10 +10563,10 @@ def reporte_grafico_despachos():
             titulo_bar = "Total de Barriles Despachados por Cliente"
             # Subtítulo dinámico
             prod_names = []
-            if producto_filtro in ['ambos', 'todos']:
-                if sum(diluyente_vals)>0: prod_names.append("Diluyente")
-                if sum(fo4_vals)>0: prod_names.append("FO4")
-                if sum(vlsfo_vals)>0: prod_names.append("VLSFO")
+            if producto_filtro in ['ambos', 'todos', '']:
+                for prod_name, vals in product_vals.items():
+                    if sum(vals) > 0:
+                        prod_names.append(prod_name)
                 if not prod_names: prod_names = ["Todos"]
                 titulo_bar += f" – {' + '.join(prod_names)}"
             else:
@@ -10542,16 +10601,17 @@ def reporte_grafico_despachos():
     # --- Datos para ApexCharts (JSON) ---
     apex_data = []
     if datos_despacho:
-        if producto_filtro in ['ambos', 'todos']:
-            # Para barras y pie en 'todos', pasamos los desglose por cliente
+        if producto_filtro in ['ambos', 'todos', '']:
+            # Para barras y pie en 'todos', pasamos desglose por producto (dinámico)
             for i, c in enumerate(clientes_graf):
-                apex_data.append({
+                entry = {
                     'cliente': c,
-                    'total': float(barriles[i]),
-                    'fo4': float(fo4_vals[i]),
-                    'diluyente': float(diluyente_vals[i]),
-                    'vlsfo': float(vlsfo_vals[i])
-                })
+                    'total': float(barriles[i])
+                }
+                # Agregar cada producto dinámicamente
+                for prod_name, vals in product_vals.items():
+                    entry[prod_name] = float(vals[i])
+                apex_data.append(entry)
         else:
             # Individual
             for i, c in enumerate(clientes_graf):
@@ -10579,7 +10639,9 @@ def reporte_grafico_despachos():
         resumen_productos=resumen_productos,
         now=datetime.now(),
         tipo=tipo_grafico,
-        producto=producto_filtro
+        producto=producto_filtro,
+        productos_disponibles=productos_disponibles,
+        shown_products=list(product_vals.keys()) if producto_filtro in ['ambos', 'todos', ''] else []
     )
 
 @login_required

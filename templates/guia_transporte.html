@@ -285,6 +285,21 @@
             display: none;
         }
 
+        /* ============================================
+           ELIMINACIÓN DE SCROLLBARS EN CAMPO SELLOS
+           ============================================ */
+        #selloInput {
+            overflow: visible !important;
+            scrollbar-width: none !important;
+            -ms-overflow-style: none !important;
+        }
+
+        #selloInput::-webkit-scrollbar {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+        }
+
         .fila-acciones-agregar {
             display: flex;
             justify-content: center;
@@ -482,8 +497,37 @@
                 content: none !important;
             }
 
-            #selloInput::-webkit-outer-spin-button,
-            #selloInput::-webkit-inner-spin-button {
+            /* ============================================
+               ELIMINACIÓN TOTAL DE SCROLLBARS EN SELLOS
+               ============================================ */
+            #selloInput,
+            #selloInput:focus,
+            #selloInput:active {
+                overflow: visible !important;
+                overflow-x: visible !important;
+                overflow-y: visible !important;
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+                -webkit-overflow-scrolling: auto !important;
+            }
+
+            #selloInput::-webkit-scrollbar,
+            #selloInput::-webkit-scrollbar-track,
+            #selloInput::-webkit-scrollbar-thumb,
+            #selloInput::-webkit-scrollbar-button,
+            #selloInput::-webkit-scrollbar-corner {
+                display: none !important;
+                width: 0 !important;
+                height: 0 !important;
+                background: transparent !important;
+                opacity: 0 !important;
+                visibility: hidden !important;
+                appearance: none !important;
+                -webkit-appearance: none !important;
+            }
+
+            /* Aplicar a todos los inputs por seguridad */
+            input[type="text"]::-webkit-scrollbar {
                 display: none !important;
             }
 
@@ -563,6 +607,35 @@
             }
         }
 
+        /* Estilos cuando la validación falla (para prevenir impresión por menú del navegador) */
+        @media print {
+            body.validacion-fallida * {
+                display: none !important;
+            }
+
+            body.validacion-fallida {
+                background: white !important;
+                height: 100vh !important;
+                overflow: hidden !important;
+            }
+
+            body.validacion-fallida::after {
+                content: "⚠️ NO SE PUEDE IMPRIMIR\A\A Faltan campos obligatorios por llenar.\A Por favor revise la pantalla para ver los errores.";
+                white-space: pre;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100%;
+                width: 100%;
+                font-size: 24pt;
+                font-weight: bold;
+                text-align: center;
+                color: red;
+                border: 5px solid red;
+            }
+        }
+
         /* Solo pantalla: ordenar visualmente sin tocar la impresión */
         @media screen {
 
@@ -570,6 +643,78 @@
             .fila {
                 gap: 0.25cm;
             }
+
+            /* --- MEJORAS VISUALES DE LOS CAMPOS (PREMIUM) --- */
+            .campo {
+                background: rgba(255, 255, 255, 0.95);
+                /* Blanco casi sólido para legibilidad */
+                border: 1px solid #d1d9e6 !important;
+                /* Borde suave azulado */
+                border-radius: 12px !important;
+                /* Bordes redondeados modernos */
+                box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+                /* Sombra suave */
+                transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+                /* Animación fluida */
+                position: relative;
+                /* overflow: hidden;  <-- ELIMINADO para permitir desplegables */
+            }
+
+            /* Efecto Hover: Elevar elemento */
+            .campo:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 12px 20px rgba(50, 50, 93, 0.15), 0 5px 10px rgba(0, 0, 0, 0.1);
+                border-color: #0d6efd !important;
+                z-index: 5;
+            }
+
+            /* Efecto Foco: Resplandor azul cuando se escribe */
+            .campo:focus-within {
+                transform: translateY(-3px);
+                border-color: #0d6efd !important;
+                box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15), 0 12px 20px rgba(50, 50, 93, 0.1);
+                background: #ffffff;
+                z-index: 100 !important;
+                /* Asegurar que el campo activo sobrepase a otros */
+            }
+
+            /* Ocultar scrollbars especificamente en input de sellos */
+            #selloInput::-webkit-scrollbar {
+                display: none;
+            }
+
+            #selloInput {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+
+            /* Etiquetas más legibles en pantalla */
+            .campo label {
+                color: #525f7f;
+                font-weight: 700;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 4px;
+            }
+
+            /* Placeholder didáctico */
+            .campo input::placeholder,
+            .campo textarea::placeholder {
+                color: #a0aec0 !important;
+                font-style: italic;
+                font-size: 0.9em;
+            }
+
+            /* Icono indicativo sutil en inputs vacíos (opcional, para sentir "rellenable") */
+            .campo:not(:focus-within) input:placeholder-shown {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23e2e6ea' class='bi bi-pencil-fill' viewBox='0 0 16 16'%3E%3Cpath d='M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z'/%3E%3C/svg%3E");
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                background-size: 14px;
+            }
+
+            /* Ajustes existentes que se mantienen */
 
             /* Quitar desplazamientos negativos solo en pantalla */
             .lugar-fecha,
@@ -720,7 +865,7 @@
 
         .lugar-fecha {
             position: relative;
-            left: -75px;
+            left: -110px;
             width: 10.5cm;
             height: 1.1cm;
             font-size: 14pt
@@ -728,7 +873,7 @@
 
         .planta-productor {
             position: relative;
-            left: -83px;
+            left: -90px;
             width: 8.8cm;
             height: 1cm;
             font-size: 14pt
@@ -770,13 +915,13 @@
         .ciudad {
             width: 11cm;
             height: 1cm;
-            font-size: 12pt
+            font-size: 14pt
         }
 
         .nombre-conductor {
             width: 16cm;
             height: 1cm;
-            font-size: 14pt
+            font-size: 16pt
         }
 
         .cedula {
@@ -882,11 +1027,12 @@
 
         .observaciones {
             position: relative;
-            left: -40px;
+            left: -78px;
             width: 26cm;
             height: 1.6cm;
             font-size: 18pt;
             position: relative;
+            overflow: hidden !important;
         }
 
         .zona-frontera {
@@ -949,7 +1095,7 @@
         <button onclick="window.history.back()" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Regresar
         </button>
-        <button onclick="window.print()" class="btn btn-primary">
+        <button onclick="validarYImprimir()" class="btn btn-primary">
             <i class="bi bi-printer"></i> Imprimir Guía
         </button>
         <button onclick="abrirImpresionParcial()" class="btn btn-warning"
@@ -1072,12 +1218,13 @@
             </div>
             <div class="fila" style="position: relative;">
                 <div class="campo observaciones" data-campo="observaciones">
-                    <div style="display:flex; flex-direction:column; height:100%; justify-content:space-between;">
-                        <textarea class="sin-borde" style="height: 70%; padding-top: 18px;"></textarea>
-                        <div style="margin-top:12px; display:flex; align-items:center; width:100%;">
+                    <div
+                        style="display:flex; flex-direction:column; height:100%; justify-content:space-between; padding-bottom: 3px;">
+                        <textarea class="sin-borde" style="height: 65%; padding-top: 10px;"></textarea>
+                        <div style="margin-top:0; display:flex; align-items:center; width:100%;">
                             <strong style="margin-right:8px;">SELLOS:</strong>
                             <input id="selloInput" type="text"
-                                style="flex:1; min-width:0; border:none; background:white; font-weight:bold; font-size:1.1em; text-align:left; outline:none; box-shadow:none; overflow:hidden; resize:none; -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield;">
+                                style="flex:1; min-width:0; border:none; background:transparent; font-weight:bold; font-size:1.1em; text-align:left; outline:none; box-shadow:none; overflow:visible !important; resize:none; -webkit-appearance:none; -moz-appearance:textfield; appearance:textfield; scrollbar-width:none; -ms-overflow-style:none;">
                         </div>
                     </div>
                 </div>
@@ -2168,6 +2315,111 @@
             });
             aplicarZoom(); // Restaurar zoom
         });
+        // Limitación de impresión y validación estricta
+        function obtenerCamposValidar() {
+            // Lista de selectores y nombres para validar
+            return [
+                { selector: '#fechaExpEDICION', nombre: 'Fecha de Expedición' },
+                { selector: '#facturaRemision', nombre: 'Factura o Remisión' },
+                // Cliente
+                { selector: '#clienteNombreDisplay', nombre: 'Cliente (Seleccione uno)' },
+                { selector: '#direccionCliente', nombre: 'Dirección del Cliente' },
+                { selector: '#ciudadCliente', nombre: 'Ciudad del Cliente' },
+                // Conductor
+                { selector: '#conductorSelect', nombre: 'Nombre del Conductor' },
+                { selector: '#cedulaConductor', nombre: 'Cédula del Conductor' },
+                { selector: '#empresaTransportadoraInput', nombre: 'Empresa Transportadora' },
+                { selector: '#placaCabezote', nombre: 'Placa del Cabezote' },
+                { selector: '#placaTanque', nombre: 'Placa del Tanque' },
+                // Salida
+                { selector: '#fechaHoraSalida', nombre: 'Fecha de Salida' },
+                { selector: '#horaSalida', nombre: 'Hora de Salida' },
+                { selector: '#destinoDireccion', nombre: 'Destino' },
+                { selector: '.horas-vigencia input', nombre: 'Horas de Vigencia' },
+                // Producto
+                { selector: '#productoSelect', nombre: 'Selección de Producto' },
+                { selector: '#tempF', nombre: 'Temperatura F' },
+                { selector: '#apiObs', nombre: 'API Obs' },
+                { selector: '#apiCorr', nombre: 'API Corr' },
+                { selector: '#unidadProducto', nombre: 'Unidad (UN)' }
+                // Se excluye 'galones'/'barriles' si nos atenemos estrictamente a "hasta el campo UN", 
+                // pero si el usuario quisiera volumen, se agregaría aquí.
+            ];
+        }
+
+        function validarCampos() {
+            const campos = obtenerCamposValidar();
+            const faltantes = [];
+
+            campos.forEach(c => {
+                const el = document.querySelector(c.selector);
+                if (!el) return; // Si no existe el elemento por alguna razón, ignorar o flaggear
+
+                const valor = (el.value || '').trim();
+                // Validar si está vacío
+                if (!valor || valor === '') {
+                    faltantes.push(c.nombre);
+                    // Resaltar visualmente el campo vacío
+                    el.style.backgroundColor = '#ffe6e6';
+                    el.style.border = '1px solid red';
+                    // Quitar estilo al escribir
+                    el.addEventListener('input', () => {
+                        el.style.backgroundColor = '';
+                        el.style.border = '';
+                    }, { once: true });
+                }
+            });
+
+            return faltantes;
+        }
+
+        function validarYImprimir() {
+            const faltantes = validarCampos();
+
+            if (faltantes.length > 0) {
+                // Mostrar alerta con los campos faltantes
+                const listaHtml = faltantes.map(f => `<li>${f}</li>`).join('');
+                Swal.fire({
+                    icon: 'error',
+                    title: '¡No se puede imprimir!',
+                    html: `
+                        <p>Faltan los siguientes campos obligatorios:</p>
+                        <ul style="text-align: left; margin-bottom: 0;">${listaHtml}</ul>
+                        <p style="margin-top: 10px; font-weight: bold;">Por favor complételos antes de imprimir.</p>
+                    `
+                });
+                return; // Cancelar impresión
+            }
+
+            // Si todo está bien, imprimir
+            window.print();
+        }
+
+        // Interceptar Ctrl+P
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+                e.preventDefault(); // Detener el diálogo nativo inmediato si es posible
+                validarYImprimir();
+            }
+        });
+
+        // Fail-safe para intentos de impresión por menú del navegador
+        window.addEventListener('beforeprint', () => {
+            const faltantes = validarCampos();
+            if (faltantes.length > 0) {
+                document.body.classList.add('validacion-fallida');
+                // Intentamos mostrar el swal también, aunque el diálogo de impresión puede bloquearlo visualmente
+                // hasta que se cierre, pero al menos la hoja saldrá mal.
+            } else {
+                document.body.classList.remove('validacion-fallida');
+                // Lógica existente de wraps
+                if (typeof syncEmpresaTransportadoraWrap === 'function') syncEmpresaTransportadoraWrap();
+                if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+                const contenedor = document.getElementById('contenedor-guia');
+                if (contenedor) contenedor.style.transform = 'none';
+            }
+        });
+
     </script>
 </body>
 

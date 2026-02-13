@@ -8,16 +8,20 @@
     <div class="ms-auto d-flex flex-wrap gap-2 align-items-center justify-content-end text-end">
       <form id="filtroFechasForm" class="d-flex align-items-center me-2" onsubmit="return false;">
         <label class="me-2 text-muted small">Desde</label>
-        <input type="text" id="inputDesde" class="form-control form-control-sm me-2" value="{{ desde or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
+        <input type="text" id="inputDesde" class="form-control form-control-sm me-2" value="{{ desde or '' }}"
+          placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
         <label class="me-2 text-muted small">Hasta</label>
-        <input type="text" id="inputHasta" class="form-control form-control-sm me-2" value="{{ hasta or '' }}" placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
-        <button type="button" id="btnAplicarFechas" class="btn btn-sm btn-outline-primary"><i class="bi bi-filter me-1"></i>Aplicar</button>
+        <input type="text" id="inputHasta" class="form-control form-control-sm me-2" value="{{ hasta or '' }}"
+          placeholder="YYYY-MM-DD" data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
+        <button type="button" id="btnAplicarFechas" class="btn btn-sm btn-outline-primary"><i
+            class="bi bi-filter me-1"></i>Aplicar</button>
       </form>
       <a href="{{ url_for('reporte_planta') }}" class="btn btn-outline-secondary btn-sm d-flex align-items-center">
         <i class="bi bi-arrow-left-circle me-2"></i>Volver a Reporte Planta
       </a>
       <div class="btn-group">
-        <button type="button" class="btn btn-primary btn-sm dropdown-toggle d-flex align-items-center" data-bs-toggle="dropdown" aria-expanded="false">
+        <button type="button" class="btn btn-primary btn-sm dropdown-toggle d-flex align-items-center"
+          data-bs-toggle="dropdown" aria-expanded="false">
           <i class="bi bi-download me-1"></i>Descargar Reporte
         </button>
         <ul class="dropdown-menu">
@@ -65,168 +69,176 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" id="btnGenerarPdf" class="btn btn-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF</button>
-          <button type="button" id="btnGenerarExcel" class="btn btn-success"><i class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel</button>
+          <button type="button" id="btnGenerarPdf" class="btn btn-danger"><i
+              class="bi bi-file-earmark-pdf-fill me-1"></i> Generar PDF</button>
+          <button type="button" id="btnGenerarExcel" class="btn btn-success"><i
+              class="bi bi-file-earmark-excel-fill me-1"></i> Generar Excel</button>
         </div>
       </div>
     </div>
   </div>
 
   {% if series_por_tanque and series_por_tanque|length > 0 %}
-    {# Layout fijo solicitado: 
-       Fila 1: TK-109
-       Fila 2: TK-110 | TK-102
-       Fila 3: TK-01  | TK-02 #}
+  {# Layout fijo solicitado:
+  Fila 1: TK-109
+  Fila 2: TK-110 | TK-102
+  Fila 3: TK-01 | TK-02 #}
 
-    {# Pre-capturamos info para cabeceras #}
-    {% set _109 = series_por_tanque.get('TK-109') or series_por_tanque.get('Tk-109') or series_por_tanque.get('tk-109') %}
+  {# Pre-capturamos info para cabeceras #}
+  {% set _109 = series_por_tanque.get('TK-109') or series_por_tanque.get('Tk-109') or series_por_tanque.get('tk-109') %}
   {% set _110 = series_por_tanque.get('TK-110') or series_por_tanque.get('Tk-110') or series_por_tanque.get('tk-110') %}
   {% set _108 = series_por_tanque.get('TK-108') or series_por_tanque.get('Tk-108') or series_por_tanque.get('tk-108') %}
-    {% set _102 = series_por_tanque.get('TK-102') or series_por_tanque.get('Tk-102') or series_por_tanque.get('tk-102') %}
-    {% set _01  = series_por_tanque.get('TK-01')  or series_por_tanque.get('Tk-01')  or series_por_tanque.get('tk-01')  %}
-    {% set _02  = series_por_tanque.get('TK-02')  or series_por_tanque.get('Tk-02')  or series_por_tanque.get('tk-02')  %}
+  {% set _102 = series_por_tanque.get('TK-102') or series_por_tanque.get('Tk-102') or series_por_tanque.get('tk-102') %}
+  {% set _01 = series_por_tanque.get('TK-01') or series_por_tanque.get('Tk-01') or series_por_tanque.get('tk-01') %}
+  {% set _02 = series_por_tanque.get('TK-02') or series_por_tanque.get('Tk-02') or series_por_tanque.get('tk-02') %}
 
-    <!-- Fila 1: TK-109 -->
-    <div class="row g-4 mb-2">
-      <div class="col-12" id="col-TK-109">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-109 <small class="text-muted ms-2">{{ _109.producto if _109 else '' }}</small></h5>
-              {% if _109 and _109.max_cap and _109.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _109.max_cap|round(0) }} bls</span>
-              {% endif %}
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-1"></canvas></div>
+  <!-- Fila 1: TK-109 -->
+  <div class="row g-4 mb-2">
+    <div class="col-12" id="col-TK-109">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-109 <small class="text-muted ms-2">{{ _109.producto if _109 else ''
+                }}</small></h5>
+            {% if _109 and _109.max_cap and _109.max_cap > 0 %}
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _109.max_cap|round(0) }} bls</span>
+            {% endif %}
           </div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
+          </div>
+          <div class="chart-fixed"><canvas id="chart-var-1"></canvas></div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Fila 2: TK-108 -->
-    <div class="row g-4 mb-2">
-      <div class="col-12" id="col-TK-108">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-108 <small class="text-muted ms-2">{{ _108.producto if _108 else '' }}</small></h5>
-              {% if _108 and _108.max_cap and _108.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _108.max_cap|round(0) }} bls</span>
-              {% endif %}
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-3"></canvas></div>
+  <!-- Fila 2: TK-108 -->
+  <div class="row g-4 mb-2">
+    <div class="col-12" id="col-TK-108">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-108 <small class="text-muted ms-2">{{ _108.producto if _108 else ''
+                }}</small></h5>
+            {% if _108 and _108.max_cap and _108.max_cap > 0 %}
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _108.max_cap|round(0) }} bls</span>
+            {% endif %}
           </div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
+          </div>
+          <div class="chart-fixed"><canvas id="chart-var-3"></canvas></div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Fila 3: TK-110 | TK-102 -->
-    <div class="row g-4 mb-2">
-      <div class="col-12 col-xl-6" id="col-TK-110">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-110 <small class="text-muted ms-2">{{ _110.producto if _110 else '' }}</small></h5>
-              {% if _110 and _110.max_cap and _110.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _110.max_cap|round(0) }} bls</span>
-              {% endif %}
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-2"></canvas></div>
+  <!-- Fila 3: TK-110 | TK-102 -->
+  <div class="row g-4 mb-2">
+    <div class="col-12 col-xl-6" id="col-TK-110">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-110 <small class="text-muted ms-2">{{ _110.producto if _110 else ''
+                }}</small></h5>
+            {% if _110 and _110.max_cap and _110.max_cap > 0 %}
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _110.max_cap|round(0) }} bls</span>
+            {% endif %}
           </div>
-        </div>
-      </div>
-      <div class="col-12 col-xl-6" id="col-TK-102">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-102 <small class="text-muted ms-2">{{ _102.producto if _102 else '' }}</small></h5>
-              {% if _102 and _102.max_cap and _102.max_cap > 0 %}
-                <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _102.max_cap|round(0) }} bls</span>
-              {% endif %}
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-4"></canvas></div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
           </div>
+          <div class="chart-fixed"><canvas id="chart-var-2"></canvas></div>
         </div>
       </div>
     </div>
-
-    <!-- Fila 4: TK-01 | TK-02 -->
-    <div class="row g-4">
-      <div class="col-12 col-xl-6" id="col-TK-01">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-01 <small class="text-muted ms-2">{{ _01.producto if _01 else '' }}</small></h5>
-              <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-5"></canvas></div>
+    <div class="col-12 col-xl-6" id="col-TK-102">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-102 <small class="text-muted ms-2">{{ _102.producto if _102 else ''
+                }}</small></h5>
+            {% if _102 and _102.max_cap and _102.max_cap > 0 %}
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: {{ _102.max_cap|round(0) }} bls</span>
+            {% endif %}
           </div>
-        </div>
-      </div>
-      <div class="col-12 col-xl-6" id="col-TK-02">
-        <div class="card shadow-sm card-pro">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h5 class="card-title mb-0">TK-02 <small class="text-muted ms-2">{{ _02.producto if _02 else '' }}</small></h5>
-              <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
-            </div>
-            <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
-              <span>Serie de niveles (BLS @60)</span>
-              <span class="mini-legend">
-                <span class="dot dot-green"></span> Suma
-                <span class="dot dot-red ms-2"></span> Descarga
-                <span class="dot dot-gray ms-2"></span> Sin cambio
-              </span>
-            </div>
-            <div class="chart-fixed"><canvas id="chart-var-6"></canvas></div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
           </div>
+          <div class="chart-fixed"><canvas id="chart-var-4"></canvas></div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Fila 4: TK-01 | TK-02 -->
+  <div class="row g-4">
+    <div class="col-12 col-xl-6" id="col-TK-01">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-01 <small class="text-muted ms-2">{{ _01.producto if _01 else '' }}</small>
+            </h5>
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
+          </div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
+          </div>
+          <div class="chart-fixed"><canvas id="chart-var-5"></canvas></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-6" id="col-TK-02">
+      <div class="card shadow-sm card-pro">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">TK-02 <small class="text-muted ms-2">{{ _02.producto if _02 else '' }}</small>
+            </h5>
+            <span class="badge bg-primary bg-opacity-10 text-primary">Capacidad: 500.0 bls</span>
+          </div>
+          <div class="mb-1 small text-muted d-flex align-items-center justify-content-between">
+            <span>Serie de niveles (BLS @60)</span>
+            <span class="mini-legend">
+              <span class="dot dot-green"></span> Suma
+              <span class="dot dot-red ms-2"></span> Descarga
+              <span class="dot dot-gray ms-2"></span> Sin cambio
+            </span>
+          </div>
+          <div class="chart-fixed"><canvas id="chart-var-6"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
   {% else %}
-    <div class="alert alert-info">
-      No hay datos en el rango seleccionado.
-    </div>
+  <div class="alert alert-info">
+    No hay datos en el rango seleccionado.
+  </div>
   {% endif %}
 </div>
 
@@ -234,30 +246,30 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   // Flatpickr para los filtros de fecha con coloreado
-  (function(){
-    const addCss = (href) => { const l=document.createElement('link'); l.rel='stylesheet'; l.href=href; document.head.appendChild(l); };
-    const addJs = (src, cb) => { const s=document.createElement('script'); s.src=src; s.onload=cb; document.body.appendChild(s); };
+  (function () {
+    const addCss = (href) => { const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l); };
+    const addJs = (src, cb) => { const s = document.createElement('script'); s.src = src; s.onload = cb; document.body.appendChild(s); };
     addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
     addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
     addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
       const inputs = [document.getElementById('inputDesde'), document.getElementById('inputHasta')];
       inputs.forEach(inp => {
-        if(!inp) return;
+        if (!inp) return;
         const fechas = inp.getAttribute('data-fechas') ? JSON.parse(inp.getAttribute('data-fechas')) : [];
         const setFechas = new Set(fechas);
         flatpickr(inp, {
           dateFormat: 'Y-m-d',
           defaultDate: inp.value || '{{ today_iso }}',
           allowInput: true,
-          onDayCreate: function(dObj, dStr, fp, dayElem) {
-            const dateStr = dayElem.dateObj.toISOString().slice(0,10);
+          onDayCreate: function (dObj, dStr, fp, dayElem) {
+            const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
             dayElem.classList.add('fp-hint-day');
             if (setFechas.has(dateStr)) {
               dayElem.classList.add('fp-day-con-registro');
-              dayElem.setAttribute('title','Con registro');
+              dayElem.setAttribute('title', 'Con registro');
             } else {
               dayElem.classList.add('fp-day-sin-registro');
-              dayElem.setAttribute('title','Sin registro');
+              dayElem.setAttribute('title', 'Sin registro');
             }
           }
         });
@@ -291,48 +303,48 @@
   });
   const series = JSON.parse(document.getElementById('series-data').textContent || '{}');
 
-  const orderedTanks = ['TK-109','TK-110','TK-108','TK-102','TK-01','TK-02'];
+  const orderedTanks = ['TK-109', 'TK-110', 'TK-108', 'TK-102', 'TK-01', 'TK-02'];
 
   // Overrides de capacidad por tanque para el eje Y y línea de capacidad
   const capacityOverrides = { 'TK-01': 500, 'TK-02': 500 };
 
-  function getInfoForTank(tank){
-    if(series[tank]) return series[tank];
-    const k = Object.keys(series).find(key => (key||'').toUpperCase() === tank.toUpperCase());
+  function getInfoForTank(tank) {
+    if (series[tank]) return series[tank];
+    const k = Object.keys(series).find(key => (key || '').toUpperCase() === tank.toUpperCase());
     return k ? series[k] : null;
   }
 
-  function hideCol(tank){
+  function hideCol(tank) {
     const el = document.getElementById('col-' + tank);
-    if(el){ el.style.display = 'none'; }
+    if (el) { el.style.display = 'none'; }
   }
 
-  function buildCharts(){
+  function buildCharts() {
     orderedTanks.forEach((tank, i) => {
       const info = getInfoForTank(tank);
-      const canvasId = 'chart-var-' + (i+1);
+      const canvasId = 'chart-var-' + (i + 1);
       const ctx2 = document.getElementById(canvasId);
-      if(!ctx2){ return; }
-      if(!info || !info.labels || !info.bls_60){ hideCol(tank); return; }
+      if (!ctx2) { return; }
+      if (!info || !info.labels || !info.bls_60) { hideCol(tank); return; }
 
       const labels = formatosFecha(info.labels);
-      const levelData = (info.bls_60 || []).map(v => Number(v||0));
-      const deltas = levelData.map((v,idx) => idx===0 ? null : (v - levelData[idx-1]));
-      const ptColors = deltas.map((d,idx)=> {
-        if(idx===0 || d===null) return '#6c757d';
-        return d>0 ? '#198754' : (d<0 ? '#dc3545' : '#6c757d');
+      const levelData = (info.bls_60 || []).map(v => Number(v || 0));
+      const deltas = levelData.map((v, idx) => idx === 0 ? null : (v - levelData[idx - 1]));
+      const ptColors = deltas.map((d, idx) => {
+        if (idx === 0 || d === null) return '#6c757d';
+        return d > 0 ? '#198754' : (d < 0 ? '#dc3545' : '#6c757d');
       });
-  // Aplica override si existe, si no usa max_cap de datos
-  let yMax = capacityOverrides[tank] || Number(info.max_cap || 0);
-      if(!yMax || yMax <= 0){
-        const maxVal = levelData.reduce((a,b)=> Math.max(a,b||0), 0);
+      // Aplica override si existe, si no usa max_cap de datos
+      let yMax = capacityOverrides[tank] || Number(info.max_cap || 0);
+      if (!yMax || yMax <= 0) {
+        const maxVal = levelData.reduce((a, b) => Math.max(a, b || 0), 0);
         yMax = Math.ceil(maxVal * 1.1);
       }
       const capacityLine = Array(levelData.length).fill(yMax);
 
       const gctx = ctx2.getContext('2d');
       const h = ctx2.clientHeight || ctx2.height || 300;
-      const gradient = gctx.createLinearGradient(0,0,0,h);
+      const gradient = gctx.createLinearGradient(0, 0, 0, h);
       gradient.addColorStop(0, 'rgba(11,133,82,0.18)');
       gradient.addColorStop(1, 'rgba(11,133,82,0.02)');
 
@@ -357,9 +369,9 @@
               segment: {
                 borderColor: ctx => {
                   const idx = ctx.p1DataIndex;
-                  if(idx<=0) return '#0b8552';
-                  const d = levelData[idx] - levelData[idx-1];
-                  return d>0 ? '#198754' : (d<0 ? '#dc3545' : '#6c757d');
+                  if (idx <= 0) return '#0b8552';
+                  const d = levelData[idx] - levelData[idx - 1];
+                  return d > 0 ? '#198754' : (d < 0 ? '#dc3545' : '#6c757d');
                 }
               }
             },
@@ -367,7 +379,7 @@
               label: 'Capacidad',
               data: capacityLine,
               borderColor: 'rgba(108,117,125,0.9)',
-              borderDash: [6,4],
+              borderDash: [6, 4],
               pointRadius: 0,
               borderWidth: 1,
               fill: false,
@@ -392,16 +404,16 @@
             tooltip: {
               callbacks: {
                 label: (ctx) => {
-                  if(ctx.datasetIndex === 0){
-                    const v = Number(ctx.parsed.y||0).toLocaleString('es-CO');
+                  if (ctx.datasetIndex === 0) {
+                    const v = Number(ctx.parsed.y || 0).toLocaleString('es-CO');
                     const d = deltas[ctx.dataIndex];
-                    if(d===null || d===undefined){ return `BLS: ${v}`; }
+                    if (d === null || d === undefined) { return `BLS: ${v}`; }
                     const dNum = Number(d);
-                    const suma = dNum>0 ? dNum : 0;
-                    const descarga = dNum<0 ? Math.abs(dNum) : 0;
+                    const suma = dNum > 0 ? dNum : 0;
+                    const descarga = dNum < 0 ? Math.abs(dNum) : 0;
                     const sumaTxt = Number(suma).toLocaleString('es-CO');
                     const descTxt = Number(descarga).toLocaleString('es-CO');
-                    return [ `BLS: ${v}`, `Suma: ${sumaTxt}`, `Descarga: ${descTxt}` ];
+                    return [`BLS: ${v}`, `Suma: ${sumaTxt}`, `Descarga: ${descTxt}`];
                   }
                   return undefined;
                 }
@@ -416,16 +428,16 @@
   document.addEventListener('DOMContentLoaded', buildCharts);
 
   // Botones y modal (igual que reporte de planta)
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     // Filtro por fecha: recargar ruta con query params
     const btnAplicarFechas = document.getElementById('btnAplicarFechas');
-    if (btnAplicarFechas){
-      btnAplicarFechas.addEventListener('click', function(){
+    if (btnAplicarFechas) {
+      btnAplicarFechas.addEventListener('click', function () {
         const desde = document.getElementById('inputDesde').value;
         const hasta = document.getElementById('inputHasta').value;
         const params = new URLSearchParams();
-        if(desde) params.append('desde', desde);
-        if(hasta) params.append('hasta', hasta);
+        if (desde) params.append('desde', desde);
+        if (hasta) params.append('hasta', hasta);
         const base = "{{ url_for('reporte_variaciones_tanques') }}";
         const url = params.toString() ? `${base}?${params.toString()}` : base;
         window.location.href = url;
@@ -436,7 +448,7 @@
     const descargaModal = new bootstrap.Modal(modalElement);
     let filtroSeleccionado = '';
 
-    function prepararModal(filtro){
+    function prepararModal(filtro) {
       filtroSeleccionado = filtro;
       const hoy = new Date().toISOString();
       const anoActual = new Date().getFullYear();
@@ -444,19 +456,19 @@
       document.getElementById('inputMes').style.display = 'none';
       document.getElementById('inputTrimestre').style.display = 'none';
       document.getElementById('inputAnual').style.display = 'none';
-      if (filtro === 'dia'){
+      if (filtro === 'dia') {
         document.getElementById('modalLabel').innerText = 'Descargar Reporte por Día';
         document.getElementById('inputDia').style.display = 'block';
-        document.getElementById('fechaValor').value = hoy.slice(0,10);
-      } else if (filtro === 'mes'){
+        document.getElementById('fechaValor').value = hoy.slice(0, 10);
+      } else if (filtro === 'mes') {
         document.getElementById('modalLabel').innerText = 'Descargar Reporte por Mes';
         document.getElementById('inputMes').style.display = 'block';
-        document.getElementById('mesValor').value = hoy.slice(0,7);
-      } else if (filtro === 'trimestre'){
+        document.getElementById('mesValor').value = hoy.slice(0, 7);
+      } else if (filtro === 'trimestre') {
         document.getElementById('modalLabel').innerText = 'Descargar Reporte por Trimestre';
         document.getElementById('inputTrimestre').style.display = 'block';
         document.getElementById('trimestreAno').value = anoActual;
-      } else if (filtro === 'anual'){
+      } else if (filtro === 'anual') {
         document.getElementById('modalLabel').innerText = 'Descargar Reporte Anual';
         document.getElementById('inputAnual').style.display = 'block';
         document.getElementById('anualValor').value = anoActual;
@@ -464,46 +476,65 @@
     }
 
     document.querySelectorAll('.dropdown-item[data-filtro]').forEach(item => {
-      item.addEventListener('click', function(e){
+      item.addEventListener('click', function (e) {
         e.preventDefault();
         prepararModal(this.getAttribute('data-filtro'));
         descargaModal.show();
       });
     });
 
-    function descargar(formato){
+    function descargar(formato) {
       let urlBase = '';
-      if (formato === 'pdf'){
+      if (formato === 'pdf') {
         urlBase = "{{ url_for('descargar_reporte_variaciones_pdf') }}";
       } else {
         urlBase = "{{ url_for('exportar_excel', nombre_reporte='variaciones') }}";
       }
       const params = new URLSearchParams();
       params.append('filtro_tipo', filtroSeleccionado);
-      if (filtroSeleccionado === 'dia'){
+      if (filtroSeleccionado === 'dia') {
         params.append('valor', document.getElementById('fechaValor').value);
-      } else if (filtroSeleccionado === 'mes'){
+      } else if (filtroSeleccionado === 'mes') {
         params.append('valor', document.getElementById('mesValor').value);
-      } else if (filtroSeleccionado === 'trimestre'){
+      } else if (filtroSeleccionado === 'trimestre') {
         const ano = document.getElementById('trimestreAno').value;
         const num = document.getElementById('trimestreNum').value;
         params.append('valor', `${ano}-Q${num}`);
-      } else if (filtroSeleccionado === 'anual'){
+      } else if (filtroSeleccionado === 'anual') {
         params.append('valor', document.getElementById('anualValor').value);
       }
       window.location.href = `${urlBase}?${params.toString()}`;
       descargaModal.hide();
     }
 
-    document.getElementById('btnGenerarPdf').addEventListener('click', ()=>descargar('pdf'));
-    document.getElementById('btnGenerarExcel').addEventListener('click', ()=>descargar('excel'));
+    document.getElementById('btnGenerarPdf').addEventListener('click', () => descargar('pdf'));
+    document.getElementById('btnGenerarExcel').addEventListener('click', () => descargar('excel'));
   });
 </script>
 <style>
-.flatpickr-calendar .flatpickr-day.fp-hint-day { position: relative; }
-.flatpickr-calendar .flatpickr-day.fp-day-con-registro { background: rgba(25, 135, 84, 0.2); color: #198754; border-color: rgba(25,135,84,0.45); }
-.flatpickr-calendar .flatpickr-day.fp-day-sin-registro { background: rgba(173,181,189,0.25); color: #6c757d; }
-.flatpickr-calendar .flatpickr-day.selected { background: #0b8552; border-color: #0b8552; color: #fff; }
-.flatpickr-calendar .flatpickr-day.today { border-color: #0b8552; }
+  .flatpickr-calendar .flatpickr-day.fp-hint-day {
+    position: relative;
+  }
+
+  .flatpickr-calendar .flatpickr-day.fp-day-con-registro {
+    background: rgba(25, 135, 84, 0.2);
+    color: #198754;
+    border-color: rgba(25, 135, 84, 0.45);
+  }
+
+  .flatpickr-calendar .flatpickr-day.fp-day-sin-registro {
+    background: rgba(173, 181, 189, 0.25);
+    color: #6c757d;
+  }
+
+  .flatpickr-calendar .flatpickr-day.selected {
+    background: #0b8552;
+    border-color: #0b8552;
+    color: #fff;
+  }
+
+  .flatpickr-calendar .flatpickr-day.today {
+    border-color: #0b8552;
+  }
 </style>
 {% endblock %}
