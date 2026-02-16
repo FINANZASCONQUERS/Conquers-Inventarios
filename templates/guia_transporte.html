@@ -605,6 +605,79 @@
                 font-size: 12pt;
                 line-height: 0.42cm;
             }
+
+            /* --- NUEVOS WRAPPERS PARA DESPACHO, DIRECCIÓN Y CIUDAD --- */
+
+            /* Despachado A (Cliente) */
+            .despacho .custom-dropdown-container {
+                display: none !important;
+            }
+
+            .despacho .despacho-wrap {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                width: 100%;
+                padding: 0 2px;
+                text-align: center;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                text-transform: uppercase;
+                font-weight: bold;
+                font-size: 14pt;
+                line-height: 1.1em;
+                margin-top: 10px;
+                /* Mantener el ajuste de margen solicitado antes */
+            }
+
+            /* Dirección */
+            .direccion textarea {
+                display: none !important;
+            }
+
+            .direccion .direccion-wrap {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                width: 100%;
+                padding: 0 2px;
+                text-align: center;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                text-transform: uppercase;
+                font-weight: bold;
+                font-size: 11pt;
+                /* Un poco más pequeño para direcciones largas */
+                line-height: 1em;
+                margin-top: 10px;
+            }
+
+            /* Ciudad */
+            .ciudad input {
+                display: none !important;
+            }
+
+            .ciudad .ciudad-wrap {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                width: 100%;
+                padding: 0 2px;
+                text-align: center;
+                white-space: normal;
+                word-break: break-word;
+                overflow-wrap: anywhere;
+                text-transform: uppercase;
+                font-weight: bold;
+                font-size: 14pt;
+                line-height: 1.1em;
+                margin-top: 10px;
+            }
         }
 
         /* Estilos cuando la validación falla (para prevenir impresión por menú del navegador) */
@@ -942,7 +1015,10 @@
         }
 
         /* Capa de texto envuelto para DESTINO (oculta en pantalla) */
-        .lugar-destino .destino-wrap {
+        .lugar-destino .destino-wrap,
+        .despacho .despacho-wrap,
+        .direccion .direccion-wrap,
+        .ciudad .ciudad-wrap {
             display: none;
         }
 
@@ -960,6 +1036,7 @@
 
         /* Ajuste para bajar el texto dentro de los cuadros */
         .empresa-transportadora input,
+        .empresa-transportadora .empresa-transportadora-wrap,
         .placa-cabezote input,
         .placa-tanque input {
             margin-top: 10px;
@@ -968,6 +1045,18 @@
         .lugar-origen input,
         .fecha-hora-salida input,
         .hora input {
+            margin-top: 10px;
+        }
+
+        /* Ajuste adicional para otros campos (Solicitud Usuario) */
+        .codigo-sicom input,
+        .direccion textarea,
+        .ciudad input,
+        .nombre-conductor input,
+        .cedula input,
+        .lugar-destino input,
+        .lugar-destino .destino-wrap,
+        .horas-vigencia input {
             margin-top: 10px;
         }
 
@@ -1149,13 +1238,18 @@
                         <!-- Menú Personalizado (generado por JS) -->
                         <div id="dropdownClientesList" class="custom-dropdown-menu"></div>
                     </div>
+                    <div class="despacho-wrap" aria-hidden="true"></div>
                 </div>
                 <div class="campo codigo-sicom sin-borde" data-campo="sicom"><input placeholder="CÓDIGO SICOM"></div>
             </div>
             <div class="fila">
-                <div class="campo direccion sin-borde" data-campo="direccion"><textarea id="direccionCliente"
-                        placeholder="DIRECCIÓN"></textarea></div>
-                <div class="campo ciudad sin-borde" data-campo="ciudad"><input id="ciudadCliente" placeholder="CIUDAD">
+                <div class="campo direccion sin-borde" data-campo="direccion">
+                    <textarea id="direccionCliente" placeholder="DIRECCIÓN"></textarea>
+                    <div class="direccion-wrap" aria-hidden="true"></div>
+                </div>
+                <div class="campo ciudad sin-borde" data-campo="ciudad">
+                    <input id="ciudadCliente" placeholder="CIUDAD">
+                    <div class="ciudad-wrap" aria-hidden="true"></div>
                 </div>
             </div>
             <div class="fila pequeno">
@@ -1829,6 +1923,44 @@
             }
         }
 
+        // --- FUNCIONES DE SINCRONIZACIÓN PARA WRAPPERS DE DESPACHO, DIRECCIÓN Y CIUDAD ---
+        function syncDespachoWrap() {
+            const inp = document.getElementById('clienteNombreDisplay');
+            const wrap = document.querySelector('.despacho .despacho-wrap');
+            if (inp && wrap) wrap.textContent = (inp.value || 'SELECCIONE UN CLIENTE').toUpperCase();
+        }
+
+        function syncDireccionWrap() {
+            const inp = document.getElementById('direccionCliente');
+            const wrap = document.querySelector('.direccion .direccion-wrap');
+            if (inp && wrap) wrap.textContent = (inp.value || 'DIRECCIÓN').toUpperCase();
+        }
+
+        function syncCiudadWrap() {
+            const inp = document.getElementById('ciudadCliente');
+            const wrap = document.querySelector('.ciudad .ciudad-wrap');
+            if (inp && wrap) {
+                const txt = (inp.value || 'CIUDAD').toUpperCase();
+                wrap.textContent = txt;
+
+                // Lógica para reducir tamaño de letra si es muy largo
+                const len = txt.length;
+                if (len > 35) {
+                    wrap.style.fontSize = '8pt';
+                    wrap.style.lineHeight = '1em';
+                } else if (len > 25) {
+                    wrap.style.fontSize = '10pt';
+                    wrap.style.lineHeight = '1.1em';
+                } else if (len > 18) {
+                    wrap.style.fontSize = '12pt';
+                    wrap.style.lineHeight = '1.2em';
+                } else {
+                    wrap.style.fontSize = '14pt'; // Tamaño original
+                    wrap.style.lineHeight = '1.2em';
+                }
+            }
+        }
+
         // --- LÓGICA PRINCIPAL AL CARGAR LA PÁGINA ---
 
         window.addEventListener('DOMContentLoaded', async () => {
@@ -1841,6 +1973,10 @@
             // Asegurarse de llamar a las funciones de sync una vez cargados los datos
             syncEmpresaTransportadoraWrap();
             syncDestinoWrap();
+            // Iniciar nuevos syncs
+            syncDespachoWrap();
+            syncDireccionWrap();
+            syncCiudadWrap();
 
             if (Object.keys(datosGuia).length > 1) {
                 console.log("Rellenando guía con datos recibidos:", datosGuia);
@@ -2184,6 +2320,9 @@
             window.addEventListener('beforeprint', () => {
                 syncEmpresaTransportadoraWrap();
                 syncDestinoWrap();
+                syncDespachoWrap();
+                syncDireccionWrap();
+                syncCiudadWrap();
                 // RESETEAR ZOOM ANTES DE IMPRIMIR
                 const contenedor = document.getElementById('contenedor-guia');
                 if (contenedor) {
@@ -2202,6 +2341,16 @@
                 destinoInput.addEventListener('input', syncDestinoWrap);
                 destinoInput.addEventListener('change', syncDestinoWrap);
             }
+
+            // Listeners para los nuevos campos wrap
+            const cliInp = document.getElementById('clienteNombreDisplay');
+            if (cliInp) { cliInp.addEventListener('input', syncDespachoWrap); cliInp.addEventListener('change', syncDespachoWrap); }
+
+            const dirInp = document.getElementById('direccionCliente');
+            if (dirInp) { dirInp.addEventListener('input', syncDireccionWrap); dirInp.addEventListener('change', syncDireccionWrap); }
+
+            const ciuInp = document.getElementById('ciudadCliente');
+            if (ciuInp) { ciuInp.addEventListener('input', syncCiudadWrap); ciuInp.addEventListener('change', syncCiudadWrap); }
 
         }); // Fin del primer DOMContentLoaded
 

@@ -95,6 +95,22 @@
         box-shadow: 0 0 0 3px rgba(10, 124, 93, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
+    .org-box.is-transversal {
+        height: 100px;
+        /* Fixed height for transversal directors */
+        justify-content: flex-start;
+    }
+
+    .org-box.is-transversal .box-header {
+        height: 100%;
+        border-radius: 12px;
+    }
+
+    .org-box.is-transversal .box-body {
+        display: none;
+        /* Hide body for transversal if empty/not needed to keep size */
+    }
+
     .box-header {
         padding: 14px 16px;
         border-radius: 12px 12px 0 0;
@@ -301,6 +317,43 @@
         color: #1e293b !important;
     }
 
+    /* Generic Colors */
+    .bg-red {
+        background: linear-gradient(135deg, #ef4444, #f87171);
+    }
+
+    .bg-green {
+        background: linear-gradient(135deg, #10b981, #34d399);
+    }
+
+    .bg-blue {
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    }
+
+    .bg-purple {
+        background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    }
+
+    .bg-orange {
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    }
+
+    .bg-teal {
+        background: linear-gradient(135deg, #14b8a6, #2dd4bf);
+    }
+
+    .bg-pink {
+        background: linear-gradient(135deg, #ec4899, #f472b6);
+    }
+
+    .bg-indigo {
+        background: linear-gradient(135deg, #6366f1, #818cf8);
+    }
+
+    .bg-gray {
+        background: linear-gradient(135deg, #64748b, #94a3b8);
+    }
+
     /* TOOLBAR */
     .toolbar-overlay {
         position: absolute;
@@ -492,8 +545,9 @@
 
     .palette-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 8px;
+        margin-bottom: 12px;
     }
 
     .palette-item {
@@ -694,6 +748,47 @@
     .tab-content.active {
         display: block;
     }
+
+    .hue-slider-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 8px;
+        background: #f8fafc;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--org-border);
+    }
+
+    .hue-slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 12px;
+        border-radius: 6px;
+        background: linear-gradient(to right, #f00 0%, #ff0 17%, #0f0 33%, #0ff 50%, #00f 67%, #f0f 83%, #f00 100%);
+        outline: none;
+        cursor: pointer;
+    }
+
+    .hue-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid #cbd5e1;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-preview-box {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        border: 2px solid #e2e8f0;
+        flex-shrink: 0;
+    }
 </style>
 {% endblock %}
 
@@ -855,6 +950,24 @@
             </div>
         </div>
 
+        <div class="mt-3">
+            <label class="form-label small fw-semibold">Color del Encabezado</label>
+            <div class="palette-grid" id="editColorPalette"></div>
+
+            <div class="d-flex align-items-center gap-2 mt-2">
+                <div class="hue-slider-container w-100">
+                    <div class="color-preview-box" id="colorPreviewBox"></div>
+                    <div class="flex-grow-1">
+                        <input type="range" min="0" max="360" value="0" class="hue-slider" id="hueRange"
+                            oninput="updateColorFromHue(this.value)">
+                    </div>
+                    <input type="number" min="0" max="360" value="0" class="form-control form-control-sm"
+                        style="width: 60px;" id="hueInput" oninput="updateColorFromHue(this.value)">
+                </div>
+            </div>
+            <input type="hidden" id="editSelectedColor">
+        </div>
+
         <div class="d-flex gap-2 mt-3">
             <button class="btn btn-light btn-sm flex-grow-1" onclick="closeModal()">Cancelar</button>
             <button class="btn btn-sm flex-grow-1" onclick="saveBoxChanges()"
@@ -890,6 +1003,24 @@
         let selectedNodeId = null, draggingId = null, dragOffX = 0, dragOffY = 0;
         let currentEditTab = 'company';
 
+        const COLORS = [
+            { id: 'bg-corp-top', bg: 'linear-gradient(135deg, #4B5563, #6B7280)' },
+            { id: 'bg-corp-audit', bg: 'linear-gradient(135deg, #5b21b6, #7c3aed)' },
+            { id: 'bg-cwt', bg: 'linear-gradient(135deg, #0077B0, #0099E0)' },
+            { id: 'bg-cwt-light', bg: 'linear-gradient(135deg, #0099E0, #33adee)' },
+            { id: 'bg-zf', bg: 'linear-gradient(135deg, #CC9300, #FFB800)' },
+            { id: 'bg-zf-light', bg: 'linear-gradient(135deg, #FFB800, #ffc933)' },
+            { id: 'bg-red', bg: 'linear-gradient(135deg, #ef4444, #f87171)' },
+            { id: 'bg-green', bg: 'linear-gradient(135deg, #10b981, #34d399)' },
+            { id: 'bg-blue', bg: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
+            { id: 'bg-purple', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
+            { id: 'bg-orange', bg: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
+            { id: 'bg-teal', bg: 'linear-gradient(135deg, #14b8a6, #2dd4bf)' },
+            { id: 'bg-pink', bg: 'linear-gradient(135deg, #ec4899, #f472b6)' },
+            { id: 'bg-indigo', bg: 'linear-gradient(135deg, #6366f1, #818cf8)' },
+            { id: 'bg-gray', bg: 'linear-gradient(135deg, #64748b, #94a3b8)' },
+        ];
+
         const mkNode = (title, subtitle, parentId, color, collapsed, nodeType) => ({
             id: idCounter++, title, subtitle: subtitle || '',
             parent: parentId, collapsed: !!collapsed, color: color || 'bg-corp-top',
@@ -902,7 +1033,8 @@
             members: '',
             // Type
             nodeType: nodeType || 'person',
-            isVerticalStack: false
+            isVerticalStack: false,
+            isSharedDirector: false
         });
 
         function buildInitialData() {
@@ -914,52 +1046,69 @@
             const de = mkNode('DIRECTOR EJECUTIVO', '', p.id, 'bg-corp-top', false, 'person');
             nodes.push(a, p, au, re, de);
 
+            // Transversal Directors
+            const dirTitles = [
+                'DIRECTOR DE LOGISTICA', 'DIRECTOR DE OPERACIONES', 'DIRECTOR DE CALIDAD',
+                'DIR. COMPRAS Y COMEX', 'DIR. MERCADEO Y VENTAS', 'DIR. CONTABILIDAD Y FINANZAS',
+                'DIRECTOR JURÍDICO', 'DIR. TECNOLOGÍA E INFORMACIÓN', 'DIR. RECURSOS HUMANOS',
+                'DIRECTOR DE HSEQ', 'DIR. INVESTIGACIÓN Y DESARROLLO', 'OFICIAL CONTROL E INTEGRACIÓN'
+            ];
+
+            dirTitles.forEach(t => {
+                const n = mkNode(t, 'Transversal', de.id, 'bg-corp-top', false, 'person');
+                n.isSharedDirector = true;
+                nodes.push(n);
+            });
+
             const zf = mkNode('ZF', 'Conquers ZF S.A.S', de.id, 'bg-zf', true, 'company');
             zf.companyName = 'Conquers ZF S.A.S';
             nodes.push(zf); buildZF(zf.id);
+
             const cw = mkNode('CWT', 'CICWT S.A.S', de.id, 'bg-cwt', true, 'company');
             cw.companyName = 'CICWT S.A.S';
             nodes.push(cw); buildCWT(cw.id);
         }
 
         function buildZF(pid) {
+            // Using 'AREA' nodes instead of Directors inside the company
             const a = (t, p) => { const n = mkNode(t, 'ZF', p, 'bg-zf-light'); nodes.push(n); return n.id; };
-            const dL = a('DIRECTOR DE LOGISTICA', pid);
+            // Original: DIRECTOR DE LOGISTICA -> LOGISTICA
+            const dL = a('LOGISTICA', pid);
             const cI = a('Coord. inventarios y despachos', dL); a('Auxiliar de logística', cI);
-            const dO = a('DIRECTOR DE OPERACIONES', pid);
+            const dO = a('OPERACIONES', pid);
             const cP = a('Coord. producción y mantenimiento', dO);
             const sP = a('Supervisor de producción', cP); a('Auxiliar de producción', sP); a('Operador de producción', sP);
             const sM = a('Supervisor de mantenimiento', cP); a('Auxiliar de mantenimiento', sM); a('Operador de mantenimiento', sM);
-            const dC = a('DIRECTOR DE CALIDAD', pid); a('Coordinador de Calidad', dC);
-            const dCo = a('DIR. COMPRAS Y COMEX', pid); a('Analista de compras', dCo); a('Analista comercio exterior', dCo); a('Analista de aduanas', dCo);
-            a('DIR. MERCADEO Y VENTAS', pid);
-            const dCF = a('DIR. CONTABILIDAD Y FINANZAS', pid); a('Coord. contable e impuestos', dCF);
-            a('DIRECTOR JURÍDICO', pid);
-            const dTI = a('DIR. TECNOLOGÍA E INFORMACIÓN', pid); a('Asistente de Sistemas', dTI);
-            const dRH = a('DIR. RECURSOS HUMANOS', pid); a('Asistente de RRHH', dRH);
-            const dH = a('DIRECTOR DE HSEQ', pid); a('Analista HSE', dH); a('Coord. responsabilidad social', dH);
-            const dID = a('DIR. INVESTIGACIÓN Y DESARROLLO', pid); a('Analista de laboratorio', dID);
-            const oC = a('OFICIAL CONTROL E INTEGRACIÓN', pid); a('Analista de SICOM', oC);
+            const dC = a('CALIDAD', pid); a('Coordinador de Calidad', dC);
+            const dCo = a('COMPRAS Y COMEX', pid); a('Analista de compras', dCo); a('Analista comercio exterior', dCo); a('Analista de aduanas', dCo);
+            a('MERCADEO Y VENTAS', pid);
+            const dCF = a('CONTABILIDAD Y FINANZAS', pid); a('Coord. contable e impuestos', dCF);
+            a('JURÍDICO', pid);
+            const dTI = a('TECNOLOGÍA E INFORMACIÓN', pid); a('Asistente de Sistemas', dTI);
+            const dRH = a('RECURSOS HUMANOS', pid); a('Asistente de RRHH', dRH);
+            const dH = a('HSEQ', pid); a('Analista HSE', dH); a('Coord. responsabilidad social', dH);
+            const dID = a('INVESTIGACIÓN Y DESARROLLO', pid); a('Analista de laboratorio', dID);
+            const oC = a('CONTROL E INTEGRACIÓN', pid); a('Analista de SICOM', oC);
         }
 
         function buildCWT(pid) {
             const a = (t, p) => { const n = mkNode(t, 'CWT', p, 'bg-cwt-light'); nodes.push(n); return n.id; };
-            const dL = a('DIRECTOR DE LOGISTICA', pid);
+            const dL = a('LOGISTICA', pid);
             const cT = a('Coordinador de transporte', dL); a('Analista transporte terrestre', cT); a('Analista transporte marítimo', cT);
-            a('DIRECTOR DE OPERACIONES', pid); a('DIRECTOR DE CALIDAD', pid);
-            const dCo = a('DIR. COMPRAS Y COMEX', pid); a('Coord. compras y comex', dCo);
-            const dM = a('DIR. MERCADEO Y VENTAS', pid);
+            a('OPERACIONES', pid); a('CALIDAD', pid);
+            const dCo = a('COMPRAS Y COMEX', pid); a('Coord. compras y comex', dCo);
+            const dM = a('MERCADEO Y VENTAS', pid);
             const cV = a('Coordinador de ventas', dM); a('Analista de ventas', cV);
             const cMk = a('Coordinador de mercadeo', dM); a('Analista de mercadeo', cMk);
-            const dCF = a('DIR. CONTABILIDAD Y FINANZAS', pid); a('Analista financiero', dCF); a('Analista contable e impuestos', dCF); a('Analista de tesorería', dCF);
-            const dJ = a('DIRECTOR JURÍDICO', pid); a('Asistente legal', dJ);
-            const dTI = a('DIR. TECNOLOGÍA E INFORMACIÓN', pid);
+            const dCF = a('CONTABILIDAD Y FINANZAS', pid); a('Analista financiero', dCF); a('Analista contable e impuestos', dCF); a('Analista de tesorería', dCF);
+            const dJ = a('JURÍDICO', pid); a('Asistente legal', dJ);
+            const dTI = a('TECNOLOGÍA E INFORMACIÓN', pid);
             const cS = a('Coordinador de Sistemas', dTI); a('Analista de Soporte', cS);
             a('Coordinador de ERP', dTI); a('Coord. Seguridad e Información', dTI);
-            const dRH = a('DIR. RECURSOS HUMANOS', pid); a('Coord. recursos humanos', dRH);
-            const dH = a('DIRECTOR DE HSEQ', pid); const cH = a('Coordinador HSEQ', dH); a('Analista documental', cH);
-            const dID = a('DIR. INVESTIGACIÓN Y DESARROLLO', pid); a('Coord. procesos industriales', dID); a('Coord. producto / servicio', dID);
-            const oC = a('OFICIAL CONTROL E INTEGRACIÓN', pid); a('Coordinador financiero', oC); a('Coord. contable e impuestos', oC); a('Coordinador de tesorería', oC); a('Asist. servicios generales', oC);
+            const dRH = a('RECURSOS HUMANOS', pid); a('Coord. recursos humanos', dRH);
+            const dH = a('HSEQ', pid); const cH = a('Coordinador HSEQ', dH); a('Analista documental', cH);
+            const dID = a('INVESTIGACIÓN Y DESARROLLO', pid); a('Coord. procesos industriales', dID); a('Coord. producto / servicio', dID);
+            const oC = a('CONTROL E INTEGRACIÓN', pid); a('Coordinador financiero', oC); a('Coord. contable e impuestos', oC); a('Coordinador de tesorería', oC); a('Asist. servicios generales', oC);
         }
 
         // ===== LAYOUT =====
@@ -1021,6 +1170,32 @@
             if (dir) { dir.x = pres.x; dir.y = pres.y + V_GAP; }
             if (!dir || dir.collapsed) { document.getElementById('viewModeBar').style.display = 'none'; return; }
 
+            // Place Shared Directors below Director Ejecutivo
+            const shDirs = nodes.filter(n => n.isSharedDirector);
+            let companiesY = dir.y + V_GAP; // Default if no directors
+
+            if (shDirs.length > 0) {
+                // Layout directors in one or two rows
+                const dirGap = 20; // smaller gap for directors
+                const dirW = BOX_W;
+                // Try 2 rows of 6
+                const perRow = Math.ceil(shDirs.length / 2);
+                const rowWidth = perRow * (dirW + dirGap) - dirGap;
+
+                shDirs.forEach((d, i) => {
+                    const row = Math.floor(i / perRow);
+                    const col = i % perRow;
+                    // Center the row
+                    const rowStart = dir.x - rowWidth / 2 + dirW / 2;
+                    d.x = rowStart + col * (dirW + dirGap);
+                    d.y = dir.y + V_GAP + row * 120; // 120px vertical gap between director rows
+                });
+
+                companiesY = dir.y + V_GAP + (Math.ceil(shDirs.length / perRow) * 120) + 40;
+            } else {
+                companiesY = dir.y + V_GAP;
+            }
+
             const zf = nodes.find(n => n.title === 'ZF');
             const cwt = nodes.find(n => n.title === 'CWT');
             document.getElementById('viewModeBar').style.display = 'flex';
@@ -1033,15 +1208,15 @@
             if (showZF && showCWT) {
                 const zfW = mW(zf.id, cm), cwtW = mW(cwt.id, cm);
                 const gap = 300, totalW = zfW + cwtW + gap;
-                zf.x = dir.x - totalW / 2 + zfW / 2; zf.y = dir.y + V_GAP;
-                cwt.x = dir.x + totalW / 2 - cwtW / 2; cwt.y = dir.y + V_GAP;
+                zf.x = dir.x - totalW / 2 + zfW / 2; zf.y = companiesY;
+                cwt.x = dir.x + totalW / 2 - cwtW / 2; cwt.y = companiesY;
                 if (!zf.collapsed) layoutTree(zf.id, zf.x, zf.y + V_GAP, cm);
                 if (!cwt.collapsed) layoutTree(cwt.id, cwt.x, cwt.y + V_GAP, cm);
             } else if (showZF) {
-                zf.x = dir.x; zf.y = dir.y + V_GAP;
+                zf.x = dir.x; zf.y = companiesY;
                 if (!zf.collapsed) layoutTree(zf.id, zf.x, zf.y + V_GAP, cm);
             } else if (showCWT) {
-                cwt.x = dir.x; cwt.y = dir.y + V_GAP;
+                cwt.x = dir.x; cwt.y = companiesY;
                 if (!cwt.collapsed) layoutTree(cwt.id, cwt.x, cwt.y + V_GAP, cm);
             }
         }
@@ -1103,6 +1278,7 @@
             vis.forEach(node => {
                 const el = document.createElement('div');
                 el.className = 'org-box';
+                if (node.isSharedDirector) el.classList.add('is-transversal');
                 el.id = `box-${node.id}`;
                 el.style.left = node.x + 'px';
                 el.style.top = node.y + 'px';
@@ -1122,8 +1298,12 @@
                     mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.employee ? `<div class="box-employee">${node.employee}</div>` : ''}`;
                 }
 
+                const isCustomColor = node.color && !node.color.startsWith('bg-');
+                const headerClass = isCustomColor ? '' : node.color;
+                const headerStyle = isCustomColor ? `background: ${node.color};` : '';
+
                 el.innerHTML = `
-                <div class="box-header ${node.color}">
+                <div class="box-header ${headerClass}" style="${headerStyle}">
                     ${getNodeIcon(node)}
                     <div class="box-info">
                         ${mainContent}
@@ -1338,13 +1518,82 @@
             }
 
             document.getElementById('editModal').classList.add('open');
+            renderColorPalette(n.color);
         };
+
+        function renderColorPalette(selectedColor) {
+            const container = document.getElementById('editColorPalette');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const isPreset = selectedColor && selectedColor.startsWith('bg-');
+            const cur = isPreset ? selectedColor : '';
+
+            document.getElementById('editSelectedColor').value = selectedColor || 'bg-corp-top'; // Final value to save
+
+            // Try to detect Hue from gradient string if it's a custom color
+            let initialHue = 0;
+            if (!isPreset && selectedColor && selectedColor.includes('hsl')) {
+                const match = selectedColor.match(/hsl\((\d+)/);
+                if (match) initialHue = match[1];
+            }
+
+            // Initial UI state
+            document.getElementById('hueRange').value = initialHue;
+            document.getElementById('hueInput').value = initialHue;
+            updateColorPreview(selectedColor || COLORS[0].bg); // Show current or default
+
+            COLORS.forEach(c => {
+                const el = document.createElement('div');
+                el.className = `palette-item ${c.id === cur ? 'active' : ''}`;
+                el.style.background = c.bg;
+                el.title = c.id.replace('bg-', '');
+                el.onclick = () => {
+                    document.getElementById('editSelectedColor').value = c.id;
+                    updateColorPreview(c.bg);
+                    document.querySelectorAll('.palette-item').forEach(p => p.classList.remove('active'));
+                    el.classList.add('active');
+                };
+                container.appendChild(el);
+            });
+        }
+
+        window.updateColorFromHue = function (val) {
+            val = parseInt(val);
+            if (isNaN(val)) val = 0;
+            if (val > 360) val = 360;
+            if (val < 0) val = 0;
+
+            // Sync inputs
+            document.getElementById('hueRange').value = val;
+            document.getElementById('hueInput').value = val;
+
+            // Generate Premium HSL Gradient
+            // Darker shade for start, lighter for end to simulate 3D
+            const color = `linear-gradient(135deg, hsl(${val}, 70%, 45%), hsl(${val}, 70%, 60%))`;
+
+            document.getElementById('editSelectedColor').value = color;
+            updateColorPreview(color);
+
+            // Deselect presets
+            document.querySelectorAll('.palette-item').forEach(p => p.classList.remove('active'));
+        };
+
+        function updateColorPreview(color) {
+            const box = document.getElementById('colorPreviewBox');
+            if (color.startsWith('bg-')) {
+                // If it's a class, we need the actual style. Find it in COLORS array
+                const cObj = COLORS.find(c => c.id === color);
+                if (cObj) box.style.background = cObj.bg;
+            } else {
+                box.style.background = color;
+            }
+        }
 
         window.switchEditTab = function (tab) {
             currentEditTab = tab;
             document.querySelectorAll('.modal-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
             document.getElementById('tabContent' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
         };
 
@@ -1405,6 +1654,7 @@
                 n.members = document.getElementById('editMembers').value;
             }
 
+            n.color = document.getElementById('editSelectedColor').value;
             render(); saveData(); closeModal();
         };
 
@@ -1514,7 +1764,7 @@
             localStorage.setItem('org_settings', JSON.stringify({ name, bg }));
         };
         function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
-        function saveData() { localStorage.setItem('org_nodes_v10', JSON.stringify(nodes)); localStorage.setItem('org_counter_v10', idCounter); showToast('💾 Guardado'); }
+        function saveData() { localStorage.setItem('org_nodes_v11', JSON.stringify(nodes)); localStorage.setItem('org_counter_v11', idCounter); showToast('💾 Guardado'); }
         function loadData() {
             const set = JSON.parse(localStorage.getItem('org_settings'));
             if (set) {
@@ -1528,8 +1778,8 @@
             const ws = document.getElementById('workspace');
             ws.style.background = '#f0f4f8';
             viewMode = localStorage.getItem('org_viewMode') || 'both';
-            const saved = localStorage.getItem('org_nodes_v10');
-            if (saved) { nodes = JSON.parse(saved); idCounter = parseInt(localStorage.getItem('org_counter_v10') || 1000); }
+            const saved = localStorage.getItem('org_nodes_v11');
+            if (saved) { nodes = JSON.parse(saved); idCounter = parseInt(localStorage.getItem('org_counter_v11') || 1000); }
             else { buildInitialData(); }
             calculateLayout(); render();
             document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
@@ -1537,7 +1787,7 @@
         }
         window.resetLocalData = function () {
             if (!confirm('¿Resetear organigrama? Se perderán todos los cambios.')) return;
-            ['org_nodes_v10', 'org_counter_v10', 'org_settings', 'org_viewMode'].forEach(k => localStorage.removeItem(k));
+            ['org_nodes_v11', 'org_counter_v11', 'org_settings', 'org_viewMode'].forEach(k => localStorage.removeItem(k));
             viewMode = 'both';
             buildInitialData(); calculateLayout(); render();
             document.getElementById('inputCompanyName').value = 'Conquers Trading Groups';
