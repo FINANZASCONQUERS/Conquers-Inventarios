@@ -554,6 +554,13 @@
                     <button type="button" onclick="guardarRegistro()" class="btn btn-success-premium btn-premium">
                         <i class="bi bi-save2-fill me-2"></i>Guardar Registro
                     </button>
+                    <!-- BOTÓN GESTIONAR TANQUES -->
+                    {% if session.get('rol') == 'admin' or 'planta' in session.get('area', []) %}
+                    <button type="button" data-bs-toggle="modal" data-bs-target="#modalGestionTanques"
+                        class="btn btn-outline-premium btn-premium">
+                        <i class="bi bi-gear-fill me-2"></i>Configurar
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -669,7 +676,8 @@
                 </thead>
                 <tbody>
                     {% for fila in planilla %}
-                    <tr data-tk="{{ fila.TK }}">
+                    <tr data-tk="{{ fila.TK }}" data-conversion="{{ fila.TIPO_CONVERSION }}"
+                        data-conversion-val="{{ fila.CONVERSION_VALOR if fila.CONVERSION_VALOR is not none else '' }}">
                         <td>
                             <span class="tank-id-badge">{{ fila.TK }}</span>
                         </td>
@@ -678,33 +686,30 @@
                         </td>
                         <td data-field="MAX_CAP" class="fw-bold">
                             {{ fila.MAX_CAP|int if fila.MAX_CAP else 0 }} BLS
-                            {% if fila.TK == "Consumo Interno" %}
-                            <br><small class="text-muted">({{ (fila.MAX_CAP * 42)|round(2) if fila.MAX_CAP else
-                                '5240.91' }} GAL)</small>
+                            {% if fila.TIPO_CONVERSION == "BBL_TO_GAL" %}
+                            <br><small class="text-muted">({{ (fila.MAX_CAP * 42)|round(2) if fila.MAX_CAP else '0' }}
+                                GAL)</small>
                             {% endif %}
                         </td>
                         <td contenteditable="true" class="editable-premium" data-field="BLS_60" inputmode="decimal"
                             title="Ingrese los barriles a 60°F">{{ fila.BLS_60 }}</td>
                         <td class="ton-col-premium" title="Calculado automáticamente">
-                            {% if fila.TK == "Consumo Interno" and fila.BLS_60 %}
-                            <span class="gal-val">{{ (fila.BLS_60|float * 42)|round(2) }} GAL</span>
-                            {% else %}
+                            <!-- Se llena via JS según data-conversion -->
                             —
-                            {% endif %}
                         </td>
                         <td contenteditable="true" class="editable-premium" data-field="API" inputmode="decimal"
                             title="Ingrese la densidad API">{{ fila.API }}</td>
-                        <td contenteditable="{{ 'false' if fila.TK == 'Consumo Interno' else 'true' }}"
-                            class="{{ 'editable-premium' if fila.TK != 'Consumo Interno' else 'readonly-cell' }}"
+                        <td contenteditable="{{ 'false' if fila.TIPO_CONVERSION == 'BBL_TO_GAL' else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TIPO_CONVERSION != 'BBL_TO_GAL' else 'readonly-cell' }}"
                             data-field="BSW" inputmode="decimal"
-                            title="{{ 'No aplica para este tanque' if fila.TK == 'Consumo Interno' else 'Ingrese el % de agua y sedimento' }}">
-                            {{ fila.BSW if fila.TK != 'Consumo Interno' else 'N/A' }}
+                            title="{{ 'No aplica' if fila.TIPO_CONVERSION == 'BBL_TO_GAL' else 'Ingrese %BSW' }}">
+                            {{ fila.BSW if fila.TIPO_CONVERSION != 'BBL_TO_GAL' else 'N/A' }}
                         </td>
-                        <td contenteditable="{{ 'false' if fila.TK == 'Consumo Interno' else 'true' }}"
-                            class="{{ 'editable-premium' if fila.TK != 'Consumo Interno' else 'readonly-cell' }}"
+                        <td contenteditable="{{ 'false' if fila.TIPO_CONVERSION == 'BBL_TO_GAL' else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TIPO_CONVERSION != 'BBL_TO_GAL' else 'readonly-cell' }}"
                             data-field="S" inputmode="decimal"
-                            title="{{ 'No aplica para este tanque' if fila.TK == 'Consumo Interno' else 'Ingrese el % de azufre' }}">
-                            {{ fila.S if fila.TK != 'Consumo Interno' else 'N/A' }}
+                            title="{{ 'No aplica' if fila.TIPO_CONVERSION == 'BBL_TO_GAL' else 'Ingrese %S' }}">
+                            {{ fila.S if fila.TIPO_CONVERSION != 'BBL_TO_GAL' else 'N/A' }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -713,9 +718,175 @@
         </div>
     </div>
 
-</div>
+    <!-- MODAL GESTIÓN TANQUES -->
+    <div class="modal fade" id="modalGestionTanques" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Gestión de Tanques</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="tankTabs" role="tablist">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-listado"
+                                type="button">Listado</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-nuevo"
+                                type="button">Agregar/Editar</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content">
+                        <!-- CONFIGURACIÓN EXISTENTE -->
+                        <div class="tab-pane fade show active" id="tab-listado">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Producto Actual</th>
+                                            <th>Producto Actual</th>
+                                            <th>Capacidad (BLS)</th>
+                                            <th>Conversión</th>
+                                            <th>Valor Manual</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lista-tanques-body">
+                                        <!-- Se llena con JS o del backend -->
+                                        {% for t in tanques_conf %}
+                                        <tr>
+                                            <td>{{ t.nombre }}</td>
+                                            <td>{{ t.producto_actual }}</td>
+                                            <td>{{ t.capacidad_maxima }}</td>
+                                            <td>{{ t.tipo_conversion }}</td>
+                                            <td>{{ t.conversion_valor if t.conversion_valor is not none else '-' }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" data-tank='{{ t|tojson }}'
+                                                    onclick='editarTanque(this)'>
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-{{ 'danger' if t.activo else 'success' }}"
+                                                    onclick="toggleTanque({{ t.id }})">
+                                                    <i class="bi bi-{{ 'trash' if t.activo else 'check' }}"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
 
+                        <!-- FORMULARIO NUEVO -->
+                        <div class="tab-pane fade" id="tab-nuevo">
+                            <form id="form-tanque">
+                                <input type="hidden" id="tk_id" name="id">
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre del Tanque (Ej: TK-103)</label>
+                                    <input type="text" class="form-control" id="tk_nombre" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Producto Actual</label>
+                                    <input type="text" class="form-control" id="tk_producto" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Capacidad Máxima (BLS)</label>
+                                    <input type="number" step="0.01" class="form-control" id="tk_capacidad" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Regla de Conversión</label>
+                                    <select class="form-select" id="tk_conversion">
+                                        <option value="BBL_TO_TON">Barriles a Toneladas (Usa API)</option>
+                                        <option value="BBL_TO_GAL">Barriles a Galones ( * 42)</option>
+                                        <option value="GAL_TO_BBL">Galones a Barriles ( / 42)</option>
+                                    </select>
+                                    <div class="form-text">Define cómo se calcula la columna "Conversión".</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Valor de Conversión / Densidad (Opcional)</label>
+                                    <input type="number" step="0.0001" class="form-control" id="tk_conversion_valor"
+                                        placeholder="Ej: 7.4 (Densidad) o Factor">
+                                    <div class="form-text">Si se define, se usará este valor en lugar del cálculo
+                                        automático (API).</div>
+                                </div>
+                                <button type="submit" class="btn btn-success w-100">Guardar Tanque</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
 <script>
+    // ==== GESTIÓN DE TANQUES ====
+    document.addEventListener('DOMContentLoaded', function () {
+        // Manejo del formulario de creación/edición
+        const form = document.getElementById('form-tanque');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const id = document.getElementById('tk_id').value;
+                const nombre = document.getElementById('tk_nombre').value;
+                const producto = document.getElementById('tk_producto').value;
+                const capacidad = document.getElementById('tk_capacidad').value;
+                const conversion = document.getElementById('tk_conversion').value;
+                const conversion_valor = document.getElementById('tk_conversion_valor').value;
+
+                fetch("{{ url_for('tanques_save') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, nombre, producto, capacidad, conversion, conversion_valor })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            mostrarAlerta("Tanque guardado. Recargando...", "success");
+                            setTimeout(() => location.reload(), 1000);
+                        } else {
+                            mostrarAlerta(data.message, "danger");
+                        }
+                    })
+                    .catch(e => mostrarAlerta("Error de conexión", "danger"));
+            });
+        }
+    });
+
+    function editarTanque(btn) {
+        // Llenar el formulario con los datos del objeto
+        const tanque = JSON.parse(btn.getAttribute('data-tank'));
+        document.getElementById('tk_id').value = tanque.id;
+        document.getElementById('tk_nombre').value = tanque.nombre;
+        document.getElementById('tk_producto').value = tanque.producto_actual;
+        document.getElementById('tk_capacidad').value = tanque.capacidad_maxima;
+        document.getElementById('tk_conversion').value = tanque.tipo_conversion;
+        document.getElementById('tk_conversion_valor').value = tanque.conversion_valor || '';
+        // Cambiar al tab de edición
+        const tabEl = document.querySelector('button[data-bs-target="#tab-nuevo"]');
+        const tab = new bootstrap.Tab(tabEl);
+        tab.show();
+    }
+
+    function toggleTanque(id) {
+        if (!confirm('¿Está seguro de cambiar el estado de este tanque?')) return;
+        fetch("{{ url_for('tanques_delete') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    mostrarAlerta(data.message, "danger");
+                }
+            });
+    }
+
     // ==== CALENDARIO CON FLATPICKR ====
     document.addEventListener('DOMContentLoaded', function () {
         const input = document.getElementById('fecha_filtro');
@@ -849,7 +1020,7 @@
         const indicator = document.getElementById('savingIndicator');
         if (indicator) indicator.style.display = 'flex';
 
-        // Recalcular TON/GAL
+        // Recalcular TON/GAL de inmediato para feedback visual
         actualizarToneladasFila(row);
 
         fetch("{{ url_for('guardar_datos_planta') }}", {
@@ -949,48 +1120,80 @@
     }
 
     // ==== CÁLCULO DE TONELADAS Y GALONES ====
-    function calcularTons(bls60, api, tk) {
-        const b = parseFloat((bls60 || '').toString().replace(',', '.')) || 0;
-        const a = parseFloat((api || '').toString().replace(',', '.'));
-        if (b <= 0) return null;
-
-        const tank = (tk || '').toUpperCase();
-        const allowed = new Set(['TK-102', 'TK-110', 'TK-108']);
-        if (!allowed.has(tank)) return null;
-
-        if (!isNaN(a)) {
-            const sg = 141.5 / (a + 131.5);
-            return b * (sg / 6.2898);
-        }
-
-        if (tank === 'TK-102') return b / 6.7;
-        if (tank === 'TK-110') return b / 7.4;
-        if (tank === 'TK-108') return b / 6.7;
-        return null;
-    }
-
     function actualizarToneladasFila(row) {
-        const tk = row.dataset.tk || '';
         const blsRaw = row.querySelector('[data-field="BLS_60"]')?.innerText || '';
-        const api = row.querySelector('[data-field="API"]')?.innerText || '';
+        const apiRaw = row.querySelector('[data-field="API"]')?.innerText || '';
         const tonCell = row.querySelector('.ton-col-premium');
+        const conversionType = row.dataset.conversion; // 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL'
+        const customValRaw = row.dataset.conversionVal; // Valor manual opcional
 
         if (!tonCell) return;
 
         const bls = parseFloat(blsRaw.replace(',', '.')) || 0;
+        const api = parseFloat(apiRaw.replace(',', '.'));
+        const customVal = customValRaw ? parseFloat(customValRaw) : null;
 
-        if (tk === "Consumo Interno") {
-            if (bls > 0) {
-                const gals = (bls * 42).toFixed(2);
-                tonCell.innerHTML = `<span class="gal-val">${parseFloat(gals).toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</span>`;
-            } else {
-                tonCell.textContent = "—";
-            }
+        if (bls <= 0) {
+            tonCell.textContent = "—";
             return;
         }
 
-        const tons = calcularTons(blsRaw, api, tk);
-        tonCell.textContent = (tons == null) ? '—' : tons.toFixed(2);
+        let resultHTML = "—";
+
+        // Lógica de conversión dinámica
+        if (conversionType === 'BBL_TO_GAL') {
+            // BBLS -> GAL
+            // Si hay customVal, usalo como factor (por defecto 42)
+            const factor = customVal || 42;
+            const gals = bls * factor;
+            resultHTML = `<span class="gal-val">${gals.toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</span>`;
+        }
+        else if (conversionType === 'GAL_TO_BBL') {
+            // GAL -> BBLS
+            const factor = customVal || 42;
+            const bbls = bls / factor;
+            resultHTML = `${bbls.toFixed(2)} BBL`;
+        }
+        else {
+            // DEFAULT: BBL_TO_TON
+            // Si hay un valor manual, asumimos que es el factor directo (o densidad?)
+            // El usuario dijo "tonelada segun si es de 6.3 o de 7.4". 
+            // Si pone 7.4, ¿es libras/galón?
+            // Formula TON = BBL * 42 * (Lbs/Gal) / 2204.62
+            // O quizás es un factor directo BBL->TON? 
+            // ASUNCIÓN: Si pone un valor manual, lo usamos como factor de DENSIDAD (lbs/gal), 
+            // o si es muy pequeño (<2) tal vez es SG? 
+            // Si el usuario pone "0.15", es factor directo.
+            // Voy a asumir que si hay valor manual, se calcula con ese valor.
+            // Si el valor es > 3, asumo que es Lbs/Gal (densidad). TON = BBL * (densidad * 42 / 2204.62)
+            // Si el valor es < 2, asumo que es SG o Factor directo. Mejor usar SG logic.
+
+            if (customVal) {
+                // Si definieron un valor manual, ignoramos API.
+                // Interpretamos el valor manual.
+                if (customVal > 3) {
+                    // Asumimos Lbs/Gal (ej: 7.4)
+                    // 1 BBL = 42 Gal
+                    // Peso = 42 * 7.4 lbs
+                    // Ton = Peso / 2204.62
+                    const tons = bls * 42 * customVal / 2204.62;
+                    resultHTML = tons.toFixed(3); // 3 decimales para precisión
+                } else {
+                    // Asumimos factor directo (Ton/Bbl) o SG
+                    // Usaremos factor directo por simplicidad si es pequeño
+                    const tons = bls * customVal;
+                    resultHTML = tons.toFixed(3);
+                }
+            } else if (!isNaN(api)) {
+                const sg = 141.5 / (api + 131.5);
+                const tons = bls * (sg / 6.2898);
+                resultHTML = tons.toFixed(2);
+            } else {
+                resultHTML = "—";
+            }
+        }
+
+        tonCell.innerHTML = resultHTML;
     }
 
     // ==== ACTUALIZAR ESTADÍSTICAS ====

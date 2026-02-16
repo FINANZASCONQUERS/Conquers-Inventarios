@@ -318,8 +318,8 @@ def procesar_analisis_remolcadores(registros):
                 .set_properties(subset=['Promedio legible'], **{'text-align': 'left', 'font-style': 'italic', 'color': '#2c5f2c'})
                 .set_properties(subset=['Trayecto'], **{'font-weight': '500', 'color': '#1a1a1a'}).hide(axis="index"))
 
-    tabla_cargado_html = estilo_tablas(prom_loaded, "⛴️ TRAYECTOS CON CARGA (LLENO) - TIEMPOS PROMEDIO GENERALES", "#1a5f1a").to_html(escape=False)
-    tabla_vacio_html = estilo_tablas(prom_empty, "🛳️ TRAYECTOS DE REGRESO (VACIO) - TIEMPOS PROMEDIO GENERALES", "#1a5f7a").to_html(escape=False)
+    tabla_cargado_html = estilo_tablas(prom_loaded, "?? TRAYECTOS CON CARGA (LLENO) - TIEMPOS PROMEDIO GENERALES", "#1a5f1a").to_html(escape=False)
+    tabla_vacio_html = estilo_tablas(prom_empty, "??? TRAYECTOS DE REGRESO (VACIO) - TIEMPOS PROMEDIO GENERALES", "#1a5f7a").to_html(escape=False)
 
     # --- GRÁFICOS ---
     grafico_tanqueo_b64 = None
@@ -335,7 +335,7 @@ def procesar_analisis_remolcadores(registros):
         promedio = df_tanqueo_sorted["duration_hours"].mean()
         promedio_texto = convertir_a_texto_legible(promedio)
 
-        # ▼▼▼ CAMBIO 1: Se ajusta el tamaño del gráfico para que sea más compacto ▼▼▼
+        # ??? CAMBIO 1: Se ajusta el tamaño del gráfico para que sea más compacto ???
         fig_tanqueo, ax = plt.subplots(figsize=(18, max(6, len(df_tanqueo_sorted) * 0.4)))
         
         ax.barh(df_tanqueo_sorted["Etiqueta"], df_tanqueo_sorted["duration_hours"], color="#1f7a1f")
@@ -373,7 +373,7 @@ def procesar_analisis_remolcadores(registros):
         promedio = df_total["duration_hours"].mean()
         promedio_texto = convertir_a_texto_legible(promedio)
 
-        # ▼▼▼ CAMBIO 2: Se reduce el ancho del gráfico para que no se salga de la página ▼▼▼
+        # ??? CAMBIO 2: Se reduce el ancho del gráfico para que no se salga de la página ???
         fig_total, ax = plt.subplots(figsize=(25, max(8, len(df_total) * 0.5)))
         ax.barh(df_total["ID_Mes"], df_total["duration_hours"], color="#004d99")
         
@@ -461,6 +461,82 @@ class RegistroPlanta(db.Model):
 
     def __repr__(self):
         return f'<RegistroPlanta ID: {self.id}, TK: {self.tk}>'
+
+class TanquePlanta(db.Model):
+    __tablename__ = 'configuracion_tanques_planta'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False)
+    producto_actual = db.Column(db.String(100), nullable=False)
+    capacidad_maxima = db.Column(db.Float, default=0.0)
+    
+    # Opciones: 'BBL_TO_TON' (Estándar), 'BBL_TO_GAL' (Consumo Interno)
+    tipo_conversion = db.Column(db.String(50), default='BBL_TO_TON') 
+    conversion_valor = db.Column(db.Float, nullable=True) # Valor fijo opcional (ej: factor ton/bbl)
+    
+    activo = db.Column(db.Boolean, default=True)
+    orden = db.Column(db.Integer, default=99)
+
+    def __repr__(self):
+        return f'<TanquePlanta {self.nombre}>'
+
+def _init_tanques_planta():
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'configuracion_tanques_planta' not in insp.get_table_names():
+            try:
+                TanquePlanta.__table__.create(db.engine)
+                print("[INIT] Tabla configuracion_tanques_planta creada.")
+            except Exception as e:
+                print(f"[INIT] Error creando tabla de tanques: {e}")
+                return
+
+        # Migración de columnas (comprobación manual) - EJECUTAR ANTES DE CUALQUIER CONSULTA ORM
+        try:
+            # Intentar acceder a la columna para ver si existe
+            db.session.execute(text("SELECT conversion_valor FROM configuracion_tanques_planta LIMIT 1"))
+        except Exception:
+            db.session.rollback()
+            print("[MIGRATE] Agregando columna conversion_valor a configuracion_tanques_planta...")
+            try:
+                # Determinar sintaxis según driver (asumimos PostgreSQL por el contexto, o SQLite local)
+                db.session.execute(text("ALTER TABLE configuracion_tanques_planta ADD COLUMN conversion_valor FLOAT"))
+                db.session.commit()
+                print("[MIGRATE] Columna agregada.")
+            except Exception as e:
+                print(f"[MIGRATE] Error agregando columna: {e}")
+
+        # Poblar si está vacía
+        if TanquePlanta.query.count() == 0:
+            print("[INIT] Poblando tabla de tanques con valores por defecto...")
+            # Mapeo de PLANILLA_PLANTA a modelo
+            defaults = [
+                {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "BBL_TO_TON", "orden": 1},
+                {"nombre": "TK-110", "producto": "FO4",       "cap": 22000, "conv": "BBL_TO_TON", "orden": 2},
+                {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 6},
+                {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 3},
+                {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 4},
+                {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 5},
+                {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 7},
+            ]
+            
+            for d in defaults:
+                t = TanquePlanta(
+                    nombre=d['nombre'],
+                    producto_actual=d['producto'],
+                    capacidad_maxima=d['cap'],
+                    tipo_conversion=d['conv'],
+                    activo=True,
+                    orden=d['orden']
+                )
+                db.session.add(t)
+            db.session.commit()
+            print("[INIT] Tanques inicializados.")
+        
+
+
+_init_tanques_planta()
     
 class RegistroBarcazaOrion(db.Model):
     __tablename__ = 'registros_barcaza_orion' # Nombre de la nueva tabla
@@ -1959,7 +2035,7 @@ def login_required(f):
 
 @app.before_request
 def log_request():
-    print(f"➞️  {request.method} {request.path}")
+    print(f"??  {request.method} {request.path}")
 
 USUARIOS = {
 
@@ -2685,6 +2761,82 @@ def aforos_delete():
         return jsonify(success=True, deleted=count)
     except Exception as e:
         db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/api/tanques/save', methods=['POST'])
+def tanques_save():
+    try:
+        data = request.get_json()
+        tk_id = data.get('id')
+        nombre = (data.get('nombre') or '').strip().upper()
+        producto = (data.get('producto') or '').strip().upper()
+        capacidad = float(data.get('capacidad') or 0)
+        conversion = data.get('conversion') # 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL'
+        
+        # Nuevo campo para valor personalizado
+        try:
+            conversion_valor = float(data.get('conversion_valor')) if data.get('conversion_valor') else None
+        except ValueError:
+            conversion_valor = None
+        
+        if not nombre or not producto:
+            return jsonify(success=False, message="Nombre y Producto son obligatorios"), 400
+
+        if tk_id:
+            # Editar existente
+            t = TanquePlanta.query.get(tk_id)
+            if not t:
+                return jsonify(success=False, message="Tanque no encontrado"), 404
+            t.nombre = nombre
+            t.producto_actual = producto
+            t.capacidad_maxima = capacidad
+            t.tipo_conversion = conversion
+            t.conversion_valor = conversion_valor
+        else:
+            # Buscar el siguiente ID disponible manualmente si es necesario, o dejar que autoincrement actúe
+            # Pero aquí buscamos 'nombre' duplicado
+            existing = TanquePlanta.query.filter_by(nombre=nombre).first()
+            if existing:
+                return jsonify(success=False, message="Ya existe un tanque con ese nombre"), 400
+                
+            max_orden = db.session.query(func.max(TanquePlanta.orden)).scalar() or 0
+            t = TanquePlanta(
+                nombre=nombre,
+                producto_actual=producto,
+                capacidad_maxima=capacidad,
+                tipo_conversion=conversion,
+                conversion_valor=conversion_valor,
+                activo=True,
+                orden=max_orden + 1
+            )
+            db.session.add(t)
+            
+        db.session.commit()
+        return jsonify(success=True, message="Tanque guardado correctamente")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@login_required
+@app.route('/api/tanques/delete', methods=['POST'])
+def tanques_delete():
+    try:
+        data = request.get_json()
+        tk_id = data.get('id')
+        t = TanquePlanta.query.get(tk_id)
+        if not t:
+            return jsonify(success=False, message="Tanque no encontrado"), 404
+            
+        # En lugar de eliminar físicamente, lo desactivamos (soft delete)
+        # o si el usuario quiere eliminarlo por completo, podemos hacerlo.
+        # Por seguridad de datos históricos, mejor desactivar.
+        t.activo = not t.activo # Toggle activo
+        estado = "activado" if t.activo else "desactivado"
+        
+        db.session.commit()
+        return jsonify(success=True, message=f"Tanque {estado} correctamente")
+    except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 def calcular_estadisticas(lista_tanques):
     """
@@ -3568,34 +3720,83 @@ def planta():
         (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)
     ).all()
     
-    # 3. Preparar y ORDENAR los datos según el orden deseado
-    orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
-    orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+    # 3. Preparar y ORDENAR los datos usando la configuración de TanquePlanta
+    # Consultar tanques activos de la configuración
+    try:
+        tanques_conf_objs = TanquePlanta.query.filter_by(activo=True).order_by(TanquePlanta.orden).all()
+        # Convertir a diccionarios serializables
+        tanques_conf = [
+            {
+                "id": t.id,
+                "nombre": t.nombre,
+                "producto_actual": t.producto_actual,
+                "capacidad_maxima": t.capacidad_maxima,
+                "tipo_conversion": t.tipo_conversion,
+                "conversion_valor": t.conversion_valor,
+                "orden": t.orden,
+                "activo": t.activo
+            }
+            for t in tanques_conf_objs
+        ]
+            
+    except Exception as e:
+         print(f"Error cargando config de tanques: {e}")
+         tanques_conf = []
+         
+    # Construir mapa base con la configuración actual
+    datos_por_tk = {}
+    orden_map = {}
+    
+    # Si la tabla está vacía (fallback extremo), usamos la lista hardcoded para no romper
+    if not tanques_conf:
+         orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
+         orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+         datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA}
+         # Añadir tipo conversión default
+         for k, v in datos_por_tk.items():
+             v['TIPO_CONVERSION'] = 'BBL_TO_GAL' if k == 'Consumo Interno' else 'BBL_TO_TON'
+    else:
+        for i, t in enumerate(tanques_conf):
+            datos_por_tk[t['nombre']] = {
+                "TK": t['nombre'],
+                "PRODUCTO": t['producto_actual'], # Producto configurado actualmente
+                "MAX_CAP": t['capacidad_maxima'],
+                "TIPO_CONVERSION": t['tipo_conversion'],
+                "CONVERSION_VALOR": t.get('conversion_valor'),
+                "BLS_60": "", 
+                "API": "", 
+                "BSW": "", 
+                "S": ""
+            }
+            orden_map[t['nombre']] = t['orden'] if t.get('orden') is not None else (i + 100)
 
-    # Combinar defaults con últimos registros para asegurar que todos los TK de la planilla existan (por ejemplo, TK-108)
-    datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA}
+    # Mezclar con registros recientes (datos históricos)
     if registros_recientes:
         for registro in registros_recientes:
-            datos_por_tk[registro.tk] = {
-                "TK": registro.tk,
-                "PRODUCTO": "DILUYENTE" if registro.tk == "Consumo Interno" else (registro.producto or datos_por_tk.get(registro.tk, {}).get("PRODUCTO")),
-                "MAX_CAP": 124.78 if registro.tk == "Consumo Interno" else (registro.max_cap or datos_por_tk.get(registro.tk, {}).get("MAX_CAP")),
-                "BLS_60": registro.bls_60 or "",
-                "API": registro.api or "",
-                "BSW": registro.bsw or "",
-                "S": registro.s or ""
-            }
-    # Filtrar únicamente los TK permitidos (ignorar otros como TK-03)
-    allowed_set = set(orden_deseado)
-    datos_para_plantilla = [v for k, v in datos_por_tk.items() if k in allowed_set]
+            if registro.tk in datos_por_tk:
+                d = datos_por_tk[registro.tk]
+                # Preservamos el producto de la configuración actual (para nuevos ingresos)
+                # o usamos el del registro si queremos ver histórico estricto?
+                # Según requerimiento anterior, se prefiere la configuración actual para corregir nombres.
+                # d["PRODUCTO"] = d["PRODUCTO"] 
+                
+                # Cargar valores del último registro
+                d["BLS_60"] = registro.bls_60 or ""
+                d["API"] = registro.api or ""
+                d["BSW"] = registro.bsw or ""
+                d["S"] = registro.s or ""
 
-    # Ordenar la lista según el orden deseado
+    # Filtrar solo los que están en datos_por_tk (activos)
+    # Convertir a lista
+    datos_para_plantilla = list(datos_por_tk.values())
+
+    # Ordenar la lista según el orden configurado
     datos_para_plantilla = sorted(
         datos_para_plantilla,
-        key=lambda fila: orden_map.get(fila["TK"], 99)
+        key=lambda fila: orden_map.get(fila["TK"], 999)
     )
 
-    # 4. Construimos listado de días con registros para colorear el calendario
+    # 4. Construimos listado de días con registros...
     try:
         dias_rows = (db.session
             .query(func.date(RegistroPlanta.timestamp).label('dia'))
@@ -3616,7 +3817,8 @@ def planta():
                            nombre=session.get("nombre", "Usuario"),
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
                            today_iso=date.today().isoformat(),
-                           fechas_con_registro=fechas_con_registro)
+                           fechas_con_registro=fechas_con_registro,
+                           tanques_conf=tanques_conf) # Pasamos config para el modal
 
 @login_required
 @permiso_requerido('planta')
@@ -3749,66 +3951,65 @@ def reporte_planta():
     datos_planta_js = []
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
 
-    if registros_recientes:
-        # ========================================================
-        #  INICIO: LÓGICA DE ORDENAMIENTO PERSONALIZADO
-        # ========================================================
+    # ========================================================
+    #  INICIO: LÓGICA DE ORDENAMIENTO PERSONALIZADO
+    # ========================================================
         
-    # 1. Definimos el orden exacto que queremos.
+    # 1. Definir configuración de tanques (Orden y Defaults)
+    try:
+        tanques_db = TanquePlanta.query.filter_by(activo=True).order_by(TanquePlanta.orden).all()
+    except:
+        tanques_db = []
+        
+    if tanques_db:
+        orden_deseado = [t.nombre for t in tanques_db]
+        defaults_map = {t.nombre: {"TK": t.nombre, "PRODUCTO": t.producto_actual, "MAX_CAP": t.capacidad_maxima} for t in tanques_db}
+        lista_definiciones = defaults_map.values()
+    else:
         orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
-        
-        # 2. Creamos un mapa para asignar un "peso" a cada TK.
-        orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
-        
-        # 3. Ordenamos la lista de registros usando nuestro mapa.
-        #    Los tanques no especificados en la lista irán al final.
-        registros_ordenados = sorted(
-            registros_recientes, 
-            key=lambda r: orden_map.get(r.tk, 99) # Usamos 99 para que los no encontrados vayan al final
-        )
-        
-        # ========================================================
-        #  FIN DE LA LÓGICA DE ORDENAMIENTO
-        # ========================================================
-
-        # Usamos la nueva lista YA ORDENADA para construir los datos para el HTML
-        # Preparar mapa de defaults para fallback
         defaults_map = {fila["TK"]: fila for fila in PLANILLA_PLANTA}
+        lista_definiciones = PLANILLA_PLANTA
 
-        mapa_js = {r.tk: {
-            "TK": r.tk,
-            # Priorizamos el producto de la planilla si existe, sino usamos el histórico
-            "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto),
-            "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP")),
-            "BLS_60": r.bls_60,
-            "API": r.api,
-            "BSW": r.bsw,
-            "S": r.s
-        } for r in registros_ordenados if r.tk}
+    orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+    
+    # 3. Ordenamos la lista de registros usando nuestro mapa.
+    registros_ordenados = sorted(
+        registros_recientes, 
+        key=lambda r: orden_map.get(r.tk, 99) 
+    )
 
-        # Asegurar que todos los TK definidos por defecto existan (ej. TK-108)
-        for fila in PLANILLA_PLANTA:
-            tk = fila.get("TK")
-            if tk and tk not in mapa_js:
-                mapa_js[tk] = {
-                    "TK": tk,
-                    "PRODUCTO": fila.get("PRODUCTO"),
-                    "MAX_CAP": fila.get("MAX_CAP"),
-                    "BLS_60": None,
-                    "API": None,
-                    "BSW": None,
-                    "S": None
-                }
+    mapa_js = {r.tk: {
+        "TK": r.tk,
+        "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto),
+        "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP")),
+        "BLS_60": r.bls_60,
+        "API": r.api,
+        "BSW": r.bsw,
+        "S": r.s
+    } for r in registros_ordenados if r.tk}
 
-        # Ordenar según orden deseado y filtrar únicamente los TK permitidos
-        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
-        orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
-        allowed_set = set(orden_deseado)
-        datos_planta_js = sorted(
-            [v for k, v in mapa_js.items() if k in allowed_set],
-            key=lambda d: orden_map.get(d.get("TK"), 99)
-        )
+    # Asegurar que todos los TK definidos por defecto existan
+    for fila in lista_definiciones:
+        tk = fila.get("TK")
+        if tk and tk not in mapa_js:
+            mapa_js[tk] = {
+                "TK": tk,
+                "PRODUCTO": fila.get("PRODUCTO"),
+                "MAX_CAP": fila.get("MAX_CAP"),
+                "BLS_60": None,
+                "API": None,
+                "BSW": None,
+                "S": None
+            }
+
+    # Ordenar según orden deseado y filtrar únicamente los TK permitidos
+    allowed_set = set(orden_deseado)
+    datos_planta_js = sorted(
+        [v for k, v in mapa_js.items() if k in allowed_set],
+        key=lambda d: orden_map.get(d.get("TK"), 99)
+    )
         
+    if registros_recientes:
         # La lógica para la fecha de actualización no cambia
         ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
         fecha_formato = ultimo_registro_general.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
@@ -5021,7 +5222,7 @@ def recargar_producto_siza():
                     observacion=obs_dian, 
                     usuario_registro=session.get('nombre', 'Sistema')
                 ))
-                flash(f'ℹ️ Registrada Merma: {vol_merma:,.3f} BBL. Descontado de DIAN.', 'info')
+                flash(f'?? Registrada Merma: {vol_merma:,.3f} BBL. Descontado de DIAN.', 'info')
 
         db.session.commit()
         
@@ -5177,7 +5378,7 @@ def editar_recarga_siza(recarga_id):
         
         db.session.commit()
         
-        flash(f'Recarga actualizada: {nuevo_volumen:,.0f} BBL (Δ {diff_volumen:+,.0f})', 'success')
+        flash(f'Recarga actualizada: {nuevo_volumen:,.0f} BBL (? {diff_volumen:+,.0f})', 'success')
         return jsonify({'success': True})
     except Exception as e:
         db.session.rollback()
@@ -5408,7 +5609,7 @@ def actualizar_volumen_dian():
             if agregar_aprobacion > 0:
                 # VALIDACIÓN INTELIGENTE:
                 if agregar_aprobacion > volumen_por_aprobar:
-                    flash(f'⚠️ Error Lógico: Estás intentando aprobar {agregar_aprobacion:,.2f} BBL, pero solo hay {volumen_por_aprobar:,.2f} BBL disponibles ({saldo_por_aprobar_previo} + ingresos).', 'danger')
+                    flash(f'?? Error Lógico: Estás intentando aprobar {agregar_aprobacion:,.2f} BBL, pero solo hay {volumen_por_aprobar:,.2f} BBL disponibles ({saldo_por_aprobar_previo} + ingresos).', 'danger')
                     return redirect(url_for('dashboard_siza'))
 
                 # Descontar del volumen por aprobar
@@ -5448,7 +5649,7 @@ def actualizar_volumen_dian():
         
         # Mensaje de confirmación
         if agregar_aprobacion > 0:
-            flash(f'✅ Nueva aprobación DIAN agregada: {agregar_aprobacion:,.3f} BBL. Total Aprobado: {volumen_dian.volumen_pendiente:,.3f} BBL', 'success')
+            flash(f'? Nueva aprobación DIAN agregada: {agregar_aprobacion:,.3f} BBL. Total Aprobado: {volumen_dian.volumen_pendiente:,.3f} BBL', 'success')
         else:
             flash(f'Control DIAN actualizado. Aprobado: {volumen_dian.volumen_pendiente:,.3f} | Por Aprobar: {volumen_dian.volumen_por_aprobar:,.3f}', 'success')
         
@@ -5491,7 +5692,7 @@ def eliminar_historial_dian_siza(id):
             db.session.delete(registro)
             db.session.commit()
             
-            flash(f'✅ Registro eliminado. Se restaron {registro.volumen_agregado:,.3f} BBL del aprobado y se devolvieron a pendiente.', 'success')
+            flash(f'? Registro eliminado. Se restaron {registro.volumen_agregado:,.3f} BBL del aprobado y se devolvieron a pendiente.', 'success')
         else:
             flash('No se encontró el registro de volumen diario asociado.', 'danger')
             
@@ -5505,14 +5706,14 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
     """Envía notificación por correo a Daniela y Shirli cuando hay un nuevo pedido."""
     destinatarios = ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']
 
-    asunto = f"🔔 Nuevo Pedido SIZA Pendiente: {pedido.numero_pedido}"
+    asunto = f"?? Nuevo Pedido SIZA Pendiente: {pedido.numero_pedido}"
     
     cuerpo = f"""
     Hola Daniela y Shirli,
 
     Se ha registrado un nuevo pedido en SIZA que requiere su atención.
 
-    📋 DETALLES DEL PEDIDO
+    ?? DETALLES DEL PEDIDO
     --------------------------------------------------
     Producto:      {producto_nombre}
     N° Pedido:     {pedido.numero_pedido}
@@ -5536,7 +5737,7 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
     smtp_password = os.getenv('SMTP_PASSWORD')
 
     if not smtp_password:
-        print(f"⚠️ [SIMULACIÓN CORREO] Faltan credenciales reales. Configurar SMTP_PASSWORD en Render.")
+        print(f"?? [SIMULACIÓN CORREO] Faltan credenciales reales. Configurar SMTP_PASSWORD en Render.")
         # No retornamos error, simplemente no enviamos el correo para no bloquear la app
         return
 
@@ -5554,12 +5755,12 @@ def enviar_alerta_nuevo_pedido(pedido, producto_nombre):
         text = msg.as_string()
         server.sendmail(smtp_user, destinatarios, text)
         server.quit()
-        print(f"✅ Notificación de correo enviada exitosamente a {destinatarios} desde {smtp_user}")
+        print(f"? Notificación de correo enviada exitosamente a {destinatarios} desde {smtp_user}")
 
 
     except Exception as e:
-        error_msg = f"⚠️ No se pudo enviar el correo: {str(e)}"
-        print(f"❌ {error_msg}")
+        error_msg = f"?? No se pudo enviar el correo: {str(e)}"
+        print(f"? {error_msg}")
         try:
             flash(error_msg, 'warning')
         except:
@@ -5570,17 +5771,17 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
     email_solicitante = obtener_email_usuario(pedido.usuario_registro)
     
     if not email_solicitante:
-        print(f"⚠️ No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
+        print(f"?? No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
         return
 
-    asunto = f"🚀 Pedido Despachado: {pedido.numero_pedido} - SIZA"
+    asunto = f"?? Pedido Despachado: {pedido.numero_pedido} - SIZA"
     
     cuerpo = f"""
     Hola {pedido.usuario_registro},
 
     Tu pedido ha sido DESPACHADO y procesado exitosamente.
 
-    📦 RESUMEN DEL DESPACHO
+    ?? RESUMEN DEL DESPACHO
     --------------------------------------------------
     N° Pedido:     {pedido.numero_pedido}
     Producto:      {producto_nombre}
@@ -5602,7 +5803,7 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
     smtp_password = os.getenv('SMTP_PASSWORD')
 
     if not smtp_password:
-        print(f"⚠️ [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
+        print(f"?? [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
         return
 
     try:
@@ -5618,10 +5819,10 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
         text = msg.as_string()
         server.sendmail(smtp_user, [email_solicitante], text) 
         server.quit()
-        print(f"✅ Notificación de despacho enviada a {email_solicitante}")
+        print(f"? Notificación de despacho enviada a {email_solicitante}")
     except Exception as e:
-        error_msg = f"⚠️ No se pudo enviar el correo de despacho: {str(e)}"
-        print(f"❌ {error_msg}")
+        error_msg = f"?? No se pudo enviar el correo de despacho: {str(e)}"
+        print(f"? {error_msg}")
         try:
             flash(error_msg, 'warning')
         except:
@@ -5633,7 +5834,7 @@ def siza_reset_fabrica():
     """Borra TODOS los datos transaccionales de SIZA para reiniciar."""
     # Doble verificación de seguridad
     if session.get('rol') != 'admin' and session.get('email') not in ['comex@conquerstrading.com', 'comexzf@conquerstrading.com']:
-        flash('⚠️ ACCESO DENEGADO: Solo administradores pueden reiniciar el sistema.', 'danger')
+        flash('?? ACCESO DENEGADO: Solo administradores pueden reiniciar el sistema.', 'danger')
         return redirect(url_for('dashboard_siza'))
 
     try:
@@ -5656,7 +5857,7 @@ def siza_reset_fabrica():
         
         db.session.commit()
         
-        mensaje = f'✅ SISTEMA SIZA REINICIADO: Se eliminaron {num_ped} pedidos, {num_rec} recargas y {num_con} consumos. El inventario empieza de 0.'
+        mensaje = f'? SISTEMA SIZA REINICIADO: Se eliminaron {num_ped} pedidos, {num_rec} recargas y {num_con} consumos. El inventario empieza de 0.'
         print(mensaje)
         flash(mensaje, 'success')
         
@@ -5738,14 +5939,14 @@ def registrar_pedido():
         # Mostrar mensaje según disponibilidad
         if volumen_solicitado > disponible_real:
             flash(
-                f'⚠️ ADVERTENCIA: Pedido {numero_pedido} registrado pero NO HAY CANTIDAD SUFICIENTE. '
+                f'?? ADVERTENCIA: Pedido {numero_pedido} registrado pero NO HAY CANTIDAD SUFICIENTE. '
                 f'Solicitado: {volumen_solicitado:,.0f} BBL | Disponible: {disponible_real:,.0f} BBL. '
                 f'Se requiere recarga de {producto.nombre} antes de aprobar este pedido.',
                 'warning'
             )
         else:
             flash(
-                f'✅ Pedido {numero_pedido} registrado exitosamente para {producto.nombre}: '
+                f'? Pedido {numero_pedido} registrado exitosamente para {producto.nombre}: '
                 f'{volumen_solicitado:,.0f} BBL. Disponible suficiente: {disponible_real:,.0f} BBL',
                 'success'
             )
@@ -5786,7 +5987,7 @@ def editar_pedido_siza(pedido_id):
             if nuevo_estado in ['PENDIENTE', 'APROBADO', 'RECHAZADO', 'COMPLETADO']:
                 estado_anterior = pedido.estado
                 pedido.estado = nuevo_estado
-                cambios.append(f'Estado: {estado_anterior} → {nuevo_estado}')
+                cambios.append(f'Estado: {estado_anterior} ? {nuevo_estado}')
             else:
                 flash('Estado inválido.', 'danger')
                 return redirect(url_for('dashboard_siza'))
@@ -5801,7 +6002,7 @@ def editar_pedido_siza(pedido_id):
                 if volumen_nuevo != pedido.volumen_solicitado:
                     volumen_anterior = pedido.volumen_solicitado
                     pedido.volumen_solicitado = volumen_nuevo
-                    cambios.append(f'Volumen: {volumen_anterior:,.0f} → {volumen_nuevo:,.0f} BBL')
+                    cambios.append(f'Volumen: {volumen_anterior:,.0f} ? {volumen_nuevo:,.0f} BBL')
             except ValueError:
                 flash('Volumen inválido.', 'danger')
                 return redirect(url_for('dashboard_siza'))
@@ -5887,7 +6088,7 @@ def consumir_pedidos_siza():
             else:
                 # No hay suficiente inventario para este pedido
                 flash(
-                    f'⚠️ Pedido {pedido.numero_pedido} no pudo ser consumido. '
+                    f'?? Pedido {pedido.numero_pedido} no pudo ser consumido. '
                     f'Requiere: {pedido.volumen_solicitado:,.0f} BBL | Disponible: {inventario.cupo_web:,.0f} BBL',
                     'warning'
                 )
@@ -5897,7 +6098,7 @@ def consumir_pedidos_siza():
         producto = ProductoSiza.query.get(producto_id)
         if pedidos_consumidos:
             flash(
-                f'✅ Consumo exitoso de {producto.nombre}. '
+                f'? Consumo exitoso de {producto.nombre}. '
                 f'Pedidos procesados: {len(pedidos_consumidos)} ({", ".join(pedidos_consumidos)}). '
                 f'Volumen total: {volumen_total_consumido:,.0f} BBL. '
                 f'Nuevo inventario: {inventario.cupo_web:,.0f} BBL',
@@ -5986,17 +6187,17 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
     email_solicitante = obtener_email_usuario(pedido.usuario_registro)
     
     if not email_solicitante:
-        print(f"⚠️ No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
+        print(f"?? No se encontró email para el usuario {pedido.usuario_registro}. No se envió notificación.")
         return
 
-    asunto = f"🚀 Pedido Despachado: {pedido.numero_pedido} - SIZA"
+    asunto = f"?? Pedido Despachado: {pedido.numero_pedido} - SIZA"
     
     cuerpo = f"""
     Hola {pedido.usuario_registro},
 
     Tu pedido ha sido DESPACHADO y procesado exitosamente.
 
-    📦 RESUMEN DEL DESPACHO
+    ?? RESUMEN DEL DESPACHO
     --------------------------------------------------
     N° Pedido:     {pedido.numero_pedido}
     Producto:      {producto_nombre}
@@ -6018,7 +6219,7 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
     smtp_password = os.getenv('SMTP_PASSWORD')
 
     if not smtp_password:
-        print(f"⚠️ [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
+        print(f"?? [SIMULACIÓN CORREO] Se enviaría a {email_solicitante}: {asunto}")
         return
 
     try:
@@ -6034,9 +6235,9 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
         text = msg.as_string()
         server.sendmail(smtp_user, [email_solicitante], text) 
         server.quit()
-        print(f"✅ Notificación de despacho enviada a {email_solicitante}")
+        print(f"? Notificación de despacho enviada a {email_solicitante}")
     except Exception as e:
-        print(f"❌ Error al enviar correo de despacho: {str(e)}")
+        print(f"? Error al enviar correo de despacho: {str(e)}")
 
 @login_required
 @permiso_requerido("siza_gestor")
@@ -8283,7 +8484,7 @@ def descargar_comparativo_kero_excel():
         fmt_delta_neg = wb.add_format({'font_color':'#c0392b'})
         # Hoja consolidada
         ws = wb.add_worksheet('Consolidado')
-        headers = ['Crudo','Producto','% Con','% Sin','Δ %','API Con','API Sin','Δ API','%S Con','%S Sin','Δ %S']
+        headers = ['Crudo','Producto','% Con','% Sin','? %','API Con','API Sin','? API','%S Con','%S Sin','? %S']
         for c,h in enumerate(headers): ws.write(0,c,h)
         row_idx=1
         for base, pair in grupos.items():
@@ -8563,7 +8764,7 @@ def api_calcular_rendimiento():
         if diferencia_sg > 0.05:
             balance_warning = {
                 "level": "warning",
-                "message": f"Balance de masa inconsistente: Δ SG = {diferencia_sg:.4f}",
+                "message": f"Balance de masa inconsistente: ? SG = {diferencia_sg:.4f}",
                 "sugerencia": "Revisa las temperaturas de corte o propiedades del crudo"
             }
 
@@ -8942,7 +9143,7 @@ def upload_remolcadores_excel():
         df = pd.read_excel(file)
         df.columns = [str(c).strip().title() for c in df.columns]
 
-        # ✅ 1. Renombrar 'Barco' a 'Nombre Del Barco' si la columna existe
+        # ? 1. Renombrar 'Barco' a 'Nombre Del Barco' si la columna existe
         if 'Barco' in df.columns:
             df.rename(columns={'Barco': 'Nombre Del Barco'}, inplace=True)
 
@@ -9095,7 +9296,7 @@ def get_registros_remolcadores():
 
         registros = query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
         
-        # --- ✅ INICIO DE LA LÓGICA CORREGIDA PARA CALCULAR EL TOTAL DE HORAS ---
+        # --- ? INICIO DE LA LÓGICA CORREGIDA PARA CALCULAR EL TOTAL DE HORAS ---
         duraciones_totales = {}
         if registros:
             # Agrupa todos los eventos por su ID de maniobra
@@ -9118,7 +9319,7 @@ def get_registros_remolcadores():
                     duraciones_totales[maniobra_id] = f"{int(horas)}h {int(minutos)}m"
                 else:
                     duraciones_totales[maniobra_id] = "En Proceso"
-        # --- ✅ FIN DE LA LÓGICA DE CÁLCULO ---
+        # --- ? FIN DE LA LÓGICA DE CÁLCULO ---
 
         data = []
         es_opensea = session.get('email') == 'opensea@conquerstrading.com'
@@ -9447,7 +9648,7 @@ def download_remolcadores_excel():
         # Ordenar es clave para agrupar correctamente
         registros = query.order_by(RegistroRemolcador.maniobra_id, RegistroRemolcador.hora_inicio).all()
 
-        # ✅ 2. AÑADIR LÓGICA PARA CALCULAR EL TOTAL DE HORAS POR MANIOBRA
+        # ? 2. AÑADIR LÓGICA PARA CALCULAR EL TOTAL DE HORAS POR MANIOBRA
         duraciones_totales = {}
         if registros:
             grupos = groupby(registros, key=lambda r: r.maniobra_id)
@@ -9467,7 +9668,7 @@ def download_remolcadores_excel():
                 else:
                     duraciones_totales[maniobra_id] = "En Proceso"
 
-        # ✅ 3. PREPARAR DATOS PARA EXCEL, INCLUYENDO LAS NUEVAS COLUMNAS
+        # ? 3. PREPARAR DATOS PARA EXCEL, INCLUYENDO LAS NUEVAS COLUMNAS
         datos_para_excel = [{
             "Maniobra ID": r.maniobra_id,
             "Barcaza": r.barcaza,
@@ -10319,7 +10520,7 @@ def buscar_reemplazar_programacion():
             r.ultimo_editor = session.get('nombre')
 
         db.session.commit()
-        return jsonify(success=True, message=f"Se actualizaron {count} registro(s). '{buscar}' → '{reemplazar}'", count=count)
+        return jsonify(success=True, message=f"Se actualizaron {count} registro(s). '{buscar}' ? '{reemplazar}'", count=count)
 
     except Exception as e:
         db.session.rollback()
@@ -12659,7 +12860,7 @@ def home_global():
 
 @app.route('/test')
 def test():
-    return "✅ El servidor Flask está funcionando"
+    return "? El servidor Flask está funcionando"
 @app.route('/debug/productos')
 
 def debug_productos():
@@ -12956,10 +13157,10 @@ class Producto(db.Model):
 
                     if ajustes:
                         lineas_reschedule = [
-                            '🙏 Hola, te habla Fisher 🐶. Lamentamos el cambio, ajustamos tu enturnamiento.',
+                            '?? Hola, te habla Fisher ??. Lamentamos el cambio, ajustamos tu enturnamiento.',
                             *ajustes,
                             'Si necesitas hablar con nuestro equipo humano, responde *asesor* y te contactamos.',
-                            '\n🏁 *Si todo está bien, esta conversación finaliza aquí. Escribe NUEVO para tu próximo enturne.*'
+                            '\n?? *Si todo está bien, esta conversación finaliza aquí. Escribe NUEVO para tu próximo enturne.*'
                         ]
                         message_to_send = '\n'.join(lineas_reschedule)
                         solicitud.mensaje = message_to_send
@@ -12995,7 +13196,7 @@ class Producto(db.Model):
                 solicitud.asesor_pendiente = False
                 solicitud.asesor_pendiente_desde = None
                 mensaje = (
-                    "❌ Fisher 🐶 olfateó que nos faltan datos para cerrar tu enturnamiento.\n"
+                    "? Fisher ?? olfateó que nos faltan datos para cerrar tu enturnamiento.\n"
                     "Enseguida uno de nuestros asesores humanos te contactará para completar el proceso juntos.\n"
                     "¡Gracias por tu paciencia y por confiar en Fisher!"
                 )
@@ -13329,9 +13530,9 @@ def aprobar_inscripcion_manual(id):
         current_app.logger.debug('No se pudo cancelar timeout previo para solicitud %s', solicitud.id)
 
     mensaje_confirmacion = (
-        "🎉 Fisher 🐶 olfateó que todo está en orden y movió la cola: ya quedaste inscrito con Conquers.\n"
-        "📄 Envía la foto de la guía como imagen o PDF para seguir con tu enturnamiento.\n"
-        "🛑 Recuerda estacionar el camión antes de responderme, yo espero aquí."
+        "?? Fisher ?? olfateó que todo está en orden y movió la cola: ya quedaste inscrito con Conquers.\n"
+        "?? Envía la foto de la guía como imagen o PDF para seguir con tu enturnamiento.\n"
+        "?? Recuerda estacionar el camión antes de responderme, yo espero aquí."
     )
     try:
         send_whatsapp_message(solicitud.telefono, mensaje_confirmacion)
@@ -13390,7 +13591,7 @@ def rechazar_inscripcion_manual(id):
         current_app.logger.debug('No se pudo cancelar timeout previo para solicitud %s', solicitud.id)
 
     mensaje_cancelacion = (
-        "❌ Fisher 🐶 olfateó un cambio de planes: este enturnamiento se cancela aquí.\n"
+        "? Fisher ?? olfateó un cambio de planes: este enturnamiento se cancela aquí.\n"
         "Si necesitas iniciar uno nuevo, escribe NUEVO y arrancamos juntos cuando quieras."
     )
     try:
@@ -13452,7 +13653,7 @@ def resolver_ubicacion_pendiente(id):
                 solicitud.paso_bosconia = True
                 siguiente_step = 6
                 mensaje = (
-                    "✅ Nuestro equipo revisó la ubicación de Bosconia y la aprobó. "
+                    "? Nuestro equipo revisó la ubicación de Bosconia y la aprobó. "
                     "Continúa con el proceso enviando el ticket o la siguiente información."
                 )
             elif tipo == 'gambote':
@@ -13461,7 +13662,7 @@ def resolver_ubicacion_pendiente(id):
                 solicitud.paso_gambote = True
                 siguiente_step = 9
                 mensaje = (
-                    "✅ Validamos la ubicación de Gambote y está aprobada. "
+                    "? Validamos la ubicación de Gambote y está aprobada. "
                     "Tu solicitud sigue avanzando."
                 )
             else:
@@ -13491,13 +13692,13 @@ def resolver_ubicacion_pendiente(id):
         if tipo == 'bosconia':
             siguiente_step = STEP_AWAIT_GPS_BOSCONIA
             mensaje = (
-                "❌ Revisamos la ubicación y no coincide con Bosconia. "
+                "? Revisamos la ubicación y no coincide con Bosconia. "
                 "Envía una nueva ubicación en tiempo real desde Bosconia para continuar."
             )
         elif tipo == 'gambote':
             siguiente_step = STEP_AWAIT_GPS_GAMBOTE
             mensaje = (
-                "❌ Nuestro equipo revisó la ubicación y no corresponde a Gambote. "
+                "? Nuestro equipo revisó la ubicación y no corresponde a Gambote. "
                 "Compártela nuevamente desde el peaje para poder continuar."
             )
         else:
@@ -13732,7 +13933,7 @@ def validar_ubicacion_gps(lat, lng, punto_control, radio_km=10, ruta_alterna=Fal
     mensaje_base = f"Distancia a {punto['nombre']}: {distancia:.2f} km"
 
     if distancia <= radio_km:
-        mensaje = f"{mensaje_base} ✅ Válido (dentro de {radio_km} km)"
+        mensaje = f"{mensaje_base} ? Válido (dentro de {radio_km} km)"
         return {
             'valido': True,
             'distancia': distancia,
@@ -13763,7 +13964,7 @@ def validar_ubicacion_gps(lat, lng, punto_control, radio_km=10, ruta_alterna=Fal
 
     if corredor_valido:
         mensaje = (
-            f"{mensaje_base} ⚠️ Fuera del radio inmediato ({radio_km} km), "
+            f"{mensaje_base} ?? Fuera del radio inmediato ({radio_km} km), "
             "pero se detecta después del punto de control. "
             f"Desvío lateral: {corredor_valido['desviacion']:.1f} km."
         )
@@ -13808,7 +14009,7 @@ def validar_ubicacion_gps(lat, lng, punto_control, radio_km=10, ruta_alterna=Fal
                 distancia_destino = _distancia_km(lat, lng, destino_info['lat'], destino_info['lng'])
                 if distancia_destino <= max_km and distancia_destino < distancia:
                     mensaje = (
-                        f"{mensaje_base} ⚠️ Fuera del radio inmediato, pero ya estás "
+                        f"{mensaje_base} ?? Fuera del radio inmediato, pero ya estás "
                         f"más cerca de {destino_info.get('nombre', 'el siguiente punto')} ({distancia_destino:.2f} km). "
                         "Marcamos el control como cumplido."
                     )
@@ -13823,7 +14024,7 @@ def validar_ubicacion_gps(lat, lng, punto_control, radio_km=10, ruta_alterna=Fal
                         resultado['skip_next'] = entry['skip_next']
                     return resultado
 
-    mensaje = f"{mensaje_base} ❌ Inválido (fuera de {radio_km} km)"
+    mensaje = f"{mensaje_base} ? Inválido (fuera de {radio_km} km)"
     return {
         'valido': False,
         'distancia': distancia,
@@ -13872,12 +14073,12 @@ def validar_secuencia_gps(solicitud):
         if detalles['gambote']['valido']:
             detalles['secuencia'] = {
                 'valido': True, 
-                'mensaje': '✅ Ruta alterna válida: Se validó la ubicación de Gambote'
+                'mensaje': '? Ruta alterna válida: Se validó la ubicación de Gambote'
             }
         else:
             detalles['secuencia'] = {
                 'valido': False, 
-                'mensaje': '❌ Ruta alterna inválida: Falta validar la ubicación de Gambote'
+                'mensaje': '? Ruta alterna inválida: Falta validar la ubicación de Gambote'
             }
     else:
         # Ruta normal: Bosconia y Gambote
@@ -13886,17 +14087,17 @@ def validar_secuencia_gps(solicitud):
         if ambos_validos:
             detalles['secuencia'] = {
                 'valido': True, 
-                'mensaje': '✅ Secuencia GPS válida: Bosconia → Gambote'
+                'mensaje': '? Secuencia GPS válida: Bosconia ? Gambote'
             }
         elif detalles['bosconia']['valido'] and not detalles['gambote']['valido']:
             detalles['secuencia'] = {
                 'valido': False, 
-                'mensaje': '❌ Bosconia válido, Gambote faltante o inválido'
+                'mensaje': '? Bosconia válido, Gambote faltante o inválido'
             }
         else:
             detalles['secuencia'] = {
                 'valido': False, 
-                'mensaje': '❌ Secuencia GPS incompleta o inválida'
+                'mensaje': '? Secuencia GPS incompleta o inválida'
             }
     
     mensaje_general = detalles['secuencia']['mensaje']
@@ -14250,13 +14451,13 @@ def enviar_mensaje_conductor(id):
             if not mensaje:
                 if analisis_faltantes['total_faltantes'] == 1:
                     mensaje = (
-                        "Fisher 🐶 detectó un pendiente y te guiará enseguida:\n\n"
+                        "Fisher ?? detectó un pendiente y te guiará enseguida:\n\n"
                         f"{analisis_faltantes['mensajes_recomendados'][0]}\n\n"
                         "Cuando lo envíes, avanzamos automáticamente al siguiente paso."
                     )
                 else:
                     partes = [
-                        "Fisher 🐶 revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
+                        "Fisher ?? revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
                     ]
                     for idx, texto_faltante in enumerate(analisis_faltantes['mensajes_recomendados'], 1):
                         partes.append(f"{idx}. {texto_faltante}\n\n")
@@ -14280,7 +14481,7 @@ def enviar_mensaje_conductor(id):
         else:
             mensaje_completo = mensaje
             if urgente and mensaje_completo:
-                mensaje_completo = f"🚨 {mensaje_completo}"
+                mensaje_completo = f"?? {mensaje_completo}"
             
             exito = send_whatsapp_message(
                 solicitud.telefono,
@@ -14444,22 +14645,22 @@ def analizar_datos_faltantes(solicitud):
     # Verificar guía/manifiesto
     if not solicitud.imagen_guia and not solicitud.imagen_manifiesto:
         datos_faltantes.append("guía")
-        mensajes_recomendados.append("📄 Te falta enviar la foto de la guía de transporte. Por favor, envíala ahora para continuar con tu enturnamiento.")
+        mensajes_recomendados.append("?? Te falta enviar la foto de la guía de transporte. Por favor, envíala ahora para continuar con tu enturnamiento.")
     
     # Verificar ubicación Bosconia
     if not solicitud.paso_bosconia or not solicitud.ubicacion_lat or not solicitud.ubicacion_lng:
         datos_faltantes.append("ubicación Bosconia")
-        mensajes_recomendados.append("📍 Te falta validar tu ubicación en Bosconia. Por favor, comparte tu ubicación GPS cuando pases por Bosconia.")
+        mensajes_recomendados.append("?? Te falta validar tu ubicación en Bosconia. Por favor, comparte tu ubicación GPS cuando pases por Bosconia.")
     
     # Verificar ticket Gambote
     if not solicitud.ticket_gambote:
         datos_faltantes.append("ticket Gambote")
-        mensajes_recomendados.append("🎫 Te falta enviar la foto del ticket de peaje de Gambote. Por favor, envíala para continuar.")
+        mensajes_recomendados.append("?? Te falta enviar la foto del ticket de peaje de Gambote. Por favor, envíala para continuar.")
     
     # Verificar ubicación Gambote
     if not solicitud.paso_gambote or not solicitud.ubicacion_gambote_lat or not solicitud.ubicacion_gambote_lng:
         datos_faltantes.append("ubicación Gambote")
-        mensajes_recomendados.append("📍 Te falta validar tu ubicación en Gambote. Por favor, comparte tu ubicación GPS cuando pases por el peaje de Gambote.")
+        mensajes_recomendados.append("?? Te falta validar tu ubicación en Gambote. Por favor, comparte tu ubicación GPS cuando pases por el peaje de Gambote.")
     
     return {
         'datos_faltantes': datos_faltantes,
@@ -14535,13 +14736,13 @@ def enviar_recordatorio_inteligente(id):
         # Generar mensaje inteligente
         if analisis['total_faltantes'] == 1:
             mensaje = (
-                "Fisher 🐶 detectó un pendiente y te guiará enseguida:\n\n"
+                "Fisher ?? detectó un pendiente y te guiará enseguida:\n\n"
                 f"{analisis['mensajes_recomendados'][0]}\n\n"
                 "Cuando lo envíes, avanzamos automáticamente al siguiente paso."
             )
         else:
             partes = [
-                "Fisher 🐶 revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
+                "Fisher ?? revisó tu proceso y encontró varios pendientes. Te acompañaré paso a paso:\n\n"
             ]
             for i, msg in enumerate(analisis['mensajes_recomendados'], 1):
                 partes.append(f"{i}. {msg}\n\n")
@@ -15308,10 +15509,10 @@ def build_enturnado_message(solicitud):
     
     # Mensaje ingenioso con Fisher
     mensaje_fisher = (
-        "✅ *Turno Confirmado*\n\n"
-        f"📅 Fecha: {fecha_descargue_texto}\n"
-        f"📍 Lugar: {lugar_texto}\n"
-        "ℹ️ Turno interno por orden de llegada.\n\n"
+        "? *Turno Confirmado*\n\n"
+        f"?? Fecha: {fecha_descargue_texto}\n"
+        f"?? Lugar: {lugar_texto}\n"
+        "?? Turno interno por orden de llegada.\n\n"
         "Buen viaje."
     )
     
@@ -15373,7 +15574,7 @@ def validar_y_guardar_ubicacion(telefono, lat, lng, ubicacion_tipo, session, nex
             db.session.commit()
         reset_contextual_memory(session)
 
-        send_whatsapp_message(telefono, f"✅ Ubicación en {ubicacion_tipo.title()} validada.\n{validacion['mensaje']}")
+        send_whatsapp_message(telefono, f"? Ubicación en {ubicacion_tipo.title()} validada.\n{validacion['mensaje']}")
         if validacion.get('skip_next') == 'gambote':
             session['step'] = 9  # Ir directo a confirmación final
         else:
@@ -15420,7 +15621,7 @@ def guardar_imagen_whatsapp(telefono, media_payload, tipo_imagen, session):
                 reset_contextual_memory(session)
         else:
             print(f"Error guardando imagen {tipo_imagen} para {telefono}")
-            send_whatsapp_message(telefono, "⚠️ Hubo un problema descargando el archivo. Por favor, intenta reenviarlo en unos segundos.")
+            send_whatsapp_message(telefono, "?? Hubo un problema descargando el archivo. Por favor, intenta reenviarlo en unos segundos.")
     else:
         print(f"No se recibió URL de imagen para {tipo_imagen} de {telefono}")
 
@@ -15485,11 +15686,11 @@ def enviar_mensaje_ubicacion_invalida(telefono, ubicacion, lat=None, lng=None, v
         )
     else:
         cuerpo = (
-            "Fisher 🐶 no reconoció la ubicación enviada. "
+            "Fisher ?? no reconoció la ubicación enviada. "
             f"{instruccion} Espera un momento mientras validamos tus datos."
         )
 
-    mensaje = f"❌ {cuerpo}"
+    mensaje = f"? {cuerpo}"
     send_whatsapp_message(
         telefono,
         mensaje,
@@ -15593,11 +15794,11 @@ STEP_TIMEOUT_CONFIG = {
         'timeout': 10,
         'warning_before': 5,
         'warning_message': (
-            "Fisher 🐶 nota que llevas un rato sin confirmar tus datos. ¿Sigues ahí? "
+            "Fisher ?? nota que llevas un rato sin confirmar tus datos. ¿Sigues ahí? "
             "Respóndeme 'sí' si todo está bien o 'no' si quieres corregirlos."
         ),
         'timeout_message': (
-            "😴 Fisher cerró esta confirmación porque pasaron 10 minutos sin respuesta. "
+            "?? Fisher cerró esta confirmación porque pasaron 10 minutos sin respuesta. "
             "Escribe NUEVO para volver a revisar tus datos cuando estés listo."
         )
     },
@@ -15605,11 +15806,11 @@ STEP_TIMEOUT_CONFIG = {
         'timeout': 10,
         'warning_before': 5,
         'warning_message': (
-            "Fisher 🐶 sigue esperando tu confirmación manual. ¿Todo está correcto? "
+            "Fisher ?? sigue esperando tu confirmación manual. ¿Todo está correcto? "
             "Respóndeme 'sí' para guardar los datos o 'no' para ajustarlos."
         ),
         'timeout_message': (
-            "😴 Cerré esta confirmación manual porque no recibí respuesta en 10 minutos. "
+            "?? Cerré esta confirmación manual porque no recibí respuesta en 10 minutos. "
             "Cuando quieras retomarla, escribe NUEVO y volvemos a registrar tus datos."
         )
     }
@@ -15646,7 +15847,7 @@ def build_confirmation_summary(solicitud):
     datos = get_solicitud_data(solicitud)
     if not datos:
         return (
-            "🐶 Fisher 🐶: Por favor confirma que todos tus datos son correctos. "
+            "?? Fisher ??: Por favor confirma que todos tus datos son correctos. "
             "Responde 'sí' para confirmar."
         )
 
@@ -15655,16 +15856,16 @@ def build_confirmation_summary(solicitud):
 
     tiene_guia = datos.get('imagen_guia') or datos.get('imagen_manifiesto')
     resumen = (
-        "✅ Datos completos:\n\n"
+        "? Datos completos:\n\n"
         f"Nombre: {datos.get('nombre_completo') or '-'}\n"
         f"Cédula: {datos.get('cedula') or '-'}\n"
         f"Placa: {datos.get('placa') or '-'}\n"
         f"Placa remolque: {datos.get('placa_remolque') or '-'}\n"
         f"Celular: {datos.get('celular') or '-'}\n"
         f"Guía: {_status(tiene_guia, 'recibida', 'pendiente')}\n"
-        f"Ubicación Bosconia: {_status(datos.get('paso_bosconia'), '✅ validada', 'pendiente')}\n"
+        f"Ubicación Bosconia: {_status(datos.get('paso_bosconia'), '? validada', 'pendiente')}\n"
         f"Ticket Gambote: {_status(datos.get('ticket_gambote'), 'recibido', 'pendiente')}\n"
-        f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '✅ validada', 'pendiente')}\n\n"
+        f"Ubicación Gambote: {_status(datos.get('paso_gambote'), '? validada', 'pendiente')}\n\n"
         "¿Confirmas el envío a revisión? (Sí / No)"
     )
     return resumen
@@ -15672,7 +15873,7 @@ def build_confirmation_summary(solicitud):
 
 # Recordatorio de seguridad para los conductores antes de responder.
 SAFETY_REMINDER_VARIANTS = (
-    "\n\n🛑 *Por seguridad: Detén el vehículo antes de responder.*"
+    "\n\n?? *Por seguridad: Detén el vehículo antes de responder.*"
 )
 WHATSAPP_SAFETY_REMINDER = SAFETY_REMINDER_VARIANTS[0]
 
@@ -15688,7 +15889,7 @@ try:
     SAFETY_REMINDER_INTERVAL = int(os.environ.get('WHATSAPP_REMINDER_EVERY', 3)) or 3
 except (TypeError, ValueError):
     SAFETY_REMINDER_INTERVAL = 3
-IMPORTANT_REMINDER_EMOJIS = ('⚠', '🚨')
+IMPORTANT_REMINDER_EMOJIS = ('?', '??')
 IMPORTANT_REMINDER_KEYWORDS = (
     'urgente',
     'precaucion',
@@ -15722,11 +15923,11 @@ def compose_contextual_hint(session, step, hint):
 
     count = tracker[step_key]
     if count == 1:
-        lead = "Fisher 🐶 no logró entender este mensaje."
+        lead = "Fisher ?? no logró entender este mensaje."
     elif count == 2:
-        lead = "Fisher 🐶 sigue esperando esa información exacta."
+        lead = "Fisher ?? sigue esperando esa información exacta."
     else:
-        lead = "Fisher 🐶 necesita esa información para continuar."
+        lead = "Fisher ?? necesita esa información para continuar."
 
     return f"{lead} {hint}"
 
@@ -15787,7 +15988,7 @@ def _maybe_append_safety_reminder(mensaje, telefono=None, force=False, skip=Fals
         return mensaje
     if REMINDER_SENTINEL in mensaje:
         return mensaje
-    if mensaje.startswith("✅ Ubicación en"):
+    if mensaje.startswith("? Ubicación en"):
         return mensaje
     if "Tus datos han sido enviados para revisión" in mensaje:
         return mensaje
@@ -16070,7 +16271,7 @@ def handle_step_welcome(telefono, texto, tipo, msg, session):
     if 'asesor' in texto_normalizado:
         send_whatsapp_message(
             telefono,
-            "Entendido. Un asesor humano te contactará pronto. 🐶"
+            "Entendido. Un asesor humano te contactará pronto. ??"
         )
         solicitud = session.get('solicitud')
         if solicitud:
@@ -16133,7 +16334,7 @@ def handle_step_welcome(telefono, texto, tipo, msg, session):
     if intentos >= 2:
         send_whatsapp_message(
             telefono,
-            "Fisher 🐶 no recibió una respuesta válida. Cierro la conversación por ahora; escribe 'REINICIAR' cuando quieras comenzar de nuevo."
+            "Fisher ?? no recibió una respuesta válida. Cierro la conversación por ahora; escribe 'REINICIAR' cuando quieras comenzar de nuevo."
         )
         reset_safety_reminder_counter(telefono)
         reset_contextual_memory(session)
@@ -16187,7 +16388,7 @@ def handle_step_await_placa(telefono, texto, tipo, msg, session):
         reset_contextual_memory(session)
         return None
     else:
-        mensaje = f"Placa {placa} no encontrada. ¿La escribiste correctamente? 🐶"
+        mensaje = f"Placa {placa} no encontrada. ¿La escribiste correctamente? ??"
         # Guardar la placa original en la solicitud
         solicitud = session.get('solicitud')
         if solicitud:
@@ -16211,7 +16412,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_positive(texto):
         send_whatsapp_message(
             telefono,
-            "Te registro manualmente. Escribe tu nombre completo. 🐶"
+            "Te registro manualmente. Escribe tu nombre completo. ??"
         )
         session['step'] = STEP_MANUAL_REG_NAME
         configurar_timeout_session(session, 30)
@@ -16221,7 +16422,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
     if is_confirmation_negative(texto):
         send_whatsapp_message(
             telefono,
-            "Escribe la placa nuevamente. 🐶"
+            "Escribe la placa nuevamente. ??"
         )
         session['step'] = STEP_AWAIT_PLACA
         configurar_timeout_session(session, 10)
@@ -16230,7 +16431,7 @@ def handle_step_confirm_unknown_placa(telefono, texto, tipo, msg, session):
 
     send_yes_no_prompt(
         telefono,
-        "Confirma si la placa está correcta. 🐶",
+        "Confirma si la placa está correcta. ??",
         context_label='CONFIRM_UNKNOWN_PLACA_RETRY'
     )
     configurar_timeout_session(session, 5)
