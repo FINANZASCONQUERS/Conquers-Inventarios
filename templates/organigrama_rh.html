@@ -715,7 +715,7 @@
     </div>
 
     <div class="org-header-card">
-        <h2 id="headerCompanyName">Conquers Trading S.A.S</h2>
+        <h2 id="headerCompanyName">Conquers Trading Groups</h2>
         <p>Organigrama Corporativo</p>
     </div>
 
@@ -816,7 +816,7 @@
                 <input type="text" id="editTitle" class="form-control form-control-sm">
             </div>
             <div class="mb-2">
-                <label class="form-label small fw-semibold">Área</label>
+                <label class="form-label small fw-semibold">Empresa</label>
                 <input type="text" id="editSubtitle" class="form-control form-control-sm">
             </div>
             <div class="mb-2">
@@ -1522,7 +1522,7 @@
                 document.getElementById('headerCompanyName').innerText = set.name;
                 document.getElementById('inputBgColor').value = set.bg;
                 if (set.bg) document.getElementById('workspace').style.backgroundColor = set.bg;
-            } else { document.getElementById('inputCompanyName').value = 'Conquers Trading S.A.S'; }
+            } else { document.getElementById('inputCompanyName').value = 'Conquers Trading Groups'; }
 
             // Set background image
             const ws = document.getElementById('workspace');
@@ -1540,8 +1540,8 @@
             ['org_nodes_v10', 'org_counter_v10', 'org_settings', 'org_viewMode'].forEach(k => localStorage.removeItem(k));
             viewMode = 'both';
             buildInitialData(); calculateLayout(); render();
-            document.getElementById('inputCompanyName').value = 'Conquers Trading S.A.S';
-            document.getElementById('headerCompanyName').innerText = 'Conquers Trading S.A.S';
+            document.getElementById('inputCompanyName').value = 'Conquers Trading Groups';
+            document.getElementById('headerCompanyName').innerText = 'Conquers Trading Groups';
             const ws = document.getElementById('workspace');
             ws.style.background = '#f0f4f8';
             document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
