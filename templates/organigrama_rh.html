@@ -1,0 +1,1596 @@
+{% extends "base.html" %}
+
+{% block title %}Organigrama Corporativo | Conquers Trading{% endblock %}
+
+{% block container_class %}container-fluid p-0{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --org-primary: #0a7c5d;
+        --org-primary-dark: #076249;
+        --org-text-dark: #1e293b;
+        --org-text-light: #64748b;
+        --org-border: #e2e8f0;
+        --org-box-bg: #ffffff;
+        --org-canvas-bg: #f0f4f8;
+        --org-line-color: #94a3b8;
+        --cwt-primary: #0099E0;
+        --cwt-light: #BFE4FF;
+        --cwt-dark: #0077B0;
+        --zf-primary: #FFB800;
+        --zf-light: #FFF2CC;
+        --zf-dark: #CC9300;
+    }
+
+    .dark-mode {
+        --org-text-dark: #f1f5f9;
+        --org-text-light: #cbd5e1;
+        --org-border: #334155;
+        --org-box-bg: #1e293b;
+        --org-canvas-bg: #0f172a;
+        --org-line-color: #475569;
+    }
+
+    .organigrama-wrapper {
+        position: relative;
+        height: calc(100vh - 85px);
+        overflow: hidden;
+        background: var(--org-canvas-bg);
+        cursor: grab;
+        width: 100%;
+    }
+
+    .organigrama-wrapper:active {
+        cursor: grabbing;
+    }
+
+    .org-chart-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: 0 0;
+    }
+
+    .connections-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 12000px;
+        height: 12000px;
+        pointer-events: none;
+        z-index: 1;
+        overflow: visible;
+    }
+
+    .connection-line {
+        stroke: var(--org-line-color);
+        stroke-width: 2px;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    /* ORG BOX */
+    .org-box {
+        position: absolute;
+        width: 260px;
+        background: var(--org-box-bg);
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        overflow: visible;
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+
+    .org-box:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 2px var(--org-primary);
+        transform: translateY(-2px);
+        z-index: 11;
+    }
+
+    .org-box.selected {
+        box-shadow: 0 0 0 3px rgba(10, 124, 93, 0.3), 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .box-header {
+        padding: 14px 16px;
+        border-radius: 12px 12px 0 0;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+        min-height: 64px;
+        flex-wrap: wrap;
+    }
+
+    /* Company logo in header */
+    .company-logo {
+        height: 36px;
+        width: auto;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+
+    /* Avatar for person */
+    .box-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        overflow: hidden;
+        cursor: pointer;
+    }
+
+    .box-avatar:hover {
+        transform: scale(1.1);
+    }
+
+    .box-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+
+    /* Group icon */
+    .group-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+    }
+
+    .box-info {
+        flex: 1;
+        overflow: hidden;
+        min-width: 0;
+    }
+
+    .box-title {
+        font-weight: 700;
+        font-size: 0.82rem;
+        line-height: 1.2;
+        margin-bottom: 2px;
+    }
+
+    .box-subtitle {
+        font-size: 0.72rem;
+        opacity: 0.9;
+    }
+
+    .box-employee {
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 3px;
+        opacity: 0.95;
+    }
+
+    .box-members {
+        font-size: 0.65rem;
+        margin-top: 4px;
+        opacity: 0.85;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .box-body {
+        padding: 8px 16px 10px;
+        font-size: 0.72rem;
+        color: var(--org-text-light);
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border-top: 1px solid var(--org-border);
+    }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .box-controls {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        display: flex;
+        gap: 3px;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .org-box:hover .box-controls {
+        opacity: 1;
+    }
+
+    .btn-icon-mini {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        border: none;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-icon-mini:hover {
+        background: white;
+        transform: scale(1.1);
+    }
+
+    .btn-collapse {
+        position: absolute;
+        bottom: -14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid var(--org-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 20;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+        color: var(--org-text-dark);
+        font-size: 0.8rem;
+    }
+
+    .btn-collapse:hover {
+        background: var(--org-primary);
+        color: white;
+        border-color: var(--org-primary);
+    }
+
+    /* COMPANY COLORS */
+    .bg-corp-top {
+        background: linear-gradient(135deg, #4B5563, #6B7280);
+    }
+
+    .bg-corp-audit {
+        background: linear-gradient(135deg, #5b21b6, #7c3aed);
+    }
+
+    .bg-cwt {
+        background: linear-gradient(135deg, var(--cwt-dark), var(--cwt-primary));
+    }
+
+    .bg-cwt-light {
+        background: linear-gradient(135deg, var(--cwt-primary), #33adee);
+    }
+
+    .bg-zf {
+        background: linear-gradient(135deg, var(--zf-dark), var(--zf-primary));
+        color: #1e293b !important;
+    }
+
+    .bg-zf-light {
+        background: linear-gradient(135deg, var(--zf-primary), #ffc933);
+        color: #1e293b !important;
+    }
+
+    .bg-zf .box-title,
+    .bg-zf .box-subtitle,
+    .bg-zf .box-employee,
+    .bg-zf-light .box-title,
+    .bg-zf-light .box-subtitle,
+    .bg-zf-light .box-employee {
+        color: #1e293b !important;
+    }
+
+    /* TOOLBAR */
+    .toolbar-overlay {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 100;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .toolbar-overlay .btn {
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 7px 14px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .toolbar-overlay .btn-primary {
+        background: var(--org-primary);
+        border-color: var(--org-primary);
+    }
+
+    .toolbar-overlay .btn-primary:hover {
+        background: var(--org-primary-dark);
+        border-color: var(--org-primary-dark);
+    }
+
+    .view-mode-bar {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        display: flex;
+        gap: 4px;
+        background: white;
+        padding: 4px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode .view-mode-bar {
+        background: var(--org-box-bg);
+    }
+
+    .view-mode-bar .btn {
+        font-size: 0.78rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 7px;
+        border: none;
+    }
+
+    .view-mode-bar .btn.active-view {
+        background: var(--org-primary) !important;
+        color: white !important;
+    }
+
+    .org-header-card {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+        z-index: 100;
+        background: white;
+        padding: 10px 18px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        border-left: 4px solid var(--org-primary);
+    }
+
+    .dark-mode .org-header-card {
+        background: var(--org-box-bg);
+    }
+
+    .org-header-card h2 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--org-primary);
+        margin: 0;
+    }
+
+    .org-header-card p {
+        font-size: 0.75rem;
+        color: var(--org-text-light);
+        margin: 0;
+    }
+
+    .zoom-controls {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        background: white;
+        border-radius: 10px;
+        padding: 6px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .dark-mode .zoom-controls {
+        background: var(--org-box-bg);
+    }
+
+    .zoom-controls button {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--org-text-dark);
+    }
+
+    .zoom-controls button:hover {
+        background: rgba(10, 124, 93, 0.1);
+    }
+
+    .zoom-label {
+        font-size: 0.65rem;
+        text-align: center;
+        color: var(--org-text-light);
+        font-weight: 600;
+        padding: 2px 0;
+    }
+
+    /* Footer logo */
+    .org-footer-logo {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        background: white;
+        padding: 10px 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .dark-mode .org-footer-logo {
+        background: var(--org-box-bg);
+    }
+
+    .org-footer-logo img {
+        height: 40px;
+        width: auto;
+    }
+
+    .sidebar {
+        position: fixed;
+        right: -360px;
+        top: 85px;
+        height: calc(100% - 85px);
+        width: 360px;
+        background: var(--org-box-bg);
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+        z-index: 1040;
+        transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .sidebar.open {
+        right: 0;
+    }
+
+    .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--org-border);
+    }
+
+    .sidebar-section {
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--org-border);
+    }
+
+    .palette-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .palette-item {
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 3px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .palette-item:hover,
+    .palette-item.active {
+        border-color: var(--org-text-dark);
+        transform: scale(1.08);
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(3px);
+        z-index: 2000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.open {
+        display: flex;
+    }
+
+    .modal-box {
+        background: var(--org-box-bg);
+        padding: 24px;
+        border-radius: 12px;
+        width: 460px;
+        max-width: 90%;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .photo-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 3000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        flex-direction: column;
+    }
+
+    .photo-modal.open {
+        display: flex;
+    }
+
+    .photo-modal img {
+        max-width: 450px;
+        max-height: 450px;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .photo-modal .photo-info {
+        margin-top: 20px;
+        background: white;
+        padding: 16px 32px;
+        border-radius: 12px;
+        text-align: center;
+    }
+
+    .photo-modal .photo-info h4 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #1e293b;
+    }
+
+    .photo-modal .photo-info p {
+        margin: 4px 0 0;
+        font-size: 0.85rem;
+        color: #64748b;
+    }
+
+    .toast-custom {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        padding: 10px 24px;
+        background: var(--org-primary);
+        color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(10, 124, 93, 0.3);
+        transition: transform 0.3s;
+        z-index: 3000;
+        font-weight: 600;
+        font-size: 0.82rem;
+    }
+
+    .toast-custom.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .export-loading {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 5000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .export-loading-box {
+        background: white;
+        padding: 30px 50px;
+        border-radius: 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        text-align: center;
+    }
+
+    .export-loading-box .spinner-border {
+        color: var(--org-primary);
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .photo-upload-area {
+        border: 2px dashed var(--org-border);
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+        cursor: pointer;
+        transition: border-color 0.2s, background 0.2s;
+    }
+
+    .photo-upload-area:hover {
+        border-color: var(--org-primary);
+        background: rgba(10, 124, 93, 0.05);
+    }
+
+    .photo-upload-area img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        margin-bottom: 6px;
+    }
+
+    .photo-upload-area .upload-icon {
+        font-size: 1.8rem;
+        color: var(--org-text-light);
+    }
+
+    .modal-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid var(--org-border);
+        padding-bottom: 8px;
+    }
+
+    .modal-tabs .tab-btn {
+        background: none;
+        border: none;
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--org-text-light);
+        cursor: pointer;
+        border-radius: 6px;
+    }
+
+    .modal-tabs .tab-btn:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    .modal-tabs .tab-btn.active {
+        background: var(--org-primary);
+        color: white;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="organigrama-wrapper" id="workspace">
+    <div class="view-mode-bar" id="viewModeBar" style="display:none;">
+        <button class="btn btn-light" onclick="setViewMode('both')" id="btnBoth">🏢 Ambos</button>
+        <button class="btn btn-light" onclick="setViewMode('zf')" id="btnZF">⬛ Solo ZF</button>
+        <button class="btn btn-light" onclick="setViewMode('cwt')" id="btnCWT">⬛ Solo CWT</button>
+    </div>
+
+    <div class="toolbar-overlay">
+        <button class="btn btn-light border" onclick="resetLocalData()"><i
+                class="bi bi-arrow-counterclockwise me-1"></i>Resetear</button>
+        <button class="btn btn-light border" onclick="toggleSidebar()"><i
+                class="bi bi-gear-fill me-1"></i>Ajustes</button>
+        <button class="btn btn-primary" onclick="exportToImage()"><i class="bi bi-download me-1"></i>Exportar
+            PNG</button>
+    </div>
+
+    <div class="org-header-card">
+        <h2 id="headerCompanyName">Conquers Trading S.A.S</h2>
+        <p>Organigrama Corporativo</p>
+    </div>
+
+    <div class="zoom-controls">
+        <button onclick="zoomIn()"><i class="bi bi-plus-lg"></i></button>
+        <div class="zoom-label" id="zoomLabel">85%</div>
+        <button onclick="zoomOut()"><i class="bi bi-dash-lg"></i></button>
+        <div class="zoom-divider"></div>
+        <button onclick="fitToScreen()"><i class="bi bi-arrows-fullscreen"></i></button>
+        <button onclick="centerView()"><i class="bi bi-bullseye"></i></button>
+    </div>
+
+    <!-- Footer logo -->
+    <div class="org-footer-logo">
+        <img src="{{ url_for('static', filename='Logo_conquers-04.png') }}" alt="Conquers">
+    </div>
+
+    <div class="org-chart-container" id="chartContainer">
+        <svg class="connections-layer" id="svgLayer" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+</div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="settingsSidebar">
+    <div class="sidebar-header">
+        <h5 class="mb-0 fw-bold"><i class="bi bi-gear me-2"></i>Configuración</h5>
+        <button class="btn-icon-mini" onclick="toggleSidebar()" style="font-size:1rem;background:#f1f5f9;">✕</button>
+    </div>
+    <div class="sidebar-section">
+        <label class="form-label fw-semibold small">Nombre Empresa</label>
+        <input type="text" class="form-control form-control-sm" id="inputCompanyName" oninput="updateSettings()">
+    </div>
+    <div class="sidebar-section">
+        <label class="form-label fw-semibold small">Color de Fondo</label>
+        <input type="color" class="form-control form-control-color w-100" id="inputBgColor" value="#f0f4f8"
+            onchange="updateSettings()">
+    </div>
+    <div class="sidebar-section" id="boxSettings" style="display:none;">
+        <h6 class="fw-semibold mb-2 small text-muted">Editar Caja</h6>
+        <button class="btn btn-outline-primary btn-sm w-100" onclick="editSelectedBox()"
+            style="border-color:var(--org-primary);color:var(--org-primary);">✏️ Editar</button>
+    </div>
+</aside>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <h5 class="mb-2 fw-bold" id="editModalTitle">Editar Posición</h5>
+
+        <!-- Tabs for different node types -->
+        <div class="modal-tabs" id="editModalTabs" style="display:none;">
+            <button class="tab-btn active" onclick="switchEditTab('company')" id="tabCompany">🏢 Empresa</button>
+            <button class="tab-btn" onclick="switchEditTab('person')" id="tabPerson">👤 Empleado</button>
+            <button class="tab-btn" onclick="switchEditTab('group')" id="tabGroup">👥 Grupo</button>
+        </div>
+
+        <!-- Company Info Tab -->
+        <div class="tab-content active" id="tabContentCompany">
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Nombre de la Empresa</label>
+                <input type="text" id="editCompanyName" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">RUT / NIT</label>
+                <input type="text" id="editCompanyRUT" class="form-control form-control-sm" placeholder="12345678-9">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Dirección</label>
+                <input type="text" id="editCompanyAddress" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Teléfono</label>
+                <input type="text" id="editCompanyPhone" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Logo</label>
+                <div class="photo-upload-area" onclick="document.getElementById('editPhotoFile').click()">
+                    <div id="photoPreviewCompany">
+                        <div class="upload-icon">🏢</div>
+                        <div class="small text-muted">Clic para cambiar logo</div>
+                    </div>
+                </div>
+                <input type="file" id="editPhotoFile" accept="image/*" style="display:none;"
+                    onchange="handlePhotoUpload(this)">
+                <button class="btn btn-outline-danger btn-sm mt-2 w-100" id="btnRemovePhoto" style="display:none;"
+                    onclick="removePhoto()">🗑️ Quitar logo</button>
+            </div>
+        </div>
+
+        <!-- Person/Employee Tab -->
+        <div class="tab-content" id="tabContentPerson">
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Nombre del Empleado</label>
+                <input type="text" id="editEmployee" class="form-control form-control-sm" placeholder="Juan Pérez">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Cargo</label>
+                <input type="text" id="editTitle" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Área</label>
+                <input type="text" id="editSubtitle" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Foto</label>
+                <div class="photo-upload-area" onclick="document.getElementById('editPhotoPerson').click()">
+                    <div id="photoPreviewPerson">
+                        <div class="upload-icon">📷</div>
+                        <div class="small text-muted">Clic para subir foto</div>
+                    </div>
+                </div>
+                <input type="file" id="editPhotoPerson" accept="image/*" style="display:none;"
+                    onchange="handlePhotoUploadPerson(this)">
+                <button class="btn btn-outline-danger btn-sm mt-2 w-100" id="btnRemovePhotoPerson" style="display:none;"
+                    onclick="removePhotoPerson()">🗑️ Quitar foto</button>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Email</label>
+                <input type="email" id="editEmail" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Teléfono</label>
+                <input type="text" id="editPhone" class="form-control form-control-sm">
+            </div>
+        </div>
+
+        <!-- Group Tab -->
+        <div class="tab-content" id="tabContentGroup">
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Nombre del Grupo/Órgano</label>
+                <input type="text" id="editGroupTitle" class="form-control form-control-sm">
+            </div>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold">Miembros (uno por línea)</label>
+                <textarea id="editMembers" class="form-control form-control-sm" rows="4"
+                    placeholder="Juan Pérez&#10;María López&#10;Carlos Gómez"></textarea>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-light btn-sm flex-grow-1" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-sm flex-grow-1" onclick="saveBoxChanges()"
+                style="background:var(--org-primary);border-color:var(--org-primary);color:white;">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Photo Modal -->
+<div class="photo-modal" id="photoModal" onclick="this.classList.remove('open')">
+    <img id="photoModalImg" src="" alt="">
+    <div class="photo-info">
+        <h4 id="photoModalName"></h4>
+        <p id="photoModalTitle"></p>
+    </div>
+</div>
+
+<div class="toast-custom" id="toast">Guardado</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    (function () {
+        const BOX_W = 260, H_GAP = 30, V_GAP = 160, STACK_V_GAP = 110;
+        const LOGO_CWT = "{{ url_for('static', filename='Logo_CICWT FINAL.png') }}";
+        const LOGO_ZF = "{{ url_for('static', filename='Logo Conquers ZF.png') }}";
+        const LOGO_FOOTER = "{{ url_for('static', filename='Logo_conquers-04.png') }}";
+        const LOGO_BG = "{{ url_for('static', filename='logo.jpeg') }}";
+
+        // nodeType: 'company', 'person', 'group'
+        let idCounter = 1, nodes = [], viewMode = 'both';
+        let selectedNodeId = null, draggingId = null, dragOffX = 0, dragOffY = 0;
+        let currentEditTab = 'company';
+
+        const mkNode = (title, subtitle, parentId, color, collapsed, nodeType) => ({
+            id: idCounter++, title, subtitle: subtitle || '',
+            parent: parentId, collapsed: !!collapsed, color: color || 'bg-corp-top',
+            x: 0, y: 0,
+            // Company fields
+            companyName: '', companyRUT: '', companyAddress: '', companyPhone: '', photo: '',
+            // Person fields
+            employee: '', email: '', phone: '',
+            // Group fields
+            members: '',
+            // Type
+            nodeType: nodeType || 'person',
+            isVerticalStack: false
+        });
+
+        function buildInitialData() {
+            idCounter = 1; nodes = [];
+            const a = mkNode('ASAMBLEA DE ACCIONISTAS', 'Órgano Máximo', null, 'bg-corp-top', false, 'group');
+            const p = mkNode('PRESIDENTE EJECUTIVO', '', a.id, 'bg-corp-top', false, 'person');
+            const au = mkNode('AUDITORIA', '', p.id, 'bg-corp-audit', false, 'person');
+            const re = mkNode('REVISORIA FISCAL', '', p.id, 'bg-corp-audit', false, 'person');
+            const de = mkNode('DIRECTOR EJECUTIVO', '', p.id, 'bg-corp-top', false, 'person');
+            nodes.push(a, p, au, re, de);
+
+            const zf = mkNode('ZF', 'Conquers ZF S.A.S', de.id, 'bg-zf', true, 'company');
+            zf.companyName = 'Conquers ZF S.A.S';
+            nodes.push(zf); buildZF(zf.id);
+            const cw = mkNode('CWT', 'CICWT S.A.S', de.id, 'bg-cwt', true, 'company');
+            cw.companyName = 'CICWT S.A.S';
+            nodes.push(cw); buildCWT(cw.id);
+        }
+
+        function buildZF(pid) {
+            const a = (t, p) => { const n = mkNode(t, 'ZF', p, 'bg-zf-light'); nodes.push(n); return n.id; };
+            const dL = a('DIRECTOR DE LOGISTICA', pid);
+            const cI = a('Coord. inventarios y despachos', dL); a('Auxiliar de logística', cI);
+            const dO = a('DIRECTOR DE OPERACIONES', pid);
+            const cP = a('Coord. producción y mantenimiento', dO);
+            const sP = a('Supervisor de producción', cP); a('Auxiliar de producción', sP); a('Operador de producción', sP);
+            const sM = a('Supervisor de mantenimiento', cP); a('Auxiliar de mantenimiento', sM); a('Operador de mantenimiento', sM);
+            const dC = a('DIRECTOR DE CALIDAD', pid); a('Coordinador de Calidad', dC);
+            const dCo = a('DIR. COMPRAS Y COMEX', pid); a('Analista de compras', dCo); a('Analista comercio exterior', dCo); a('Analista de aduanas', dCo);
+            a('DIR. MERCADEO Y VENTAS', pid);
+            const dCF = a('DIR. CONTABILIDAD Y FINANZAS', pid); a('Coord. contable e impuestos', dCF);
+            a('DIRECTOR JURÍDICO', pid);
+            const dTI = a('DIR. TECNOLOGÍA E INFORMACIÓN', pid); a('Asistente de Sistemas', dTI);
+            const dRH = a('DIR. RECURSOS HUMANOS', pid); a('Asistente de RRHH', dRH);
+            const dH = a('DIRECTOR DE HSEQ', pid); a('Analista HSE', dH); a('Coord. responsabilidad social', dH);
+            const dID = a('DIR. INVESTIGACIÓN Y DESARROLLO', pid); a('Analista de laboratorio', dID);
+            const oC = a('OFICIAL CONTROL E INTEGRACIÓN', pid); a('Analista de SICOM', oC);
+        }
+
+        function buildCWT(pid) {
+            const a = (t, p) => { const n = mkNode(t, 'CWT', p, 'bg-cwt-light'); nodes.push(n); return n.id; };
+            const dL = a('DIRECTOR DE LOGISTICA', pid);
+            const cT = a('Coordinador de transporte', dL); a('Analista transporte terrestre', cT); a('Analista transporte marítimo', cT);
+            a('DIRECTOR DE OPERACIONES', pid); a('DIRECTOR DE CALIDAD', pid);
+            const dCo = a('DIR. COMPRAS Y COMEX', pid); a('Coord. compras y comex', dCo);
+            const dM = a('DIR. MERCADEO Y VENTAS', pid);
+            const cV = a('Coordinador de ventas', dM); a('Analista de ventas', cV);
+            const cMk = a('Coordinador de mercadeo', dM); a('Analista de mercadeo', cMk);
+            const dCF = a('DIR. CONTABILIDAD Y FINANZAS', pid); a('Analista financiero', dCF); a('Analista contable e impuestos', dCF); a('Analista de tesorería', dCF);
+            const dJ = a('DIRECTOR JURÍDICO', pid); a('Asistente legal', dJ);
+            const dTI = a('DIR. TECNOLOGÍA E INFORMACIÓN', pid);
+            const cS = a('Coordinador de Sistemas', dTI); a('Analista de Soporte', cS);
+            a('Coordinador de ERP', dTI); a('Coord. Seguridad e Información', dTI);
+            const dRH = a('DIR. RECURSOS HUMANOS', pid); a('Coord. recursos humanos', dRH);
+            const dH = a('DIRECTOR DE HSEQ', pid); const cH = a('Coordinador HSEQ', dH); a('Analista documental', cH);
+            const dID = a('DIR. INVESTIGACIÓN Y DESARROLLO', pid); a('Coord. procesos industriales', dID); a('Coord. producto / servicio', dID);
+            const oC = a('OFICIAL CONTROL E INTEGRACIÓN', pid); a('Coordinador financiero', oC); a('Coord. contable e impuestos', oC); a('Coordinador de tesorería', oC); a('Asist. servicios generales', oC);
+        }
+
+        // ===== LAYOUT =====
+        function buildCM() {
+            const cm = {};
+            nodes.forEach(n => { cm[n.id] = []; n.isVerticalStack = false; });
+            nodes.forEach(n => { if (n.parent && cm[n.parent]) cm[n.parent].push(n); });
+            return cm;
+        }
+        function isLeaf(id, cm) {
+            const ch = cm[id];
+            return ch && ch.length >= 2 && ch.every(c => !cm[c.id] || cm[c.id].length === 0);
+        }
+        function mW(id, cm) {
+            const n = nodes.find(x => x.id === id);
+            const ch = cm[id];
+            if (!ch || !ch.length || n.collapsed) return BOX_W + H_GAP;
+            if (isLeaf(id, cm)) return BOX_W + 80;
+            let w = 0; ch.forEach(c => { w += mW(c.id, cm); });
+            return Math.max(w, BOX_W + H_GAP);
+        }
+        function placeN(id, x, y, aw, cm) {
+            const n = nodes.find(nd => nd.id === id);
+            n.x = x; n.y = y;
+            const ch = cm[id];
+            if (!ch || !ch.length || n.collapsed) return;
+            if (isLeaf(id, cm)) {
+                n.isVerticalStack = true;
+                let cy = y + V_GAP;
+                ch.forEach(c => { const cn = nodes.find(nd => nd.id === c.id); cn.x = x + 40; cn.y = cy; cy += STACK_V_GAP; });
+                return;
+            }
+            let cx = x - aw / 2;
+            ch.forEach(c => { const w = mW(c.id, cm); placeN(c.id, cx + w / 2, y + V_GAP, w, cm); cx += w; });
+        }
+        function layoutTree(rid, cx, sy, cm) {
+            const ch = cm[rid];
+            if (!ch || !ch.length) return;
+            const tw = mW(rid, cm);
+            let cur = cx - tw / 2;
+            ch.forEach(c => { const w = mW(c.id, cm); placeN(c.id, cur + w / 2, sy, w, cm); cur += w; });
+        }
+        function hideDesc(id) {
+            nodes.filter(n => n.parent === id).forEach(c => { c.x = -99999; c.y = -99999; hideDesc(c.id); });
+        }
+        function calculateLayout() {
+            const cm = buildCM();
+            const root = nodes.find(n => !n.parent);
+            if (!root) return;
+            root.x = 4000; root.y = 50;
+            const pres = nodes.find(n => n.parent === root.id && n.title === 'PRESIDENTE EJECUTIVO');
+            if (!pres) return;
+            pres.x = root.x; pres.y = root.y + V_GAP;
+            const aud = nodes.find(n => n.title === 'AUDITORIA');
+            const rev = nodes.find(n => n.title === 'REVISORIA FISCAL');
+            const dir = nodes.find(n => n.title === 'DIRECTOR EJECUTIVO');
+            if (aud) { aud.x = pres.x - 350; aud.y = pres.y; }
+            if (rev) { rev.x = pres.x + 350; rev.y = pres.y; }
+            if (dir) { dir.x = pres.x; dir.y = pres.y + V_GAP; }
+            if (!dir || dir.collapsed) { document.getElementById('viewModeBar').style.display = 'none'; return; }
+
+            const zf = nodes.find(n => n.title === 'ZF');
+            const cwt = nodes.find(n => n.title === 'CWT');
+            document.getElementById('viewModeBar').style.display = 'flex';
+
+            const showZF = (viewMode === 'both' || viewMode === 'zf') && zf;
+            const showCWT = (viewMode === 'both' || viewMode === 'cwt') && cwt;
+            if (zf && !showZF) { zf.x = -99999; zf.y = -99999; hideDesc(zf.id); }
+            if (cwt && !showCWT) { cwt.x = -99999; cwt.y = -99999; hideDesc(cwt.id); }
+
+            if (showZF && showCWT) {
+                const zfW = mW(zf.id, cm), cwtW = mW(cwt.id, cm);
+                const gap = 300, totalW = zfW + cwtW + gap;
+                zf.x = dir.x - totalW / 2 + zfW / 2; zf.y = dir.y + V_GAP;
+                cwt.x = dir.x + totalW / 2 - cwtW / 2; cwt.y = dir.y + V_GAP;
+                if (!zf.collapsed) layoutTree(zf.id, zf.x, zf.y + V_GAP, cm);
+                if (!cwt.collapsed) layoutTree(cwt.id, cwt.x, cwt.y + V_GAP, cm);
+            } else if (showZF) {
+                zf.x = dir.x; zf.y = dir.y + V_GAP;
+                if (!zf.collapsed) layoutTree(zf.id, zf.x, zf.y + V_GAP, cm);
+            } else if (showCWT) {
+                cwt.x = dir.x; cwt.y = dir.y + V_GAP;
+                if (!cwt.collapsed) layoutTree(cwt.id, cwt.x, cwt.y + V_GAP, cm);
+            }
+        }
+
+        window.setViewMode = function (mode) {
+            viewMode = mode;
+            document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
+            document.getElementById(mode === 'zf' ? 'btnZF' : mode === 'cwt' ? 'btnCWT' : 'btnBoth').classList.add('active-view');
+            calculateLayout(); render();
+            setTimeout(fitToScreen, 80);
+            localStorage.setItem('org_viewMode', mode);
+        };
+
+        // ===== RENDER =====
+        const container = document.getElementById('chartContainer');
+        const svgLayer = document.getElementById('svgLayer');
+
+        function getNodeIcon(node) {
+            if (node.photo) {
+                return `<img src="${node.photo}" onclick="window._showPhoto(${node.id}, event)">`;
+            }
+            if (node.nodeType === 'company') {
+                const logo = node.title === 'CWT' ? LOGO_CWT : LOGO_ZF;
+                return `<img src="${logo}" class="company-logo" onclick="window._showPhoto(${node.id}, event)">`;
+            }
+            if (node.nodeType === 'group') {
+                return `<div class="group-icon" onclick="window._showPhoto(${node.id}, event)">👥</div>`;
+            }
+            // person
+            return `<div class="box-avatar" onclick="window._showPhoto(${node.id}, event)"><span>👤</span></div>`;
+        }
+
+        function getVisibleNodes() {
+            const vis = [], q = nodes.filter(n => !n.parent);
+            while (q.length) {
+                const n = q.shift();
+                if (n.x < -9000) continue;
+                vis.push(n);
+                if (!n.collapsed) {
+                    let ch = nodes.filter(c => c.parent === n.id);
+                    if (n.title === 'DIRECTOR EJECUTIVO') {
+                        ch = ch.filter(c => {
+                            if (c.title === 'ZF' && viewMode === 'cwt') return false;
+                            if (c.title === 'CWT' && viewMode === 'zf') return false;
+                            return true;
+                        });
+                    }
+                    q.push(...ch);
+                }
+            }
+            return vis;
+        }
+
+        function render() {
+            document.querySelectorAll('.org-box').forEach(e => e.remove());
+            svgLayer.innerHTML = '';
+            const vis = getVisibleNodes();
+
+            vis.forEach(node => {
+                const el = document.createElement('div');
+                el.className = 'org-box';
+                el.id = `box-${node.id}`;
+                el.style.left = node.x + 'px';
+                el.style.top = node.y + 'px';
+
+                const hasCh = nodes.some(n => n.parent === node.id && n.x > -9000);
+                const colBtn = hasCh ? `<div class="btn-collapse" onclick="window._tc(${node.id},event)">${node.collapsed ? '＋' : '−'}</div>` : '';
+
+                // Render based on node type
+                let mainContent = '';
+                if (node.nodeType === 'company') {
+                    const dispName = node.companyName || node.title;
+                    const dispSubtitle = node.companyRUT ? `${node.subtitle} • ${node.companyRUT}` : node.subtitle;
+                    mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${dispSubtitle}</div>`;
+                } else if (node.nodeType === 'group') {
+                    mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.members ? `<div class="box-members">${node.members.replace(/\n/g, ' • ')}</div>` : ''}`;
+                } else {
+                    mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.employee ? `<div class="box-employee">${node.employee}</div>` : ''}`;
+                }
+
+                el.innerHTML = `
+                <div class="box-header ${node.color}">
+                    ${getNodeIcon(node)}
+                    <div class="box-info">
+                        ${mainContent}
+                    </div>
+                    <div class="box-controls">
+                        <button class="btn-icon-mini" onclick="window._oe(${node.id})">✏️</button>
+                        <button class="btn-icon-mini" onclick="window._ac(${node.id})">➕</button>
+                        <button class="btn-icon-mini" onclick="window._dn(${node.id})">🗑️</button>
+                    </div>
+                </div>
+                ${(node.email || node.phone) && node.nodeType === 'person' ? `<div class="box-body">${node.email ? `<div class="info-row">📧 ${node.email}</div>` : ''}${node.phone ? `<div class="info-row">📞 ${node.phone}</div>` : ''}</div>` : ''}
+                ${(node.companyPhone || node.companyAddress) && node.nodeType === 'company' ? `<div class="box-body">${node.companyAddress ? `<div class="info-row">📍 ${node.companyAddress}</div>` : ''}${node.companyPhone ? `<div class="info-row">📞 ${node.companyPhone}</div>` : ''}</div>` : ''}
+                ${colBtn}
+            `;
+                el.addEventListener('mousedown', e => startDrag(e, node.id));
+                el.addEventListener('click', e => selectNode(node.id, e));
+                container.appendChild(el);
+            });
+
+            requestAnimationFrame(() => {
+                svgLayer.innerHTML = '';
+                vis.forEach(n => { if (n.parent) { const par = vis.find(p => p.id === n.parent); if (par) drawLine(par, n); } });
+            });
+        }
+
+        function drawLine(parent, child) {
+            const pB = document.getElementById(`box-${parent.id}`);
+            const cB = document.getElementById(`box-${child.id}`);
+            if (!pB || !cB) return;
+            const pW = pB.offsetWidth || BOX_W, pH = pB.offsetHeight || 70;
+            const cW = cB.offsetWidth || BOX_W, cH = cB.offsetHeight || 70;
+            const pCX = parent.x + pW / 2, pBY = parent.y + pH;
+            const cCX = child.x + cW / 2, cTY = child.y;
+
+            if (Math.abs(parent.y - child.y) < 30) {
+                const fx = parent.x < child.x ? parent.x + pW : parent.x;
+                const tx = parent.x < child.x ? child.x : child.x + cW;
+                mkPath(`M ${fx} ${parent.y + pH / 2} L ${tx} ${child.y + cH / 2}`, true);
+                return;
+            }
+            if (parent.isVerticalStack) {
+                const bx = parent.x + 15, dy = pBY + 12, cy = child.y + cH / 2;
+                mkPath(`M ${pCX} ${pBY} L ${pCX} ${dy} L ${bx} ${dy} L ${bx} ${cy} L ${child.x} ${cy}`);
+            } else {
+                const my = pBY + Math.max(20, (cTY - pBY) / 2);
+                mkPath(`M ${pCX} ${pBY} L ${pCX} ${my} L ${cCX} ${my} L ${cCX} ${cTY}`);
+            }
+        }
+
+        function mkPath(d, dashed) {
+            const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            p.classList.add('connection-line');
+            p.setAttribute('d', d); p.setAttribute('fill', 'none');
+            if (dashed) p.setAttribute('stroke-dasharray', '6,4');
+            svgLayer.appendChild(p);
+        }
+
+        function getContentBounds() {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            document.querySelectorAll('.org-box').forEach(box => {
+                const x = parseInt(box.style.left) || 0, y = parseInt(box.style.top) || 0;
+                if (x < -9000) return;
+                minX = Math.min(minX, x); minY = Math.min(minY, y);
+                maxX = Math.max(maxX, x + (box.offsetWidth || BOX_W));
+                maxY = Math.max(maxY, y + (box.offsetHeight || 70));
+            });
+            return { minX, minY, maxX, maxY };
+        }
+
+        // ===== PHOTO MODAL =====
+        window._showPhoto = function (id, e) {
+            e.stopPropagation();
+            const n = nodes.find(x => x.id === id);
+            let src = '';
+            if (n.photo) src = n.photo;
+            else if (n.nodeType === 'company') src = n.title === 'CWT' ? LOGO_CWT : LOGO_ZF;
+            else if (n.nodeType === 'group') return; // No expand for group
+
+            if (!src) return;
+            document.getElementById('photoModalImg').src = src;
+            document.getElementById('photoModalName').textContent = n.nodeType === 'company' ? (n.companyName || n.title) : (n.employee || n.title);
+            document.getElementById('photoModalTitle').textContent = n.nodeType === 'company' ? (n.companyRUT || n.subtitle) : n.subtitle;
+            document.getElementById('photoModal').classList.add('open');
+        };
+
+        // ===== INTERACTIONS =====
+        function startDrag(e, id) {
+            if (e.target.closest('button') || e.target.closest('.btn-collapse') || e.target.closest('.box-avatar') || e.target.closest('.company-logo') || e.target.closest('.group-icon')) return;
+            draggingId = id;
+            const cr = container.getBoundingClientRect();
+            const n = nodes.find(x => x.id === id);
+            dragOffX = (e.clientX - cr.left) / scale - n.x;
+            dragOffY = (e.clientY - cr.top) / scale - n.y;
+            window.addEventListener('mousemove', onDrag);
+            window.addEventListener('mouseup', endDrag);
+        }
+        function onDrag(e) {
+            if (!draggingId) return;
+            const cr = container.getBoundingClientRect();
+            const n = nodes.find(x => x.id === draggingId);
+            n.x = (e.clientX - cr.left) / scale - dragOffX;
+            n.y = (e.clientY - cr.top) / scale - dragOffY;
+            const el = document.getElementById(`box-${draggingId}`);
+            if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
+            svgLayer.innerHTML = '';
+            const vis = getVisibleNodes();
+            vis.forEach(nd => { if (nd.parent) { const par = vis.find(p => p.id === nd.parent); if (par) drawLine(par, nd); } });
+        }
+        function endDrag() {
+            draggingId = null;
+            window.removeEventListener('mousemove', onDrag);
+            window.removeEventListener('mouseup', endDrag);
+            saveData();
+        }
+
+        window._tc = function (id, e) {
+            e.stopPropagation();
+            nodes.find(n => n.id === id).collapsed = !nodes.find(n => n.id === id).collapsed;
+            calculateLayout(); render(); saveData();
+        };
+        window._ac = function (pid) {
+            const par = nodes.find(n => n.id === pid);
+            const nn = mkNode('Nuevo Cargo', 'Departamento', pid, par.color, false, 'person');
+            nn.x = par.x; nn.y = par.y + V_GAP;
+            nodes.push(nn); par.collapsed = false;
+            calculateLayout(); render(); saveData();
+        };
+        window._dn = function (id) {
+            if (!confirm('¿Eliminar esta posición y subordinados?')) return;
+            const n = nodes.find(x => x.id === id);
+            if (['ASAMBLEA DE ACCIONISTAS', 'PRESIDENTE EJECUTIVO', 'AUDITORIA', 'REVISORIA FISCAL', 'DIRECTOR EJECUTIVO', 'ZF', 'CWT'].includes(n.title)) { alert('No se puede eliminar posición estructural.'); return; }
+            const del = [id]; let i = 0;
+            while (i < del.length) { nodes.filter(x => x.parent === del[i]).forEach(c => del.push(c.id)); i++; }
+            nodes = nodes.filter(x => !del.includes(x.id));
+            calculateLayout(); render(); saveData();
+        };
+        function selectNode(id, e) {
+            if (e.target.closest('.btn-collapse') || e.target.closest('.box-avatar') || e.target.closest('.company-logo') || e.target.closest('.group-icon')) return;
+            selectedNodeId = id;
+            document.querySelectorAll('.org-box').forEach(el => el.classList.remove('selected'));
+            const el = document.getElementById(`box-${id}`);
+            if (el) el.classList.add('selected');
+            document.getElementById('boxSettings').style.display = 'block';
+            toggleSidebar(true);
+        }
+
+        window._oe = function (id) {
+            selectedNodeId = id;
+            const n = nodes.find(x => x.id === id);
+
+            // Show tabs only for editable nodes
+            const tabs = document.getElementById('editModalTabs');
+            const hasCompany = n.nodeType === 'company';
+            const hasGroup = n.nodeType === 'group';
+            const hasPerson = n.nodeType === 'person';
+
+            if (hasCompany || hasGroup || hasPerson) {
+                tabs.style.display = 'flex';
+                document.getElementById('tabCompany').style.display = hasCompany ? 'block' : 'none';
+                document.getElementById('tabPerson').style.display = hasPerson ? 'block' : 'none';
+                document.getElementById('tabGroup').style.display = hasGroup ? 'block' : 'none';
+                // Default to the node's type
+                if (hasCompany) switchEditTab('company');
+                else if (hasGroup) switchEditTab('group');
+                else switchEditTab('person');
+            } else {
+                tabs.style.display = 'none';
+                // Default to person tab
+                switchEditTab('person');
+            }
+
+            // Fill company fields
+            document.getElementById('editCompanyName').value = n.companyName || '';
+            document.getElementById('editCompanyRUT').value = n.companyRUT || '';
+            document.getElementById('editCompanyAddress').value = n.companyAddress || '';
+            document.getElementById('editCompanyPhone').value = n.companyPhone || '';
+
+            // Fill person fields
+            document.getElementById('editEmployee').value = n.employee || '';
+            document.getElementById('editTitle').value = n.title;
+            document.getElementById('editSubtitle').value = n.subtitle || '';
+            document.getElementById('editEmail').value = n.email || '';
+            document.getElementById('editPhone').value = n.phone || '';
+
+            // Fill group fields
+            document.getElementById('editGroupTitle').value = n.title;
+            document.getElementById('editMembers').value = n.members || '';
+
+            // Photo previews
+            const photoFile = document.getElementById('editPhotoFile');
+            photoFile.value = '';
+            photoFile.dataset.photoData = n.photo || '';
+
+            if (n.photo) {
+                document.getElementById('photoPreviewCompany').innerHTML = `<img src="${n.photo}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">`;
+                document.getElementById('btnRemovePhoto').style.display = 'block';
+            } else {
+                document.getElementById('photoPreviewCompany').innerHTML = '<div class="upload-icon">🏢</div><div class="small text-muted">Clic para cambiar logo</div>';
+                document.getElementById('btnRemovePhoto').style.display = 'none';
+            }
+
+            const photoPerson = document.getElementById('editPhotoPerson');
+            photoPerson.value = '';
+            photoPerson.dataset.photoData = n.photo || '';
+
+            if (n.photo && n.nodeType === 'person') {
+                document.getElementById('photoPreviewPerson').innerHTML = `<img src="${n.photo}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">`;
+                document.getElementById('btnRemovePhotoPerson').style.display = 'block';
+            } else {
+                document.getElementById('photoPreviewPerson').innerHTML = '<div class="upload-icon">📷</div><div class="small text-muted">Clic para subir foto</div>';
+                document.getElementById('btnRemovePhotoPerson').style.display = 'none';
+            }
+
+            document.getElementById('editModal').classList.add('open');
+        };
+
+        window.switchEditTab = function (tab) {
+            currentEditTab = tab;
+            document.querySelectorAll('.modal-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            document.getElementById('tabContent' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+        };
+
+        window.handlePhotoUpload = function (input) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                input.dataset.photoData = e.target.result;
+                document.getElementById('photoPreviewCompany').innerHTML = `<img src="${e.target.result}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">`;
+                document.getElementById('btnRemovePhoto').style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        };
+
+        window.handlePhotoUploadPerson = function (input) {
+            if (!input.files || !input.files[0]) return;
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                input.dataset.photoData = e.target.result;
+                document.getElementById('photoPreviewPerson').innerHTML = `<img src="${e.target.result}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;">`;
+                document.getElementById('btnRemovePhotoPerson').style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        };
+
+        window.removePhoto = function () {
+            document.getElementById('photoPreviewCompany').innerHTML = '<div class="upload-icon">🏢</div><div class="small text-muted">Clic para cambiar logo</div>';
+            document.getElementById('btnRemovePhoto').style.display = 'none';
+            document.getElementById('editPhotoFile').dataset.photoData = '';
+        };
+
+        window.removePhotoPerson = function () {
+            document.getElementById('photoPreviewPerson').innerHTML = '<div class="upload-icon">📷</div><div class="small text-muted">Clic para subir foto</div>';
+            document.getElementById('btnRemovePhotoPerson').style.display = 'none';
+            document.getElementById('editPhotoPerson').dataset.photoData = '';
+        };
+
+        window.closeModal = function () { document.getElementById('editModal').classList.remove('open'); };
+
+        window.saveBoxChanges = function () {
+            const n = nodes.find(x => x.id === selectedNodeId);
+
+            if (currentEditTab === 'company') {
+                n.companyName = document.getElementById('editCompanyName').value;
+                n.companyRUT = document.getElementById('editCompanyRUT').value;
+                n.companyAddress = document.getElementById('editCompanyAddress').value;
+                n.companyPhone = document.getElementById('editCompanyPhone').value;
+                n.photo = document.getElementById('editPhotoFile').dataset.photoData || '';
+            } else if (currentEditTab === 'person') {
+                n.employee = document.getElementById('editEmployee').value;
+                n.title = document.getElementById('editTitle').value;
+                n.subtitle = document.getElementById('editSubtitle').value;
+                n.email = document.getElementById('editEmail').value;
+                n.phone = document.getElementById('editPhone').value;
+                n.photo = document.getElementById('editPhotoPerson').dataset.photoData || '';
+            } else if (currentEditTab === 'group') {
+                n.title = document.getElementById('editGroupTitle').value;
+                n.members = document.getElementById('editMembers').value;
+            }
+
+            render(); saveData(); closeModal();
+        };
+
+        window.editSelectedBox = function () { if (selectedNodeId) window._oe(selectedNodeId); };
+
+        // ===== EXPORT =====
+        window.exportToImage = function () {
+            document.querySelectorAll('.selected').forEach(e => e.classList.remove('selected'));
+            const loading = document.createElement('div');
+            loading.className = 'export-loading';
+            loading.innerHTML = '<div class="export-loading-box"><div class="spinner-border mb-3" role="status"></div><div class="fw-semibold">Generando imagen...</div></div>';
+            document.body.appendChild(loading);
+
+            const bounds = getContentBounds();
+            if (bounds.minX === Infinity) { loading.remove(); return; }
+
+            const pad = 60;
+            const offX = bounds.minX - pad, offY = bounds.minY - pad;
+            const totalW = (bounds.maxX - bounds.minX) + pad * 2;
+            const totalH = (bounds.maxY - bounds.minY) + pad * 2 + 100;
+
+            const tmp = document.createElement('div');
+            tmp.style.cssText = `position:fixed;top:-99999px;left:-99999px;width:${totalW}px;height:${totalH}px;background:#f0f4f8;overflow:visible;`;
+            document.body.appendChild(tmp);
+
+            const tmpSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            tmpSvg.setAttribute('width', totalW); tmpSvg.setAttribute('height', totalH);
+            tmpSvg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+            tmp.appendChild(tmpSvg);
+
+            const vis = getVisibleNodes();
+            vis.forEach(node => {
+                const orig = document.getElementById(`box-${node.id}`);
+                if (!orig) return;
+                const clone = orig.cloneNode(true);
+                clone.style.left = (node.x - offX) + 'px';
+                clone.style.top = (node.y - offY) + 'px';
+                clone.querySelectorAll('.box-controls, .btn-collapse').forEach(el => el.remove());
+                clone.classList.remove('selected');
+                clone.style.transform = 'none'; clone.style.transition = 'none';
+                tmp.appendChild(clone);
+            });
+
+            // Add footer to export
+            const footerEl = document.querySelector('.org-footer-logo');
+            if (footerEl) {
+                const fClone = footerEl.cloneNode(true);
+                fClone.style.position = 'absolute';
+                fClone.style.bottom = '20px';
+                fClone.style.left = '50%';
+                fClone.style.transform = 'translateX(-50%)';
+                fClone.style.zIndex = '100';
+                tmp.appendChild(fClone);
+            }
+
+            vis.forEach(node => {
+                if (!node.parent) return;
+                const par = vis.find(p => p.id === node.parent);
+                if (!par) return;
+                const pO = document.getElementById(`box-${par.id}`);
+                const cO = document.getElementById(`box-${node.id}`);
+                if (!pO || !cO) return;
+                const pW = pO.offsetWidth || BOX_W, pH = pO.offsetHeight || 70;
+                const cW = cO.offsetWidth || BOX_W, cH = cO.offsetHeight || 70;
+                const px = par.x - offX, py = par.y - offY, cx = node.x - offX, cy = node.y - offY;
+                const pCX = px + pW / 2, pBY = py + pH, cCX = cx + cW / 2, cTY = cy;
+                let d = '', dashed = false;
+                if (Math.abs(par.y - node.y) < 30) {
+                    const fx = par.x < node.x ? px + pW : px, tx = par.x < node.x ? cx : cx + cW;
+                    d = `M ${fx} ${py + pH / 2} L ${tx} ${cy + cH / 2}`; dashed = true;
+                } else if (par.isVerticalStack) {
+                    const bx = px + 15, dy = pBY + 12, cmy = cy + cH / 2;
+                    d = `M ${pCX} ${pBY} L ${pCX} ${dy} L ${bx} ${dy} L ${bx} ${cmy} L ${cx} ${cmy}`;
+                } else {
+                    const my = pBY + Math.max(20, (cTY - pBY) / 2);
+                    d = `M ${pCX} ${pBY} L ${pCX} ${my} L ${cCX} ${my} L ${cCX} ${cTY}`;
+                }
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', d); path.setAttribute('fill', 'none');
+                path.setAttribute('stroke', '#94a3b8'); path.setAttribute('stroke-width', '2');
+                path.setAttribute('stroke-linecap', 'round');
+                if (dashed) path.setAttribute('stroke-dasharray', '6,4');
+                tmpSvg.appendChild(path);
+            });
+
+            setTimeout(() => {
+                html2canvas(tmp, { backgroundColor: '#f0f4f8', scale: 2, width: totalW, height: totalH, logging: false, useCORS: true, allowTaint: true }
+                ).then(canvas => {
+                    loading.remove(); tmp.remove();
+                    const link = document.createElement('a');
+                    const label = viewMode === 'zf' ? 'ZF' : viewMode === 'cwt' ? 'CWT' : 'completo';
+                    link.download = `organigrama_${label}_${new Date().toISOString().slice(0, 10)}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    showToast('✅ Imagen exportada correctamente');
+                }).catch(err => { loading.remove(); tmp.remove(); console.error(err); showToast('❌ Error al exportar'); });
+            }, 300);
+        };
+
+        // ===== UTILS =====
+        window.toggleSidebar = function (force) { const sb = document.getElementById('settingsSidebar'); if (force) sb.classList.add('open'); else sb.classList.toggle('open'); };
+        window.updateSettings = function () {
+            const name = document.getElementById('inputCompanyName').value;
+            const bg = document.getElementById('inputBgColor').value;
+            document.getElementById('headerCompanyName').innerText = name;
+            document.getElementById('workspace').style.backgroundColor = bg;
+            localStorage.setItem('org_settings', JSON.stringify({ name, bg }));
+        };
+        function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
+        function saveData() { localStorage.setItem('org_nodes_v10', JSON.stringify(nodes)); localStorage.setItem('org_counter_v10', idCounter); showToast('💾 Guardado'); }
+        function loadData() {
+            const set = JSON.parse(localStorage.getItem('org_settings'));
+            if (set) {
+                document.getElementById('inputCompanyName').value = set.name;
+                document.getElementById('headerCompanyName').innerText = set.name;
+                document.getElementById('inputBgColor').value = set.bg;
+                if (set.bg) document.getElementById('workspace').style.backgroundColor = set.bg;
+            } else { document.getElementById('inputCompanyName').value = 'Conquers Trading S.A.S'; }
+
+            // Set background image
+            const ws = document.getElementById('workspace');
+            ws.style.background = '#f0f4f8';
+            viewMode = localStorage.getItem('org_viewMode') || 'both';
+            const saved = localStorage.getItem('org_nodes_v10');
+            if (saved) { nodes = JSON.parse(saved); idCounter = parseInt(localStorage.getItem('org_counter_v10') || 1000); }
+            else { buildInitialData(); }
+            calculateLayout(); render();
+            document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
+            document.getElementById(viewMode === 'zf' ? 'btnZF' : viewMode === 'cwt' ? 'btnCWT' : 'btnBoth').classList.add('active-view');
+        }
+        window.resetLocalData = function () {
+            if (!confirm('¿Resetear organigrama? Se perderán todos los cambios.')) return;
+            ['org_nodes_v10', 'org_counter_v10', 'org_settings', 'org_viewMode'].forEach(k => localStorage.removeItem(k));
+            viewMode = 'both';
+            buildInitialData(); calculateLayout(); render();
+            document.getElementById('inputCompanyName').value = 'Conquers Trading S.A.S';
+            document.getElementById('headerCompanyName').innerText = 'Conquers Trading S.A.S';
+            const ws = document.getElementById('workspace');
+            ws.style.background = '#f0f4f8';
+            document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
+            document.getElementById('btnBoth').classList.add('active-view');
+            setTimeout(fitToScreen, 100);
+            showToast('🔄 Organigrama reseteado');
+        };
+
+        // ===== PAN & ZOOM =====
+        const workspace = document.getElementById('workspace');
+        const chartContainer = document.getElementById('chartContainer');
+        let isPanning = false, startPanX = 0, startPanY = 0;
+        let scale = 0.85, translateX = 0, translateY = 0;
+
+        function updateTransform() {
+            chartContainer.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            document.getElementById('zoomLabel').textContent = Math.round(scale * 100) + '%';
+        }
+        window.centerView = function () {
+            const b = getContentBounds();
+            if (b.minX === Infinity) return;
+            translateX = workspace.clientWidth / 2 - ((b.maxX + b.minX) / 2) * scale;
+            translateY = workspace.clientHeight / 2 - ((b.maxY + b.minY) / 2) * scale;
+            updateTransform();
+        };
+        window.fitToScreen = function () {
+            const b = getContentBounds();
+            if (b.minX === Infinity) return;
+            const cW = b.maxX - b.minX + 100, cH = b.maxY - b.minY + 100;
+            scale = Math.min(workspace.clientWidth / cW, workspace.clientHeight / cH, 1.2);
+            scale = Math.max(scale, 0.1);
+            translateX = workspace.clientWidth / 2 - ((b.maxX + b.minX) / 2) * scale;
+            translateY = workspace.clientHeight / 2 - ((b.maxY + b.minY) / 2) * scale;
+            updateTransform();
+        };
+        window.zoomIn = function () { scale = Math.min(scale + 0.1, 2.5); updateTransform(); };
+        window.zoomOut = function () { scale = Math.max(scale - 0.1, 0.1); updateTransform(); };
+
+        workspace.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.org-box,.sidebar,.toolbar-overlay,.org-header-card,.view-mode-bar,.zoom-controls,.org-footer-logo')) return;
+            isPanning = true;
+            startPanX = e.clientX - translateX; startPanY = e.clientY - translateY;
+            workspace.style.cursor = 'grabbing';
+        });
+        window.addEventListener('mousemove', (e) => { if (!isPanning) return; e.preventDefault(); translateX = e.clientX - startPanX; translateY = e.clientY - startPanY; updateTransform(); });
+        window.addEventListener('mouseup', () => { isPanning = false; workspace.style.cursor = 'grab'; });
+        workspace.addEventListener('wheel', (e) => { e.preventDefault(); scale = e.deltaY < 0 ? Math.min(scale + 0.07, 2.5) : Math.max(scale - 0.07, 0.1); updateTransform(); }, { passive: false });
+
+        window.onload = () => { loadData(); setTimeout(fitToScreen, 200); };
+    })();
+</script>
+{% endblock %}

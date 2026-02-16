@@ -442,7 +442,17 @@ def send_reminders():
 
 # Inicializar el scheduler después de la configuración de la app
 scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
+scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
 scheduler.start()
+
+@app.route('/organigrama_rh')
+def organigrama_rh():
+    # Only allow specific user
+    if session.get('email') != 'human.resource@conquerstrading.com':
+        flash('Acceso denegado. Permiso exclusivo de RRHH.', 'danger')
+        return redirect(url_for('home'))
+    return render_template('organigrama_rh.html')
+
 
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
@@ -2194,7 +2204,14 @@ USUARIOS = {
     "nombre": "Sebastian Blanco",
     "rol": "editor",
     "area": ["inventario_epp"]
-}
+    },
+
+    "human.resource@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Laura Gil",
+        "rol": "viewer",
+        "area": ["organigrama_rh"]
+    }
 
 
 }
