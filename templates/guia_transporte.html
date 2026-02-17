@@ -639,21 +639,21 @@
 
             .direccion .direccion-wrap {
                 display: flex !important;
-                align-items: center;
+                align-items: flex-start;
                 justify-content: center;
                 height: 100%;
                 width: 100%;
-                padding: 0 2px;
+                padding: 12px 2px 0 2px;
+                box-sizing: border-box;
                 text-align: center;
                 white-space: normal;
                 word-break: break-word;
                 overflow-wrap: anywhere;
                 text-transform: uppercase;
                 font-weight: bold;
-                font-size: 11pt;
-                /* Un poco más pequeño para direcciones largas */
-                line-height: 1em;
-                margin-top: 10px;
+                font-size: 14pt;
+                line-height: 1.1em;
+                margin-top: 0;
             }
 
             /* Ciudad */
@@ -1933,7 +1933,26 @@
         function syncDireccionWrap() {
             const inp = document.getElementById('direccionCliente');
             const wrap = document.querySelector('.direccion .direccion-wrap');
-            if (inp && wrap) wrap.textContent = (inp.value || 'DIRECCIÓN').toUpperCase();
+            if (inp && wrap) {
+                const txt = (inp.value || 'DIRECCIÓN').toUpperCase();
+                wrap.textContent = txt;
+
+                // Lógica de escalado para direcciones largas
+                // Altura total 1.2cm. Padding-top 12px (~0.3cm). Espacio util ~0.9cm.
+                // 14pt = ~0.5cm altura linea. 2 lineas = 1.0cm (overflow).
+                // 11pt = ~0.4cm altura linea. 2 lineas = 0.8cm (cabe).
+                const len = txt.length;
+                if (len > 80) {
+                    wrap.style.fontSize = '9pt';
+                    wrap.style.lineHeight = '1em';
+                } else if (len > 45) {
+                    wrap.style.fontSize = '11pt';
+                    wrap.style.lineHeight = '1em';
+                } else {
+                    wrap.style.fontSize = '14pt'; // Tamaño estándar 
+                    wrap.style.lineHeight = '1.1em';
+                }
+            }
         }
 
         function syncCiudadWrap() {
@@ -2001,10 +2020,20 @@
                 // --- Cliente y Dirección ---
                 // Reemplazo para funcionar con el Dropdown Personalizado
                 if (datosGuia.cliente) {
-                    // Buscamos el indice por nombre (fallback al primero encontrado)
-                    const idx = clientes.findIndex(c => c.NOMBRE_CLIENTE === datosGuia.cliente);
+                    // Buscamos el indice por nombre (flexible: trim + case insensitive)
+                    const searchName = datosGuia.cliente.trim().toUpperCase();
+                    const idx = clientes.findIndex(c => (c.NOMBRE_CLIENTE || '').trim().toUpperCase() === searchName);
+
                     if (idx !== -1) {
                         seleccionarCliente(idx);
+                    } else {
+                        // Fallback: Si no existe en la BD, al menos mostrar el nombre que viene de la programación
+                        const displayInput = document.getElementById('clienteNombreDisplay');
+                        if (displayInput) {
+                            displayInput.value = datosGuia.cliente;
+                            // Sincronizar con el wrapper de impresión
+                            if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+                        }
                     }
                 }
 

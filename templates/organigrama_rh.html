@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Organigrama Corporativo | Conquers Trading{% endblock %}
+{% block title %}Organigrama Corporativo | Conquers Trading Group{% endblock %}
 
 {% block container_class %}container-fluid p-0{% endblock %}
 
@@ -32,9 +32,24 @@
         --org-line-color: #475569;
     }
 
+    /* Hide base.html footer on organigrama page */
+    .footer {
+        display: none !important;
+    }
+
+    /* Make main wrapper flush */
+    .main-wrapper {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .main-wrapper>.container-fluid {
+        padding: 0 !important;
+    }
+
     .organigrama-wrapper {
         position: relative;
-        height: calc(100vh - 85px);
+        height: calc(100vh - 56px);
         overflow: hidden;
         background: var(--org-canvas-bg);
         cursor: grab;
@@ -75,6 +90,7 @@
     .org-box {
         position: absolute;
         width: 260px;
+        /* min-height removed to fit content exactly */
         background: var(--org-box-bg);
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
@@ -96,8 +112,7 @@
     }
 
     .org-box.is-transversal {
-        height: 100px;
-        /* Fixed height for transversal directors */
+        /* min-height removed to reduce whitespace */
         justify-content: flex-start;
     }
 
@@ -112,14 +127,15 @@
     }
 
     .box-header {
-        padding: 14px 16px;
-        border-radius: 12px 12px 0 0;
+        padding: 10px 12px;
+        border-radius: 12px;
+        /* Full radius in case it's the only child */
         color: white;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         position: relative;
-        min-height: 64px;
+        min-height: 50px;
         flex-wrap: wrap;
     }
 
@@ -206,13 +222,19 @@
     }
 
     .box-body {
-        padding: 8px 16px 10px;
+        padding: 6px 12px 8px;
         font-size: 0.72rem;
         color: var(--org-text-light);
         display: flex;
         flex-direction: column;
         gap: 2px;
         border-top: 1px solid var(--org-border);
+        border-radius: 0 0 12px 12px;
+        background: white;
+    }
+
+    .box-body:empty {
+        display: none;
     }
 
     .info-row {
@@ -290,12 +312,17 @@
         background: linear-gradient(135deg, #5b21b6, #7c3aed);
     }
 
+    /* CWT Blue 238 - All CWT nodes and children */
     .bg-cwt {
-        background: linear-gradient(135deg, var(--cwt-dark), var(--cwt-primary));
+        background: linear-gradient(135deg, hsl(238, 70%, 45%), hsl(238, 70%, 60%));
     }
 
     .bg-cwt-light {
-        background: linear-gradient(135deg, var(--cwt-primary), #33adee);
+        background: linear-gradient(135deg, hsl(238, 70%, 55%), hsl(238, 70%, 70%));
+    }
+
+    .bg-cwt-child {
+        background: linear-gradient(135deg, hsl(238, 70%, 50%), hsl(238, 70%, 65%));
     }
 
     .bg-zf {
@@ -361,87 +388,99 @@
         right: 14px;
         z-index: 100;
         display: flex;
-        gap: 6px;
+        gap: 5px;
         flex-wrap: wrap;
         justify-content: flex-end;
     }
 
     .toolbar-overlay .btn {
         font-weight: 600;
-        font-size: 0.8rem;
-        padding: 7px 14px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        font-size: 0.78rem;
+        padding: 8px 16px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        color: #334155;
+        transition: all 0.2s ease;
+    }
+
+    .toolbar-overlay .btn:hover {
+        background: rgba(255, 255, 255, 0.95);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+        color: var(--org-primary);
     }
 
     .toolbar-overlay .btn-primary {
-        background: var(--org-primary);
-        border-color: var(--org-primary);
+        background: var(--org-primary) !important;
+        border-color: var(--org-primary) !important;
+        color: white !important;
     }
 
     .toolbar-overlay .btn-primary:hover {
-        background: var(--org-primary-dark);
-        border-color: var(--org-primary-dark);
+        background: var(--org-primary-dark) !important;
+        border-color: var(--org-primary-dark) !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(10, 124, 93, 0.3);
     }
 
-    .view-mode-bar {
-        position: absolute;
-        top: 14px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 100;
-        display: flex;
-        gap: 4px;
-        background: white;
-        padding: 4px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    .dark-mode .toolbar-overlay .btn {
+        background: rgba(30, 41, 59, 0.85);
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        color: #cbd5e1;
     }
 
-    .dark-mode .view-mode-bar {
-        background: var(--org-box-bg);
+    .dark-mode .toolbar-overlay .btn:hover {
+        background: rgba(30, 41, 59, 0.95);
+        color: var(--org-primary);
     }
 
-    .view-mode-bar .btn {
-        font-size: 0.78rem;
-        font-weight: 600;
-        padding: 6px 14px;
-        border-radius: 7px;
-        border: none;
-    }
 
-    .view-mode-bar .btn.active-view {
-        background: var(--org-primary) !important;
-        color: white !important;
-    }
 
     .org-header-card {
         position: absolute;
         top: 14px;
         left: 14px;
         z-index: 100;
-        background: white;
-        padding: 10px 18px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 12px 22px;
+        border-radius: 14px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.6);
         border-left: 4px solid var(--org-primary);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .org-header-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 28px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.6);
     }
 
     .dark-mode .org-header-card {
-        background: var(--org-box-bg);
+        background: rgba(30, 41, 59, 0.85);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
 
     .org-header-card h2 {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         font-weight: 700;
         color: var(--org-primary);
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        letter-spacing: -0.02em;
     }
 
-    .org-header-card p {
-        font-size: 0.75rem;
+    .org-header-card .header-subtitle {
+        font-size: 0.7rem;
         color: var(--org-text-light);
-        margin: 0;
+        margin: 2px 0 0;
+        font-weight: 500;
     }
 
     .zoom-controls {
@@ -452,21 +491,24 @@
         display: flex;
         flex-direction: column;
         gap: 4px;
-        background: white;
-        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 14px;
         padding: 6px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.6);
     }
 
     .dark-mode .zoom-controls {
-        background: var(--org-box-bg);
+        background: rgba(30, 41, 59, 0.85);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
 
     .zoom-controls button {
         width: 36px;
         height: 36px;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         background: transparent;
         cursor: pointer;
         font-size: 1.1rem;
@@ -474,10 +516,12 @@
         align-items: center;
         justify-content: center;
         color: var(--org-text-dark);
+        transition: all 0.15s ease;
     }
 
     .zoom-controls button:hover {
-        background: rgba(10, 124, 93, 0.1);
+        background: rgba(10, 124, 93, 0.12);
+        transform: scale(1.08);
     }
 
     .zoom-label {
@@ -488,27 +532,7 @@
         padding: 2px 0;
     }
 
-    /* Footer logo */
-    .org-footer-logo {
-        position: absolute;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 100;
-        background: white;
-        padding: 10px 20px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    }
 
-    .dark-mode .org-footer-logo {
-        background: var(--org-box-bg);
-    }
-
-    .org-footer-logo img {
-        height: 40px;
-        width: auto;
-    }
 
     .sidebar {
         position: fixed;
@@ -585,12 +609,607 @@
     .modal-box {
         background: var(--org-box-bg);
         padding: 24px;
-        border-radius: 12px;
+        border-radius: 16px;
         width: 460px;
         max-width: 90%;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
         max-height: 85vh;
         overflow-y: auto;
+        animation: slideUp 0.25s ease;
+    }
+
+    .modal-box::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .modal-box::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .modal-box::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 10px;
+    }
+
+    .modal-box h5 {
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Move Options Modal */
+    .move-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(5px);
+        z-index: 2500;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .move-modal-overlay.open {
+        display: flex;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideUp {
+        from {
+            transform: translateY(30px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* View Mode Bar - Improved */
+    .view-mode-bar {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 4px;
+        border-radius: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        z-index: 1000;
+        display: inline-flex;
+        gap: 2px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .view-mode-bar button {
+        border: none;
+        background: transparent;
+        color: #64748b;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .view-mode-bar button:hover {
+        background: #f1f5f9;
+        color: var(--org-primary);
+    }
+
+    .view-mode-bar button.active-view {
+        background: var(--org-primary);
+        color: white;
+        box-shadow: 0 2px 6px rgba(10, 124, 93, 0.3);
+    }
+
+    /* Dark mode support for view bar */
+    .dark-mode .view-mode-bar {
+        background: var(--org-box-bg);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode .view-mode-bar button {
+        color: #cbd5e1;
+    }
+
+    .dark-mode .view-mode-bar button:hover {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .dark-mode .view-mode-bar button.active-view {
+        background: var(--org-primary);
+        color: white;
+    }
+
+    .move-modal-box {
+        background: white;
+        padding: 28px;
+        border-radius: 16px;
+        width: 500px;
+        max-width: 92%;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+        animation: slideUp 0.25s ease;
+    }
+
+    .move-modal-box h5 {
+        margin: 0 0 6px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: #1e293b;
+    }
+
+    .move-modal-box .move-desc {
+        font-size: 0.82rem;
+        color: #64748b;
+        margin-bottom: 18px;
+        line-height: 1.4;
+    }
+
+    .move-modal-box .move-desc strong {
+        color: var(--org-primary);
+    }
+
+    .move-option {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .move-option:hover {
+        border-color: var(--org-primary);
+        background: rgba(10, 124, 93, 0.04);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(10, 124, 93, 0.1);
+    }
+
+    .move-option .move-icon {
+        font-size: 1.6rem;
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+    }
+
+    .move-option .move-text h6 {
+        margin: 0 0 4px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: #1e293b;
+    }
+
+    .move-option .move-text p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+
+    .move-diagram {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        margin-top: 4px;
+    }
+
+    .move-diagram svg {
+        width: 100%;
+        max-width: 180px;
+        height: auto;
+    }
+
+    .move-option-cancel {
+        text-align: center;
+        padding: 10px;
+        margin-top: 4px;
+    }
+
+    .move-option-cancel button {
+        background: #f1f5f9;
+        border: none;
+        padding: 10px 32px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .move-option-cancel button:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    /* History Modal */
+    .history-list {
+        max-height: 350px;
+        overflow-y: auto;
+        margin: 12px 0;
+    }
+
+    .history-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 6px;
+        transition: all 0.2s;
+    }
+
+    .history-item:hover {
+        border-color: var(--org-primary);
+        background: rgba(10, 124, 93, 0.03);
+    }
+
+    .history-item .hi-info {
+        flex: 1;
+    }
+
+    .history-item .hi-info .hi-date {
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #1e293b;
+    }
+
+    .history-item .hi-info .hi-desc {
+        font-size: 0.72rem;
+        color: #64748b;
+    }
+
+    .history-item .hi-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .history-item .hi-actions button {
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .hi-btn-restore {
+        background: var(--org-primary);
+        color: white;
+    }
+
+    .hi-btn-restore:hover {
+        background: var(--org-primary-dark);
+    }
+
+    .hi-btn-delete {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .hi-btn-delete:hover {
+        background: #fecaca;
+    }
+
+    .history-empty {
+        text-align: center;
+        padding: 30px;
+        color: #94a3b8;
+    }
+
+    .history-empty i {
+        font-size: 2.5rem;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    /* Undo/Redo toolbar */
+    .undo-redo-bar {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 100;
+        display: flex;
+        gap: 4px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 14px;
+        padding: 6px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.6);
+    }
+
+    .dark-mode .undo-redo-bar {
+        background: rgba(30, 41, 59, 0.85);
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .undo-redo-bar button {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 10px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--org-text-dark);
+        transition: all 0.15s ease;
+    }
+
+    .undo-redo-bar button:hover:not(:disabled) {
+        background: rgba(10, 124, 93, 0.12);
+        transform: scale(1.08);
+    }
+
+    .undo-redo-bar button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    /* Vacancy badge */
+    .vacancy-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: rgba(255, 255, 255, 0.25);
+        border: 1px dashed rgba(255, 255, 255, 0.5);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.62rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        margin-top: 3px;
+        animation: vacancyPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes vacancyPulse {
+
+        0%,
+        100% {
+            opacity: 0.7;
+        }
+
+        50% {
+            opacity: 1;
+        }
+    }
+
+    .sede-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 1px 6px;
+        border-radius: 4px;
+        font-size: 0.58rem;
+        font-weight: 600;
+        margin-top: 2px;
+        white-space: nowrap;
+    }
+
+    /* Search bar */
+    .search-overlay {
+        position: absolute;
+        top: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        padding: 10px 14px;
+        display: none;
+        width: 360px;
+        max-width: 90%;
+    }
+
+    .search-overlay.open {
+        display: block;
+    }
+
+    .dark-mode .search-overlay {
+        background: var(--org-box-bg);
+    }
+
+    .search-input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 6px 10px;
+        transition: border-color 0.2s;
+    }
+
+    .search-input-wrapper:focus-within {
+        border-color: var(--org-primary);
+    }
+
+    .search-input-wrapper i {
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+
+    .search-input-wrapper input {
+        border: none;
+        outline: none;
+        background: transparent;
+        font-size: 0.85rem;
+        flex: 1;
+        color: var(--org-text-dark);
+    }
+
+    .search-results {
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 8px;
+    }
+
+    .search-result-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background 0.15s;
+        font-size: 0.82rem;
+    }
+
+    .search-result-item:hover {
+        background: rgba(10, 124, 93, 0.06);
+    }
+
+    .search-result-item .sr-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .search-result-item .sr-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .search-result-item .sr-title {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .search-result-item .sr-sub {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    .search-no-results {
+        text-align: center;
+        padding: 16px;
+        color: #94a3b8;
+        font-size: 0.82rem;
+    }
+
+
+
+    /* Stats panel */
+    .stats-panel {
+        position: absolute;
+        bottom: 70px;
+        left: 20px;
+        z-index: 100;
+        background: white;
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        font-size: 0.72rem;
+        min-width: 180px;
+        display: none;
+    }
+
+    .stats-panel.open {
+        display: block;
+    }
+
+    .dark-mode .stats-panel {
+        background: var(--org-box-bg);
+    }
+
+    .stats-panel h6 {
+        font-size: 0.78rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+        color: var(--org-primary);
+    }
+
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 3px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .stat-row:last-child {
+        border-bottom: none;
+    }
+
+    .stat-row .stat-label {
+        color: #64748b;
+    }
+
+    .stat-row .stat-value {
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .stat-row .stat-value.vacancy {
+        color: #ef4444;
+    }
+
+    .stat-divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 6px 0;
+    }
+
+    /* Highlighted node from search */
+    .org-box.search-highlight {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5), 0 8px 24px rgba(0, 0, 0, 0.15);
+        z-index: 15;
+        animation: searchPulse 1.5s ease 2;
+    }
+
+    @keyframes searchPulse {
+
+        0%,
+        100% {
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5), 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        50% {
+            box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
     }
 
     .photo-modal {
@@ -762,6 +1381,7 @@
 
     .hue-slider {
         -webkit-appearance: none;
+        appearance: none;
         width: 100%;
         height: 12px;
         border-radius: 6px;
@@ -795,14 +1415,19 @@
 {% block content %}
 <div class="organigrama-wrapper" id="workspace">
     <div class="view-mode-bar" id="viewModeBar" style="display:none;">
-        <button class="btn btn-light" onclick="setViewMode('both')" id="btnBoth">🏢 Ambos</button>
-        <button class="btn btn-light" onclick="setViewMode('zf')" id="btnZF">⬛ Solo ZF</button>
-        <button class="btn btn-light" onclick="setViewMode('cwt')" id="btnCWT">⬛ Solo CWT</button>
+        <button onclick="setViewMode('both')" id="btnBoth"><i class="bi bi-diagram-3-fill"></i>Ambos</button>
+        <button onclick="setViewMode('zf')" id="btnZF"><i class="bi bi-box-seam-fill" style="color:#d97706;"></i>Solo
+            ZF</button>
+        <button onclick="setViewMode('cwt')" id="btnCWT"><i class="bi bi-globe-americas" style="color:#3b82f6;"></i>Solo
+            CWT</button>
     </div>
 
     <div class="toolbar-overlay">
-        <button class="btn btn-light border" onclick="resetLocalData()"><i
-                class="bi bi-arrow-counterclockwise me-1"></i>Resetear</button>
+        <button class="btn btn-light border" onclick="toggleSearch()"><i class="bi bi-search me-1"></i>Buscar</button>
+        <button class="btn btn-light border" onclick="toggleStats()"><i
+                class="bi bi-bar-chart-fill me-1"></i>Estadísticas</button>
+        <button class="btn btn-light border" onclick="showHistoryModal()"><i
+                class="bi bi-clock-history me-1"></i>Historial</button>
         <button class="btn btn-light border" onclick="toggleSidebar()"><i
                 class="bi bi-gear-fill me-1"></i>Ajustes</button>
         <button class="btn btn-primary" onclick="exportToImage()"><i class="bi bi-download me-1"></i>Exportar
@@ -810,8 +1435,26 @@
     </div>
 
     <div class="org-header-card">
-        <h2 id="headerCompanyName">Conquers Trading Groups</h2>
-        <p>Organigrama Corporativo</p>
+        <h2 id="headerCompanyName"><i class="bi bi-diagram-3-fill" style="font-size:0.9rem;opacity:0.7;"></i>Conquers
+            Trading Group</h2>
+        <div class="header-subtitle">Organigrama Corporativo</div>
+    </div>
+
+    <!-- Search overlay -->
+    <div class="search-overlay" id="searchOverlay">
+        <div class="search-input-wrapper">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchInput" placeholder="Buscar cargo, empleado, sede..."
+                oninput="doSearch(this.value)">
+            <kbd style="font-size:0.65rem;background:#e2e8f0;padding:2px 6px;border-radius:4px;color:#64748b;">ESC</kbd>
+        </div>
+        <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="stats-panel" id="statsPanel">
+        <h6><i class="bi bi-bar-chart-fill me-1"></i>Estadísticas</h6>
+        <div id="statsContent"></div>
     </div>
 
     <div class="zoom-controls">
@@ -823,10 +1466,15 @@
         <button onclick="centerView()"><i class="bi bi-bullseye"></i></button>
     </div>
 
-    <!-- Footer logo -->
-    <div class="org-footer-logo">
-        <img src="{{ url_for('static', filename='Logo_conquers-04.png') }}" alt="Conquers">
+    <!-- Undo/Redo controls -->
+    <div class="undo-redo-bar">
+        <button onclick="undoAction()" id="btnUndo" title="Deshacer (Ctrl+Z)" disabled><i
+                class="bi bi-arrow-counterclockwise"></i></button>
+        <button onclick="redoAction()" id="btnRedo" title="Rehacer (Ctrl+Y)" disabled><i
+                class="bi bi-arrow-clockwise"></i></button>
     </div>
+
+
 
     <div class="org-chart-container" id="chartContainer">
         <svg class="connections-layer" id="svgLayer" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -863,8 +1511,20 @@
         <!-- Tabs for different node types -->
         <div class="modal-tabs" id="editModalTabs" style="display:none;">
             <button class="tab-btn active" onclick="switchEditTab('company')" id="tabCompany">🏢 Empresa</button>
-            <button class="tab-btn" onclick="switchEditTab('person')" id="tabPerson">👤 Empleado</button>
+            <button class="tab-btn" onclick="switchEditTab('person')" id="tabPerson">👤 Cargo</button>
             <button class="tab-btn" onclick="switchEditTab('group')" id="tabGroup">👥 Grupo</button>
+        </div>
+
+        <!-- Smart Context Badge -->
+        <div id="smartContextBadge" style="display:none;margin-bottom:10px;"></div>
+
+        <!-- Parent Selection (General) -->
+        <div class="mb-3" id="divEditParent">
+            <label class="form-label small fw-semibold">Jefe Inmediato / Área Superior</label>
+            <select id="editParent" class="form-select form-select-sm"></select>
+            <div class="form-text" style="font-size:0.7rem;">El <b>Jefe Inmediato</b> es la persona o área que supervisa
+                este cargo. Cambiarlo moverá el cuadro a otra área del organigrama. También puedes arrastrar el cuadro
+                cerca de otro para moverlo.</div>
         </div>
 
         <!-- Company Info Tab -->
@@ -900,40 +1560,86 @@
             </div>
         </div>
 
-        <!-- Person/Employee Tab -->
+        <!-- Person/Employee Tab (SMART) -->
         <div class="tab-content" id="tabContentPerson">
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Nombre del Empleado</label>
-                <input type="text" id="editEmployee" class="form-control form-control-sm" placeholder="Juan Pérez">
+            <!-- Section 1: Core - Always visible -->
+            <div style="border-left:3px solid var(--org-primary);padding-left:10px;margin-bottom:12px;">
+                <div
+                    style="font-size:0.68rem;font-weight:700;color:var(--org-primary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+                    📋 Información del Cargo</div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Cargo / Posición</label>
+                    <input type="text" id="editTitle" class="form-control form-control-sm">
+                </div>
+                <div class="mb-2" id="divEditSubtitle">
+                    <label class="form-label small fw-semibold">Empresa</label>
+                    <select id="editSubtitle" class="form-select form-select-sm">
+                        <option value="CWT">CWT - CICWT S.A.S</option>
+                        <option value="ZF">ZF - Conquers ZF S.A.S</option>
+                    </select>
+                    <div class="form-text" style="font-size:0.62rem;color:#94a3b8;">Solo se muestra para directores
+                        transversales que pueden pertenecer a cualquier empresa</div>
+                </div>
             </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Cargo</label>
-                <input type="text" id="editTitle" class="form-control form-control-sm">
-            </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Empresa</label>
-                <input type="text" id="editSubtitle" class="form-control form-control-sm">
-            </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Foto</label>
-                <div class="photo-upload-area" onclick="document.getElementById('editPhotoPerson').click()">
-                    <div id="photoPreviewPerson">
-                        <div class="upload-icon">📷</div>
-                        <div class="small text-muted">Clic para subir foto</div>
+
+            <!-- Section 2: Employee Info - Conditional -->
+            <div style="border-left:3px solid #3b82f6;padding-left:10px;margin-bottom:12px;">
+                <div
+                    style="font-size:0.68rem;font-weight:700;color:#3b82f6;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+                    👤 Empleado Asignado</div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Nombre del Empleado</label>
+                    <input type="text" id="editEmployee" class="form-control form-control-sm"
+                        placeholder="Dejar vacío = cargo vacante" oninput="smartToggleContactFields()">
+                    <div class="form-text" style="font-size:0.62rem;" id="vacancyHint">💡 Si no hay empleado, el cargo
+                        aparecerá como <b>VACANTE</b></div>
+                </div>
+                <!-- Contact fields - shown only when employee name is present -->
+                <div id="smartContactFields" style="display:none;">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">📧 Email</label>
+                        <input type="email" id="editEmail" class="form-control form-control-sm"
+                            placeholder="empleado@conquers.com">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">📞 Teléfono</label>
+                        <input type="text" id="editPhone" class="form-control form-control-sm"
+                            placeholder="+57 300 000 0000">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">📷 Foto</label>
+                        <div class="photo-upload-area" onclick="document.getElementById('editPhotoPerson').click()">
+                            <div id="photoPreviewPerson">
+                                <div class="upload-icon">📷</div>
+                                <div class="small text-muted">Clic para subir foto</div>
+                            </div>
+                        </div>
+                        <input type="file" id="editPhotoPerson" accept="image/*" style="display:none;"
+                            onchange="handlePhotoUploadPerson(this)">
+                        <button class="btn btn-outline-danger btn-sm mt-2 w-100" id="btnRemovePhotoPerson"
+                            style="display:none;" onclick="removePhotoPerson()">🗑️ Quitar foto</button>
                     </div>
                 </div>
-                <input type="file" id="editPhotoPerson" accept="image/*" style="display:none;"
-                    onchange="handlePhotoUploadPerson(this)">
-                <button class="btn btn-outline-danger btn-sm mt-2 w-100" id="btnRemovePhotoPerson" style="display:none;"
-                    onclick="removePhotoPerson()">🗑️ Quitar foto</button>
             </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Email</label>
-                <input type="email" id="editEmail" class="form-control form-control-sm">
-            </div>
-            <div class="mb-2">
-                <label class="form-label small fw-semibold">Teléfono</label>
-                <input type="text" id="editPhone" class="form-control form-control-sm">
+
+            <!-- Section 3: Location -->
+            <div style="border-left:3px solid #f59e0b;padding-left:10px;margin-bottom:6px;" id="divEditSede">
+                <div
+                    style="font-size:0.68rem;font-weight:700;color:#f59e0b;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+                    📍 Ubicación</div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Sede / Ubicación</label>
+                    <select id="editSede" class="form-select form-select-sm">
+                        <option value="">Sin asignar</option>
+                        <option value="Bolívar - Cartagena">Bolívar - Cartagena</option>
+                        <option value="Madrid - Cundinamarca">Madrid - Cundinamarca</option>
+                        <option value="Bogotá D.C.">Bogotá D.C.</option>
+                        <option value="Barranquilla - Atlántico">Barranquilla - Atlántico</option>
+                        <option value="Bucaramanga - Santander">Bucaramanga - Santander</option>
+                        <option value="Remoto">Remoto</option>
+                    </select>
+                    <div class="form-text" style="font-size:0.62rem;" id="sedeHint"></div>
+                </div>
             </div>
         </div>
 
@@ -950,8 +1656,8 @@
             </div>
         </div>
 
-        <div class="mt-3">
-            <label class="form-label small fw-semibold">Color del Encabezado</label>
+        <div class="mt-3" id="divColorSection">
+            <label class="form-label small fw-semibold">🎨 Color del Encabezado</label>
             <div class="palette-grid" id="editColorPalette"></div>
 
             <div class="d-flex align-items-center gap-2 mt-2">
@@ -966,6 +1672,8 @@
                 </div>
             </div>
             <input type="hidden" id="editSelectedColor">
+            <div class="form-text" style="font-size:0.6rem;" id="colorHint">Solo visible para nodos especiales
+                (empresas, directores, grupos)</div>
         </div>
 
         <div class="d-flex gap-2 mt-3">
@@ -986,6 +1694,86 @@
 </div>
 
 <div class="toast-custom" id="toast">Guardado</div>
+
+<!-- Move Options Modal -->
+<div class="move-modal-overlay" id="moveModal">
+    <div class="move-modal-box">
+        <h5>📦 Mover Posición</h5>
+        <div class="move-desc" id="moveDesc">Selecciona cómo ubicar esta posición</div>
+
+        <div class="move-option" id="moveOptSame" onclick="executeMoveOption('same-level')">
+            <div class="move-icon">↔️</div>
+            <div class="move-text">
+                <h6>Mismo Nivel (Colega)</h6>
+                <p>Ubicar al <strong>mismo rango</strong> que el nodo destino. Ambos compartirán el mismo jefe superior.
+                </p>
+                <div class="move-diagram">
+                    <svg viewBox="0 0 180 80" fill="none">
+                        <rect x="55" y="2" width="70" height="22" rx="4" fill="#94a3b8" opacity="0.3" />
+                        <text x="90" y="16" text-anchor="middle" fill="#64748b" font-size="8"
+                            font-weight="600">JEFE</text>
+                        <line x1="70" y1="24" x2="70" y2="38" stroke="#94a3b8" stroke-width="1.5" />
+                        <line x1="110" y1="24" x2="110" y2="38" stroke="#94a3b8" stroke-width="1.5" />
+                        <rect x="35" y="38" width="70" height="22" rx="4" fill="#0a7c5d" opacity="0.7" />
+                        <text x="70" y="52" text-anchor="middle" fill="white" font-size="7"
+                            font-weight="600">DESTINO</text>
+                        <rect x="110" y="38" width="55" height="22" rx="4" fill="#3b82f6" stroke="#3b82f6"
+                            stroke-width="2" />
+                        <text x="137" y="52" text-anchor="middle" fill="white" font-size="7" font-weight="700">TÚ</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="move-option" id="moveOptBelow" onclick="executeMoveOption('below')">
+            <div class="move-icon">⬇️</div>
+            <div class="move-text">
+                <h6>Por Debajo (Subordinado)</h6>
+                <p>Ubicar <strong>por debajo</strong> del nodo destino. El nodo destino será su nuevo jefe.</p>
+                <div class="move-diagram">
+                    <svg viewBox="0 0 180 80" fill="none">
+                        <rect x="55" y="2" width="70" height="22" rx="4" fill="#0a7c5d" opacity="0.7" />
+                        <text x="90" y="16" text-anchor="middle" fill="white" font-size="8"
+                            font-weight="600">DESTINO</text>
+                        <line x1="90" y1="24" x2="90" y2="40" stroke="#94a3b8" stroke-width="1.5" />
+                        <rect x="55" y="40" width="70" height="22" rx="4" fill="#3b82f6" stroke="#3b82f6"
+                            stroke-width="2" />
+                        <text x="90" y="54" text-anchor="middle" fill="white" font-size="7" font-weight="700">TÚ</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="move-option-cancel">
+            <button onclick="cancelMove()">✕ Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal-box" style="width:520px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h5 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Historial de Cambios</h5>
+            <button class="btn-icon-mini" onclick="closeHistoryModal()"
+                style="font-size:1rem;background:#f1f5f9;">✕</button>
+        </div>
+        <p style="font-size:0.8rem;color:#64748b;margin-bottom:12px;">Cada vez que guardas cambios, se crea un punto de
+            restauración. Puedes volver a cualquier estado anterior.</p>
+        <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-sm btn-outline-primary flex-grow-1" onclick="createManualSnapshot()"
+                style="border-color:var(--org-primary);color:var(--org-primary);"><i class="bi bi-camera me-1"></i>Crear
+                Punto de Restauración</button>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-light btn-sm flex-grow-1" onclick="closeHistoryModal()">Cerrar</button>
+            <button class="btn btn-outline-danger btn-sm" onclick="clearAllHistory()"><i
+                    class="bi bi-trash me-1"></i>Borrar Historial</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -1004,22 +1792,39 @@
         let currentEditTab = 'company';
 
         const COLORS = [
-            { id: 'bg-corp-top', bg: 'linear-gradient(135deg, #4B5563, #6B7280)' },
-            { id: 'bg-corp-audit', bg: 'linear-gradient(135deg, #5b21b6, #7c3aed)' },
-            { id: 'bg-cwt', bg: 'linear-gradient(135deg, #0077B0, #0099E0)' },
-            { id: 'bg-cwt-light', bg: 'linear-gradient(135deg, #0099E0, #33adee)' },
-            { id: 'bg-zf', bg: 'linear-gradient(135deg, #CC9300, #FFB800)' },
-            { id: 'bg-zf-light', bg: 'linear-gradient(135deg, #FFB800, #ffc933)' },
-            { id: 'bg-red', bg: 'linear-gradient(135deg, #ef4444, #f87171)' },
-            { id: 'bg-green', bg: 'linear-gradient(135deg, #10b981, #34d399)' },
-            { id: 'bg-blue', bg: 'linear-gradient(135deg, #3b82f6, #60a5fa)' },
-            { id: 'bg-purple', bg: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' },
-            { id: 'bg-orange', bg: 'linear-gradient(135deg, #f59e0b, #fbbf24)' },
-            { id: 'bg-teal', bg: 'linear-gradient(135deg, #14b8a6, #2dd4bf)' },
-            { id: 'bg-pink', bg: 'linear-gradient(135deg, #ec4899, #f472b6)' },
-            { id: 'bg-indigo', bg: 'linear-gradient(135deg, #6366f1, #818cf8)' },
-            { id: 'bg-gray', bg: 'linear-gradient(135deg, #64748b, #94a3b8)' },
+            // Corporate colors
+            { id: 'bg-corp-top', bg: 'linear-gradient(135deg, #1e293b, #334155)', name: 'Gris Oscuro' },
+            { id: 'bg-corp-audit', bg: 'linear-gradient(135deg, #581c87, #7e22ce)', name: 'Morado' },
+            // Company colors - CWT Blue 238
+            { id: 'bg-cwt', bg: 'linear-gradient(135deg, hsl(238, 80%, 35%), hsl(238, 70%, 50%))', name: 'Azul CWT' },
+            { id: 'bg-cwt-light', bg: 'linear-gradient(135deg, hsl(238, 70%, 45%), hsl(238, 70%, 60%))', name: 'Azul CWT Claro' },
+            // Company colors - ZF Gold
+            { id: 'bg-zf', bg: 'linear-gradient(135deg, #b45309, #d97706)', name: 'Dorado ZF' },
+            { id: 'bg-zf-light', bg: 'linear-gradient(135deg, #d97706, #f59e0b)', name: 'Dorado ZF Claro' },
+            // Professional palette
+            { id: 'bg-blue', bg: 'linear-gradient(135deg, #1d4ed8, #3b82f6)', name: 'Azul' },
+            { id: 'bg-green', bg: 'linear-gradient(135deg, #047857, #10b981)', name: 'Verde' },
+            { id: 'bg-red', bg: 'linear-gradient(135deg, #b91c1c, #ef4444)', name: 'Rojo' },
+            { id: 'bg-orange', bg: 'linear-gradient(135deg, #c2410c, #f97316)', name: 'Naranja' },
+            { id: 'bg-purple', bg: 'linear-gradient(135deg, #6b21a8, #a855f7)', name: 'Morado' },
+            { id: 'bg-pink', bg: 'linear-gradient(135deg, #be185d, #ec4899)', name: 'Rosa' },
+            { id: 'bg-teal', bg: 'linear-gradient(135deg, #0f766e, #14b8a6)', name: 'Teal' },
+            { id: 'bg-indigo', bg: 'linear-gradient(135deg, #3730a3, #6366f1)', name: 'Índigo' },
+            { id: 'bg-cyan', bg: 'linear-gradient(135deg, #0891b2, #06b6d4)', name: 'Cian' },
+            { id: 'bg-lime', bg: 'linear-gradient(135deg, #4d7c0f, #84cc16)', name: 'Lima' },
+            { id: 'bg-slate', bg: 'linear-gradient(135deg, #475569, #64748b)', name: 'Azul Gris' },
         ];
+
+        // Available sedes
+        const SEDES = [
+            'Bolívar - Cartagena',
+            'Madrid - Cundinamarca',
+            'Bogotá D.C.',
+            'Barranquilla - Atlántico',
+            'Bucaramanga - Santander',
+            'Remoto'
+        ];
+        let activeSedeFilter = ''; // '' = show all
 
         const mkNode = (title, subtitle, parentId, color, collapsed, nodeType) => ({
             id: idCounter++, title, subtitle: subtitle || '',
@@ -1031,6 +1836,8 @@
             employee: '', email: '', phone: '',
             // Group fields
             members: '',
+            // Location
+            sede: '',
             // Type
             nodeType: nodeType || 'person',
             isVerticalStack: false,
@@ -1060,55 +1867,96 @@
                 nodes.push(n);
             });
 
-            const zf = mkNode('ZF', 'Conquers ZF S.A.S', de.id, 'bg-zf', true, 'company');
+            const zf = mkNode('Conquers ZF S.A.S', 'Refinador - Importador', de.id, 'bg-zf', true, 'company');
             zf.companyName = 'Conquers ZF S.A.S';
+            zf.sede = 'Bolívar - Cartagena'; // Sede Base ZF
             nodes.push(zf); buildZF(zf.id);
 
-            const cw = mkNode('CWT', 'CICWT S.A.S', de.id, 'bg-cwt', true, 'company');
-            cw.companyName = 'CICWT S.A.S';
-            nodes.push(cw); buildCWT(cw.id);
+            const cwt = mkNode('CICWT S.A.S', 'Comercializadora Internacional', de.id, 'bg-cwt', true, 'company');
+            cwt.companyName = 'CICWT S.A.S';
+            cwt.sede = 'Madrid - Cundinamarca'; // Sede Base CWT
+            nodes.push(cwt); buildCWT(cwt.id);
         }
 
         function buildZF(pid) {
             // Using 'AREA' nodes instead of Directors inside the company
             const a = (t, p) => { const n = mkNode(t, 'ZF', p, 'bg-zf-light'); nodes.push(n); return n.id; };
-            // Original: DIRECTOR DE LOGISTICA -> LOGISTICA
-            const dL = a('LOGISTICA', pid);
-            const cI = a('Coord. inventarios y despachos', dL); a('Auxiliar de logística', cI);
-            const dO = a('OPERACIONES', pid);
-            const cP = a('Coord. producción y mantenimiento', dO);
+            // Original: DIRECTOR DE LOGISTICA -> Removed placeholder, attach directly to ZF
+            // LOGISTICA -> Coord. inventarios
+            const cI = a('Coord. inventarios y despachos', pid); a('Auxiliar de logística', cI);
+
+            // OPERACIONES -> Coord. producción
+            const cP = a('Coord. producción y mantenimiento', pid);
             const sP = a('Supervisor de producción', cP); a('Auxiliar de producción', sP); a('Operador de producción', sP);
             const sM = a('Supervisor de mantenimiento', cP); a('Auxiliar de mantenimiento', sM); a('Operador de mantenimiento', sM);
-            const dC = a('CALIDAD', pid); a('Coordinador de Calidad', dC);
-            const dCo = a('COMPRAS Y COMEX', pid); a('Analista de compras', dCo); a('Analista comercio exterior', dCo); a('Analista de aduanas', dCo);
-            a('MERCADEO Y VENTAS', pid);
-            const dCF = a('CONTABILIDAD Y FINANZAS', pid); a('Coord. contable e impuestos', dCF);
-            a('JURÍDICO', pid);
-            const dTI = a('TECNOLOGÍA E INFORMACIÓN', pid); a('Asistente de Sistemas', dTI);
-            const dRH = a('RECURSOS HUMANOS', pid); a('Asistente de RRHH', dRH);
-            const dH = a('HSEQ', pid); a('Analista HSE', dH); a('Coord. responsabilidad social', dH);
-            const dID = a('INVESTIGACIÓN Y DESARROLLO', pid); a('Analista de laboratorio', dID);
-            const oC = a('CONTROL E INTEGRACIÓN', pid); a('Analista de SICOM', oC);
+
+            // CALIDAD -> Coordinador de Calidad
+            const cQ = a('Coordinador de Calidad', pid);
+
+            // COMPRAS Y COMEX -> Analistas direct to PID? Or grouped? User wants to remove directors.
+            // Let's attach analysts to pid for now, or group them under a coordinator if exists.
+            // No coordinator listed, so attach to pid.
+            a('Analista de compras', pid); a('Analista comercio exterior', pid); a('Analista de aduanas', pid);
+
+            // MERCADEO Y VENTAS -> Empty in code, so nothing to add.
+
+            // CONTABILIDAD Y FINANZAS -> Coord. contable
+            a('Coord. contable e impuestos', pid);
+
+            // JURÍDICO -> Empty in code.
+
+            // TI -> Asistente
+            a('Asistente de Sistemas', pid);
+
+            // RH -> Asistente
+            a('Asistente de RRHH', pid);
+
+            // HSEQ -> Analista, Coord
+            a('Analista HSE', pid); a('Coord. responsabilidad social', pid);
+
+            // ID -> Analista lab
+            a('Analista de laboratorio', pid);
+
+            // CONTROL -> Analista SICOM
+            a('Analista de SICOM', pid);
         }
 
         function buildCWT(pid) {
-            const a = (t, p) => { const n = mkNode(t, 'CWT', p, 'bg-cwt-light'); nodes.push(n); return n.id; };
-            const dL = a('LOGISTICA', pid);
-            const cT = a('Coordinador de transporte', dL); a('Analista transporte terrestre', cT); a('Analista transporte marítimo', cT);
-            a('OPERACIONES', pid); a('CALIDAD', pid);
-            const dCo = a('COMPRAS Y COMEX', pid); a('Coord. compras y comex', dCo);
-            const dM = a('MERCADEO Y VENTAS', pid);
-            const cV = a('Coordinador de ventas', dM); a('Analista de ventas', cV);
-            const cMk = a('Coordinador de mercadeo', dM); a('Analista de mercadeo', cMk);
-            const dCF = a('CONTABILIDAD Y FINANZAS', pid); a('Analista financiero', dCF); a('Analista contable e impuestos', dCF); a('Analista de tesorería', dCF);
-            const dJ = a('JURÍDICO', pid); a('Asistente legal', dJ);
-            const dTI = a('TECNOLOGÍA E INFORMACIÓN', pid);
-            const cS = a('Coordinador de Sistemas', dTI); a('Analista de Soporte', cS);
-            a('Coordinador de ERP', dTI); a('Coord. Seguridad e Información', dTI);
-            const dRH = a('RECURSOS HUMANOS', pid); a('Coord. recursos humanos', dRH);
-            const dH = a('HSEQ', pid); const cH = a('Coordinador HSEQ', dH); a('Analista documental', cH);
-            const dID = a('INVESTIGACIÓN Y DESARROLLO', pid); a('Coord. procesos industriales', dID); a('Coord. producto / servicio', dID);
-            const oC = a('CONTROL E INTEGRACIÓN', pid); a('Coordinador financiero', oC); a('Coord. contable e impuestos', oC); a('Coordinador de tesorería', oC); a('Asist. servicios generales', oC);
+            const a = (t, p) => { const n = mkNode(t, 'CWT', p, 'bg-cwt-child'); nodes.push(n); return n.id; };
+            // LOGISTICA -> Coord transporte
+            const cT = a('Coordinador de transporte', pid); a('Analista transporte terrestre', cT); a('Analista transporte marítimo', cT);
+
+            // OPERACIONES -> Empty
+            // CALIDAD -> Empty (DIRECTOR DE CALIDAD was placeholder)
+
+            // COMPRAS -> Coord compras
+            a('Coord. compras y comex', pid);
+
+            // MERCADEO -> Coord ventas, Coord mercadeo
+            const cV = a('Coordinador de ventas', pid); a('Analista de ventas', cV);
+            const cMk = a('Coordinador de mercadeo', pid); a('Analista de mercadeo', cMk);
+
+            // CONTABILIDAD -> Analistas direct to pid (no coordinator listed as parent of analysts in previous code, they were under director)
+            a('Analista financiero', pid); a('Analista contable e impuestos', pid); a('Analista de tesorería', pid);
+
+            // JURIDICO -> Asistente
+            a('Asistente legal', pid);
+
+            // TI -> Coordinators
+            const cS = a('Coordinador de Sistemas', pid); a('Analista de Soporte', cS);
+            a('Coordinador de ERP', pid); a('Coord. Seguridad e Información', pid);
+
+            // RH -> Coord
+            a('Coord. recursos humanos', pid);
+
+            // HSEQ -> Coordinador
+            const cH = a('Coordinador HSEQ', pid); a('Analista documental', cH);
+
+            // ID -> Coords
+            a('Coord. procesos industriales', pid); a('Coord. producto / servicio', pid);
+
+            // CONTROL -> Coords, Assistants
+            a('Coordinador financiero', pid); a('Coord. contable e impuestos', pid); a('Coordinador de tesorería', pid); a('Asist. servicios generales', pid);
         }
 
         // ===== LAYOUT =====
@@ -1132,13 +1980,18 @@
         }
         function placeN(id, x, y, aw, cm) {
             const n = nodes.find(nd => nd.id === id);
-            n.x = x; n.y = y;
+            n.x = Math.round(x); n.y = Math.round(y);
             const ch = cm[id];
             if (!ch || !ch.length || n.collapsed) return;
             if (isLeaf(id, cm)) {
                 n.isVerticalStack = true;
-                let cy = y + V_GAP;
-                ch.forEach(c => { const cn = nodes.find(nd => nd.id === c.id); cn.x = x + 40; cn.y = cy; cy += STACK_V_GAP; });
+                let cy = Math.round(y + V_GAP);
+                ch.forEach(c => {
+                    const cn = nodes.find(nd => nd.id === c.id);
+                    cn.x = Math.round(x + 40);
+                    cn.y = Math.round(cy);
+                    cy += STACK_V_GAP;
+                });
                 return;
             }
             let cx = x - aw / 2;
@@ -1175,29 +2028,37 @@
             let companiesY = dir.y + V_GAP; // Default if no directors
 
             if (shDirs.length > 0) {
-                // Layout directors in one or two rows
-                const dirGap = 20; // smaller gap for directors
+                // Dynamic grid layout for directors
+                // Max items per row to prevent too wide chart
+                const maxPerRow = 6;
+                const count = shDirs.length;
+                const rows = Math.ceil(count / maxPerRow);
+                // Distribute evenly
+                const perRow = Math.ceil(count / rows);
+
                 const dirW = BOX_W;
-                // Try 2 rows of 6
-                const perRow = Math.ceil(shDirs.length / 2);
-                const rowWidth = perRow * (dirW + dirGap) - dirGap;
+                const dirGap = 20;
 
                 shDirs.forEach((d, i) => {
-                    const row = Math.floor(i / perRow);
-                    const col = i % perRow;
-                    // Center the row
+                    const currentRow = Math.floor(i / perRow);
+                    const itemsInThisRow = (currentRow === rows - 1) ? (count % perRow || perRow) : perRow;
+                    const colIndex = i % perRow;
+
+                    // Calculate row width to center it
+                    const rowWidth = itemsInThisRow * (dirW + dirGap) - dirGap;
                     const rowStart = dir.x - rowWidth / 2 + dirW / 2;
-                    d.x = rowStart + col * (dirW + dirGap);
-                    d.y = dir.y + V_GAP + row * 120; // 120px vertical gap between director rows
+
+                    d.x = Math.round(rowStart + colIndex * (dirW + dirGap));
+                    d.y = Math.round(dir.y + V_GAP + currentRow * 110);
                 });
 
-                companiesY = dir.y + V_GAP + (Math.ceil(shDirs.length / perRow) * 120) + 40;
+                companiesY = dir.y + V_GAP + (rows * 110) + 50;
             } else {
                 companiesY = dir.y + V_GAP;
             }
 
-            const zf = nodes.find(n => n.title === 'ZF');
-            const cwt = nodes.find(n => n.title === 'CWT');
+            const zf = nodes.find(n => n.title === 'Conquers ZF S.A.S');
+            const cwt = nodes.find(n => n.title === 'CICWT S.A.S');
             document.getElementById('viewModeBar').style.display = 'flex';
 
             const showZF = (viewMode === 'both' || viewMode === 'zf') && zf;
@@ -1239,7 +2100,7 @@
                 return `<img src="${node.photo}" onclick="window._showPhoto(${node.id}, event)">`;
             }
             if (node.nodeType === 'company') {
-                const logo = node.title === 'CWT' ? LOGO_CWT : LOGO_ZF;
+                const logo = node.title === 'CICWT S.A.S' ? LOGO_CWT : LOGO_ZF;
                 return `<img src="${logo}" class="company-logo" onclick="window._showPhoto(${node.id}, event)">`;
             }
             if (node.nodeType === 'group') {
@@ -1259,8 +2120,8 @@
                     let ch = nodes.filter(c => c.parent === n.id);
                     if (n.title === 'DIRECTOR EJECUTIVO') {
                         ch = ch.filter(c => {
-                            if (c.title === 'ZF' && viewMode === 'cwt') return false;
-                            if (c.title === 'CWT' && viewMode === 'zf') return false;
+                            if (c.title === 'Conquers ZF S.A.S' && viewMode === 'cwt') return false;
+                            if (c.title === 'CICWT S.A.S' && viewMode === 'zf') return false;
                             return true;
                         });
                     }
@@ -1276,15 +2137,55 @@
             const vis = getVisibleNodes();
 
             vis.forEach(node => {
+                // If sede filter is active, dim nodes that don't match
+                const isStructural = node.nodeType === 'company' || node.nodeType === 'group' || node.isSharedDirector || !node.parent;
+                let matchesSede = true;
+                if (activeSedeFilter && !isStructural) {
+                    if (activeSedeFilter === 'Sin sede') {
+                        matchesSede = !node.sede;
+                    } else {
+                        matchesSede = node.sede === activeSedeFilter;
+                    }
+                }
+
                 const el = document.createElement('div');
                 el.className = 'org-box';
                 if (node.isSharedDirector) el.classList.add('is-transversal');
+                if (!matchesSede && activeSedeFilter) el.style.opacity = '0.3';
                 el.id = `box-${node.id}`;
                 el.style.left = node.x + 'px';
                 el.style.top = node.y + 'px';
 
                 const hasCh = nodes.some(n => n.parent === node.id && n.x > -9000);
                 const colBtn = hasCh ? `<div class="btn-collapse" onclick="window._tc(${node.id},event)">${node.collapsed ? '＋' : '−'}</div>` : '';
+
+                // Determine if vacancy
+                const isVacancy = node.nodeType === 'person' && !node.employee && !node.isSharedDirector && node.parent;
+
+                // Sede badge logic
+                let sedeBadge = '';
+                if (node.sede) {
+                    // Check for cross-location (Excepción: CWT en Cartagena o ZF en Madrid)
+                    // Infer company from color or parents logic (simplified here by color/subtitle)
+                    let isCrossLocation = false;
+                    const isCWT = node.subtitle === 'CWT' || node.color.includes('cwt') || (node.parent && nodes.find(p => p.id === node.parent && p.title === 'CICWT S.A.S'));
+                    const isZF = node.subtitle === 'ZF' || node.color.includes('zf') || (node.parent && nodes.find(p => p.id === node.parent && p.title === 'Conquers ZF S.A.S'));
+
+                    if (isCWT && node.sede !== 'Madrid - Cundinamarca') isCrossLocation = true;
+                    if (isZF && node.sede !== 'Bolívar - Cartagena') isCrossLocation = true;
+
+                    // Style: Yellowish background if cross-location, otherwise subtle
+                    const badgeStyle = isCrossLocation
+                        ? 'background:rgba(255, 243, 205, 0.9);color:#854d0e;border:1px solid #fde047;box-shadow:0 2px 4px rgba(0,0,0,0.1);'
+                        : '';
+
+                    const locationIcon = isCrossLocation ? '⚠️📍' : '📍';
+
+                    sedeBadge = `<div class="sede-badge" style="${badgeStyle}">${locationIcon} ${node.sede}</div>`;
+                }
+
+                // Vacancy badge
+                const vacancyBadge = isVacancy ? `<div class="vacancy-badge">⚠ VACANTE</div>` : '';
 
                 // Render based on node type
                 let mainContent = '';
@@ -1295,12 +2196,28 @@
                 } else if (node.nodeType === 'group') {
                     mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.members ? `<div class="box-members">${node.members.replace(/\n/g, ' • ')}</div>` : ''}`;
                 } else {
-                    mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.employee ? `<div class="box-employee">${node.employee}</div>` : ''}`;
+                    mainContent = `<div class="box-title">${node.title}</div><div class="box-subtitle">${node.subtitle}</div>${node.employee ? `<div class="box-employee">${node.employee}</div>` : ''}${vacancyBadge}${sedeBadge}`;
                 }
 
                 const isCustomColor = node.color && !node.color.startsWith('bg-');
                 const headerClass = isCustomColor ? '' : node.color;
                 const headerStyle = isCustomColor ? `background: ${node.color};` : '';
+
+                // box-body content generation
+                let bodyContent = '';
+                if (node.nodeType === 'person') {
+                    if (node.email) bodyContent += `<div class="info-row">📧 ${node.email}</div>`;
+                    if (node.phone) bodyContent += `<div class="info-row">📞 ${node.phone}</div>`;
+                    // Show sede if present. If implies cross-location, it's already in header or handled? 
+                    // No, sede is in body usually. 
+                    if (node.sede) bodyContent += `<div class="info-row">📍 ${node.sede}</div>`;
+                } else if (node.nodeType === 'company') {
+                    if (node.companyAddress) bodyContent += `<div class="info-row">📍 ${node.companyAddress}</div>`;
+                    if (node.companyPhone) bodyContent += `<div class="info-row">📞 ${node.companyPhone}</div>`;
+                }
+
+                // Only render box-body if there is content inside
+                const boxBodyHTML = bodyContent ? `<div class="box-body">${bodyContent}</div>` : '';
 
                 el.innerHTML = `
                 <div class="box-header ${headerClass}" style="${headerStyle}">
@@ -1314,14 +2231,15 @@
                         <button class="btn-icon-mini" onclick="window._dn(${node.id})">🗑️</button>
                     </div>
                 </div>
-                ${(node.email || node.phone) && node.nodeType === 'person' ? `<div class="box-body">${node.email ? `<div class="info-row">📧 ${node.email}</div>` : ''}${node.phone ? `<div class="info-row">📞 ${node.phone}</div>` : ''}</div>` : ''}
-                ${(node.companyPhone || node.companyAddress) && node.nodeType === 'company' ? `<div class="box-body">${node.companyAddress ? `<div class="info-row">📍 ${node.companyAddress}</div>` : ''}${node.companyPhone ? `<div class="info-row">📞 ${node.companyPhone}</div>` : ''}</div>` : ''}
+                ${boxBodyHTML}
                 ${colBtn}
             `;
                 el.addEventListener('mousedown', e => startDrag(e, node.id));
                 el.addEventListener('click', e => selectNode(node.id, e));
                 container.appendChild(el);
             });
+
+            // Filter chips removed by design choice
 
             requestAnimationFrame(() => {
                 svgLayer.innerHTML = '';
@@ -1379,7 +2297,7 @@
             const n = nodes.find(x => x.id === id);
             let src = '';
             if (n.photo) src = n.photo;
-            else if (n.nodeType === 'company') src = n.title === 'CWT' ? LOGO_CWT : LOGO_ZF;
+            else if (n.nodeType === 'company') src = n.title === 'CICWT S.A.S' ? LOGO_CWT : LOGO_ZF;
             else if (n.nodeType === 'group') return; // No expand for group
 
             if (!src) return;
@@ -1390,11 +2308,16 @@
         };
 
         // ===== INTERACTIONS =====
+        let dragStartX = 0, dragStartY = 0;
+
         function startDrag(e, id) {
             if (e.target.closest('button') || e.target.closest('.btn-collapse') || e.target.closest('.box-avatar') || e.target.closest('.company-logo') || e.target.closest('.group-icon')) return;
             draggingId = id;
             const cr = container.getBoundingClientRect();
             const n = nodes.find(x => x.id === id);
+            // Save initial position for potential restore
+            dragStartX = n.x;
+            dragStartY = n.y;
             dragOffX = (e.clientX - cr.left) / scale - n.x;
             dragOffY = (e.clientY - cr.top) / scale - n.y;
             window.addEventListener('mousemove', onDrag);
@@ -1412,11 +2335,129 @@
             const vis = getVisibleNodes();
             vis.forEach(nd => { if (nd.parent) { const par = vis.find(p => p.id === nd.parent); if (par) drawLine(par, nd); } });
         }
+
+        // Find closest node within proximity
+        function findClosestNode(nodeId) {
+            const n = nodes.find(x => x.id === nodeId);
+            if (!n) return null;
+
+            const PROXIMITY_THRESHOLD = 800; // pixels - increased for more flexibility
+            let closest = null;
+            let minDist = PROXIMITY_THRESHOLD;
+
+            nodes.forEach(other => {
+                if (other.id === n.id) return;
+                if (other.id === n.parent) return; // Can't drop on own parent
+
+                // Check if other is a descendant (prevent loops)
+                let isDescendant = false;
+                let curr = other;
+                while (curr.parent) {
+                    if (curr.parent === n.id) { isDescendant = true; break; }
+                    curr = nodes.find(x => x.id === curr.parent);
+                    if (!curr) break;
+                }
+                if (isDescendant) return;
+
+                // Calculate distance between centers
+                const dx = (n.x + BOX_W / 2) - (other.x + BOX_W / 2);
+                const dy = (n.y + 70 / 2) - (other.y + 70 / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = other;
+                }
+            });
+
+            return closest;
+        }
+
+        // --- Move Modal System ---
+        let pendingMoveNodeId = null;
+        let pendingMoveTargetNode = null;
+        let moveResolve = null;
+
+        function showMoveModal(nodeName, targetName) {
+            document.getElementById('moveDesc').innerHTML =
+                `Estás moviendo <strong>"${nodeName}"</strong> cerca de <strong>"${targetName}"</strong>. ¿Dónde deseas ubicarlo?`;
+            document.getElementById('moveModal').classList.add('open');
+        }
+
+        window.executeMoveOption = function (option) {
+            document.getElementById('moveModal').classList.remove('open');
+            if (!pendingMoveNodeId || !pendingMoveTargetNode) return;
+
+            const n = nodes.find(x => x.id === pendingMoveNodeId);
+            const closest = pendingMoveTargetNode;
+
+            pushUndoState('Mover: ' + n.title);
+
+            if (option === 'below') {
+                n.parent = closest.id;
+                n.subtitle = closest.subtitle || closest.companyName || 'Departamento';
+                updateNodeColor(n);
+                closest.collapsed = false;
+                calculateLayout();
+                render();
+                saveData();
+                showToast('✅ Movido debajo de ' + closest.title);
+            } else if (option === 'same-level') {
+                const newParent = closest.parent;
+                if (newParent) {
+                    n.parent = newParent;
+                    const newParentNode = nodes.find(x => x.id === newParent);
+                    if (newParentNode) {
+                        n.subtitle = newParentNode.subtitle || newParentNode.companyName || 'Departamento';
+                        updateNodeColor(n);
+                    }
+                    calculateLayout();
+                    render();
+                    saveData();
+                    showToast('✅ Movido al mismo nivel que ' + closest.title);
+                }
+            }
+
+            pendingMoveNodeId = null;
+            pendingMoveTargetNode = null;
+        };
+
+        window.cancelMove = function () {
+            document.getElementById('moveModal').classList.remove('open');
+            // Restore position
+            if (pendingMoveNodeId) {
+                const n = nodes.find(x => x.id === pendingMoveNodeId);
+                if (n) {
+                    n.x = dragStartX;
+                    n.y = dragStartY;
+                    calculateLayout();
+                    render();
+                }
+            }
+            pendingMoveNodeId = null;
+            pendingMoveTargetNode = null;
+        };
+
         function endDrag() {
+            if (draggingId) {
+                const n = nodes.find(x => x.id === draggingId);
+                const closest = findClosestNode(draggingId);
+
+                if (closest) {
+                    pendingMoveNodeId = draggingId;
+                    pendingMoveTargetNode = closest;
+                    showMoveModal(n.title, closest.title);
+                } else {
+                    // No target found, restore
+                    n.x = dragStartX;
+                    n.y = dragStartY;
+                    calculateLayout();
+                    render();
+                }
+            }
             draggingId = null;
             window.removeEventListener('mousemove', onDrag);
             window.removeEventListener('mouseup', endDrag);
-            saveData();
         }
 
         window._tc = function (id, e) {
@@ -1425,20 +2466,60 @@
             calculateLayout(); render(); saveData();
         };
         window._ac = function (pid) {
+            pushUndoState('Agregar posición');
             const par = nodes.find(n => n.id === pid);
-            const nn = mkNode('Nuevo Cargo', 'Departamento', pid, par.color, false, 'person');
+            // Inherit color from parent area
+            let newColor = par.color;
+            // If parent is CWT or child of CWT, use CWT color
+            if (par.subtitle === 'CWT' || isCWTNode(par.id)) {
+                newColor = 'bg-cwt-child';
+            }
+            const nn = mkNode('Nuevo Cargo', par.subtitle || 'Departamento', pid, newColor, false, 'person');
+
+            // Inherit Sede from parent
+            if (par.sede) nn.sede = par.sede;
+            // Or infer base sede from Company
+            else if (par.title === 'Conquers ZF S.A.S') nn.sede = 'Bolívar - Cartagena';
+            else if (par.title === 'CICWT S.A.S') nn.sede = 'Madrid - Cundinamarca';
+
             nn.x = par.x; nn.y = par.y + V_GAP;
             nodes.push(nn); par.collapsed = false;
-            calculateLayout(); render(); saveData();
+            calculateLayout();
+            render();
+            saveData();
+            showToast('➕ Nueva posición agregada');
         };
+
+        // Check if node is under CWT company
+        function isCWTNode(nodeId) {
+            let curr = nodes.find(n => n.id === nodeId);
+            while (curr) {
+                if (curr.title === 'CICWT S.A.S') return true;
+                if (!curr.parent) break;
+                curr = nodes.find(n => n.id === curr.parent);
+            }
+            return false;
+        }
+
+        // Update node color based on parent company
+        function updateNodeColor(node) {
+            if (isCWTNode(node.id)) {
+                node.color = 'bg-cwt-child';
+            } else if (node.subtitle === 'CWT') {
+                node.color = 'bg-cwt';
+            }
+        }
         window._dn = function (id) {
             if (!confirm('¿Eliminar esta posición y subordinados?')) return;
             const n = nodes.find(x => x.id === id);
-            if (['ASAMBLEA DE ACCIONISTAS', 'PRESIDENTE EJECUTIVO', 'AUDITORIA', 'REVISORIA FISCAL', 'DIRECTOR EJECUTIVO', 'ZF', 'CWT'].includes(n.title)) { alert('No se puede eliminar posición estructural.'); return; }
+            if (['ASAMBLEA DE ACCIONISTAS', 'PRESIDENTE EJECUTIVO', 'AUDITORIA', 'REVISORIA FISCAL', 'DIRECTOR EJECUTIVO', 'Conquers ZF S.A.S', 'CICWT S.A.S'].includes(n.title)) { alert('No se puede eliminar posición estructural.'); return; }
+            pushUndoState('Eliminar: ' + n.title);
             const del = [id]; let i = 0;
             while (i < del.length) { nodes.filter(x => x.parent === del[i]).forEach(c => del.push(c.id)); i++; }
             nodes = nodes.filter(x => !del.includes(x.id));
-            calculateLayout(); render(); saveData();
+            // Force re-calculation and clean rendering
+            calculateLayout();
+            setTimeout(() => { render(); saveData(); showToast('🗑️ Eliminado'); }, 50);
         };
         function selectNode(id, e) {
             if (e.target.closest('.btn-collapse') || e.target.closest('.box-avatar') || e.target.closest('.company-logo') || e.target.closest('.group-icon')) return;
@@ -1454,41 +2535,182 @@
             selectedNodeId = id;
             const n = nodes.find(x => x.id === id);
 
-            // Show tabs only for editable nodes
-            const tabs = document.getElementById('editModalTabs');
-            const hasCompany = n.nodeType === 'company';
-            const hasGroup = n.nodeType === 'group';
-            const hasPerson = n.nodeType === 'person';
+            // ===== SMART CONTEXT DETECTION =====
+            // Determine which company this node belongs to
+            const getParentCompany = (nodeId) => {
+                let curr = nodes.find(x => x.id === nodeId);
+                while (curr) {
+                    if (curr.title === 'Conquers ZF S.A.S') return { name: 'Conquers ZF S.A.S', short: 'ZF', sede: 'Bolívar - Cartagena', color: '#d97706', id: curr.id };
+                    if (curr.title === 'CICWT S.A.S') return { name: 'CICWT S.A.S', short: 'CWT', sede: 'Madrid - Cundinamarca', color: '#3b82f6', id: curr.id };
+                    if (!curr.parent) break;
+                    curr = nodes.find(x => x.id === curr.parent);
+                }
+                return null; // Corporate level (transversal)
+            };
+            const parentCompany = getParentCompany(n.id);
+            const isTransversal = n.isSharedDirector || false;
+            const isStructural = ['ASAMBLEA DE ACCIONISTAS', 'PRESIDENTE EJECUTIVO', 'AUDITORIA', 'REVISORIA FISCAL', 'DIRECTOR EJECUTIVO'].includes(n.title);
+            const isCompanyNode = n.nodeType === 'company';
+            const isGroupNode = n.nodeType === 'group';
+            const isPerson = n.nodeType === 'person';
+            const hasEmployee = !!(n.employee && n.employee.trim());
 
-            if (hasCompany || hasGroup || hasPerson) {
+            // ===== DYNAMIC TITLE =====
+            let modalTitle = 'Editar Posición';
+            if (isCompanyNode) modalTitle = '🏢 Editar Empresa';
+            else if (isGroupNode) modalTitle = '👥 Editar Grupo';
+            else if (isTransversal) modalTitle = '🔄 Editar Director Transversal';
+            else if (isPerson && parentCompany) modalTitle = `✏️ Editar Cargo — ${parentCompany.short}`;
+            else if (isPerson) modalTitle = '✏️ Editar Cargo';
+            document.getElementById('editModalTitle').innerHTML = modalTitle;
+
+            // ===== SMART CONTEXT BADGE =====
+            const badge = document.getElementById('smartContextBadge');
+            if (isPerson && parentCompany && !isTransversal) {
+                badge.style.display = 'block';
+                badge.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${parentCompany.color}15;border:1px solid ${parentCompany.color}30;border-radius:10px;font-size:0.72rem;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${parentCompany.color};"></span>
+                    <span style="font-weight:600;color:${parentCompany.color};">${parentCompany.name}</span>
+                    <span style="color:#94a3b8;">•</span>
+                    <span style="color:#64748b;">📍 Sede base: ${parentCompany.sede}</span>
+                </div>`;
+            } else if (isTransversal) {
+                badge.style.display = 'block';
+                badge.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.2);border-radius:10px;font-size:0.72rem;">
+                    <span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;"></span>
+                    <span style="font-weight:600;color:#8b5cf6;">Director Transversal</span>
+                    <span style="color:#94a3b8;">•</span>
+                    <span style="color:#64748b;">Aplica a ambas empresas (ZF & CWT)</span>
+                </div>`;
+            } else {
+                badge.style.display = 'none';
+            }
+
+            // ===== SHOW/HIDE TABS =====
+            const tabs = document.getElementById('editModalTabs');
+            if (isCompanyNode || isGroupNode || isPerson) {
                 tabs.style.display = 'flex';
-                document.getElementById('tabCompany').style.display = hasCompany ? 'block' : 'none';
-                document.getElementById('tabPerson').style.display = hasPerson ? 'block' : 'none';
-                document.getElementById('tabGroup').style.display = hasGroup ? 'block' : 'none';
-                // Default to the node's type
-                if (hasCompany) switchEditTab('company');
-                else if (hasGroup) switchEditTab('group');
+                document.getElementById('tabCompany').style.display = isCompanyNode ? 'block' : 'none';
+                document.getElementById('tabPerson').style.display = isPerson ? 'block' : 'none';
+                document.getElementById('tabGroup').style.display = isGroupNode ? 'block' : 'none';
+                if (isCompanyNode) switchEditTab('company');
+                else if (isGroupNode) switchEditTab('group');
                 else switchEditTab('person');
             } else {
                 tabs.style.display = 'none';
-                // Default to person tab
                 switchEditTab('person');
             }
 
-            // Fill company fields
+            // ===== SMART: HIDE COMPANY SELECTOR if node is already under a company =====
+            const divSubtitle = document.getElementById('divEditSubtitle');
+            if (isPerson && parentCompany && !isTransversal) {
+                // Company is already determined by hierarchy — don't show selector
+                divSubtitle.style.display = 'none';
+            } else {
+                // Transversal directors or corporate-level nodes can choose company
+                divSubtitle.style.display = 'block';
+            }
+
+            // ===== SMART: SHOW/HIDE CONTACT FIELDS based on employee =====
+            const contactFields = document.getElementById('smartContactFields');
+            const vacancyHint = document.getElementById('vacancyHint');
+            if (hasEmployee) {
+                contactFields.style.display = 'block';
+                vacancyHint.style.display = 'none';
+            } else {
+                contactFields.style.display = 'none';
+                vacancyHint.style.display = 'block';
+            }
+
+            // ===== SMART: HIDE SEDE for structural/company nodes =====
+            const divSede = document.getElementById('divEditSede');
+            if (isCompanyNode || isGroupNode || isStructural) {
+                divSede.style.display = 'none';
+            } else {
+                divSede.style.display = 'block';
+            }
+
+            // ===== SMART: SEDE HINT =====
+            const sedeHint = document.getElementById('sedeHint');
+            if (isPerson && parentCompany && !n.sede) {
+                sedeHint.innerHTML = `💡 Sede sugerida: <b>${parentCompany.sede}</b> (sede base de ${parentCompany.short})`;
+            } else {
+                sedeHint.innerHTML = 'Ubicación física donde trabaja el empleado';
+            }
+
+            // ===== SMART: HIDE COLOR PICKER for regular employees =====
+            const divColor = document.getElementById('divColorSection');
+            if (isPerson && !isTransversal && !isStructural) {
+                // Regular employees don't need custom colors
+                divColor.style.display = 'none';
+            } else {
+                divColor.style.display = 'block';
+            }
+
+            // ===== FILL PARENT OPTIONS =====
+            const parentSelect = document.getElementById('editParent');
+            const divParent = document.getElementById('divEditParent');
+
+            if (!n.parent) {
+                divParent.style.display = 'none';
+            } else {
+                divParent.style.display = 'block';
+                parentSelect.innerHTML = '';
+
+                const getDescendants = (id) => {
+                    let ret = [];
+                    nodes.filter(c => c.parent === id).forEach(c => {
+                        ret.push(c.id);
+                        ret.push(...getDescendants(c.id));
+                    });
+                    return ret;
+                };
+                const descendants = getDescendants(n.id);
+
+                const getRootCompany = (nodeId) => {
+                    let curr = nodes.find(x => x.id === nodeId);
+                    while (curr) {
+                        if (curr.title === 'Conquers ZF S.A.S' || curr.title === 'CICWT S.A.S') return curr.id;
+                        if (!curr.parent) return null;
+                        curr = nodes.find(x => x.id === curr.parent);
+                    }
+                    return null;
+                };
+                const myRootCompany = getRootCompany(n.id);
+
+                const sortedNodes = [...nodes].sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+
+                sortedNodes.forEach(opt => {
+                    if (opt.id === n.id) return;
+                    if (descendants.includes(opt.id)) return;
+                    const optRootCompany = getRootCompany(opt.id);
+                    if (myRootCompany !== optRootCompany) return;
+                    const isRootCompany = (opt.title === 'Conquers ZF S.A.S' || opt.title === 'CICWT S.A.S');
+                    const isDirectChildOfCompany = (opt.parent === myRootCompany);
+                    const isCurrentParent = (opt.id === n.parent);
+                    if (!isCurrentParent && !isRootCompany && !isDirectChildOfCompany) return;
+
+                    const option = document.createElement('option');
+                    option.value = opt.id;
+                    option.text = (opt.title || 'Sin Título') + (opt.employee ? ` (${opt.employee})` : '');
+                    if (opt.id === n.parent) option.selected = true;
+                    parentSelect.appendChild(option);
+                });
+            }
+
+            // ===== FILL FIELDS =====
             document.getElementById('editCompanyName').value = n.companyName || '';
             document.getElementById('editCompanyRUT').value = n.companyRUT || '';
             document.getElementById('editCompanyAddress').value = n.companyAddress || '';
             document.getElementById('editCompanyPhone').value = n.companyPhone || '';
 
-            // Fill person fields
             document.getElementById('editEmployee').value = n.employee || '';
             document.getElementById('editTitle').value = n.title;
             document.getElementById('editSubtitle').value = n.subtitle || '';
             document.getElementById('editEmail').value = n.email || '';
             document.getElementById('editPhone').value = n.phone || '';
+            document.getElementById('editSede').value = n.sede || '';
 
-            // Fill group fields
             document.getElementById('editGroupTitle').value = n.title;
             document.getElementById('editMembers').value = n.members || '';
 
@@ -1519,6 +2741,20 @@
 
             document.getElementById('editModal').classList.add('open');
             renderColorPalette(n.color);
+        };
+
+        // ===== SMART TOGGLE: Show/hide contact fields based on employee name =====
+        window.smartToggleContactFields = function () {
+            const emp = document.getElementById('editEmployee').value.trim();
+            const contactFields = document.getElementById('smartContactFields');
+            const vacancyHint = document.getElementById('vacancyHint');
+            if (emp.length > 0) {
+                contactFields.style.display = 'block';
+                vacancyHint.style.display = 'none';
+            } else {
+                contactFields.style.display = 'none';
+                vacancyHint.style.display = 'block';
+            }
         };
 
         function renderColorPalette(selectedColor) {
@@ -1633,7 +2869,215 @@
 
         window.closeModal = function () { document.getElementById('editModal').classList.remove('open'); };
 
+        // ===== SEARCH SYSTEM =====
+        window.toggleSearch = function () {
+            const overlay = document.getElementById('searchOverlay');
+            overlay.classList.toggle('open');
+            if (overlay.classList.contains('open')) {
+                document.getElementById('searchInput').focus();
+            } else {
+                document.getElementById('searchInput').value = '';
+                document.getElementById('searchResults').innerHTML = '';
+                // Remove highlights
+                document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+            }
+        };
+
+        window.doSearch = function (query) {
+            const container = document.getElementById('searchResults');
+            if (!query || query.length < 2) {
+                container.innerHTML = '';
+                return;
+            }
+            const q = query.toLowerCase();
+            const results = nodes.filter(n => {
+                return (n.title && n.title.toLowerCase().includes(q)) ||
+                    (n.employee && n.employee.toLowerCase().includes(q)) ||
+                    (n.companyName && n.companyName.toLowerCase().includes(q)) ||
+                    (n.sede && n.sede.toLowerCase().includes(q)) ||
+                    (n.subtitle && n.subtitle.toLowerCase().includes(q)) ||
+                    (n.email && n.email.toLowerCase().includes(q));
+            }).slice(0, 10);
+
+            if (results.length === 0) {
+                container.innerHTML = '<div class="search-no-results">🔍 No se encontraron resultados</div>';
+                return;
+            }
+
+            container.innerHTML = results.map(n => {
+                const icon = n.nodeType === 'company' ? '🏢' : n.nodeType === 'group' ? '👥' : '👤';
+                const title = n.employee || n.title;
+                const sub = [n.title !== title ? n.title : '', n.subtitle, n.sede].filter(Boolean).join(' • ');
+                const isVacant = n.nodeType === 'person' && !n.employee && n.parent;
+                return `
+                    <div class="search-result-item" onclick="navigateToNode(${n.id})">
+                        <div class="sr-icon" style="background:${isVacant ? '#fee2e2' : '#f1f5f9'};">${isVacant ? '⚠' : icon}</div>
+                        <div class="sr-info">
+                            <div class="sr-title">${title}${isVacant ? ' <span style="color:#ef4444;font-size:0.65rem;">VACANTE</span>' : ''}</div>
+                            <div class="sr-sub">${sub}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.navigateToNode = function (nodeId) {
+            const n = nodes.find(x => x.id === nodeId);
+            if (!n || n.x < -9000) {
+                // Expand parents to make visible
+                let curr = n;
+                while (curr && curr.parent) {
+                    const par = nodes.find(x => x.id === curr.parent);
+                    if (par && par.collapsed) par.collapsed = false;
+                    curr = par;
+                }
+                calculateLayout(); render();
+            }
+
+            // Center on node
+            const node = nodes.find(x => x.id === nodeId);
+            translateX = workspace.clientWidth / 2 - (node.x + BOX_W / 2) * scale;
+            translateY = workspace.clientHeight / 2 - (node.y + 35) * scale;
+            updateTransform();
+
+            // Highlight
+            document.querySelectorAll('.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+            setTimeout(() => {
+                const el = document.getElementById(`box-${nodeId}`);
+                if (el) {
+                    el.classList.add('search-highlight');
+                    setTimeout(() => el.classList.remove('search-highlight'), 4000);
+                }
+            }, 100);
+
+            // Close search
+            document.getElementById('searchOverlay').classList.remove('open');
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+        };
+
+        // ESC and Ctrl+F
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                document.getElementById('searchOverlay').classList.remove('open');
+                document.getElementById('searchInput').value = '';
+                document.getElementById('searchResults').innerHTML = '';
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                toggleSearch();
+            }
+        });
+
+        // ===== SEDE FILTER SYSTEM =====
+        function renderFilterChips() {
+            const bar = document.getElementById('filterBar');
+            // Count persons per sede
+            const sedeCounts = {};
+            let totalPersons = 0;
+            nodes.filter(n => n.nodeType === 'person' && n.parent).forEach(n => {
+                totalPersons++;
+                const s = n.sede || 'Sin sede';
+                sedeCounts[s] = (sedeCounts[s] || 0) + 1;
+            });
+
+            let html = `<div class="filter-chip ${activeSedeFilter === '' ? 'active' : ''}" onclick="setSedeFilter('')">📍 Todas <span class="chip-count">${totalPersons}</span></div>`;
+            SEDES.forEach(s => {
+                const count = sedeCounts[s] || 0;
+                if (count > 0) {
+                    html += `<div class="filter-chip ${activeSedeFilter === s ? 'active' : ''}" onclick="setSedeFilter('${s}')">📍 ${s} <span class="chip-count">${count}</span></div>`;
+                }
+            });
+            // Show "Sin sede" if any
+            if (sedeCounts['Sin sede']) {
+                html += `<div class="filter-chip ${activeSedeFilter === 'Sin sede' ? 'active' : ''}" onclick="setSedeFilter('Sin sede')">❓ Sin sede <span class="chip-count">${sedeCounts['Sin sede']}</span></div>`;
+            }
+            bar.innerHTML = html;
+        }
+
+        window.setSedeFilter = function (sede) {
+            if (sede === 'Sin sede') {
+                activeSedeFilter = activeSedeFilter === 'Sin sede' ? '' : 'Sin sede';
+            } else {
+                activeSedeFilter = activeSedeFilter === sede ? '' : sede;
+            }
+            render();
+            if (activeSedeFilter && activeSedeFilter !== 'Sin sede') {
+                showToast('📍 Filtro: ' + activeSedeFilter);
+            } else if (activeSedeFilter === 'Sin sede') {
+                showToast('❓ Mostrando posiciones sin sede asignada');
+            } else {
+                showToast('📍 Mostrando todas las sedes');
+            }
+        };
+
+        // ===== STATISTICS PANEL =====
+        window.toggleStats = function () {
+            const panel = document.getElementById('statsPanel');
+            panel.classList.toggle('open');
+            if (panel.classList.contains('open')) updateStats();
+        };
+
+        function updateStats() {
+            const container = document.getElementById('statsContent');
+            const persons = nodes.filter(n => n.nodeType === 'person' && n.parent);
+            const total = persons.length;
+            const occupied = persons.filter(n => n.employee).length;
+            const vacancies = total - occupied;
+
+            // By company
+            const zfNodes = persons.filter(n => {
+                let curr = nodes.find(x => x.id === n.id);
+                while (curr) {
+                    if (curr.title === 'Conquers ZF S.A.S') return true;
+                    if (!curr.parent) break;
+                    curr = nodes.find(x => x.id === curr.parent);
+                }
+                return false;
+            });
+            const cwtNodes = persons.filter(n => {
+                let curr = nodes.find(x => x.id === n.id);
+                while (curr) {
+                    if (curr.title === 'CICWT S.A.S') return true;
+                    if (!curr.parent) break;
+                    curr = nodes.find(x => x.id === curr.parent);
+                }
+                return false;
+            });
+            const sharedDirs = persons.filter(n => n.isSharedDirector);
+
+            // By sede
+            const sedeCounts = {};
+            persons.forEach(n => {
+                const s = n.sede || 'Sin sede';
+                sedeCounts[s] = (sedeCounts[s] || 0) + 1;
+            });
+
+            let html = '';
+            html += `<div class="stat-row"><span class="stat-label">Total Cargos</span><span class="stat-value">${total}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Ocupados</span><span class="stat-value">${occupied}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">Vacantes</span><span class="stat-value vacancy">${vacancies}</span></div>`;
+
+            html += '<div class="stat-divider"></div>';
+            html += `<div class="stat-row"><span class="stat-label">🏭 Conquers ZF</span><span class="stat-value">${zfNodes.length}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">🏢 CICWT</span><span class="stat-value">${cwtNodes.length}</span></div>`;
+            html += `<div class="stat-row"><span class="stat-label">🔄 Transversales</span><span class="stat-value">${sharedDirs.length}</span></div>`;
+
+            if (Object.keys(sedeCounts).length > 0) {
+                html += '<div class="stat-divider"></div>';
+                html += '<div style="font-size:0.68rem;font-weight:700;color:#64748b;margin-bottom:4px;">Por Sede:</div>';
+                Object.entries(sedeCounts).sort((a, b) => b[1] - a[1]).forEach(([sede, count]) => {
+                    const icon = sede === 'Sin sede' ? '❓' : '📍';
+                    html += `<div class="stat-row"><span class="stat-label">${icon} ${sede}</span><span class="stat-value">${count}</span></div>`;
+                });
+            }
+
+            container.innerHTML = html;
+        };
+
+
         window.saveBoxChanges = function () {
+            pushUndoState('Editar posición');
             const n = nodes.find(x => x.id === selectedNodeId);
 
             if (currentEditTab === 'company') {
@@ -1645,17 +3089,57 @@
             } else if (currentEditTab === 'person') {
                 n.employee = document.getElementById('editEmployee').value;
                 n.title = document.getElementById('editTitle').value;
-                n.subtitle = document.getElementById('editSubtitle').value;
                 n.email = document.getElementById('editEmail').value;
                 n.phone = document.getElementById('editPhone').value;
+                n.sede = document.getElementById('editSede').value;
                 n.photo = document.getElementById('editPhotoPerson').dataset.photoData || '';
+
+                // Only update company/subtitle if the company selector was visible
+                const subtitleVisible = document.getElementById('divEditSubtitle').style.display !== 'none';
+                if (subtitleVisible) {
+                    const newSubtitle = document.getElementById('editSubtitle').value;
+                    const oldSubtitle = n.subtitle;
+                    n.subtitle = newSubtitle;
+
+                    // If company changed, update parent to be the new company
+                    if (oldSubtitle !== newSubtitle) {
+                        const newCompanyTitle = newSubtitle === 'CWT' ? 'CICWT S.A.S' : 'Conquers ZF S.A.S';
+                        const newCompany = nodes.find(x => x.title === newCompanyTitle);
+                        if (newCompany) {
+                            n.parent = newCompany.id;
+                        }
+                        updateNodeColor(n);
+                    }
+                }
             } else if (currentEditTab === 'group') {
                 n.title = document.getElementById('editGroupTitle').value;
                 n.members = document.getElementById('editMembers').value;
             }
 
-            n.color = document.getElementById('editSelectedColor').value;
-            render(); saveData(); closeModal();
+            // Update Parent
+            const newParentId = parseInt(document.getElementById('editParent').value);
+            const parentChanged = n.parent && newParentId && newParentId !== n.parent;
+            if (parentChanged) {
+                n.parent = newParentId;
+                // Update subtitle to match new parent
+                const newParent = nodes.find(x => x.id === newParentId);
+                if (newParent) {
+                    n.subtitle = newParent.subtitle || newParent.companyName || 'Departamento';
+                    // Update color based on new parent company
+                    updateNodeColor(n);
+                }
+            }
+
+            // Only update color from palette if user explicitly selected one
+            const selectedColor = document.getElementById('editSelectedColor').value;
+            if (selectedColor && selectedColor !== n.color) {
+                n.color = selectedColor;
+            }
+
+            calculateLayout();
+            render();
+            saveData();
+            closeModal();
         };
 
         window.editSelectedBox = function () { if (selectedNodeId) window._oe(selectedNodeId); };
@@ -1698,17 +3182,6 @@
                 tmp.appendChild(clone);
             });
 
-            // Add footer to export
-            const footerEl = document.querySelector('.org-footer-logo');
-            if (footerEl) {
-                const fClone = footerEl.cloneNode(true);
-                fClone.style.position = 'absolute';
-                fClone.style.bottom = '20px';
-                fClone.style.left = '50%';
-                fClone.style.transform = 'translateX(-50%)';
-                fClone.style.zIndex = '100';
-                tmp.appendChild(fClone);
-            }
 
             vis.forEach(node => {
                 if (!node.parent) return;
@@ -1764,41 +3237,251 @@
             localStorage.setItem('org_settings', JSON.stringify({ name, bg }));
         };
         function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3000); }
-        function saveData() { localStorage.setItem('org_nodes_v11', JSON.stringify(nodes)); localStorage.setItem('org_counter_v11', idCounter); showToast('💾 Guardado'); }
-        function loadData() {
-            const set = JSON.parse(localStorage.getItem('org_settings'));
-            if (set) {
-                document.getElementById('inputCompanyName').value = set.name;
-                document.getElementById('headerCompanyName').innerText = set.name;
-                document.getElementById('inputBgColor').value = set.bg;
-                if (set.bg) document.getElementById('workspace').style.backgroundColor = set.bg;
-            } else { document.getElementById('inputCompanyName').value = 'Conquers Trading Groups'; }
 
-            // Set background image
-            const ws = document.getElementById('workspace');
-            ws.style.background = '#f0f4f8';
-            viewMode = localStorage.getItem('org_viewMode') || 'both';
-            const saved = localStorage.getItem('org_nodes_v11');
-            if (saved) { nodes = JSON.parse(saved); idCounter = parseInt(localStorage.getItem('org_counter_v11') || 1000); }
-            else { buildInitialData(); }
+        // ===== UNDO/REDO SYSTEM =====
+        let undoStack = [];
+        let redoStack = [];
+        const MAX_UNDO = 50;
+
+        function pushUndoState(description) {
+            undoStack.push({
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                counter: idCounter,
+                desc: description || 'Cambio',
+                time: new Date().toISOString()
+            });
+            if (undoStack.length > MAX_UNDO) undoStack.shift();
+            redoStack = []; // Clear redo on new action
+            updateUndoRedoButtons();
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('btnUndo').disabled = undoStack.length === 0;
+            document.getElementById('btnRedo').disabled = redoStack.length === 0;
+        }
+
+        window.undoAction = function () {
+            if (undoStack.length === 0) return;
+            // Save current state to redo
+            redoStack.push({
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                counter: idCounter,
+                desc: 'Rehacer',
+                time: new Date().toISOString()
+            });
+            const state = undoStack.pop();
+            nodes = state.nodes;
+            idCounter = state.counter;
+            calculateLayout(); render(); saveData();
+            updateUndoRedoButtons();
+            showToast('↩️ Deshacer: ' + state.desc);
+        };
+
+        window.redoAction = function () {
+            if (redoStack.length === 0) return;
+            undoStack.push({
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                counter: idCounter,
+                desc: 'Deshacer',
+                time: new Date().toISOString()
+            });
+            const state = redoStack.pop();
+            nodes = state.nodes;
+            idCounter = state.counter;
+            calculateLayout(); render(); saveData();
+            updateUndoRedoButtons();
+            showToast('↪️ Rehacer');
+        };
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function (e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                e.preventDefault();
+                undoAction();
+            }
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                e.preventDefault();
+                redoAction();
+            }
+        });
+
+        // ===== SNAPSHOT HISTORY SYSTEM =====
+        function getSnapshots() {
+            const raw = localStorage.getItem('org_snapshots');
+            return raw ? JSON.parse(raw) : [];
+        }
+
+        function saveSnapshots(snaps) {
+            localStorage.setItem('org_snapshots', JSON.stringify(snaps));
+        }
+
+        function autoSnapshot(description) {
+            const snaps = getSnapshots();
+            snaps.push({
+                id: Date.now(),
+                time: new Date().toISOString(),
+                desc: description || 'Guardado automático',
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                counter: idCounter
+            });
+            // Keep max 30 snapshots
+            while (snaps.length > 30) snaps.shift();
+            saveSnapshots(snaps);
+        }
+
+        window.createManualSnapshot = function () {
+            const name = prompt('Nombre para este punto de restauración:', 'Snapshot ' + new Date().toLocaleString('es-CO'));
+            if (!name) return;
+            const snaps = getSnapshots();
+            snaps.push({
+                id: Date.now(),
+                time: new Date().toISOString(),
+                desc: name,
+                nodes: JSON.parse(JSON.stringify(nodes)),
+                counter: idCounter,
+                manual: true
+            });
+            while (snaps.length > 30) snaps.shift();
+            saveSnapshots(snaps);
+            renderHistoryList();
+            showToast('📸 Punto de restauración creado');
+        };
+
+        window.restoreSnapshot = function (snapId) {
+            const snaps = getSnapshots();
+            const snap = snaps.find(s => s.id === snapId);
+            if (!snap) return;
+            if (!confirm('¿Restaurar el organigrama al estado de "' + snap.desc + '"? Los cambios actuales se guardarán como punto de restauración.')) return;
+            // Auto-save current state before restoring
+            autoSnapshot('Antes de restaurar a: ' + snap.desc);
+            pushUndoState('Restaurar snapshot');
+            nodes = JSON.parse(JSON.stringify(snap.nodes));
+            idCounter = snap.counter;
+            calculateLayout(); render(); saveData();
+            renderHistoryList();
+            showToast('✅ Restaurado a: ' + snap.desc);
+        };
+
+        window.deleteSnapshot = function (snapId) {
+            if (!confirm('¿Eliminar este punto de restauración?')) return;
+            let snaps = getSnapshots();
+            snaps = snaps.filter(s => s.id !== snapId);
+            saveSnapshots(snaps);
+            renderHistoryList();
+            showToast('🗑️ Punto eliminado');
+        };
+
+        window.clearAllHistory = function () {
+            if (!confirm('¿Borrar todo el historial? Esta acción no se puede deshacer.')) return;
+            saveSnapshots([]);
+            renderHistoryList();
+            showToast('🗑️ Historial borrado');
+        };
+
+        function renderHistoryList() {
+            const container = document.getElementById('historyList');
+            const snaps = getSnapshots();
+            if (snaps.length === 0) {
+                container.innerHTML = '<div class="history-empty"><i class="bi bi-clock"></i><div>No hay puntos de restauración.<br><small>Crea uno con el botón de arriba.</small></div></div>';
+                return;
+            }
+            // Show newest first
+            const sorted = [...snaps].reverse();
+            container.innerHTML = sorted.map(s => {
+                const date = new Date(s.time);
+                const dateStr = date.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+                const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const icon = s.manual ? '📸' : '💾';
+                const nodeCount = s.nodes ? s.nodes.length : '?';
+                return `
+                    <div class="history-item">
+                        <div class="hi-info">
+                            <div class="hi-date">${icon} ${s.desc}</div>
+                            <div class="hi-desc">${dateStr} a las ${timeStr} • ${nodeCount} nodos</div>
+                        </div>
+                        <div class="hi-actions">
+                            <button class="hi-btn-restore" onclick="restoreSnapshot(${s.id})">Restaurar</button>
+                            <button class="hi-btn-delete" onclick="deleteSnapshot(${s.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.showHistoryModal = function () {
+            renderHistoryList();
+            document.getElementById('historyModal').classList.add('open');
+        };
+
+        window.closeHistoryModal = function () {
+            document.getElementById('historyModal').classList.remove('open');
+        };
+
+        // Auto-snapshot counter - save every 10 changes
+        let changesSinceSnapshot = 0;
+
+        function saveData() {
+            try {
+                localStorage.setItem('org_nodes_v12', JSON.stringify(nodes));
+                localStorage.setItem('org_counter_v12', idCounter);
+                changesSinceSnapshot++;
+                if (changesSinceSnapshot >= 10) {
+                    autoSnapshot('Auto-guardado');
+                    changesSinceSnapshot = 0;
+                }
+                showToast('💾 Guardado');
+            } catch (e) {
+                console.error("Error guardando:", e);
+                showToast('❌ Error al guardar (Navegador bloqueó almacenamiento)');
+            }
+        }
+
+        function loadData() {
+            try {
+                const set = JSON.parse(localStorage.getItem('org_settings'));
+                if (set) {
+                    // FORCE MIGRATION: If old name detected, overwrite to canonical name
+                    const oldNames = ['conquers trading sas', 'conquers trading s.a.s', 'conquers trading s.a.s.', 'conquers trading groups', 'conquers trading group s.a.s'];
+                    if (set.name && oldNames.some(old => set.name.toLowerCase().includes(old))) {
+                        set.name = 'Conquers Trading Group';
+                        localStorage.setItem('org_settings', JSON.stringify(set));
+                    }
+
+                    document.getElementById('inputCompanyName').value = set.name;
+                    document.getElementById('headerCompanyName').innerText = set.name;
+                    document.getElementById('inputBgColor').value = set.bg;
+                    if (set.bg) document.getElementById('workspace').style.backgroundColor = set.bg;
+                } else { document.getElementById('inputCompanyName').value = 'Conquers Trading Group'; }
+
+                // Set background image
+                const ws = document.getElementById('workspace');
+                ws.style.background = '#f0f4f8';
+
+                // Try reading view mode
+                viewMode = localStorage.getItem('org_viewMode') || 'both';
+
+                const saved = localStorage.getItem('org_nodes_v12');
+                if (saved) { nodes = JSON.parse(saved); idCounter = parseInt(localStorage.getItem('org_counter_v12') || 1000); }
+                else { buildInitialData(); }
+            } catch (e) {
+                console.error("Acceso a LocalStorage bloqueado:", e);
+                alert("⚠️ Tu navegador está bloqueando el almacenamiento local. Los cambios no se guardarán si cierras la página. Revisa la configuración de privacidad.");
+                // Fallback to initial data just to show something
+                buildInitialData();
+            }
+
+            // Enforce base sedes for root companies (migration for existing data)
+            const zfNode = nodes.find(n => n.title === 'Conquers ZF S.A.S');
+            if (zfNode && !zfNode.sede) zfNode.sede = 'Bolívar - Cartagena';
+
+            const cwtNode = nodes.find(n => n.title === 'CICWT S.A.S');
+            if (cwtNode && !cwtNode.sede) cwtNode.sede = 'Madrid - Cundinamarca';
+
             calculateLayout(); render();
             document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
             document.getElementById(viewMode === 'zf' ? 'btnZF' : viewMode === 'cwt' ? 'btnCWT' : 'btnBoth').classList.add('active-view');
+            updateUndoRedoButtons();
         }
-        window.resetLocalData = function () {
-            if (!confirm('¿Resetear organigrama? Se perderán todos los cambios.')) return;
-            ['org_nodes_v11', 'org_counter_v11', 'org_settings', 'org_viewMode'].forEach(k => localStorage.removeItem(k));
-            viewMode = 'both';
-            buildInitialData(); calculateLayout(); render();
-            document.getElementById('inputCompanyName').value = 'Conquers Trading Groups';
-            document.getElementById('headerCompanyName').innerText = 'Conquers Trading Groups';
-            const ws = document.getElementById('workspace');
-            ws.style.background = '#f0f4f8';
-            document.querySelectorAll('.view-mode-bar .btn').forEach(b => b.classList.remove('active-view'));
-            document.getElementById('btnBoth').classList.add('active-view');
-            setTimeout(fitToScreen, 100);
-            showToast('🔄 Organigrama reseteado');
-        };
 
         // ===== PAN & ZOOM =====
         const workspace = document.getElementById('workspace');
@@ -1831,7 +3514,7 @@
         window.zoomOut = function () { scale = Math.max(scale - 0.1, 0.1); updateTransform(); };
 
         workspace.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.org-box,.sidebar,.toolbar-overlay,.org-header-card,.view-mode-bar,.zoom-controls,.org-footer-logo')) return;
+            if (e.target.closest('.org-box,.sidebar,.toolbar-overlay,.org-header-card,.view-mode-bar,.zoom-controls,.filter-bar,.search-overlay,.stats-panel,.undo-redo-bar')) return;
             isPanning = true;
             startPanX = e.clientX - translateX; startPanY = e.clientY - translateY;
             workspace.style.cursor = 'grabbing';

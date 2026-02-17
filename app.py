@@ -12,7 +12,7 @@ from io import BytesIO # Para Excel
 import logging # Para un logging más flexible
 import copy
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, cast, String
 from sqlalchemy.exc import IntegrityError
 import pytz
 import pandas as pd
@@ -3470,31 +3470,83 @@ def get_control_calidad_data():
     
     if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
         return jsonify({"error": "No tienes permisos para acceder a esta información"}), 403
-    # Consulta todos los registros de RegistroCalidad ordenados por timestamp desc
-    todos_los_registros = db.session.query(RegistroCalidad).order_by(RegistroCalidad.timestamp.desc()).all()
-    
-    # Convertir a diccionario para JSON
+
+    # --- Paginación server-side ---
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)  # Límite máximo de seguridad
+    show_all = request.args.get('all', '0') == '1'
+
+    # --- Construir query base ---
+    query = db.session.query(RegistroCalidad)
+
+    # --- Filtros server-side ---
+    filterable_text_cols = {
+        'fecha': RegistroCalidad.fecha,
+        'hora': RegistroCalidad.hora,
+        'producto': RegistroCalidad.producto,
+        'responsable': RegistroCalidad.responsable,
+        'origen': RegistroCalidad.origen,
+        'placa': RegistroCalidad.placa,
+        'campo': RegistroCalidad.campo,
+        'observaciones': RegistroCalidad.observaciones,
+    }
+    for col_name, col_attr in filterable_text_cols.items():
+        val = request.args.get(f'f_{col_name}', '').strip()
+        if val:
+            query = query.filter(col_attr.ilike(f'%{val}%'))
+
+    # Filtros numéricos (bsw, flash_point, api_obs, temp, api_corr)
+    filterable_num_cols = {
+        'bsw': RegistroCalidad.bsw,
+        'flash_point': RegistroCalidad.flash_point,
+        'api_obs': RegistroCalidad.api_obs,
+        'temp': RegistroCalidad.temp,
+        'api_corr': RegistroCalidad.api_corr,
+    }
+    for col_name, col_attr in filterable_num_cols.items():
+        val = request.args.get(f'f_{col_name}', '').strip()
+        if val:
+            query = query.filter(cast(col_attr, String).ilike(f'%{val}%'))
+
+    # Ordenar por timestamp desc
+    query = query.order_by(RegistroCalidad.timestamp.desc())
+
+    # Si show_all, no paginar (mantener compatibilidad con historial completo)
+    if show_all:
+        todos_los_registros = query.all()
+        datos = [
+            {
+                "id": r.id, "fecha": r.fecha, "hora": r.hora,
+                "producto": r.producto or '', "responsable": r.responsable,
+                "origen": r.origen, "placa": r.placa, "campo": r.campo,
+                "bsw": r.bsw or '', "flash_point": r.flash_point or '',
+                "api_obs": r.api_obs or '', "temp": r.temp or '',
+                "api_corr": r.api_corr or '', "observaciones": r.observaciones or ''
+            }
+            for r in todos_los_registros
+        ]
+        return jsonify({"data": datos, "total": len(datos), "page": 1, "per_page": len(datos), "pages": 1})
+
+    # Paginación eficiente
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, pages))
+    registros = query.offset((page - 1) * per_page).limit(per_page).all()
+
     datos = [
         {
-            "id": r.id,
-            "fecha": r.fecha,
-            "hora": r.hora,
-            "producto": r.producto or '',
-            "responsable": r.responsable,
-            "origen": r.origen,
-            "placa": r.placa,
-            "campo": r.campo,
-            "bsw": r.bsw or '',
-            "flash_point": r.flash_point or '',
-            "api_obs": r.api_obs or '',
-            "temp": r.temp or '',
-            "api_corr": r.api_corr or '',
-            "observaciones": r.observaciones or ''
+            "id": r.id, "fecha": r.fecha, "hora": r.hora,
+            "producto": r.producto or '', "responsable": r.responsable,
+            "origen": r.origen, "placa": r.placa, "campo": r.campo,
+            "bsw": r.bsw or '', "flash_point": r.flash_point or '',
+            "api_obs": r.api_obs or '', "temp": r.temp or '',
+            "api_corr": r.api_corr or '', "observaciones": r.observaciones or ''
         }
-        for r in todos_los_registros
+        for r in registros
     ]
-    
-    return jsonify(datos)
+
+    return jsonify({"data": datos, "total": total, "page": page, "per_page": per_page, "pages": pages})
 
 @login_required
 @app.route('/api/control_calidad', methods=['POST'])
@@ -14809,18 +14861,24 @@ def gestionar_clientes():
 @login_required
 @app.route('/guardar_cliente', methods=['POST'])
 def guardar_cliente():
-    nombre = request.form.get('nombre_cliente')
-    direccion = request.form.get('direccion_cliente')
-    ciudad = request.form.get('ciudad_cliente')
+    nombre = request.form.get('nombre_cliente', '').strip()
+    direccion = request.form.get('direccion_cliente', '').strip()
+    ciudad = request.form.get('ciudad_cliente', '').strip()
 
     if not nombre or not direccion or not ciudad:
         flash("Todos los campos son obligatorios.", "danger")
         return redirect(url_for('gestionar_clientes'))
 
     clientes = cargar_clientes()
-    # Verificar si el cliente ya existe en JSON
-    if any(c['NOMBRE_CLIENTE'].lower() == nombre.lower() for c in clientes):
-        flash(f"El cliente '{nombre}' ya existe en la base de datos.", "warning")
+    # Verificar si el cliente ya existe en JSON (Nombre + Dirección + Ciudad)
+    # Se busca evitar duplicados exactos o muy similares
+    if any(
+        c.get('NOMBRE_CLIENTE', '').strip().upper() == nombre.upper() and
+        c.get('DIRECCION', '').strip().upper() == direccion.upper() and
+        c.get('CIUDAD_DEPARTAMENTO', '').strip().upper() == ciudad.upper()
+        for c in clientes
+    ):
+        flash(f"El cliente '{nombre}' con esa dirección y ciudad ya existe.", "warning")
         return redirect(url_for('gestionar_clientes'))
 
     nuevo_cliente = {
@@ -14834,7 +14892,11 @@ def guardar_cliente():
 
     # Guardar también en PostgreSQL
     try:
-        if not Cliente.query.filter_by(nombre=nombre.upper()).first():
+        if not Cliente.query.filter(
+            func.upper(Cliente.nombre) == nombre.upper(),
+            func.upper(Cliente.direccion) == direccion.upper(),
+            func.upper(Cliente.ciudad_departamento) == ciudad.upper()
+        ).first():
             cliente_db = Cliente(
                 nombre=nombre.upper(),
                 direccion=direccion.upper(),
@@ -14854,22 +14916,23 @@ def guardar_cliente():
 @app.route('/agregar_cliente_ajax', methods=['POST'])
 def agregar_cliente_ajax():
     data = request.get_json()
-    nombre = data.get('nombre')
-    direccion = data.get('direccion')
-    ciudad = data.get('ciudad')
+    nombre = data.get('nombre', '').strip()
+    direccion = data.get('direccion', '').strip()
+    ciudad = data.get('ciudad', '').strip()
 
     if not nombre or not direccion or not ciudad:
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
     clientes = cargar_clientes()
     
-    # Validar duplicados por NOMBRE + DIRECCIÓN (no solo nombre)
+    # Validar duplicados por NOMBRE + DIRECCIÓN + CIUDAD
     if any(
-        (c.get('NOMBRE_CLIENTE', '').upper() == nombre.upper()) and 
-        (c.get('DIRECCION', '').upper() == direccion.upper()) 
+        (c.get('NOMBRE_CLIENTE', '').strip().upper() == nombre.upper()) and 
+        (c.get('DIRECCION', '').strip().upper() == direccion.upper()) and
+        (c.get('CIUDAD_DEPARTAMENTO', '').strip().upper() == ciudad.upper())
         for c in clientes
     ):
-        return jsonify(success=False, message=f"El cliente '{nombre}' con esa dirección ya existe."), 409
+        return jsonify(success=False, message=f"El cliente '{nombre}' con esa dirección y ciudad ya existe."), 409
 
     nuevo_cliente = {
         "NOMBRE_CLIENTE": nombre.upper(),
@@ -14882,10 +14945,11 @@ def agregar_cliente_ajax():
 
     # Guardar también en PostgreSQL
     try:
-        # Verificar si existe EXACTAMENTE ese cliente (nombre + dirección)
+        # Verificar si existe EXACTAMENTE ese cliente (nombre + dirección + ciudad)
         existe_db = Cliente.query.filter(
             func.upper(Cliente.nombre) == nombre.upper(),
-            func.upper(Cliente.direccion) == direccion.upper()
+            func.upper(Cliente.direccion) == direccion.upper(),
+            func.upper(Cliente.ciudad_departamento) == ciudad.upper()
         ).first()
 
         if not existe_db:
