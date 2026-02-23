@@ -454,6 +454,70 @@ def organigrama_rh():
     return render_template('organigrama_rh.html')
 
 
+class CronogramaActividad(db.Model):
+    __tablename__ = 'cronograma_actividades'
+    id = db.Column(db.Integer, primary_key=True)
+    empresa = db.Column(db.String(50), nullable=False) # 'ZF' o 'CWT'
+    fase_id = db.Column(db.String(50), nullable=True)
+    fase_nombre = db.Column(db.String(50), nullable=True) # ej '1°'
+    fase_etiqueta = db.Column(db.String(200), nullable=True) # ej '1er día hábil — Cierre'
+    fase_clase = db.Column(db.String(50), nullable=True) # ej 'c-1'
+    icono_clase = db.Column(db.String(50), nullable=True) # ej 'ic-1'
+    icono = db.Column(db.String(50), nullable=True) # ej '🏦'
+    nombre = db.Column(db.String(200), nullable=False)
+    responsables = db.Column(db.Text, nullable=True) # JSON con formato [{"label": "Laura Gil", "cls": "gold"}]
+    resaltado = db.Column(db.Boolean, default=False)
+    orden = db.Column(db.Integer, default=0)
+
+class CronogramaEstado(db.Model):
+    __tablename__ = 'cronograma_estados'
+    id = db.Column(db.Integer, primary_key=True)
+    actividad_id = db.Column(db.Integer, db.ForeignKey('cronograma_actividades.id'), nullable=False)
+    mes = db.Column(db.String(50), nullable=False) # ej 'Febrero 2026'
+    estado = db.Column(db.String(50), default='pending') # 'done', 'pending', 'late'
+    observacion = db.Column(db.Text, nullable=True)
+    usuario = db.Column(db.String(100), nullable=True)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+def _init_cronograma_db():
+    from sqlalchemy import inspect
+    with app.app_context():
+        insp = inspect(db.engine)
+        tables = insp.get_table_names()
+        if 'cronograma_actividades' not in tables:
+            CronogramaActividad.__table__.create(db.engine)
+            print("[INIT] Tabla cronograma_actividades creada.")
+        if 'cronograma_estados' not in tables:
+            CronogramaEstado.__table__.create(db.engine)
+            print("[INIT] Tabla cronograma_estados creada.")
+            
+        # Poblar con datos por defecto si está vacía
+        if CronogramaActividad.query.count() == 0:
+            actividades_default = [
+                {'fase_id': 'pre', 'fase': 'PRE', 'faseClass': 'c-pre', 'faseLabel': '2 días antes del pago', 'iconClass': 'ic-pre', 'icon': '💼', 'name': 'Nóminas', 'resp': '[{"label": "Laura Gil", "cls": "gold"}]', 'hlt': False},
+                {'fase_id': 'ult', 'fase': 'Últ.', 'faseClass': 'c-0', 'faseLabel': 'Último día hábil del mes', 'iconClass': 'ic-0', 'icon': '🧾', 'name': 'Pre cierre — Factura CTG', 'resp': '[{"label": "Kevin Marin", "cls": "teal"}, {"label": "Kelly Suarez", "cls": ""}]', 'hlt': False},
+                {'fase_id': 'ult', 'fase': None, 'faseClass': 'c-0', 'faseLabel': None, 'iconClass': 'ic-0', 'icon': '📈', 'name': 'Liquidaciones Ventas', 'resp': '[{"label": "Ana Gallo", "cls": "teal"}, {"label": "Brandon Niño", "cls": ""}]', 'hlt': False},
+                {'fase_id': '1', 'fase': '1°', 'faseClass': 'c-1', 'faseLabel': '1er día hábil — Cierre', 'iconClass': 'ic-1', 'icon': '🏦', 'name': 'Movimientos Bancarios / RC y EG', 'resp': '[{"label": "Natalia Mesa", "cls": "gold"}]', 'hlt': False},
+                {'fase_id': '1', 'fase': None, 'faseClass': 'c-1', 'faseLabel': None, 'iconClass': 'ic-1', 'icon': '🛢️', 'name': 'Liquidaciones Crudo — WFS', 'resp': '[{"label": "Ana Gallo", "cls": "teal"}]', 'hlt': False},
+                {'fase_id': '2', 'fase': '2°', 'faseClass': 'c-2', 'faseLabel': '2do día hábil — Cierre', 'iconClass': 'ic-2', 'icon': '🏥', 'name': 'Seguridad Social', 'resp': '[{"label": "Laura Gil", "cls": "gold"}]', 'hlt': False},
+                {'fase_id': '2', 'fase': None, 'faseClass': 'c-2', 'faseLabel': None, 'iconClass': 'ic-2', 'icon': '📦', 'name': 'Inventarios', 'resp': '[{"label": "Carlos Barón", "cls": "teal"}, {"label": "Brandon Niño", "cls": ""}]', 'hlt': False},
+                {'fase_id': '3', 'fase': '3°', 'faseClass': 'c-3', 'faseLabel': '3er día hábil — Cierre', 'iconClass': 'ic-3', 'icon': '📝', 'name': 'Cierre de Causaciones', 'resp': '[{"label": "Kelly Suarez", "cls": "gold"}]', 'hlt': False},
+                {'fase_id': '4', 'fase': '4°', 'faseClass': 'c-4', 'faseLabel': '4to día hábil — Cierre', 'iconClass': 'ic-4', 'icon': '🧮', 'name': 'Liquidación de Impuestos', 'resp': '[{"label": "Kevin Marin", "cls": "teal"}, {"label": "Kelly Suarez", "cls": ""}]', 'hlt': False},
+                {'fase_id': '5', 'fase': '5°', 'faseClass': 'c-5', 'faseLabel': '5to día hábil — Cierre', 'iconClass': 'ic-5', 'icon': '📋', 'name': 'Entrega de Informes', 'resp': '[{"label": "Kevin Marin", "cls": "teal"}, {"label": "Kelly Suarez", "cls": ""}]', 'hlt': True}
+            ]
+            for emp in ['ZF', 'CWT']:
+                for idx, a in enumerate(actividades_default):
+                    obj = CronogramaActividad(
+                        empresa=emp, fase_id=a['fase_id'], fase_nombre=a['fase'], fase_etiqueta=a['faseLabel'],
+                        fase_clase=a['faseClass'], icono_clase=a['iconClass'], icono=a['icon'],
+                        nombre=a['name'], responsables=a['resp'], resaltado=a['hlt'], orden=idx
+                    )
+                    db.session.add(obj)
+            db.session.commit()
+            print("[INIT] Actividades de cronograma populadas por defecto.")
+
+_init_cronograma_db()
+
 class RegistroPlanta(db.Model):
     __tablename__ = 'registros_planta'
 
@@ -2211,6 +2275,13 @@ USUARIOS = {
         "nombre": "Laura Gil",
         "rol": "viewer",
         "area": ["organigrama_rh"]
+    },
+
+    "billcwt@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Kevin Marin",
+        "rol": "editor",
+        "area": ["Contabilidad"]
     }
 
 
@@ -4081,9 +4152,8 @@ def reporte_planta():
     if registros_recientes:
         # La lógica para la fecha de actualización no cambia
         ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
-        fecha_formato = ultimo_registro_general.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
         fecha_actualizacion_info = formatear_info_actualizacion(
-            fecha_formato, 
+            ultimo_registro_general.timestamp, 
             ultimo_registro_general.usuario
         )
 
@@ -4607,8 +4677,7 @@ def reporte_transito():
                                    fecha_actualizacion_info=fecha_actualizacion_info)
 
         ultimo_registro = max(todos_los_registros, key=lambda r: r.timestamp)
-        fecha_formato = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
-        fecha_actualizacion_info = formatear_info_actualizacion(fecha_formato, ultimo_registro.usuario)
+        fecha_actualizacion_info = formatear_info_actualizacion(ultimo_registro.timestamp, ultimo_registro.usuario)
 
         for reg in todos_los_registros:
             origen = (reg.origen or "").strip()
@@ -6581,9 +6650,8 @@ def reporte_barcaza():
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
     if registros_recientes:
         ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
-        fecha_formato_para_funcion = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
         fecha_actualizacion_info = formatear_info_actualizacion(
-            fecha_formato_para_funcion, 
+            ultimo_registro.timestamp, 
             ultimo_registro.usuario
         )
     
@@ -6631,8 +6699,7 @@ def reporte_barcaza_bita():
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
     if registros_recientes:
         ultimo_registro = max(registros_recientes, key=lambda r: r.timestamp)
-        fecha_fmt = ultimo_registro.timestamp.strftime("%Y_%m_%d_%H_%M_%S")
-        fecha_actualizacion_info = formatear_info_actualizacion(fecha_fmt, ultimo_registro.usuario)
+        fecha_actualizacion_info = formatear_info_actualizacion(ultimo_registro.timestamp, ultimo_registro.usuario)
 
     return render_template("reporte_barcaza_bita.html",
                            titulo="Reporte Interactivo - Barcaza BITA",
@@ -16807,6 +16874,153 @@ def descargar_guia_sharepoint(registro, numero_guia):
 
 # ===================================================================
 # --- FIN: FUNCIONES DE IMPORTACIÓN DESDE SHAREPOINT ---
+# ===================================================================
+
+# ===================================================================
+# --- INICIO: RUTAS CRONOGRAMA ---
+# ===================================================================
+
+@app.route('/cronograma')
+def cronograma_home():
+    email = session.get('email', '').strip().lower()
+    
+    # Kelly can edit ZF, Kevin CWT. Admin edits both.
+    kelly_emails = ['accountingzf@conquerstrading.com', 'kelly', 'suarez']
+    kevin_emails = ['billcwt@conquerstrading.com', 'kevin', 'marin']
+    
+    is_kelly = any(k in email for k in kelly_emails) or session.get('rol') == 'admin'
+    is_kevin = any(k in email for k in kevin_emails) or session.get('rol') == 'admin'
+    
+    if not (is_kelly or is_kevin):
+        flash('Acceso denegado. Permiso exclusivo para contabilidad.', 'danger')
+        return redirect(url_for('home'))
+
+    empresa_default = 'ZF' if is_kelly else 'CWT'
+    
+    return render_template('cronograma.html', empresa_default=empresa_default, is_kelly=is_kelly, is_kevin=is_kevin)
+
+@app.route('/api/cronograma/<empresa>')
+def api_cronograma_get(empresa):
+    mes = request.args.get('mes')
+    if not mes:
+        # Default fallback if somehow none is passed (e.g direct API call)
+        # We can dynamically set it to the current month/year
+        from datetime import datetime
+        months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+        now = datetime.now()
+        mes = f"{months[now.month - 1]} {now.year}"
+        
+    actividades = CronogramaActividad.query.filter_by(empresa=empresa).order_by(CronogramaActividad.orden).all()
+    
+    res = []
+    for a in actividades:
+        est = CronogramaEstado.query.filter_by(actividad_id=a.id, mes=mes).first()
+        
+        fecha_str = ''
+        if est and est.fecha_actualizacion:
+            dt_bogota = to_bogota_datetime(est.fecha_actualizacion)
+            if dt_bogota:
+                fecha_str = dt_bogota.strftime('%d/%b %I:%M %p').lower()
+                
+        res.append({
+            'id': a.id,
+            'fase_id': a.fase_id,
+            'fase': a.fase_nombre,
+            'faseLabel': a.fase_etiqueta,
+            'faseClass': a.fase_clase,
+            'iconClass': a.icono_clase,
+            'icon': a.icono,
+            'name': a.nombre,
+            'resp': json.loads(a.responsables) if a.responsables else [],
+            'highlight': a.resaltado,
+            'status': est.estado if est else 'pending',
+            'obs': est.observacion if est else '',
+            'fecha_act': fecha_str,
+            'usuario': est.usuario if est else ''
+        })
+    return jsonify(res)
+
+@app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
+def api_cronograma_estado(empresa):
+    email = session.get('email', '').strip().lower()
+    is_admin = session.get('rol') == 'admin'
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+        return jsonify({'error': 'No tienes permiso para editar ZF'}), 403
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+        return jsonify({'error': 'No tienes permiso para editar CWT'}), 403
+        
+    data = request.json
+    act_id = data.get('actividad_id')
+    mes = data.get('mes')
+    estado = data.get('estado')
+    obs = data.get('obs', '')
+    
+    est = CronogramaEstado.query.filter_by(actividad_id=act_id, mes=mes).first()
+    if not est:
+        est = CronogramaEstado(actividad_id=act_id, mes=mes, estado=estado, observacion=obs, usuario=session.get('nombre'))
+        db.session.add(est)
+    else:
+        est.estado = estado
+        if estado == 'late' or obs.strip() != '':
+            est.observacion = obs
+        est.usuario = session.get('nombre')
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+@app.route('/api/cronograma/<empresa>/actividad', methods=['POST', 'PUT'])
+def api_cronograma_actividad(empresa):
+    email = session.get('email', '').strip().lower()
+    is_admin = session.get('rol') == 'admin'
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+        return jsonify({'error': 'Sin permiso'}), 403
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+        return jsonify({'error': 'Sin permiso'}), 403
+        
+    data = request.json
+    act_id = data.get('id')
+    if act_id: # Edit
+        act = CronogramaActividad.query.get(act_id)
+        if not act: return jsonify({'error': 'No encontrada'}), 404
+    else: # Add
+        act = CronogramaActividad(empresa=empresa)
+        db.session.add(act)
+        
+    act.fase_id = data.get('fase_id')
+    act.fase_nombre = data.get('fase')
+    act.fase_etiqueta = data.get('faseLabel')
+    act.fase_clase = data.get('faseClass', 'c-1')
+    act.icono_clase = data.get('iconClass', 'ic-1')
+    act.icono = data.get('icon', '📝')
+    act.nombre = data.get('name')
+    act.responsables = json.dumps(data.get('resp', []))
+    act.resaltado = data.get('highlight', False)
+    
+    max_orden = db.session.query(db.func.max(CronogramaActividad.orden)).filter_by(empresa=empresa).scalar() or 0
+    if not act_id:
+        act.orden = max_orden + 1
+        
+    db.session.commit()
+    return jsonify({'success': True, 'id': act.id})
+
+@app.route('/api/cronograma/<empresa>/actividad/<int:id>', methods=['DELETE'])
+def api_cronograma_actividad_delete(empresa, id):
+    email = session.get('email', '').strip().lower()
+    is_admin = session.get('rol') == 'admin'
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+        return jsonify({'error': 'Sin permiso'}), 403
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+        return jsonify({'error': 'Sin permiso'}), 403
+        
+    act = CronogramaActividad.query.get(id)
+    if act:
+        CronogramaEstado.query.filter_by(actividad_id=id).delete()
+        db.session.delete(act)
+        db.session.commit()
+    return jsonify({'success': True})
+
+# ===================================================================
+# --- FIN: RUTAS CRONOGRAMA ---
 # ===================================================================
 
 # --- Blueprint Pricing ---

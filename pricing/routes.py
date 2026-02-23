@@ -905,6 +905,24 @@ def update_gasoil():
     if latest_record:
         start_date = latest_record.fecha + timedelta(days=1)
     
+    start_year = date(2025, 1, 1)
+    try:
+        # Buscar cualquier hueco (Gap) en el pasado donde falte Brent o TRM
+        bad_record = HistorialGasoil.query.filter(
+            HistorialGasoil.fecha >= start_year,
+            or_(
+                HistorialGasoil.brent == None,
+                HistorialGasoil.brent <= 0.01,
+                HistorialGasoil.trm == None,
+                HistorialGasoil.trm <= 0.01
+            )
+        ).order_by(HistorialGasoil.fecha.asc()).first()
+        
+        if bad_record and bad_record.fecha < start_date:
+            start_date = bad_record.fecha
+    except:
+        pass
+
     today = date.today()
     
     # Verificar si ya está actualizado

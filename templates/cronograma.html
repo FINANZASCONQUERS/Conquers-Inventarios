@@ -1,0 +1,1328 @@
+{% extends "base.html" %}
+
+{% block title %}Cronograma Cierre Contable | Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+<style>
+    :root {
+        --navy: #0d1b2a;
+        --teal: #1a5f7a;
+        --gold: #c9a84c;
+        --gold-light: #f0d080;
+        --cream: #faf7f0;
+        --gray: #6b7a8d;
+    }
+
+    .cronograma-wrapper {
+        font-family: 'DM Sans', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 60px;
+    }
+
+    .top-bar {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+        max-width: 1400px;
+    }
+
+    /* TABS EMPRESAS */
+    .empresa-tabs {
+        display: flex;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 5px;
+        border-radius: 50px;
+    }
+
+    .empresa-tab {
+        padding: 8px 24px;
+        border: none;
+        background: transparent;
+        border-radius: 40px;
+        font-weight: 700;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .empresa-tab.active {
+        background: white;
+        color: var(--navy);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-top {
+        padding: 9px 22px;
+        border: none;
+        border-radius: 50px;
+        font-family: inherit;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        letter-spacing: 0.04em;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        transition: all 0.2s;
+    }
+
+    .btn-download {
+        background: var(--gold);
+        color: white;
+        box-shadow: 0 4px 15px rgba(201, 168, 76, 0.3);
+    }
+
+    .btn-download:hover {
+        background: var(--gold-light);
+        transform: translateY(-2px);
+    }
+
+    .btn-config {
+        background: var(--teal);
+        color: white;
+        box-shadow: 0 4px 15px rgba(26, 95, 122, 0.3);
+    }
+
+    .btn-config:hover {
+        background: #237a9c;
+        transform: translateY(-2px);
+    }
+
+    #chart-export {
+        background: var(--cream);
+        width: 1400px;
+        max-width: 100%;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    }
+
+    .dark-mode #chart-export {
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .card-header {
+        background: var(--navy);
+        padding: 36px 50px 28px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .card-header::before {
+        content: '';
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(201, 168, 76, 0.18) 0%, transparent 70%);
+    }
+
+    .card-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%);
+    }
+
+    .header-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .header-badge {
+        background: rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(201, 168, 76, 0.4);
+        color: var(--gold);
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 5px 14px;
+        border-radius: 20px;
+        margin-bottom: 12px;
+        display: inline-block;
+    }
+
+    .header-title {
+        font-family: 'DM Serif Display', serif;
+        font-size: 2.1rem;
+        color: white;
+        line-height: 1.1;
+    }
+
+    .header-title span {
+        color: var(--gold);
+    }
+
+    .header-sub {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.85rem;
+        margin-top: 8px;
+    }
+
+    .header-meta {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-top: 14px;
+        position: relative;
+        z-index: 2;
+    }
+
+    .legend {
+        display: flex;
+        gap: 14px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .month-selector {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        font-family: inherit;
+        font-size: 0.88rem;
+        font-weight: 600;
+        padding: 7px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        outline: none;
+    }
+
+    .month-selector option {
+        background: #0d1b2a;
+    }
+
+    /* STATS */
+    .stats-wrap {
+        padding: 20px 50px 0;
+    }
+
+    .stats-strip {
+        display: flex;
+        background: white;
+        border: 1.5px solid #eee8de;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .stat-item {
+        flex: 1;
+        padding: 14px 16px;
+        text-align: center;
+        border-right: 1px solid #eee8de;
+    }
+
+    .stat-item:last-child {
+        border-right: none;
+    }
+
+    .stat-num {
+        font-size: 1.6rem;
+        font-weight: 800;
+        line-height: 1;
+    }
+
+    .stat-lbl {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--gray);
+        margin-top: 4px;
+    }
+
+    .stat-done .stat-num {
+        color: #22c55e;
+    }
+
+    .stat-pending .stat-num {
+        color: #f59e0b;
+    }
+
+    .stat-late .stat-num {
+        color: #ef4444;
+    }
+
+    .stat-total .stat-num {
+        color: var(--navy);
+    }
+
+    /* BODY */
+    .card-body {
+        padding: 26px 50px 40px;
+    }
+
+    .section-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--gray);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-label::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: #e2ddd6;
+    }
+
+    .phase-group {
+        margin-bottom: 4px;
+    }
+
+    .phase-header {
+        display: flex;
+        align-items: center;
+    }
+
+    .phase-dot {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.67rem;
+        font-weight: 800;
+        flex-shrink: 0;
+        z-index: 2;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .phase-label {
+        background: var(--navy);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 5px 14px;
+        border-radius: 0 20px 20px 0;
+        margin-left: -4px;
+    }
+
+    .phase-connector {
+        width: 2px;
+        background: #e2ddd6;
+        margin-left: 18px;
+    }
+
+    .row-items {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        padding: 8px 0 8px 56px;
+    }
+
+    /* ROW CARD */
+    .row-card {
+        background: white;
+        border-radius: 12px;
+        border: 1.5px solid #eee8de;
+        overflow: visible;
+        transition: border-color 0.2s, background 0.2s;
+        position: relative;
+    }
+
+    .row-card.status-done {
+        border-color: #86efac;
+        background: #f0fdf4;
+    }
+
+    .row-card.status-pending {
+        border-color: #fcd34d;
+        background: #fffbeb;
+    }
+
+    .row-card.status-late {
+        border-color: #fca5a5;
+        background: #fff5f5;
+    }
+
+    .row-main {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 16px;
+    }
+
+    .row-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        flex-shrink: 0;
+    }
+
+    .row-activity {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .row-activity-name {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--navy);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .row-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .responsible-chips {
+        display: flex;
+    }
+
+    .avatar-chip {
+        background: var(--navy);
+        color: white;
+        font-size: 0.66rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 20px;
+        white-space: nowrap;
+        border: 2px solid white;
+        margin-left: -3px;
+    }
+
+    .avatar-chip:first-child {
+        margin-left: 0;
+    }
+
+    .avatar-chip.gold {
+        background: var(--gold);
+        color: var(--navy);
+    }
+
+    .avatar-chip.teal {
+        background: var(--teal);
+        color: white;
+    }
+
+    /* STATUS BUTTONS */
+    .status-area {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .status-btn {
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1.5px solid;
+        font-size: 0.7rem;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        background: white;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+
+    .status-btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .status-btn.done {
+        border-color: #22c55e;
+        color: #16a34a;
+    }
+
+    .status-btn.pending {
+        border-color: #f59e0b;
+        color: #d97706;
+    }
+
+    .status-btn.late {
+        border-color: #ef4444;
+        color: #dc2626;
+    }
+
+    .status-btn.active.done {
+        background: #22c55e;
+        color: white;
+        border-color: #22c55e;
+    }
+
+    .status-btn.active.pending {
+        background: #f59e0b;
+        color: white;
+        border-color: #f59e0b;
+    }
+
+    .status-btn.active.late {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444;
+    }
+
+    /* OBSERVATION AREA */
+    .obs-area {
+        border-top: 1px dashed #fcd34d;
+        padding: 10px 16px 12px;
+        display: none;
+        gap: 10px;
+        align-items: flex-start;
+        background: rgba(254, 242, 242, 0.3);
+    }
+
+    .obs-area.visible {
+        display: flex;
+    }
+
+    .obs-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #b45309;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        white-space: nowrap;
+        padding-top: 7px;
+        flex-shrink: 0;
+    }
+
+    .obs-input {
+        flex: 1;
+        background: white;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-family: inherit;
+        font-size: 0.82rem;
+        color: var(--navy);
+        resize: vertical;
+        min-height: 38px;
+        line-height: 1.4;
+    }
+
+    .obs-input:focus {
+        outline: none;
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.12);
+    }
+
+    .btn-save-obs {
+        padding: 6px 14px;
+        background: #f59e0b;
+        color: white;
+        font-size: 0.75rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    /* Saved observation display */
+    .obs-saved {
+        border-top: 1px dashed #eee8de;
+        padding: 8px 16px 10px;
+        display: none;
+        align-items: flex-start;
+        gap: 8px;
+        background: transparent;
+    }
+
+    .obs-saved.visible {
+        display: flex;
+    }
+
+    .obs-saved-text {
+        font-size: 0.8rem;
+        color: #b45309;
+        font-style: italic;
+        line-height: 1.4;
+    }
+
+    /* Colors */
+    .c-pre {
+        background: #6366f1;
+        color: white;
+        border-color: #6366f1 !important;
+    }
+
+    .c-0 {
+        background: #0ea5e9;
+        color: white;
+        border-color: #0ea5e9 !important;
+    }
+
+    .c-1 {
+        background: #10b981;
+        color: white;
+        border-color: #10b981 !important;
+    }
+
+    .c-2 {
+        background: #f59e0b;
+        color: white;
+        border-color: #f59e0b !important;
+    }
+
+    .c-3 {
+        background: #ef4444;
+        color: white;
+        border-color: #ef4444 !important;
+    }
+
+    .c-4 {
+        background: #8b5cf6;
+        color: white;
+        border-color: #8b5cf6 !important;
+    }
+
+    .c-5 {
+        background: var(--navy);
+        color: white;
+        border-color: var(--navy) !important;
+    }
+
+    .ic-pre {
+        background: #eef2ff;
+    }
+
+    .ic-0 {
+        background: #e0f2fe;
+    }
+
+    .ic-1 {
+        background: #d1fae5;
+    }
+
+    .ic-2 {
+        background: #fef3c7;
+    }
+
+    .ic-3 {
+        background: #fee2e2;
+    }
+
+    .ic-4 {
+        background: #ede9fe;
+    }
+
+    .ic-5 {
+        background: #e2e8f0;
+    }
+
+    .card-footer {
+        background: var(--navy);
+        padding: 14px 50px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-note {
+        font-size: 0.72rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+        max-width: 65%;
+    }
+
+    .footer-stamp {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--gold);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+    }
+
+    /* Export overrides */
+    .export-status-badge {
+        display: none;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .exporting .status-area {
+        display: none !important;
+    }
+
+    .exporting .btn-edit {
+        display: none !important;
+    }
+
+    .exporting .btn-delete {
+        display: none !important;
+    }
+
+    .exporting .export-status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .exporting .obs-area {
+        display: none !important;
+    }
+
+    .exporting .obs-saved.visible {
+        display: flex !important;
+    }
+
+    .badge-done {
+        background: #dcfce7;
+        color: #16a34a;
+        border: 1px solid #86efac;
+    }
+
+    .badge-pending {
+        background: #fef9c3;
+        color: #854d0e;
+        border: 1px solid #fcd34d;
+    }
+
+    .badge-late {
+        background: #fee2e2;
+        color: #dc2626;
+        border: 1px solid #fca5a5;
+    }
+
+    /* Actions */
+    .btn-edit {
+        background: transparent;
+        border: none;
+        font-size: 0.8rem;
+        color: #a0aec0;
+        cursor: pointer;
+        padding: 2px 5px;
+    }
+
+    .btn-edit:hover {
+        color: var(--teal);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cronograma-wrapper mt-3">
+
+    <div class="top-bar">
+        <div class="empresa-tabs">
+            <button class="empresa-tab {% if empresa_default == 'ZF' %}active{% endif %}" onclick="switchEmpresa('ZF')"
+                id="tab-ZF">Contabilidad ZF</button>
+            <button class="empresa-tab {% if empresa_default == 'CWT' %}active{% endif %}"
+                onclick="switchEmpresa('CWT')" id="tab-CWT">Contabilidad CWT</button>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+            <button class="btn-top btn-config" id="btn-config-global" onclick="openAddActividadModal()"
+                style="display:none;">
+                <i class="bi bi-gear-fill"></i> Añadir Actividad
+            </button>
+            <button class="btn-top btn-download" onclick="downloadImage()">
+                <i class="bi bi-cloud-arrow-down-fill"></i> Descargar Imagen
+            </button>
+        </div>
+    </div>
+
+    <div id="chart-export">
+        <div class="card-header">
+            <div class="header-top">
+                <div>
+                    <div class="header-badge" id="header-empresa-badge">Cierre Contable - {{ empresa_default }}</div>
+                    <div class="header-title">Cronograma de <span id="header-empresa-title">{{ empresa_default }}</span>
+                    </div>
+                    <div class="header-sub">Actividades · Responsables · Estados · Observaciones</div>
+                </div>
+                <div>
+                    <select class="month-selector" id="monthSelect" onchange="loadData()">
+                    </select>
+                </div>
+            </div>
+            <div class="header-meta">
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#22c55e;"></div> Finalizado
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#f59e0b;"></div> Pendiente
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background:#ef4444;"></div> Atrasado
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-wrap">
+            <div class="stats-strip">
+                <div class="stat-item stat-total">
+                    <div class="stat-num" id="stat-total">0</div>
+                    <div class="stat-lbl">Total actividades</div>
+                </div>
+                <div class="stat-item stat-done">
+                    <div class="stat-num" id="stat-done">0</div>
+                    <div class="stat-lbl">✅ Finalizado</div>
+                </div>
+                <div class="stat-item stat-pending">
+                    <div class="stat-num" id="stat-pending">0</div>
+                    <div class="stat-lbl">⏳ Pendiente</div>
+                </div>
+                <div class="stat-item stat-late">
+                    <div class="stat-num" id="stat-late">0</div>
+                    <div class="stat-lbl">🔴 Atrasado</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body">
+            <div class="section-label">Flujo de actividades por día hábil</div>
+            <div id="activities-container">
+                <!-- JS rendered content -->
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border spinner-border-sm me-2"></div>Cargando cronograma...
+                </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <div class="footer-note">El incumplimiento de los días establecidos genera demoras en la entrega de informes
+                y debe reportarse ante Alta Gerencia.</div>
+            <div class="footer-stamp">Departamento de Contabilidad</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Configuración de Actividad -->
+<div class="modal fade custom-modal" id="actividadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary mb-0" id="actividadModalTitle">Añadir Actividad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="actividadForm">
+                    <input type="hidden" id="act_id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre de la Actividad</label>
+                        <input type="text" class="form-control" id="act_name" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">ID Fase (ej: pre, 1, 2)</label>
+                            <input type="text" class="form-control" id="act_fase_id">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Nombre Fase (ej: 1°)</label>
+                            <input type="text" class="form-control" id="act_fase">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Etiqueta Fase (Solo si abre fase)</label>
+                        <input type="text" class="form-control" id="act_faseLabel"
+                            placeholder="Ej: 1er día hábil — Cierre">
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Clase Color (Fase)</label>
+                            <select class="form-select" id="act_faseClass">
+                                <option value="c-pre">Pre (Morado)</option>
+                                <option value="c-0">0 (Azul Claro)</option>
+                                <option value="c-1">1 (Verde)</option>
+                                <option value="c-2">2 (Naranja)</option>
+                                <option value="c-3">3 (Rojo)</option>
+                                <option value="c-4">4 (Lila)</option>
+                                <option value="c-5">5 (Navy)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Clase Ícono</label>
+                            <select class="form-select" id="act_iconClass">
+                                <option value="ic-pre">Pre</option>
+                                <option value="ic-0">0</option>
+                                <option value="ic-1">1</option>
+                                <option value="ic-2">2</option>
+                                <option value="ic-3">3</option>
+                                <option value="ic-4">4</option>
+                                <option value="ic-5">5</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Ícono (Emoji)</label>
+                            <input type="text" class="form-control" id="act_icon" value="📝">
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="act_highlight">
+                                <label class="form-check-label fw-bold" for="act_highlight">Resaltar fila</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Responsable 1</label>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control" id="act_resp1_name" placeholder="Nombre">
+                            <select class="form-select w-50" id="act_resp1_cls">
+                                <option value="gold">Gold</option>
+                                <option value="teal">Teal</option>
+                                <option value="">Normal</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Responsable 2 (Opcional)</label>
+                        <div class="d-flex gap-2">
+                            <input type="text" class="form-control" id="act_resp2_name" placeholder="Nombre">
+                            <select class="form-select w-50" id="act_resp2_cls">
+                                <option value="">Normal</option>
+                                <option value="gold">Gold</option>
+                                <option value="teal">Teal</option>
+                            </select>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-danger me-auto" id="btnDeleteAct" onclick="deleteActividad()"
+                    style="display:none;">Eliminar</button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveActividad()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    let currentEmpresa = '{{ empresa_default }}';
+    const IS_KELLY = {{ 'true' if is_kelly else 'false' }};
+    const IS_KEVIN = {{ 'true' if is_kevin else 'false' }};
+    const IS_ADMIN = {{ 'true' if session.get('rol') == 'admin' else 'false' }};
+
+    let ACTIVITIES = [];
+
+    function canEditCurrent() {
+        if (IS_ADMIN) return true;
+        if (currentEmpresa === 'ZF' && IS_KELLY) return true;
+        if (currentEmpresa === 'CWT' && IS_KEVIN) return true;
+        return false;
+    }
+
+    function updateUIForPermissions() {
+        const canEdit = canEditCurrent();
+        document.getElementById('btn-config-global').style.display = canEdit ? 'flex' : 'none';
+        if (!canEdit) {
+            document.querySelectorAll('.status-btn').forEach(b => b.disabled = true);
+            document.querySelectorAll('.btn-edit').forEach(b => b.style.display = 'none');
+        }
+    }
+
+    function switchEmpresa(emp) {
+        document.querySelectorAll('.empresa-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + emp).classList.add('active');
+        currentEmpresa = emp;
+
+        document.getElementById('header-empresa-badge').textContent = `Cierre Contable - ${emp}`;
+        document.getElementById('header-empresa-title').textContent = emp;
+
+        loadData();
+    }
+
+    async function loadData() {
+        const mes = document.getElementById('monthSelect').value;
+        try {
+            const res = await fetch(`/api/cronograma/${currentEmpresa}?mes=${encodeURIComponent(mes)}`);
+            if (!res.ok) throw new Error('Network error');
+            ACTIVITIES = await res.json();
+            renderCronograma();
+            updateUIForPermissions();
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'No se pudieron cargar los datos.', 'error');
+        }
+    }
+
+    async function setStatus(act_id, status) {
+        if (!canEditCurrent()) return;
+
+        const mes = document.getElementById('monthSelect').value;
+        const input = document.getElementById(`obs-input-${act_id}`);
+        const currentObs = input ? input.value : '';
+
+        try {
+            const res = await fetch(`/api/cronograma/${currentEmpresa}/estado`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actividad_id: act_id,
+                    mes: mes,
+                    estado: status,
+                    obs: currentObs
+                })
+            });
+
+            if (res.ok) {
+                loadData();
+            } else {
+                const d = await res.json();
+                Swal.fire('Error', d.error || 'Fallo al guardar', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    function toggleObs(act_id) {
+        const el = document.getElementById(`obs-area-${act_id}`);
+        if (el) {
+            el.classList.toggle('visible');
+            if (el.classList.contains('visible')) {
+                const input = document.getElementById(`obs-input-${act_id}`);
+                if (input) input.focus();
+            }
+        }
+    }
+
+    async function saveObservation(act_id, current_status) {
+        const input = document.getElementById(`obs-input-${act_id}`);
+        if (!input) return;
+        const val = input.value;
+        const mes = document.getElementById('monthSelect').value;
+
+        try {
+            const res = await fetch(`/api/cronograma/${currentEmpresa}/estado`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actividad_id: act_id,
+                    mes: mes,
+                    estado: current_status,
+                    obs: val
+                })
+            });
+
+            if (res.ok) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Observación guardada', timer: 1500, showConfirmButton: false });
+                loadData();
+            }
+        } catch (e) { }
+    }
+
+    function renderCronograma() {
+        const container = document.getElementById('activities-container');
+        let html = '';
+        let openGroup = false;
+
+        let done = 0, pending = 0, late = 0;
+
+        ACTIVITIES.forEach((act, idx) => {
+            if (act.status === 'done') done++;
+            else if (act.status === 'late') late++;
+            else pending++;
+
+            const isNewPhase = act.fase !== null && act.fase !== '';
+
+            if (isNewPhase) {
+                if (openGroup) html += `</div></div>`;
+                html += `
+            ${idx > 0 ? '<div class="phase-connector" style="height:10px;"></div>' : ''}
+            <div class="phase-group">
+              <div class="phase-header">
+                <div class="phase-dot ${act.faseClass}">${act.fase}</div>
+                <div class="phase-label">${act.faseLabel || ''}</div>
+              </div>
+              <div class="phase-connector" style="height:12px;"></div>
+              <div class="row-items" style="padding-top:0;">
+          `;
+                openGroup = true;
+            }
+
+            const resp = (act.resp || []).map(r =>
+                `<div class="avatar-chip ${r.cls}">${r.label}</div>`
+            ).join('');
+
+            const hl = act.highlight ? 'style="border-color:#c9a84c !important; background:#fffdf5 !important;"' : '';
+            const hl2 = act.highlight ? 'style="background:#fef9ec;"' : '';
+
+            let actClass = 'status-pending';
+            if (act.status === 'done') actClass = 'status-done';
+            if (act.status === 'late') actClass = 'status-late';
+
+            const bDone = act.status === 'done' ? 'active' : '';
+            const bPend = act.status === 'pending' ? 'active' : '';
+            const bLate = act.status === 'late' ? 'active' : '';
+
+            let badgeClass = '', badgeText = '';
+            if (act.status === 'done') { badgeClass = 'badge-done'; badgeText = '✅ Finalizado'; }
+            if (act.status === 'pending') { badgeClass = 'badge-pending'; badgeText = '⏳ Pendiente'; }
+            if (act.status === 'late') { badgeClass = 'badge-late'; badgeText = '🔴 Atrasado'; }
+
+            html += `
+          <div class="row-card ${actClass}" id="card-${act.id}" ${hl}>
+            <div class="row-main">
+              <div class="row-icon ${act.iconClass}" ${hl2}>${act.icon}</div>
+              <div class="row-activity">
+                <div class="row-activity-name">
+                  ${act.name}
+                  <button class="btn-edit" onclick="openEditActividadModal(${act.id})" title="Editar actividad"><i class="bi bi-pencil-fill"></i></button>
+                </div>
+              </div>
+              <div class="row-right">
+                <div class="responsible-chips">${resp}</div>
+                <div class="status-area">
+                  <button class="status-btn done ${bDone}" onclick="setStatus(${act.id},'done')">✅ Listo</button>
+                  <button class="status-btn pending ${bPend}" onclick="setStatus(${act.id},'pending')">⏳ Pendiente</button>
+                  <button class="status-btn late ${bLate}" onclick="setStatus(${act.id},'late')">🔴 Atrasado</button>
+                  <button class="btn-edit ms-1" onclick="toggleObs(${act.id})" title="Añadir/Editar Nota"><i class="bi bi-journal-text" style="font-size: 1.1rem; color: #6b7a8d;"></i></button>
+                </div>
+                <div class="export-status-badge ${badgeClass}">${badgeText}</div>
+              </div>
+            </div>
+            
+            <div class="obs-area ${act.status === 'late' ? 'visible' : ''}" id="obs-area-${act.id}">
+              <div class="obs-label">📝 NOTA:</div>
+              <textarea class="obs-input" id="obs-input-${act.id}" placeholder="Escribe un comentario o motivo...">${act.obs}</textarea>
+              <button class="btn-save-obs" onclick="saveObservation(${act.id}, '${act.status}')">Guardar</button>
+            </div>
+            
+            <div class="obs-saved ${(act.obs && act.obs.trim() !== '') || act.fecha_act ? 'visible' : ''}">
+              <div class="w-100">
+                ${act.obs && act.obs.trim() !== '' ? `<div class="obs-saved-text" style="margin-bottom: 4px;"><i class="bi bi-chat-left-text"></i> <strong>Nota:</strong> ${act.obs}</div>` : ''}
+                ${act.fecha_act ? `<div style="font-size: 0.73rem; color: var(--gray); font-weight: 500;"><i class="bi bi-clock-history"></i> Marcado como <strong>${act.status === 'done' ? '✅ Listo' : act.status === 'pending' ? '⏳ Pendiente' : '🔴 Atrasado'}</strong> el ${act.fecha_act} ${act.usuario ? `por ${act.usuario}` : ''}</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+        });
+
+        if (openGroup) html += `</div></div>`;
+        container.innerHTML = html;
+
+        document.getElementById('stat-total').textContent = ACTIVITIES.length;
+        document.getElementById('stat-done').textContent = done;
+        document.getElementById('stat-pending').textContent = pending;
+        document.getElementById('stat-late').textContent = late;
+    }
+
+    // EDICION DE ACTIVIDADES
+    let actModal;
+    function openAddActividadModal() {
+        if (!actModal) actModal = new bootstrap.Modal(document.getElementById('actividadModal'));
+        document.getElementById('actividadForm').reset();
+        document.getElementById('act_id').value = '';
+        document.getElementById('actividadModalTitle').textContent = 'Añadir Actividad';
+        document.getElementById('btnDeleteAct').style.display = 'none';
+        actModal.show();
+    }
+
+    function openEditActividadModal(id) {
+        if (!actModal) actModal = new bootstrap.Modal(document.getElementById('actividadModal'));
+        const act = ACTIVITIES.find(a => a.id === id);
+        if (!act) return;
+        document.getElementById('actividadForm').reset();
+
+        document.getElementById('act_id').value = act.id;
+        document.getElementById('act_name').value = act.name;
+        document.getElementById('act_fase_id').value = act.fase_id || '';
+        document.getElementById('act_fase').value = act.fase || '';
+        document.getElementById('act_faseLabel').value = act.faseLabel || '';
+        document.getElementById('act_faseClass').value = act.faseClass || 'c-1';
+        document.getElementById('act_iconClass').value = act.iconClass || 'ic-1';
+        document.getElementById('act_icon').value = act.icon || '📝';
+        document.getElementById('act_highlight').checked = act.highlight;
+
+        if (act.resp && act.resp.length > 0) {
+            document.getElementById('act_resp1_name').value = act.resp[0].label;
+            document.getElementById('act_resp1_cls').value = act.resp[0].cls;
+        }
+        if (act.resp && act.resp.length > 1) {
+            document.getElementById('act_resp2_name').value = act.resp[1].label;
+            document.getElementById('act_resp2_cls').value = act.resp[1].cls;
+        }
+
+        document.getElementById('actividadModalTitle').textContent = 'Editar Actividad';
+        document.getElementById('btnDeleteAct').style.display = 'block';
+        actModal.show();
+    }
+
+    async function saveActividad() {
+        const id = document.getElementById('act_id').value;
+
+        const r1n = document.getElementById('act_resp1_name').value;
+        const r1c = document.getElementById('act_resp1_cls').value;
+        const r2n = document.getElementById('act_resp2_name').value;
+        const r2c = document.getElementById('act_resp2_cls').value;
+
+        let resp = [];
+        if (r1n) resp.push({ label: r1n, cls: r1c });
+        if (r2n) resp.push({ label: r2n, cls: r2c });
+
+        const data = {
+            id: id || null,
+            name: document.getElementById('act_name').value,
+            fase_id: document.getElementById('act_fase_id').value,
+            fase: document.getElementById('act_fase').value,
+            faseLabel: document.getElementById('act_faseLabel').value,
+            faseClass: document.getElementById('act_faseClass').value,
+            iconClass: document.getElementById('act_iconClass').value,
+            icon: document.getElementById('act_icon').value,
+            highlight: document.getElementById('act_highlight').checked,
+            resp: resp
+        };
+
+        try {
+            const res = await fetch(`/api/cronograma/${currentEmpresa}/actividad`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (res.ok) {
+                actModal.hide();
+                loadData();
+            } else {
+                Swal.fire('Error', 'No tienes permiso.', 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Fallo de red', 'error');
+        }
+    }
+
+    async function deleteActividad() {
+        const id = document.getElementById('act_id').value;
+        if (!id) return;
+
+        if (await Swal.fire({
+            title: '¿Eliminar Actividad?',
+            text: "Se borrará de forma permanente.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sí, eliminar'
+        }).then(r => r.isConfirmed)) {
+            try {
+                const res = await fetch(`/api/cronograma/${currentEmpresa}/actividad/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    actModal.hide();
+                    loadData();
+                }
+            } catch (e) { }
+        }
+    }
+
+    // DOWNLOAD
+    function downloadImage() {
+        const el = document.getElementById('chart-export');
+        el.classList.add('exporting');
+
+        html2canvas(el, {
+            scale: 2.5,
+            backgroundColor: '#faf7f0', // match script var(--cream) approx
+            useCORS: true,
+            logging: false
+        }).then(canvas => {
+            const link = document.createElement('a');
+            const m = document.getElementById('monthSelect').value.replace(' ', '_');
+            link.download = `cronograma_${currentEmpresa}_${m}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            el.classList.remove('exporting');
+        }).catch(() => el.classList.remove('exporting'));
+    }
+
+    // INIT
+    function populateMonths() {
+        const select = document.getElementById('monthSelect');
+        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+        const startYear = 2026;
+        const startMonthIdx = 1; // Febrero
+
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonthIdx = now.getMonth();
+
+        let html = '';
+
+        // Safety check just in case server time is behind
+        const endYear = Math.max(startYear, currentYear);
+
+        for (let year = startYear; year <= endYear; year++) {
+            let startIdx = (year === startYear) ? startMonthIdx : 0;
+            let endIdx = (year === currentYear) ? currentMonthIdx : 11;
+
+            // Just in case currentMonthIdx is behind startMonthIdx in the same year
+            if (year === currentYear && currentMonthIdx < startIdx && year === startYear) {
+                endIdx = startIdx; // Force at least Feb 2026
+            }
+
+            for (let i = startIdx; i <= endIdx; i++) {
+                const isCurrent = (year === currentYear && i === endIdx);
+                const val = `${months[i]} ${year}`;
+                html += `<option value="${val}" ${isCurrent ? 'selected' : ''}>${val}</option>`;
+            }
+        }
+        select.innerHTML = html;
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        populateMonths();
+        loadData();
+    });
+</script>
+{% endblock %}
