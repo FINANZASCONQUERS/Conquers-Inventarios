@@ -767,6 +767,26 @@
         </div>
     </div>
 
+    <!-- FILTROS -->
+    <div style="width:100%; max-width:1400px; margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px; position:relative;">
+            <i class="bi bi-search"
+                style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--gray); font-size:0.9rem;"></i>
+            <input type="text" id="filter-name" placeholder="Filtrar por responsable..." oninput="applyFilters()"
+                style="width:100%; padding:9px 12px 9px 34px; border:1.5px solid #e2ddd6; border-radius:50px; font-family:inherit; font-size:0.85rem; outline:none; background-color:#ffffff; color:#0d1b2a;">
+        </div>
+        <select id="filter-status" onchange="applyFilters()"
+            style="padding:9px 18px; border:1.5px solid #e2ddd6; border-radius:50px; font-family:inherit; font-size:0.85rem; outline:none; background-color:#ffffff; color:#0d1b2a; cursor:pointer;">
+            <option value="">Todos los estados</option>
+            <option value="done">✅ Finalizado</option>
+            <option value="pending">⏳ Pendiente</option>
+            <option value="late">🔴 Atrasado</option>
+        </select>
+    </div>
+
+    <!-- PANEL CUMPLIMIENTO -->
+    <div id="compliance-panel" style="width:100%; max-width:1400px; margin-bottom:16px; display:none;"></div>
+
     <div id="chart-export">
         <div class="card-header">
             <div class="header-top">
@@ -814,6 +834,10 @@
                 <div class="stat-item stat-late">
                     <div class="stat-num" id="stat-late">0</div>
                     <div class="stat-lbl">🔴 Atrasado</div>
+                </div>
+                <div class="stat-item" style="background:#f0fdf4;">
+                    <div class="stat-num" id="stat-pct" style="color:#22c55e;">0%</div>
+                    <div class="stat-lbl">Cumplimiento</div>
                 </div>
             </div>
         </div>
@@ -934,6 +958,17 @@
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">📅 Fecha Inicio</label>
+                            <input type="date" class="form-control" id="act_fecha_inicio">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">📅 Fecha Límite</label>
+                            <input type="date" class="form-control" id="act_fecha_fin">
+                        </div>
+                    </div>
+
                 </form>
             </div>
             <div class="modal-footer border-0 pt-0">
@@ -956,6 +991,7 @@
     const IS_ADMIN = {{ 'true' if session.get('rol') == 'admin' else 'false' }};
 
     let ACTIVITIES = [];
+    let FILTERED = [];
 
     function canEditCurrent() {
         if (IS_ADMIN) return true;
@@ -981,7 +1017,68 @@
         document.getElementById('header-empresa-badge').textContent = `Cierre Contable - ${emp}`;
         document.getElementById('header-empresa-title').textContent = emp;
 
+        // Reset filters on switch
+        document.getElementById('filter-name').value = '';
+        document.getElementById('filter-status').value = '';
+
         loadData();
+    }
+
+    /* ---- FILTROS ---- */
+    function applyFilters() {
+        const nameQ = document.getElementById('filter-name').value.trim().toLowerCase();
+        const statusQ = document.getElementById('filter-status').value;
+
+        FILTERED = ACTIVITIES.filter(act => {
+            const respNames = (act.resp || []).map(r => r.label.toLowerCase()).join(' ');
+            const matchName = !nameQ || respNames.includes(nameQ) || act.name.toLowerCase().includes(nameQ);
+            const matchStatus = !statusQ || act.status === statusQ;
+            return matchName && matchStatus;
+        });
+
+        renderCronograma(FILTERED);
+    }
+
+    /* ---- CUMPLIMIENTO POR RESPONSABLE ---- */
+    function renderCompliancePanel() {
+        const panel = document.getElementById('compliance-panel');
+        // Collect all responsables
+        const map = {};
+        ACTIVITIES.forEach(act => {
+            (act.resp || []).forEach(r => {
+                if (!r.label) return;
+                if (!map[r.label]) map[r.label] = { done: 0, total: 0 };
+                map[r.label].total++;
+                if (act.status === 'done') map[r.label].done++;
+            });
+        });
+
+        const names = Object.keys(map);
+        if (names.length === 0) { panel.style.display = 'none'; return; }
+
+        panel.style.display = 'block';
+        let html = `<div style="background:white; border:1.5px solid #eee8de; border-radius:14px; padding:16px 22px;">
+            <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--gray); margin-bottom:14px;">✨ Cumplimiento por Responsable</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">`;
+
+        names.forEach(name => {
+            const { done, total } = map[name];
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+            const emoji = pct >= 80 ? '✅' : pct >= 50 ? '⏳' : '🔴';
+            html += `<div style="padding:10px 14px; background:#f9f7f4; border-radius:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:0.82rem; font-weight:600; color:var(--navy);">${emoji} ${name}</span>
+                    <span style="font-size:0.8rem; font-weight:700; color:${color};">${pct}% <span style="font-weight:400;color:var(--gray);">(${done}/${total})</span></span>
+                </div>
+                <div style="height:6px; background:#e2ddd6; border-radius:10px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${color}; border-radius:10px; transition:width 0.6s ease;"></div>
+                </div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+        panel.innerHTML = html;
     }
 
     async function loadData() {
@@ -990,7 +1087,9 @@
             const res = await fetch(`/api/cronograma/${currentEmpresa}?mes=${encodeURIComponent(mes)}`);
             if (!res.ok) throw new Error('Network error');
             ACTIVITIES = await res.json();
-            renderCronograma();
+            FILTERED = ACTIVITIES;
+            renderCronograma(FILTERED);
+            renderCompliancePanel();
             updateUIForPermissions();
         } catch (e) {
             console.error(e);
@@ -1064,14 +1163,15 @@
         } catch (e) { }
     }
 
-    function renderCronograma() {
+    function renderCronograma(list) {
+        list = list || ACTIVITIES;
         const container = document.getElementById('activities-container');
         let html = '';
         let openGroup = false;
 
         let done = 0, pending = 0, late = 0;
 
-        ACTIVITIES.forEach((act, idx) => {
+        list.forEach((act, idx) => {
             if (act.status === 'done') done++;
             else if (act.status === 'late') late++;
             else pending++;
@@ -1113,13 +1213,25 @@
             if (act.status === 'pending') { badgeClass = 'badge-pending'; badgeText = '⏳ Pendiente'; }
             if (act.status === 'late') { badgeClass = 'badge-late'; badgeText = '🔴 Atrasado'; }
 
+            // Date range badge
+            let dateBadge = '';
+            if (act.fecha_inicio || act.fecha_fin) {
+                const fmt = d => {
+                    if (!d) return '?';
+                    const [y, m, day] = d.split('-');
+                    const mNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+                    return `${parseInt(day)} ${mNames[parseInt(m) - 1]}`;
+                };
+                dateBadge = `<span style="font-size:0.7rem; color:var(--teal); background:#e0f2fe; border-radius:20px; padding:2px 9px; white-space:nowrap; font-weight:600; margin-left:6px;">📅 ${fmt(act.fecha_inicio)} — ${fmt(act.fecha_fin)}</span>`;
+            }
+
             html += `
           <div class="row-card ${actClass}" id="card-${act.id}" ${hl}>
             <div class="row-main">
               <div class="row-icon ${act.iconClass}" ${hl2}>${act.icon}</div>
               <div class="row-activity">
                 <div class="row-activity-name">
-                  ${act.name}
+                  ${act.name}${dateBadge}
                   <button class="btn-edit" onclick="openEditActividadModal(${act.id})" title="Editar actividad"><i class="bi bi-pencil-fill"></i></button>
                 </div>
               </div>
@@ -1152,12 +1264,21 @@
         });
 
         if (openGroup) html += `</div></div>`;
+        if (list.length === 0) html = `<div class="text-center py-5 text-muted"><i class="bi bi-funnel" style="font-size:2rem;"></i><div class="mt-2">No se encontraron actividades con ese filtro.</div></div>`;
         container.innerHTML = html;
 
-        document.getElementById('stat-total').textContent = ACTIVITIES.length;
-        document.getElementById('stat-done').textContent = done;
-        document.getElementById('stat-pending').textContent = pending;
-        document.getElementById('stat-late').textContent = late;
+        // Update stats based on filtered list so the exported image is fully contextual
+        const totalAll = list.length;
+        const doneAll = list.filter(a => a.status === 'done').length;
+        const pendingAll = list.filter(a => a.status === 'pending').length;
+        const lateAll = list.filter(a => a.status === 'late').length;
+        const pct = totalAll > 0 ? Math.round((doneAll / totalAll) * 100) : 0;
+
+        document.getElementById('stat-total').textContent = totalAll;
+        document.getElementById('stat-done').textContent = doneAll;
+        document.getElementById('stat-pending').textContent = pendingAll;
+        document.getElementById('stat-late').textContent = lateAll;
+        document.getElementById('stat-pct').textContent = pct + '%';
     }
 
     // EDICION DE ACTIVIDADES
@@ -1186,6 +1307,8 @@
         document.getElementById('act_iconClass').value = act.iconClass || 'ic-1';
         document.getElementById('act_icon').value = act.icon || '📝';
         document.getElementById('act_highlight').checked = act.highlight;
+        document.getElementById('act_fecha_inicio').value = act.fecha_inicio || '';
+        document.getElementById('act_fecha_fin').value = act.fecha_fin || '';
 
         if (act.resp && act.resp.length > 0) {
             document.getElementById('act_resp1_name').value = act.resp[0].label;
@@ -1223,7 +1346,9 @@
             iconClass: document.getElementById('act_iconClass').value,
             icon: document.getElementById('act_icon').value,
             highlight: document.getElementById('act_highlight').checked,
-            resp: resp
+            resp: resp,
+            fecha_inicio: document.getElementById('act_fecha_inicio').value || null,
+            fecha_fin: document.getElementById('act_fecha_fin').value || null
         };
 
         try {

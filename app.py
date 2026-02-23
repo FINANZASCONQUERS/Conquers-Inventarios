@@ -468,6 +468,8 @@ class CronogramaActividad(db.Model):
     responsables = db.Column(db.Text, nullable=True) # JSON con formato [{"label": "Laura Gil", "cls": "gold"}]
     resaltado = db.Column(db.Boolean, default=False)
     orden = db.Column(db.Integer, default=0)
+    fecha_inicio = db.Column(db.Date, nullable=True)  # Fecha límite inicio
+    fecha_fin = db.Column(db.Date, nullable=True)     # Fecha límite fin
 
 class CronogramaEstado(db.Model):
     __tablename__ = 'cronograma_estados'
@@ -490,6 +492,17 @@ def _init_cronograma_db():
         if 'cronograma_estados' not in tables:
             CronogramaEstado.__table__.create(db.engine)
             print("[INIT] Tabla cronograma_estados creada.")
+        
+        # Migración segura: agregar columnas de fecha si no existen
+        existing_cols = [c['name'] for c in insp.get_columns('cronograma_actividades')]
+        if 'fecha_inicio' not in existing_cols or 'fecha_fin' not in existing_cols:
+            with db.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as conn:
+                if 'fecha_inicio' not in existing_cols:
+                    conn.execute(db.text("ALTER TABLE cronograma_actividades ADD COLUMN IF NOT EXISTS fecha_inicio DATE"))
+                    print("[INIT] Columna fecha_inicio agregada.")
+                if 'fecha_fin' not in existing_cols:
+                    conn.execute(db.text("ALTER TABLE cronograma_actividades ADD COLUMN IF NOT EXISTS fecha_fin DATE"))
+                    print("[INIT] Columna fecha_fin agregada.")
             
         # Poblar con datos por defecto si está vacía
         if CronogramaActividad.query.count() == 0:
@@ -16903,8 +16916,6 @@ def cronograma_home():
 def api_cronograma_get(empresa):
     mes = request.args.get('mes')
     if not mes:
-        # Default fallback if somehow none is passed (e.g direct API call)
-        # We can dynamically set it to the current month/year
         from datetime import datetime
         months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
         now = datetime.now()
@@ -16936,7 +16947,9 @@ def api_cronograma_get(empresa):
             'status': est.estado if est else 'pending',
             'obs': est.observacion if est else '',
             'fecha_act': fecha_str,
-            'usuario': est.usuario if est else ''
+            'usuario': est.usuario if est else '',
+            'fecha_inicio': a.fecha_inicio.isoformat() if a.fecha_inicio else '',
+            'fecha_fin': a.fecha_fin.isoformat() if a.fecha_fin else '',
         })
     return jsonify(res)
 
@@ -16995,6 +17008,19 @@ def api_cronograma_actividad(empresa):
     act.nombre = data.get('name')
     act.responsables = json.dumps(data.get('resp', []))
     act.resaltado = data.get('highlight', False)
+    
+    # Fechas
+    from datetime import date as date_type
+    fi = data.get('fecha_inicio')
+    ff = data.get('fecha_fin')
+    try:
+        act.fecha_inicio = date_type.fromisoformat(fi) if fi else None
+    except Exception:
+        act.fecha_inicio = None
+    try:
+        act.fecha_fin = date_type.fromisoformat(ff) if ff else None
+    except Exception:
+        act.fecha_fin = None
     
     max_orden = db.session.query(db.func.max(CronogramaActividad.orden)).filter_by(empresa=empresa).scalar() or 0
     if not act_id:
