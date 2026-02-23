@@ -1032,47 +1032,119 @@
         FILTERED = ACTIVITIES.filter(act => {
             const respNames = (act.resp || []).map(r => r.label.toLowerCase()).join(' ');
             const matchName = !nameQ || respNames.includes(nameQ) || act.name.toLowerCase().includes(nameQ);
-            const matchStatus = !statusQ || act.status === statusQ;
+            // Compare using effective status (including auto-overdue)
+            const effStatus = getEffectiveStatus(act);
+            const matchStatus = !statusQ || effStatus === statusQ;
             return matchName && matchStatus;
         });
 
         renderCronograma(FILTERED);
     }
 
+    /* ---- HELPERS DE FECHA ---- */
+    const TODAY_STR = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
+    function daysBetween(dateA, dateB) {
+        // Returns dateB - dateA in days (positive means dateB is later)
+        return Math.round((new Date(dateB) - new Date(dateA)) / 86400000);
+    }
+
+    /**
+     * Effective status: the real status displayed to the user.
+     * If a task has a fecha_fin, has NOT been marked done, and fecha_fin < today → show as 'late'.
+     */
+    function getEffectiveStatus(act) {
+        if (act.status === 'done') return 'done';
+        if (act.fecha_fin && act.fecha_fin < TODAY_STR) return 'late';
+        return act.status; // pending (or whatever is stored)
+    }
+
+    /**
+     * Compliance score for a single task (0–100):
+     * - No fecha_fin: done→100, else→0
+     * - Has fecha_fin:
+     *   - done on time (fecha_act_raw <= fecha_fin): 100
+     *   - done late: 100 − min(100, days_late × 10)
+     *   - pending within range (today <= fecha_fin): 70  (still has time)
+     *   - not done, overdue: 0
+     */
+    function taskScore(act) {
+        if (!act.fecha_fin) {
+            return act.status === 'done' ? 100 : 0;
+        }
+        if (act.status === 'done') {
+            if (!act.fecha_act_raw || act.fecha_act_raw <= act.fecha_fin) return 100; // on time
+            const daysLate = daysBetween(act.fecha_fin, act.fecha_act_raw);
+            return Math.max(0, 100 - daysLate * 10);
+        }
+        // Not done
+        if (TODAY_STR <= act.fecha_fin) return 70; // pending — still has time
+        return 0; // overdue and not done
+    }
+
     /* ---- CUMPLIMIENTO POR RESPONSABLE ---- */
     function renderCompliancePanel() {
         const panel = document.getElementById('compliance-panel');
-        // Collect all responsables
         const map = {};
+
         ACTIVITIES.forEach(act => {
+            const score = taskScore(act);
             (act.resp || []).forEach(r => {
                 if (!r.label) return;
-                if (!map[r.label]) map[r.label] = { done: 0, total: 0 };
+                if (!map[r.label]) map[r.label] = { scoreSum: 0, total: 0, done: 0, late: 0, pending: 0 };
                 map[r.label].total++;
-                if (act.status === 'done') map[r.label].done++;
+                map[r.label].scoreSum += score;
+                const eff = getEffectiveStatus(act);
+                if (eff === 'done') map[r.label].done++;
+                else if (eff === 'late') map[r.label].late++;
+                else map[r.label].pending++;
             });
         });
 
         const names = Object.keys(map);
         if (names.length === 0) { panel.style.display = 'none'; return; }
 
+        // Global company score
+        let globalSum = 0, globalTotal = 0;
+        Object.values(map).forEach(m => { globalSum += m.scoreSum; globalTotal += m.total; });
+        const globalPct = globalTotal > 0 ? Math.round(globalSum / globalTotal) : 0;
+        const globalColor = globalPct >= 80 ? '#22c55e' : globalPct >= 50 ? '#f59e0b' : '#ef4444';
+
         panel.style.display = 'block';
-        let html = `<div style="background:white; border:1.5px solid #eee8de; border-radius:14px; padding:16px 22px;">
-            <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--gray); margin-bottom:14px;">✨ Cumplimiento por Responsable</div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:10px;">`;
+        let html = `<div style="background:white; border:1.5px solid #eee8de; border-radius:14px; padding:16px 22px;">`;
+
+        // Global bar at top
+        html += `
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid #f0ece4;">
+                <div style="flex:1;">
+                    <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--gray); margin-bottom:6px;">🏢 Cumplimiento Global de la Empresa — ${document.getElementById('monthSelect').value}</div>
+                    <div style="height:10px; background:#e2ddd6; border-radius:10px; overflow:hidden;">
+                        <div style="height:100%; width:${globalPct}%; background:${globalColor}; border-radius:10px; transition:width 0.6s ease;"></div>
+                    </div>
+                </div>
+                <div style="font-size:2rem; font-weight:800; color:${globalColor}; min-width:70px; text-align:right;">${globalPct}%</div>
+            </div>
+            <div style="font-size:0.72rem; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:var(--gray); margin-bottom:12px;">✨ Cumplimiento por Responsable</div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">`;
 
         names.forEach(name => {
-            const { done, total } = map[name];
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+            const { scoreSum, total, done, late, pending } = map[name];
+            const pct = total > 0 ? Math.round(scoreSum / total) : 0;
             const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
             const emoji = pct >= 80 ? '✅' : pct >= 50 ? '⏳' : '🔴';
-            html += `<div style="padding:10px 14px; background:#f9f7f4; border-radius:10px;">
+            html += `<div style="padding:12px 14px; background:#f9f7f4; border-radius:10px; border-left: 3px solid ${color};">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <span style="font-size:0.82rem; font-weight:600; color:var(--navy);">${emoji} ${name}</span>
-                    <span style="font-size:0.8rem; font-weight:700; color:${color};">${pct}% <span style="font-weight:400;color:var(--gray);">(${done}/${total})</span></span>
+                    <span style="font-size:0.84rem; font-weight:700; color:var(--navy);">${emoji} ${name}</span>
+                    <span style="font-size:0.9rem; font-weight:800; color:${color};">${pct}%</span>
                 </div>
-                <div style="height:6px; background:#e2ddd6; border-radius:10px; overflow:hidden;">
+                <div style="height:6px; background:#e2ddd6; border-radius:10px; overflow:hidden; margin-bottom:8px;">
                     <div style="height:100%; width:${pct}%; background:${color}; border-radius:10px; transition:width 0.6s ease;"></div>
+                </div>
+                <div style="display:flex; gap:8px; font-size:0.71rem; color:var(--gray);">
+                    <span>✅ ${done} listas</span>
+                    <span>⏳ ${pending} pendientes</span>
+                    <span>🔴 ${late} atrasadas</span>
+                    <span style="margin-left:auto; font-weight:600;">${done + late + pending}/${total} tareas</span>
                 </div>
             </div>`;
         });
@@ -1084,6 +1156,15 @@
     async function loadData() {
         const mes = document.getElementById('monthSelect').value;
         try {
+            // Primero actualizar vencidos en el backend (solo si es admin/titular)
+            if (canEditCurrent()) {
+                await fetch(`/api/cronograma/${currentEmpresa}/auto-vencidos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mes })
+                }).catch(() => { }); // silencioso si falla
+            }
+
             const res = await fetch(`/api/cronograma/${currentEmpresa}?mes=${encodeURIComponent(mes)}`);
             if (!res.ok) throw new Error('Network error');
             ACTIVITIES = await res.json();
@@ -1172,8 +1253,10 @@
         let done = 0, pending = 0, late = 0;
 
         list.forEach((act, idx) => {
-            if (act.status === 'done') done++;
-            else if (act.status === 'late') late++;
+            const effStatus = getEffectiveStatus(act); // 'done', 'pending', or 'late'
+
+            if (effStatus === 'done') done++;
+            else if (effStatus === 'late') late++;
             else pending++;
 
             const isNewPhase = act.fase !== null && act.fase !== '';
@@ -1201,19 +1284,19 @@
             const hl2 = act.highlight ? 'style="background:#fef9ec;"' : '';
 
             let actClass = 'status-pending';
-            if (act.status === 'done') actClass = 'status-done';
-            if (act.status === 'late') actClass = 'status-late';
+            if (effStatus === 'done') actClass = 'status-done';
+            if (effStatus === 'late') actClass = 'status-late';
 
-            const bDone = act.status === 'done' ? 'active' : '';
-            const bPend = act.status === 'pending' ? 'active' : '';
-            const bLate = act.status === 'late' ? 'active' : '';
+            const bDone = effStatus === 'done' ? 'active' : '';
+            const bPend = effStatus === 'pending' ? 'active' : '';
+            const bLate = effStatus === 'late' ? 'active' : '';
 
             let badgeClass = '', badgeText = '';
-            if (act.status === 'done') { badgeClass = 'badge-done'; badgeText = '✅ Finalizado'; }
-            if (act.status === 'pending') { badgeClass = 'badge-pending'; badgeText = '⏳ Pendiente'; }
-            if (act.status === 'late') { badgeClass = 'badge-late'; badgeText = '🔴 Atrasado'; }
+            if (effStatus === 'done') { badgeClass = 'badge-done'; badgeText = '\u2705 Finalizado'; }
+            if (effStatus === 'pending') { badgeClass = 'badge-pending'; badgeText = '\u23f3 Pendiente'; }
+            if (effStatus === 'late') { badgeClass = 'badge-late'; badgeText = '\ud83d\udd34 Atrasado'; }
 
-            // Date range badge
+            // Date range badge — show days overdue if applicable
             let dateBadge = '';
             if (act.fecha_inicio || act.fecha_fin) {
                 const fmt = d => {
@@ -1222,7 +1305,17 @@
                     const mNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
                     return `${parseInt(day)} ${mNames[parseInt(m) - 1]}`;
                 };
-                dateBadge = `<span style="font-size:0.7rem; color:var(--teal); background:#e0f2fe; border-radius:20px; padding:2px 9px; white-space:nowrap; font-weight:600; margin-left:6px;">📅 ${fmt(act.fecha_inicio)} — ${fmt(act.fecha_fin)}</span>`;
+                let overdueNote = '';
+                if (act.fecha_fin && effStatus === 'late' && act.status !== 'done') {
+                    const daysOver = daysBetween(act.fecha_fin, TODAY_STR);
+                    if (daysOver > 0) overdueNote = ` <span style="color:#ef4444;">(+${daysOver}d)</span>`;
+                } else if (act.fecha_fin && effStatus === 'done' && act.fecha_act_raw && act.fecha_act_raw > act.fecha_fin) {
+                    const daysLate = daysBetween(act.fecha_fin, act.fecha_act_raw);
+                    overdueNote = ` <span style="color:#f59e0b;">(entregado +${daysLate}d tarde)</span>`;
+                }
+                const bgColor = effStatus === 'late' ? '#fee2e2' : effStatus === 'done' ? '#dcfce7' : '#e0f2fe';
+                const txtColor = effStatus === 'late' ? '#b91c1c' : effStatus === 'done' ? '#15803d' : 'var(--teal)';
+                dateBadge = `<span style="font-size:0.7rem; color:${txtColor}; background:${bgColor}; border-radius:20px; padding:2px 9px; white-space:nowrap; font-weight:600; margin-left:6px;">\ud83d\udcc5 ${fmt(act.fecha_inicio)} \u2014 ${fmt(act.fecha_fin)}${overdueNote}</span>`;
             }
 
             html += `

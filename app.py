@@ -16928,10 +16928,12 @@ def api_cronograma_get(empresa):
         est = CronogramaEstado.query.filter_by(actividad_id=a.id, mes=mes).first()
         
         fecha_str = ''
+        fecha_act_raw = ''
         if est and est.fecha_actualizacion:
             dt_bogota = to_bogota_datetime(est.fecha_actualizacion)
             if dt_bogota:
                 fecha_str = dt_bogota.strftime('%d/%b %I:%M %p').lower()
+                fecha_act_raw = dt_bogota.strftime('%Y-%m-%d')
                 
         res.append({
             'id': a.id,
@@ -16947,11 +16949,47 @@ def api_cronograma_get(empresa):
             'status': est.estado if est else 'pending',
             'obs': est.observacion if est else '',
             'fecha_act': fecha_str,
+            'fecha_act_raw': fecha_act_raw,
             'usuario': est.usuario if est else '',
             'fecha_inicio': a.fecha_inicio.isoformat() if a.fecha_inicio else '',
             'fecha_fin': a.fecha_fin.isoformat() if a.fecha_fin else '',
         })
     return jsonify(res)
+
+@app.route('/api/cronograma/<empresa>/auto-vencidos', methods=['POST'])
+def api_cronograma_auto_vencidos(empresa):
+    """Marca automaticamente como 'late' las tareas que pasaron su fecha_fin y no estan completadas."""
+    from datetime import date as date_type
+    mes = request.json.get('mes')
+    if not mes:
+        return jsonify({'error': 'mes requerido'}), 400
+    
+    hoy = date_type.today()
+    actividades = CronogramaActividad.query.filter_by(empresa=empresa).all()
+    actualizados = 0
+    
+    for a in actividades:
+        if not a.fecha_fin or a.fecha_fin >= hoy:
+            continue
+        
+        est = CronogramaEstado.query.filter_by(actividad_id=a.id, mes=mes).first()
+        estado_actual = est.estado if est else 'pending'
+        
+        if estado_actual == 'done':
+            continue
+        
+        if not est:
+            est = CronogramaEstado(actividad_id=a.id, mes=mes)
+            db.session.add(est)
+        
+        est.estado = 'late'
+        if not est.observacion:
+            est.observacion = f'Vencido automaticamente. Fecha limite: {a.fecha_fin.strftime("%d/%m/%Y")}'
+        est.fecha_actualizacion = datetime.utcnow()
+        actualizados += 1
+    
+    db.session.commit()
+    return jsonify({'success': True, 'actualizados': actualizados})
 
 @app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
 def api_cronograma_estado(empresa):
