@@ -1243,7 +1243,16 @@ def update_gasoil():
             record.premium_eco = (eco_usd_bll - brent_val) if (brent_val > 0 and eco_usd_bll > 0) else 0.0
 
             # Gran Consumidor Premiums (Recalculate if GC data exists)
-            # Gran Cons data might have been loaded manually, so we check if it exists
+            # Recalculate Gran Consumidor USD values if we have COP values and a TRM
+            if record.gran_cons_cop_gl and record.gran_cons_cop_gl > 0 and record.trm and record.trm > 0:
+                usd_gl = record.gran_cons_cop_gl / record.trm
+                usd_iva_gl = (record.gran_cons_iva_cop or 0.0) / record.trm
+                usd_total_gl = (record.gran_cons_total_cop or 0.0) / record.trm
+                
+                record.gran_cons_usd_bll = usd_gl * 42.0
+                record.gran_cons_iva_usd = usd_iva_gl * 42.0
+                record.gran_cons_total_usd = usd_total_gl * 42.0
+
             if record.gran_cons_usd_bll and record.gran_cons_usd_bll > 0 and brent_val > 0:
                 record.premium_gran_cons_sin_iva = record.gran_cons_usd_bll - brent_val
             
