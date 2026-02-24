@@ -1180,10 +1180,9 @@
 
     async function setStatus(act_id, status) {
         if (!canEditCurrent()) return;
-
         const mes = document.getElementById('monthSelect').value;
-        const input = document.getElementById(`obs-input-${act_id}`);
-        const currentObs = input ? input.value : '';
+        const notes = getNotesForAct(act_id);
+        const currentObs = JSON.stringify(notes);
 
         try {
             const res = await fetch(`/api/cronograma/${currentEmpresa}/estado`, {
@@ -1220,10 +1219,9 @@
     }
 
     async function saveObservation(act_id, current_status) {
-        const input = document.getElementById(`obs-input-${act_id}`);
-        if (!input) return;
-        const val = input.value;
         const mes = document.getElementById('monthSelect').value;
+        const notes = getNotesForAct(act_id);
+        const val = JSON.stringify(notes);
 
         try {
             const res = await fetch(`/api/cronograma/${currentEmpresa}/estado`, {
@@ -1241,7 +1239,139 @@
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Observación guardada', timer: 1500, showConfirmButton: false });
                 loadData();
             }
-        } catch (e) { }
+        } catch (e) { console.error(e); }
+    }
+
+    /* ---------- NOTES HELPERS ---------- */
+    function parseObsString(obs) {
+        if (!obs) return [];
+        try {
+            const v = JSON.parse(obs);
+            if (Array.isArray(v)) return v.filter(x => x && x.toString().trim() !== '');
+            // if backend stored plain string, convert to single-item array
+            return [String(v)];
+        } catch (e) {
+            // not JSON -> plain string
+            if (obs && obs.toString().trim() !== '') return [obs.toString()];
+            return [];
+        }
+    }
+
+    function getNotesForAct(act_id) {
+        const listEl = document.getElementById(`obs-list-${act_id}`);
+        const notes = [];
+        if (!listEl) return notes;
+        listEl.querySelectorAll('.note-item').forEach(n => {
+            const txt = n.querySelector('.note-text');
+            if (txt && txt.textContent && txt.textContent.trim() !== '') notes.push(txt.textContent.trim());
+        });
+        // also include any new typed value not yet added
+        const newInput = document.getElementById(`obs-input-new-${act_id}`);
+        if (newInput && newInput.value && newInput.value.trim() !== '') notes.push(newInput.value.trim());
+        return notes;
+    }
+
+    function renderNotesForAct(act) {
+        const id = act.id;
+        const notes = parseObsString(act.obs);
+
+        const listEl = document.getElementById(`obs-list-${id}`);
+        const savedContainer = document.getElementById(`obs-saved-container-${id}`);
+        if (listEl) {
+            listEl.innerHTML = '';
+            notes.forEach((n, idx) => {
+                const div = document.createElement('div');
+                div.className = 'note-item';
+                div.style.display = 'flex';
+                div.style.justifyContent = 'space-between';
+                div.style.alignItems = 'center';
+                div.style.gap = '8px';
+
+                const span = document.createElement('div');
+                span.className = 'note-text';
+                span.style.fontSize = '0.85rem';
+                span.style.color = '#6b7a8d';
+                span.textContent = n;
+
+                const btns = document.createElement('div');
+                btns.style.display = 'flex';
+                btns.style.gap = '6px';
+
+                const del = document.createElement('button');
+                del.className = 'btn btn-sm btn-light';
+                del.style.padding = '4px 8px';
+                del.textContent = 'Eliminar';
+                del.onclick = () => { deleteNote(id, idx); };
+
+                btns.appendChild(del);
+                div.appendChild(span);
+                div.appendChild(btns);
+                listEl.appendChild(div);
+            });
+        }
+
+        if (savedContainer) {
+            let html = '';
+            if (notes.length > 0) {
+                notes.forEach(n => {
+                    html += `<div class="obs-saved-text" style="margin-bottom:6px;"><i class="bi bi-chat-left-text"></i> ${n}</div>`;
+                });
+            }
+            if (act.fecha_act) {
+                html += `<div style="font-size: 0.73rem; color: var(--gray); font-weight: 500;"><i class="bi bi-clock-history"></i> Marcado como <strong>${act.status === 'done' ? '✅ Listo' : act.status === 'pending' ? '⏳ Pendiente' : '🔴 Atrasado'}</strong> el ${act.fecha_act} ${act.usuario ? `por ${act.usuario}` : ''}</div>`;
+            }
+            savedContainer.innerHTML = html;
+        }
+    }
+
+    function addNote(act_id) {
+        const input = document.getElementById(`obs-input-new-${act_id}`);
+        if (!input) return;
+        const v = input.value && input.value.trim();
+        if (!v) return;
+        const listEl = document.getElementById(`obs-list-${act_id}`);
+        if (!listEl) return;
+        // append visually
+        const idx = listEl.querySelectorAll('.note-item').length;
+        const div = document.createElement('div');
+        div.className = 'note-item';
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.alignItems = 'center';
+        div.style.gap = '8px';
+
+        const span = document.createElement('div');
+        span.className = 'note-text';
+        span.style.fontSize = '0.85rem';
+        span.style.color = '#6b7a8d';
+        span.textContent = v;
+
+        const btns = document.createElement('div');
+        btns.style.display = 'flex';
+        btns.style.gap = '6px';
+
+        const del = document.createElement('button');
+        del.className = 'btn btn-sm btn-light';
+        del.style.padding = '4px 8px';
+        del.textContent = 'Eliminar';
+        del.onclick = () => { deleteNote(act_id, idx); };
+
+        btns.appendChild(del);
+        div.appendChild(span);
+        div.appendChild(btns);
+        listEl.appendChild(div);
+        input.value = '';
+    }
+
+    function deleteNote(act_id, noteIndex) {
+        const listEl = document.getElementById(`obs-list-${act_id}`);
+        if (!listEl) return;
+        const items = Array.from(listEl.querySelectorAll('.note-item'));
+        if (noteIndex < 0 || noteIndex >= items.length) return;
+        // remove visually
+        items[noteIndex].remove();
+        // immediately persist change
+        saveObservation(act_id, document.getElementById(`card-${act_id}`) ? (document.getElementById(`card-${act_id}`).classList.contains('status-done') ? 'done' : (document.getElementById(`card-${act_id}`).classList.contains('status-late') ? 'late' : 'pending')) : 'pending');
     }
 
     function renderCronograma(list) {
@@ -1340,18 +1470,27 @@
               </div>
             </div>
             
-            <div class="obs-area ${act.status === 'late' ? 'visible' : ''}" id="obs-area-${act.id}">
-              <div class="obs-label">📝 NOTA:</div>
-              <textarea class="obs-input" id="obs-input-${act.id}" placeholder="Escribe un comentario o motivo...">${act.obs}</textarea>
-              <button class="btn-save-obs" onclick="saveObservation(${act.id}, '${act.status}')">Guardar</button>
-            </div>
-            
-            <div class="obs-saved ${(act.obs && act.obs.trim() !== '') || act.fecha_act ? 'visible' : ''}">
-              <div class="w-100">
-                ${act.obs && act.obs.trim() !== '' ? `<div class="obs-saved-text" style="margin-bottom: 4px;"><i class="bi bi-chat-left-text"></i> <strong>Nota:</strong> ${act.obs}</div>` : ''}
-                ${act.fecha_act ? `<div style="font-size: 0.73rem; color: var(--gray); font-weight: 500;"><i class="bi bi-clock-history"></i> Marcado como <strong>${act.status === 'done' ? '✅ Listo' : act.status === 'pending' ? '⏳ Pendiente' : '🔴 Atrasado'}</strong> el ${act.fecha_act} ${act.usuario ? `por ${act.usuario}` : ''}</div>` : ''}
-              </div>
-            </div>
+                        <div class="obs-area ${act.status === 'late' ? 'visible' : ''}" id="obs-area-${act.id}">
+                            <div class="obs-label">📝 NOTAS:</div>
+                            <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+                                <div id="obs-list-${act.id}" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow:auto;">
+                                    <!-- notas renderizadas -->
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input class="form-control" id="obs-input-new-${act.id}" placeholder="Agregar nota rápida..." style="flex:1; padding:8px 10px; border-radius:8px; border:1px solid #f0e6d0;">
+                                    <button class="btn-save-obs" onclick="addNote(${act.id})">Añadir</button>
+                                </div>
+                            </div>
+                            <div style="margin-left:8px">
+                                <button class="btn-save-obs" onclick="saveObservation(${act.id}, '${act.status}')">Guardar</button>
+                            </div>
+                        </div>
+
+                        <div class="obs-saved ${( (act.obs && act.obs.trim() !== '') || act.fecha_act) ? 'visible' : ''}">
+                            <div class="w-100" id="obs-saved-container-${act.id}">
+                                <!-- notas guardadas -->
+                            </div>
+                        </div>
           </div>
         `;
         });
@@ -1359,6 +1498,11 @@
         if (openGroup) html += `</div></div>`;
         if (list.length === 0) html = `<div class="text-center py-5 text-muted"><i class="bi bi-funnel" style="font-size:2rem;"></i><div class="mt-2">No se encontraron actividades con ese filtro.</div></div>`;
         container.innerHTML = html;
+
+        // Render notes UI for each activity (supports older plain-string obs and new JSON-array obs)
+        (list || []).forEach(act => {
+            try { renderNotesForAct(act); } catch (e) { /* ignore rendering errors */ }
+        });
 
         // Update stats based on filtered list so the exported image is fully contextual
         const totalAll = list.length;
