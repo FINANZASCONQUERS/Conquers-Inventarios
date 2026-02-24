@@ -1061,25 +1061,20 @@
 
     /**
      * Compliance score for a single task (0–100):
-     * - No fecha_fin: done→100, else→0
-     * - Has fecha_fin:
-     *   - done on time (fecha_act_raw <= fecha_fin): 100
+     * - Only rated when status === 'done'
+     * - No fecha_fin & done → 100
+     * - Has fecha_fin & done:
+     *   - on time (fecha_act_raw <= fecha_fin): 100
      *   - done late: 100 − min(100, days_late × 10)
-     *   - pending within range (today <= fecha_fin): 70  (still has time)
-     *   - not done, overdue: 0
      */
     function taskScore(act) {
-        if (!act.fecha_fin) {
-            return act.status === 'done' ? 100 : 0;
-        }
         if (act.status === 'done') {
+            if (!act.fecha_fin) return 100;
             if (!act.fecha_act_raw || act.fecha_act_raw <= act.fecha_fin) return 100; // on time
             const daysLate = daysBetween(act.fecha_fin, act.fecha_act_raw);
             return Math.max(0, 100 - daysLate * 10);
         }
-        // Not done
-        if (TODAY_STR <= act.fecha_fin) return 70; // pending — still has time
-        return 0; // overdue and not done
+        return null; // ignore all pending and late tasks for compliance calculation
     }
 
     /* ---- CUMPLIMIENTO POR RESPONSABLE ---- */
@@ -1091,9 +1086,14 @@
             const score = taskScore(act);
             (act.resp || []).forEach(r => {
                 if (!r.label) return;
-                if (!map[r.label]) map[r.label] = { scoreSum: 0, total: 0, done: 0, late: 0, pending: 0 };
+                if (!map[r.label]) map[r.label] = { scoreSum: 0, ratedTotal: 0, total: 0, done: 0, late: 0, pending: 0 };
+
                 map[r.label].total++;
-                map[r.label].scoreSum += score;
+                if (score !== null) {
+                    map[r.label].ratedTotal++;
+                    map[r.label].scoreSum += score;
+                }
+
                 const eff = getEffectiveStatus(act);
                 if (eff === 'done') map[r.label].done++;
                 else if (eff === 'late') map[r.label].late++;
@@ -1105,9 +1105,9 @@
         if (names.length === 0) { panel.style.display = 'none'; return; }
 
         // Global company score
-        let globalSum = 0, globalTotal = 0;
-        Object.values(map).forEach(m => { globalSum += m.scoreSum; globalTotal += m.total; });
-        const globalPct = globalTotal > 0 ? Math.round(globalSum / globalTotal) : 0;
+        let globalSum = 0, globalRated = 0;
+        Object.values(map).forEach(m => { globalSum += m.scoreSum; globalRated += m.ratedTotal; });
+        const globalPct = globalRated > 0 ? Math.round(globalSum / globalRated) : 0;
         const globalColor = globalPct >= 80 ? '#22c55e' : globalPct >= 50 ? '#f59e0b' : '#ef4444';
 
         panel.style.display = 'block';
@@ -1128,8 +1128,8 @@
             <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">`;
 
         names.forEach(name => {
-            const { scoreSum, total, done, late, pending } = map[name];
-            const pct = total > 0 ? Math.round(scoreSum / total) : 0;
+            const { scoreSum, ratedTotal, total, done, late, pending } = map[name];
+            const pct = ratedTotal > 0 ? Math.round(scoreSum / ratedTotal) : 0;
             const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
             const emoji = pct >= 80 ? '✅' : pct >= 50 ? '⏳' : '🔴';
             html += `<div style="padding:12px 14px; background:#f9f7f4; border-radius:10px; border-left: 3px solid ${color};">
