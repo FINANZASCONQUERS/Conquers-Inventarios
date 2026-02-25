@@ -2298,7 +2298,7 @@ USUARIOS = {
 
     "accounting@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
-        "nombre": "Jaime Restrepo",
+        "nombre": "Jaime Rodriguez",
         "rol": "viewer",
         "area": ["Contabilidad"] 
     },
