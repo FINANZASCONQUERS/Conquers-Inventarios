@@ -2177,7 +2177,6 @@ USUARIOS = {
         "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
     },
 
-
     "finance@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
@@ -2295,7 +2294,14 @@ USUARIOS = {
         "nombre": "Kevin Marin",
         "rol": "editor",
         "area": ["Contabilidad"]
-    }
+    },
+
+    "accounting@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Jaime Restrepo",
+        "rol": "viewer",
+        "area": ["Contabilidad"] 
+    },
 
 
 }
@@ -16903,13 +16909,23 @@ def cronograma_home():
     
     is_kelly = any(k in email for k in kelly_emails) or session.get('rol') == 'admin'
     is_kevin = any(k in email for k in kevin_emails) or session.get('rol') == 'admin'
-    
-    if not (is_kelly or is_kevin):
+
+    # Allow users in the Contabilidad area to VIEW the cronograma but not edit.
+    areas = session.get('area') or []
+    has_contabilidad = any('contabilidad' in (a or '').lower() for a in areas)
+
+    if not (is_kelly or is_kevin or has_contabilidad):
         flash('Acceso denegado. Permiso exclusivo para contabilidad.', 'danger')
         return redirect(url_for('home'))
 
-    empresa_default = 'ZF' if is_kelly else 'CWT'
-    
+    # Default company: editors see their company; viewers default to ZF (they can still switch tabs client-side)
+    if is_kelly:
+        empresa_default = 'ZF'
+    elif is_kevin:
+        empresa_default = 'CWT'
+    else:
+        empresa_default = 'ZF'
+
     return render_template('cronograma.html', empresa_default=empresa_default, is_kelly=is_kelly, is_kevin=is_kevin)
 
 @app.route('/api/cronograma/<empresa>')
