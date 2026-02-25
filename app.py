@@ -17011,9 +17011,9 @@ def api_cronograma_auto_vencidos(empresa):
 def api_cronograma_estado(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
         return jsonify({'error': 'No tienes permiso para editar ZF'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
         return jsonify({'error': 'No tienes permiso para editar CWT'}), 403
         
     data = request.json
@@ -17039,9 +17039,9 @@ def api_cronograma_estado(empresa):
 def api_cronograma_actividad(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
         return jsonify({'error': 'Sin permiso'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
         return jsonify({'error': 'Sin permiso'}), 403
         
     data = request.json
@@ -17087,9 +17087,9 @@ def api_cronograma_actividad(empresa):
 def api_cronograma_actividad_delete(empresa, id):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'kelly', 'suarez'])):
+    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
         return jsonify({'error': 'Sin permiso'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'kevin', 'marin'])):
+    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
         return jsonify({'error': 'Sin permiso'}), 403
         
     act = CronogramaActividad.query.get(id)

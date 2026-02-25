@@ -989,12 +989,15 @@
     const IS_KELLY = {{ 'true' if is_kelly else 'false' }};
     const IS_KEVIN = {{ 'true' if is_kevin else 'false' }};
     const IS_ADMIN = {{ 'true' if session.get('rol') == 'admin' else 'false' }};
+    const IS_JAIME = {{ 'true' if session.get('email', '') == 'accounting@conquerstrading.com' else 'false' }};
 
     let ACTIVITIES = [];
     let FILTERED = [];
 
     function canEditCurrent() {
         if (IS_ADMIN) return true;
+        // Jaime can edit both ZF and CWT
+        if (IS_JAIME) return true;
         if (currentEmpresa === 'ZF' && IS_KELLY) return true;
         if (currentEmpresa === 'CWT' && IS_KEVIN) return true;
         return false;
