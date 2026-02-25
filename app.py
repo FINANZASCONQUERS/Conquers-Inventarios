@@ -17007,14 +17007,31 @@ def api_cronograma_auto_vencidos(empresa):
     db.session.commit()
     return jsonify({'success': True, 'actualizados': actualizados})
 
+
+def _can_edit_cronograma_for(empresa: str) -> bool:
+    """Centraliza la lógica de permisos para editar cronograma.
+    - Admins pueden editar ambos.
+    - `accounting@conquerstrading.com` (Jaime) puede editar ambos.
+    - Kelly (accountingzf@... or contains 'kelly'/'suarez') -> ZF only.
+    - Kevin (billcwt@... or contains 'kevin'/'marin') -> CWT only.
+    """
+    email = session.get('email', '').strip().lower()
+    if session.get('rol') == 'admin':
+        return True
+    if email == 'accounting@conquerstrading.com':
+        return True
+    if empresa == 'ZF':
+        return email == 'accountingzf@conquerstrading.com' or 'kelly' in email or 'suarez' in email
+    if empresa == 'CWT':
+        return email == 'billcwt@conquerstrading.com' or 'kevin' in email or 'marin' in email
+    return False
+
 @app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
 def api_cronograma_estado(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
-        return jsonify({'error': 'No tienes permiso para editar ZF'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
-        return jsonify({'error': 'No tienes permiso para editar CWT'}), 403
+    if not _can_edit_cronograma_for(empresa):
+        return jsonify({'error': 'No tienes permiso para editar esta empresa'}), 403
         
     data = request.json
     act_id = data.get('actividad_id')
@@ -17039,9 +17056,7 @@ def api_cronograma_estado(empresa):
 def api_cronograma_actividad(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
-        return jsonify({'error': 'Sin permiso'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
+    if not _can_edit_cronograma_for(empresa):
         return jsonify({'error': 'Sin permiso'}), 403
         
     data = request.json
@@ -17087,9 +17102,7 @@ def api_cronograma_actividad(empresa):
 def api_cronograma_actividad_delete(empresa, id):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
-    if empresa == 'ZF' and not (is_admin or any(k in email for k in ['accountingzf@conquerstrading.com', 'accounting@conquerstrading.com', 'kelly', 'suarez'])):
-        return jsonify({'error': 'Sin permiso'}), 403
-    if empresa == 'CWT' and not (is_admin or any(k in email for k in ['billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'kevin', 'marin'])):
+    if not _can_edit_cronograma_for(empresa):
         return jsonify({'error': 'Sin permiso'}), 403
         
     act = CronogramaActividad.query.get(id)
@@ -17098,6 +17111,28 @@ def api_cronograma_actividad_delete(empresa, id):
         db.session.delete(act)
         db.session.commit()
     return jsonify({'success': True})
+
+
+@app.route('/api/cronograma/<empresa>/reorder', methods=['POST'])
+def api_cronograma_reorder(empresa):
+    # Persist a new order for activities (list of ids)
+    if not _can_edit_cronograma_for(empresa):
+        return jsonify({'error': 'Sin permiso'}), 403
+    data = request.get_json(force=True)
+    order = data.get('order') or []
+    if not isinstance(order, list):
+        return jsonify({'error': 'order debe ser una lista'}), 400
+    try:
+        # Only update items that belong to this company and are included
+        for idx, act_id in enumerate(order, start=1):
+            act = CronogramaActividad.query.get(act_id)
+            if act and act.empresa == empresa:
+                act.orden = idx
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 # ===================================================================
 # --- FIN: RUTAS CRONOGRAMA ---

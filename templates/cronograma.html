@@ -765,6 +765,10 @@
                 <i class="bi bi-cloud-arrow-down-fill"></i> Descargar Imagen
             </button>
         </div>
+        <div style="display:flex; gap:8px; align-items:center; margin-left: auto;">
+            <button id="btn-sort-date" class="btn-top btn-config" style="display:flex;" onclick="sortByDate()">Ordenar por fecha</button>
+            <button id="btn-reorder" class="btn-top btn-config" style="display:flex;" onclick="toggleReorderMode()">Reordenar (drag)</button>
+        </div>
     </div>
 
     <!-- FILTROS -->
@@ -984,6 +988,7 @@
 
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 <script>
     let currentEmpresa = '{{ empresa_default }}';
     const IS_KELLY = {{ 'true' if is_kelly else 'false' }};
@@ -993,6 +998,7 @@
 
     let ACTIVITIES = [];
     let FILTERED = [];
+    let REORDER_MODE = false;
 
     function canEditCurrent() {
         if (IS_ADMIN) return true;
@@ -1042,6 +1048,45 @@
         });
 
         renderCronograma(FILTERED);
+    }
+
+    function sortByDate() {
+        // Sort FILTERED by fecha_fin (earliest first). Tasks without fecha_fin go last.
+        FILTERED.sort((a,b) => {
+            if (!a.fecha_fin && !b.fecha_fin) return 0;
+            if (!a.fecha_fin) return 1;
+            if (!b.fecha_fin) return -1;
+            return new Date(a.fecha_fin) - new Date(b.fecha_fin);
+        });
+        renderCronograma(FILTERED);
+    }
+
+    function toggleReorderMode() {
+        REORDER_MODE = !REORDER_MODE;
+        const btn = document.getElementById('btn-reorder');
+        btn.textContent = REORDER_MODE ? 'Guardar orden' : 'Reordenar (drag)';
+        if (!REORDER_MODE) {
+            // Save order
+            saveReorder();
+        }
+        renderCronograma(FILTERED);
+    }
+
+    async function saveReorder() {
+        // collect order from DOM
+        const list = Array.from(document.querySelectorAll('#reorder-list .row-card')).map(el => parseInt(el.getAttribute('data-id')));
+        if (!list || list.length === 0) return;
+        try {
+            const res = await fetch(`/api/cronograma/${currentEmpresa}/reorder`, {
+                method: 'POST', headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({order: list})
+            });
+            if (!res.ok) throw new Error('Fallo al guardar orden');
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Orden guardado', timer: 1400, showConfirmButton: false });
+        } catch (e) {
+            console.error(e);
+            Swal.fire('Error', 'No se pudo guardar el nuevo orden', 'error');
+        }
     }
 
     /* ---- HELPERS DE FECHA ---- */
@@ -1390,6 +1435,34 @@
         let openGroup = false;
 
         let done = 0, pending = 0, late = 0;
+
+        // If REORDER_MODE show a flat list inside #reorder-list with draggable cards
+        if (REORDER_MODE) {
+            html = '<div id="reorder-list">';
+            list.forEach((act, idx) => {
+                const effStatus = getEffectiveStatus(act);
+                let actClass = 'status-pending';
+                if (effStatus === 'done') actClass = 'status-done';
+                if (effStatus === 'late') actClass = 'status-late';
+                const resp = (act.resp || []).map(r => `<div class="avatar-chip ${r.cls}">${r.label}</div>`).join('');
+                const dateBadge = act.fecha_inicio || act.fecha_fin ? `<div style="font-size:0.8rem;color:var(--gray);">${act.fecha_inicio || ''} — ${act.fecha_fin || ''}</div>` : '';
+                html += `<div class="row-card ${actClass}" id="card-${act.id}" data-id="${act.id}">
+                    <div class="row-main">
+                      <div class="row-icon ${act.iconClass}">${act.icon}</div>
+                      <div class="row-activity"><div class="row-activity-name">${act.name}${dateBadge}</div></div>
+                      <div class="row-right"><div class="responsible-chips">${resp}</div></div>
+                    </div>
+                </div>`;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+            // initialize Sortable
+            if (typeof Sortable !== 'undefined') {
+                if (window._cron_sortable) window._cron_sortable.destroy();
+                window._cron_sortable = Sortable.create(document.getElementById('reorder-list'), { animation: 150, handle: '.row-activity-name' });
+            }
+            return;
+        }
 
         list.forEach((act, idx) => {
             const effStatus = getEffectiveStatus(act); // 'done', 'pending', or 'late'
