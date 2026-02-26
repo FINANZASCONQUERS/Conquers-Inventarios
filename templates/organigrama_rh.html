@@ -2275,7 +2275,7 @@
             const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             p.classList.add('connection-line');
             p.setAttribute('d', d); p.setAttribute('fill', 'none');
-            if (dashed) p.setAttribute('stroke-dasharray', '6,4');
+            // always use solid lines for connections (previously dashed when `dashed` was true)
             svgLayer.appendChild(p);
         }
 
@@ -3209,7 +3209,7 @@
                 path.setAttribute('d', d); path.setAttribute('fill', 'none');
                 path.setAttribute('stroke', '#94a3b8'); path.setAttribute('stroke-width', '2');
                 path.setAttribute('stroke-linecap', 'round');
-                if (dashed) path.setAttribute('stroke-dasharray', '6,4');
+                // keep connection lines solid (removed dashed stroke)
                 tmpSvg.appendChild(path);
             });
 
