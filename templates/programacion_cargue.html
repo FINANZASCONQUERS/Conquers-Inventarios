@@ -923,26 +923,51 @@
                     aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Badge informativo del modo actual -->
+                <div id="infoBadgeConductor" class="alert alert-info py-2 px-3 mb-3 d-none" role="alert"
+                    style="font-size: 0.85rem;">
+                    <i class="bi bi-info-circle"></i> <span id="infoBadgeText"></span>
+                </div>
                 <form id="formAgregarConductor">
+                    <!-- Campo oculto: cédula original al abrir el modal -->
+                    <input type="hidden" id="cedulaOriginalConductor" value="">
                     <div class="mb-3">
-                        <label for="nombreNuevoConductor" class="form-label">Nombre Completo</label>
-                        <input type="text" class="form-control" id="nombreNuevoConductor" required>
+                        <label for="cedulaNuevoConductor" class="form-label fw-bold">Cédula <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="cedulaNuevoConductor" required
+                            placeholder="Escriba la cédula para buscar o crear conductor" autocomplete="off"
+                            list="datalist-cedulas-modal">
+                        <datalist id="datalist-cedulas-modal"></datalist>
+                        <small class="text-muted" id="cedulaHelpText">Al escribir una cédula existente, se cargarán los
+                            datos automáticamente.</small>
                     </div>
                     <div class="mb-3">
-                        <label for="cedulaNuevoConductor" class="form-label">Cédula</label>
-                        <input type="text" class="form-control" id="cedulaNuevoConductor" required>
+                        <label for="nombreNuevoConductor" class="form-label fw-bold">Nombre Completo <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nombreNuevoConductor" required
+                            placeholder="Nombre del conductor">
                     </div>
-                    <div class="mb-3">
-                        <label for="placaNuevoConductor" class="form-label">Placa del Cabezote</label>
-                        <input type="text" class="form-control" id="placaNuevoConductor" required>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label for="placaNuevoConductor" class="form-label fw-bold">Placa Cabezote</label>
+                            <input type="text" class="form-control text-uppercase" id="placaNuevoConductor"
+                                placeholder="Ej: ABC123">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label for="placaTanqueConductor" class="form-label fw-bold">Placa Remolque</label>
+                            <input type="text" class="form-control text-uppercase" id="placaTanqueConductor"
+                                placeholder="Ej: R12345">
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="placaTanqueConductor" class="form-label">Placa del Tanque</label>
-                        <input type="text" class="form-control" id="placaTanqueConductor">
-                    </div>
-                    <div class="mb-3">
-                        <label for="empresaConductor" class="form-label">Empresa Transportadora</label>
-                        <input type="text" class="form-control" id="empresaConductor">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label for="celularConductor" class="form-label">Celular</label>
+                            <input type="text" class="form-control" id="celularConductor" placeholder="Celular">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label for="empresaConductor" class="form-label">Empresa Transportadora</label>
+                            <input type="text" class="form-control" id="empresaConductor" placeholder="Empresa">
+                        </div>
                     </div>
                 </form>
             </div>
@@ -1156,18 +1181,85 @@
         let conductores = {{ lista_conductores | default ([]) | tojson | safe
     }};
 
-    // --- Nuevo: Guardar/Actualizar Conductor ---
+    // --- Nuevo: Guardar/Actualizar Conductor (SISTEMA COMPLETO) ---
     const btnGuardarConductor = document.getElementById('btnGuardarConductor');
+    const inputCedulaModal = document.getElementById('cedulaNuevoConductor');
+    const inputNombreModal = document.getElementById('nombreNuevoConductor');
+    const infoBadge = document.getElementById('infoBadgeConductor');
+    const infoBadgeText = document.getElementById('infoBadgeText');
+    const cedulaOriginalField = document.getElementById('cedulaOriginalConductor');
+
+    // --- Autocompletado inteligente en el campo CÉDULA ---
+    // Cuando el usuario escribe o pega una cédula, busca si ya existe y carga los datos
+    if (inputCedulaModal) {
+        // Llenar el datalist de cédulas para el modal
+        function actualizarDatalistCedulasModal() {
+            const dl = document.getElementById('datalist-cedulas-modal');
+            if (!dl) return;
+            dl.innerHTML = '';
+            conductores.forEach(c => {
+                const opt = document.createElement('option');
+                const ced = String(c['N° DOCUMENTO'] || '');
+                const nom = c['NOMBRE CONDUCTOR'] || '';
+                opt.value = ced;
+                opt.textContent = `${nom} - ${c['PLACA'] || 'Sin placa'}`;
+                dl.appendChild(opt);
+            });
+        }
+
+        // Evento: cuando cambia el valor de la cédula
+        let cedulaDebounce = null;
+        inputCedulaModal.addEventListener('input', function () {
+            clearTimeout(cedulaDebounce);
+            cedulaDebounce = setTimeout(() => {
+                const cedula = this.value.trim();
+                if (cedula.length < 4) {
+                    ocultarInfoBadge();
+                    return;
+                }
+
+                // Buscar si la cédula existe en el array local
+                const match = conductores.find(c => String(c['N° DOCUMENTO'] || '').trim() === cedula);
+                const originalCed = cedulaOriginalField.value;
+
+                if (match && cedula !== originalCed) {
+                    // La cédula existe y es DIFERENTE a la original → Reasignar
+                    inputNombreModal.value = match['NOMBRE CONDUCTOR'] || '';
+                    document.getElementById('celularConductor').value = match['CELULAR'] || '';
+                    document.getElementById('empresaConductor').value = match['EMPRESA'] || '';
+                    // NO llenar las placas, porque la idea es asignarle la placa nueva
+                    mostrarInfoBadge('warning', `Conductor "${match['NOMBRE CONDUCTOR']}" encontrado. Al guardar, se le asignarán las placas indicadas.`);
+                } else if (match && cedula === originalCed) {
+                    // Es la misma cédula original → modo edición normal
+                    mostrarInfoBadge('info', 'Editando datos del conductor actual.');
+                } else if (cedula.length >= 6) {
+                    // Cédula nueva → se creará conductor
+                    mostrarInfoBadge('success', 'Cédula nueva. Se creará un nuevo conductor al guardar.');
+                }
+            }, 300);
+        });
+    }
+
+    function mostrarInfoBadge(tipo, texto) {
+        if (!infoBadge) return;
+        infoBadge.className = `alert alert-${tipo} py-2 px-3 mb-3`;
+        infoBadge.classList.remove('d-none');
+        infoBadgeText.textContent = texto;
+    }
+
+    function ocultarInfoBadge() {
+        if (infoBadge) infoBadge.classList.add('d-none');
+    }
+
     if (btnGuardarConductor) {
-        btnGuardarConductor.addEventListener('click', function () {
+        btnGuardarConductor.addEventListener('click', async function () {
             const nombre = document.getElementById('nombreNuevoConductor').value.trim();
             const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
             const placa = document.getElementById('placaNuevoConductor').value.trim();
             const tanque = document.getElementById('placaTanqueConductor').value.trim();
             const empresa = document.getElementById('empresaConductor').value.trim();
-
-            // Determinar modo
-            const mode = this.dataset.mode || 'create';
+            const celular = document.getElementById('celularConductor').value.trim();
+            const originalCedula = cedulaOriginalField.value; // Cédula al abrir el modal
 
             if (!nombre || !cedula) {
                 showToast('warning', 'Nombre y Cédula son obligatorios');
@@ -1177,78 +1269,122 @@
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
-            let url = '/api/conductores';
-            let method = 'POST';
+            try {
+                // LÓGICA INTELIGENTE DE 3 ESCENARIOS:
+                // 1. Sin cédula original (modo crear) → POST
+                // 2. Cédula original == cédula actual → PUT (editar mismo conductor)
+                // 3. Cédula original != cédula actual → Reasignación de placa
 
-            if (mode === 'edit') {
-                url = `/api/conductores/${cedula}`;
-                method = 'PUT';
-            }
+                let url, method, bodyData;
+                bodyData = { nombre, cedula, placa, tanque, empresa, celular };
 
-            fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre, cedula, placa, tanque, empresa })
-            })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('success', mode === 'edit' ? 'Conductor actualizado correctamente' : 'Conductor guardado correctamente');
+                if (!originalCedula) {
+                    // ESCENARIO 1: Crear nuevo conductor
+                    url = '/api/conductores';
+                    method = 'POST';
+                    console.log('[CONDUCTOR] Creando nuevo conductor:', cedula);
 
-                        // LÓGICA ANTI-DUPLICADOS LOCAL:
-                        // Si la placa no está vacía, buscar quien la tenía antés y quitársela.
-                        if (placa && placa.length > 3) {
-                            conductores.forEach(c => {
-                                // Si tiene la misma placa Y NO ES el que estamos editando (por cédula)
-                                if ((c["PLACA"] || '').toUpperCase() === placa.toUpperCase() && String(c["N° DOCUMENTO"]) !== String(cedula)) {
-                                    c["PLACA"] = "";
-                                    c["PLACA REMOLQUE"] = ""; // Asumimos tanque también
-                                    c["TANQUE"] = "";
-                                }
-                            });
-                        }
+                } else if (originalCedula === cedula) {
+                    // ESCENARIO 2: Editar el mismo conductor (misma cédula)
+                    url = `/api/conductores/${encodeURIComponent(cedula)}`;
+                    method = 'PUT';
+                    console.log('[CONDUCTOR] Editando conductor existente:', cedula);
 
-                        const nuevoDatos = {
-                            "NOMBRE CONDUCTOR": nombre.toUpperCase(),
-                            "N° DOCUMENTO": cedula,
-                            "PLACA": placa.toUpperCase(),
-                            "PLACA REMOLQUE": tanque.toUpperCase(),
-                            "EMPRESA": empresa.toUpperCase(),
-                            "CELULAR": "" // Si tuvieramos input para celular en modal, agregarlo
-                        };
+                } else {
+                    // ESCENARIO 3: Cambio de cédula → Reasignación
+                    // Primero: limpiar las placas del conductor VIEJO
+                    console.log(`[CONDUCTOR] Reasignación: ${originalCedula} → ${cedula}`);
 
-                        if (mode === 'edit') {
-                            // Actualizar en array local
-                            const idx = conductores.findIndex(c => String(c["N° DOCUMENTO"]) === String(cedula));
-                            if (idx !== -1) {
-                                conductores[idx] = { ...conductores[idx], ...nuevoDatos };
-                            }
-                        } else {
-                            conductores.push(nuevoDatos);
-                        }
-
-                        // Cerrar modal
-                        const modalEl = document.getElementById('modalAgregarConductor');
-                        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                        if (modalInstance) modalInstance.hide();
-                        document.getElementById('formAgregarConductor').reset();
-
-                        // Opcional: Refrescar tabla o datalists si fuera necesario
-                        actualizarDatalistConductores();
-
-                    } else {
-                        showToast('danger', data.message || 'Error al guardar');
+                    // Paso 3a: Quitar placa del conductor viejo
+                    try {
+                        await fetch(`/api/conductores/${encodeURIComponent(originalCedula)}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                nombre: conductores.find(c => String(c['N° DOCUMENTO'] || '').trim() === originalCedula)?.['NOMBRE CONDUCTOR'] || '',
+                                cedula: originalCedula,
+                                placa: '',      // Liberar placa del viejo
+                                tanque: '',     // Liberar remolque del viejo
+                                empresa: conductores.find(c => String(c['N° DOCUMENTO'] || '').trim() === originalCedula)?.['EMPRESA'] || '',
+                                celular: conductores.find(c => String(c['N° DOCUMENTO'] || '').trim() === originalCedula)?.['CELULAR'] || ''
+                            })
+                        });
+                    } catch (e) {
+                        console.warn('[CONDUCTOR] No se pudo limpiar conductor viejo:', e);
                     }
-                })
-                .catch(err => {
-                    console.error(err);
-                    showToast('danger', 'Error de conexión');
-                })
-                .finally(() => {
-                    this.disabled = false;
-                    this.innerHTML = mode === 'edit' ? 'Actualizar Conductor' : 'Guardar Conductor';
+
+                    // Paso 3b: ¿La nueva cédula ya existe?
+                    const existeNuevo = conductores.find(c => String(c['N° DOCUMENTO'] || '').trim() === cedula);
+                    if (existeNuevo) {
+                        // El nuevo conductor ya existe → actualizar SUS datos con la placa
+                        url = `/api/conductores/${encodeURIComponent(cedula)}`;
+                        method = 'PUT';
+                        console.log('[CONDUCTOR] Actualizando conductor existente con nueva placa');
+                    } else {
+                        // El nuevo conductor no existe → crear
+                        url = '/api/conductores';
+                        method = 'POST';
+                        console.log('[CONDUCTOR] Creando nuevo conductor con la placa');
+                    }
+                }
+
+                const resp = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
                 });
+                const data = await resp.json();
+
+                if (data.success) {
+                    let msgExito = 'Conductor guardado correctamente';
+                    if (originalCedula && originalCedula !== cedula) {
+                        msgExito = 'Placa reasignada al nuevo conductor correctamente';
+                    } else if (originalCedula === cedula) {
+                        msgExito = 'Conductor actualizado correctamente';
+                    }
+                    showToast('success', msgExito);
+
+                    // Refrescar datos desde el servidor (fuente de verdad)
+                    await refrescarConductoresDesdeServidor();
+
+                    // Cerrar modal y limpiar
+                    const modalEl = document.getElementById('modalAgregarConductor');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                    document.getElementById('formAgregarConductor').reset();
+                    cedulaOriginalField.value = '';
+                    ocultarInfoBadge();
+
+                } else {
+                    showToast('danger', data.message || 'Error al guardar');
+                }
+
+            } catch (err) {
+                console.error('[CONDUCTOR] Error:', err);
+                showToast('danger', 'Error de conexión al guardar');
+            } finally {
+                this.disabled = false;
+                // Restaurar texto según contexto
+                this.textContent = cedulaOriginalField.value ? 'Actualizar Conductor' : 'Guardar Conductor';
+            }
         });
+    }
+
+    // --- FUNCIÓN: Refrescar conductores desde el servidor ---
+    async function refrescarConductoresDesdeServidor() {
+        try {
+            const resp = await fetch('/api/conductores');
+            const data = await resp.json();
+            if (data.success && Array.isArray(data.conductores)) {
+                conductores = data.conductores;
+                actualizarDatalistConductores();
+                // También actualizar datalist de cédulas del modal
+                if (typeof actualizarDatalistCedulasModal === 'function') actualizarDatalistCedulasModal();
+                console.log(`[SYNC] Conductores refrescados: ${conductores.length} registros`);
+            }
+        } catch (err) {
+            console.error('[SYNC] Error refrescando conductores:', err);
+        }
     }
     let clientes = {{ lista_clientes | default ([]) | tojson | safe }};
     let productos = [], empresas = [];
@@ -1462,19 +1598,18 @@
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
             } else {
+                // ABRIR MODAL EN MODO CREAR CONDUCTOR
                 const modalEl = document.getElementById('modalAgregarConductor');
                 const form = document.getElementById('formAgregarConductor');
                 form.reset();
 
-                // Modo CREAR
-                const btnGuardar = document.getElementById('btnGuardarConductor');
-                if (btnGuardar) {
-                    btnGuardar.dataset.mode = 'create';
-                    btnGuardar.textContent = 'Guardar Conductor';
-                }
+                // Configurar modo CREAR
+                document.getElementById('cedulaOriginalConductor').value = ''; // Sin cédula original = crear
                 document.querySelector('#modalAgregarConductor .modal-title').textContent = 'Agregar Nuevo Conductor';
-                document.getElementById('cedulaNuevoConductor').disabled = false; // Cédula editable al crear
+                document.getElementById('btnGuardarConductor').textContent = 'Guardar Conductor';
+                ocultarInfoBadge();
 
+                // Pre-llenar el campo que el usuario estaba editando
                 if (field === 'nombre_conductor') {
                     document.getElementById('nombreNuevoConductor').value = val;
                 } else if (field === 'placa') {
@@ -1483,21 +1618,21 @@
                     document.getElementById('cedulaNuevoConductor').value = val;
                 }
 
+                // Llenar datalist de cédulas para autocompletado
+                if (typeof actualizarDatalistCedulasModal === 'function') actualizarDatalistCedulasModal();
+
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
             }
         } else if (btnEdit) {
-            // Nuevo: Lógica para Editar Existente
-            // Buscar el conductor correspondiente
+            // ABRIR MODAL EN MODO EDITAR CONDUCTOR
             let conductorMatch = null;
             const valUpper = val.toUpperCase();
 
             if (field === 'nombre_conductor') {
-                // Limpiar posibles pipes si viene de datalist
                 const cleanVal = valUpper.split('|')[0].trim();
                 conductorMatch = conductores.find(c => (c["NOMBRE CONDUCTOR"] || '').toUpperCase() === cleanVal);
             } else if (field === 'placa') {
-                // Buscar exacto primero
                 conductorMatch = conductores.find(c => (c["PLACA"] || '').toUpperCase() === valUpper);
             } else if (field === 'cedula_conductor') {
                 conductorMatch = conductores.find(c => String(c["N° DOCUMENTO"] || '').toUpperCase() === valUpper);
@@ -1508,30 +1643,31 @@
                 const form = document.getElementById('formAgregarConductor');
                 form.reset();
 
-                // Modo EDITAR
-                const btnGuardar = document.getElementById('btnGuardarConductor');
-                if (btnGuardar) {
-                    btnGuardar.dataset.mode = 'edit';
-                    btnGuardar.textContent = 'Actualizar Conductor';
-                }
+                // Guardar cédula original → esto permite detectar si el usuario la cambia
+                const cedulaOriginal = String(conductorMatch["N° DOCUMENTO"] || '');
+                document.getElementById('cedulaOriginalConductor').value = cedulaOriginal;
+
+                // Configurar modo EDITAR
                 document.querySelector('#modalAgregarConductor .modal-title').textContent = 'Editar Conductor';
+                document.getElementById('btnGuardarConductor').textContent = 'Actualizar Conductor';
 
+                // Llenar todos los campos
+                document.getElementById('cedulaNuevoConductor').value = cedulaOriginal;
                 document.getElementById('nombreNuevoConductor').value = conductorMatch["NOMBRE CONDUCTOR"] || '';
-                document.getElementById('cedulaNuevoConductor').value = conductorMatch["N° DOCUMENTO"] || '';
-
-                // LÓGICA INTELIGENTE:
-                // Si abrimos desde CÉDULA o NOMBRE, bloqueamos la cédula para proteger la identidad.
-                // Pero si abrimos desde PLACA, puede ser que el usuario quiera asignar esa placa a OTRO conductor.
-                // En ese caso, debe poder editar Cédula y Nombre.
-                if (field === 'placa') {
-                    document.getElementById('cedulaNuevoConductor').disabled = false;
-                } else {
-                    document.getElementById('cedulaNuevoConductor').disabled = true; // No editar cédula si venimos de nombre/cédula
-                }
-
                 document.getElementById('placaNuevoConductor').value = conductorMatch["PLACA"] || '';
                 document.getElementById('placaTanqueConductor').value = conductorMatch["PLACA REMOLQUE"] || '';
+                document.getElementById('celularConductor').value = String(conductorMatch["CELULAR"] || '');
                 document.getElementById('empresaConductor').value = conductorMatch["EMPRESA"] || '';
+
+                // Mostrar badge informativo según contexto
+                if (field === 'placa') {
+                    mostrarInfoBadge('info', `Editando conductor de placa ${conductorMatch["PLACA"]}. Cambia la cédula para reasignar el camión a otra persona.`);
+                } else {
+                    mostrarInfoBadge('info', 'Editando datos del conductor actual.');
+                }
+
+                // Llenar datalist de cédulas para autocompletado
+                if (typeof actualizarDatalistCedulasModal === 'function') actualizarDatalistCedulasModal();
 
                 const modal = new bootstrap.Modal(modalEl);
                 modal.show();
