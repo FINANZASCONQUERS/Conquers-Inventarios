@@ -1689,6 +1689,12 @@
         const field = input.dataset.col;
         let val = input.value.trim().toUpperCase();
 
+        // Si el valor está vacío, no buscamos coincidencias ni autocompletamos
+        // Esto evita que seleccione al primer conductor que tenga algún dato vacío (ej. "Raúl")
+        if (val === '') {
+            return;
+        }
+
         // Función helper para actualizar celda y guardar
         const updateAndSave = (campo, valor) => {
             const td = tr.querySelector(`td[data-field="${campo}"]`);
