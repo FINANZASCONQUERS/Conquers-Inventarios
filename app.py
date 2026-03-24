@@ -1,4 +1,4 @@
-﻿import requests
+import requests
 from sqlalchemy import or_
 import json
 import hashlib
@@ -13140,13 +13140,13 @@ def debug_productos():
     })
 
 def cargar_clientes():
-    """Función auxiliar para cargar clientes. Prioriza DB -> Clientes.json."""
+    """Función auxiliar para cargar clientes. Prioriza DB -> Clientes.json.
+    Si la DB tiene datos, sincroniza automáticamente al archivo Clientes.json
+    para evitar que un git pull sobrescriba los clientes guardados."""
     clientes_lista = []
     
     # 1. Intentar cargar desde la Base de Datos (PostgreSQL/SQLite)
     try:
-        # Importación local para evitar dependencias circulares si las hubiera, 
-        # aunque Cliente está definido más abajo, Python permite esto si se ejecuta después.
         registros_db = Cliente.query.all()
         if registros_db:
             for r in registros_db:
@@ -13155,6 +13155,12 @@ def cargar_clientes():
                     "DIRECCION": r.direccion,
                     "CIUDAD_DEPARTAMENTO": r.ciudad_departamento
                 })
+            # AUTO-SYNC: Guardar los clientes de la DB al JSON para mantenerlos sincronizados
+            # Esto resuelve el problema de que un git pull sobrescriba el Clientes.json
+            try:
+                guardar_clientes(clientes_lista)
+            except Exception as sync_err:
+                print(f"Advertencia: No se pudo sincronizar Clientes.json desde DB: {sync_err}")
             return clientes_lista
     except Exception as e:
         print(f"Advertencia: No se pudo cargar clientes desde DB: {e}")
@@ -13169,7 +13175,6 @@ def cargar_clientes():
 
 def guardar_clientes(clientes):
     """Función auxiliar para guardar la lista de clientes en Clientes.json."""
-    # Buscamos el archivo en la carpeta 'static'
     ruta_clientes = os.path.join(BASE_DIR, 'static', 'Clientes.json')
     with open(ruta_clientes, 'w', encoding='utf-8') as f:
         json.dump(clientes, f, ensure_ascii=False, indent=4)
