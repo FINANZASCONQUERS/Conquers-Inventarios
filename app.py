@@ -17286,21 +17286,81 @@ with app.app_context():
     except:
         db.session.rollback()
 
+@app.route('/api/transito/webhook_n8n', methods=['POST'])
+def transito_webhook_n8n():
+    """
+    Webhook público (o con API Key simple) para que n8n envíe los datos.
+    Espera un JSON con la estructura que extraerá la IA.
+    Ejemplo: {"placa": "YTK264", "ubicacion_actual": "Tuluá", "estado": "En Ruta", "conductor": "Juan Perez"}
+    """
+    try:
+        data = request.get_json()
+        
+        # Validar si n8n nos envía un token de seguridad básico
+        token_esperado = "Conquers_n8n_Secret_123!"
+        if request.headers.get('Authorization') != f"Bearer {token_esperado}":
+            return jsonify({"success": False, "message": "No autorizado"}), 401
+            
+        placa = data.get('placa')
+        
+        if not placa:
+            return jsonify({"success": False, "message": "La placa es obligatoria"}), 400
+            
+        # Limpiar la placa enviada por la IA
+        placa_limpia = str(placa).strip().upper().replace("-", "").replace(" ", "")
+        
+        # Buscar el último registro de esa placa que no esté Liquidado
+        from sqlalchemy import and_
+        registro = RegistroTransito.query.filter(
+            and_(
+                RegistroTransito.placa.ilike(f"%{placa_limpia}%"),
+                RegistroTransito.estado != "Liquidado"
+            )
+        ).order_by(RegistroTransito.timestamp.desc()).first()
+        
+        if not registro:
+            return jsonify({
+                "success": False, 
+                "message": f"No se encontró un tránsito activo para la placa {placa_limpia}"
+            }), 404
+            
+        # Actualizar los datos si n8n los envía
+        if data.get('ubicacion_actual'):
+            registro.ubicacion_actual = data.get('ubicacion_actual')
+        if data.get('estado'):
+            registro.estado = data.get('estado')
+        if data.get('conductor'):
+            registro.conductor = data.get('conductor')
+        if data.get('transportadora'):
+            registro.transportadora = data.get('transportadora')
+            
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Registro de placa {placa_limpia} actualizado correctamente.",
+            "datos_nuevos": {
+                "ubicacion": registro.ubicacion_actual,
+                "estado": registro.estado
+            }
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
+
 @app.route('/api/transito/ia_completar', methods=['POST'])
 @admin_required # Opcional: Proteger con el decorador que usen
 def transito_ia_completar():
-    try:
-        data = request.get_json()
-        tipo_planilla = data.get('tipo_planilla')
-
-        # Aquí irá la llamada real a servicios_ia.procesar_transito_inteligente
-        # Por ahora regresamos un éxito simulado para que puedan probar el botón
-        import time
-        time.sleep(2) # Simular el escaneo y procesamiento
-
-        return jsonify({"success": True, "message": "Simulación exitosa: Sistema preparado para inyectar datos de IA."})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+    """
+    Esto lo dejaremos por si conectamos el botón morado a n8n en el futuro
+    (p.e., hacer que el botón lance el webhook de n8n manualmente en vez de por email).
+    Por ahora solo da un mensaje de aviso amigable.
+    """
+    return jsonify({
+        "success": True, 
+        "message": "N8N está configurado para ejecutarse en segundo plano al llegar correos. Refresca la página en unos minutos para ver actualizaciones automáticas."
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

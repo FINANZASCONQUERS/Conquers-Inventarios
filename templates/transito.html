@@ -4,107 +4,118 @@
 {% block navbar_brand_text %}Planilla Tránsito{% endblock %}
 
 {% block main_style %}
-    /* Fondo limpio y fuente profesional */
-    background-color: #f4f7f9;
-    font-family: 'Poppins', sans-serif;
+/* Fondo limpio y fuente profesional */
+background-color: #f4f7f9;
+font-family: 'Poppins', sans-serif;
 {% endblock %}
 
 {% block content %}
 <div class="container-xl my-4">
 
-    <div class="page-header-container d-flex justify-content-between align-items-center mb-4">
-        <div class="page-title">
-            <h1 class="page-title-text h2 mb-0">
-                <i class="bi bi-truck-front-fill page-title-icon"></i>
-                <span id="tipoTransitoVisual">
-                    {{ transito_config.get(tipo_inicial if tipo_inicial == 'refineria' else 'EDSM', {}).get('nombre_display', 'Tránsito') }}
-                </span>
-            </h1>
-        </div>
-        <div class="action-buttons-bar">
-            <div class="btn-group" role="group">
-                <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success">
-                    <i class="bi bi-save2-fill me-1"></i> Guardar
-                </button>
-                <button id="btnEliminarTodo" class="btn btn-danger" data-tipo="{{ tipo_inicial | default('general') }}">
-                <i class="bi bi-trash3-fill me-1"></i> Eliminar Todo
-                </button>
-                <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSubirExcel">
-                    <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Subir Excel
-                </button>
-                <a href="{{ url_for('reporte_transito') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
-                </a>
-                <div class="btn-group ms-3">
-</div>
-<button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-repeat me-1"></i>
-            <span id="toggleNombreVista">
-                {% set otra_vista_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
-                {{ transito_config.get(otra_vista_key, {}).get('nombre_display', 'Otra Vista') }}
-            </span>
+  <div class="page-header-container d-flex justify-content-between align-items-center mb-4">
+    <div class="page-title">
+      <h1 class="page-title-text h2 mb-0">
+        <i class="bi bi-truck-front-fill page-title-icon"></i>
+        <span id="tipoTransitoVisual">
+          {{ transito_config.get(tipo_inicial if tipo_inicial == 'refineria' else 'EDSM', {}).get('nombre_display',
+          'Tránsito') }}
+        </span>
+      </h1>
+    </div>
+    <div class="action-buttons-bar">
+      <div class="btn-group" role="group">
+        <button id="btnGuardarTransito" onclick="guardarRegistro()" class="btn btn-success">
+          <i class="bi bi-save2-fill me-1"></i> Guardar
         </button>
-        <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary" title="Añadir Fila">
-            <i class="bi bi-plus-lg"></i>
+        <button id="btnEliminarTodo" class="btn btn-danger" data-tipo="{{ tipo_inicial | default('general') }}">
+          <i class="bi bi-trash3-fill me-1"></i> Eliminar Todo
+        </button>
+        <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSubirExcel">
+          <i class="bi bi-file-earmark-arrow-up-fill me-1"></i> Subir Excel
+        </button>
+        <a href="{{ url_for('reporte_transito') }}" class="btn btn-outline-secondary">
+          <i class="bi bi-file-earmark-bar-graph-fill me-1"></i> Ver Reporte
+        </a>
+        <div class="btn-group ms-3">
+        </div>
+        <button id="btnCambiarVistaTransito" onclick="cambiarVista()" class="btn btn-outline-secondary">
+          <i class="bi bi-arrow-repeat me-1"></i>
+          <span id="toggleNombreVista">
+            {% set otra_vista_key = 'REFINERIA' if tipo_inicial == 'general' else 'EDSM' %}
+            {{ transito_config.get(otra_vista_key, {}).get('nombre_display', 'Otra Vista') }}
+          </span>
+        </button>
+        <button id="btnAnadirFilaTransito" onclick="agregarFilaTransito()" class="btn btn-outline-secondary"
+          title="Añadir Fila">
+          <i class="bi bi-plus-lg"></i>
         </button>
 
+      </div>
     </div>
-</div>
-    </div>
-    <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1100;"></div>
-    <div id="avisoHoraLimiteContainer" class="mb-3"></div>
+  </div>
+  <div id="alert-container" style="position: fixed; top: 80px; right: 20px; z-index: 1100;"></div>
+  <div id="avisoHoraLimiteContainer" class="mb-3"></div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-header-custom">
-                        <tr>
-                            <th class="ps-3" style="min-width: 170px;">
-                                FECHA CARGUE
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="0">
-                            </th>
-                            <th style="min-width: 220px;">
-                                GUÍA
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="1">
-                            </th>
-                            <th style="min-width: 180px;">
-                                ORIGEN
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="2">
-                            </th>
-                            <th style="min-width: 220px;">
-                                PRODUCTO
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="3">
-                            </th>
-                            <th style="min-width: 130px;">
-                                PLACA
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="4">
-                            </th>
-                            <th class="text-center" style="min-width: 120px;">
-                                API @60°F
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="5">
-                            </th>
-                            <th class="text-center" style="min-width: 100px;">
-                                %BSW
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="6">
-                            </th>
-                            <th class="text-center" style="min-width: 120px;">
-                                NSV
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="7">
-                            </th>
-                            <th style="min-width: 300px;">
-                                OBSERVACIONES
-                                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..." data-column-index="8">
-                            </th>
-                            <th style="width: 50px;"></th>
-                        </tr>
-                    </thead>
-                    <tbody id="tablaTransitoBody">
-                        </tbody>
-                </table>
-            </div>
-        </div>
+  <div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-header-custom">
+            <tr>
+              <th class="ps-3" style="min-width: 170px;">
+                FECHA CARGUE
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="0">
+              </th>
+              <th style="min-width: 220px;">
+                GUÍA
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="1">
+              </th>
+              <th style="min-width: 180px;">
+                ORIGEN
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="2">
+              </th>
+              <th style="min-width: 220px;">
+                PRODUCTO
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="3">
+              </th>
+              <th style="min-width: 130px;">
+                PLACA
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="4">
+              </th>
+              <th class="text-center" style="min-width: 120px;">
+                API @60°F
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="5">
+              </th>
+              <th class="text-center" style="min-width: 100px;">
+                %BSW
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="6">
+              </th>
+              <th class="text-center" style="min-width: 120px;">
+                NSV
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="7">
+              </th>
+              <th style="min-width: 300px;">
+                OBSERVACIONES
+                <input type="text" class="form-control form-control-sm mt-1 excel-filter" placeholder="Filtrar..."
+                  data-column-index="8">
+              </th>
+              <th style="width: 50px;"></th>
+            </tr>
+          </thead>
+          <tbody id="tablaTransitoBody">
+          </tbody>
+        </table>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="modal fade" id="modalNuevoOrigen" tabindex="-1" aria-labelledby="modalNuevoOrigenLabel" aria-hidden="true">
@@ -124,278 +135,610 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnGuardarNuevoOrigen" onclick="guardarNuevoOrigen()">Guardar Origen</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarNuevoOrigen" onclick="guardarNuevoOrigen()">Guardar
+          Origen</button>
       </div>
     </div>
   </div>
 </div>
-<div class="modal fade" id="modalNuevoProducto" tabindex="-1" aria-labelledby="modalNuevoProductoLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalNuevoProductoLabel">Añadir Nuevo Producto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Añadir producto para el origen: <strong id="origenAsociadoTexto"></strong></p>
-                <form id="formNuevoProducto" onsubmit="event.preventDefault(); guardarNuevoProducto();">
-                    <div class="mb-3">
-                        <label for="inputNuevoProducto" class="form-label">Nombre del Nuevo Producto:</label>
-                        <input type="text" class="form-control" id="inputNuevoProducto" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btnGuardarNuevoProducto" onclick="guardarNuevoProducto()">Guardar Producto</button>
-            </div>
-        </div>
+<div class="modal fade" id="modalNuevoProducto" tabindex="-1" aria-labelledby="modalNuevoProductoLabel"
+  aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalNuevoProductoLabel">Añadir Nuevo Producto</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Añadir producto para el origen: <strong id="origenAsociadoTexto"></strong></p>
+        <form id="formNuevoProducto" onsubmit="event.preventDefault(); guardarNuevoProducto();">
+          <div class="mb-3">
+            <label for="inputNuevoProducto" class="form-label">Nombre del Nuevo Producto:</label>
+            <input type="text" class="form-control" id="inputNuevoProducto" required>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnGuardarNuevoProducto"
+          onclick="guardarNuevoProducto()">Guardar Producto</button>
+      </div>
     </div>
-</div> <div class="modal fade" id="modalSubirExcel" tabindex="-1" aria-labelledby="modalExcelLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalExcelLabel">Cargar Planilla desde Excel</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formSubirExcel" enctype="multipart/form-data">
-                    <p class="text-muted">Seleccione el archivo `.xlsx`. Los datos deben empezar en la segunda fila.</p>
-                    <div class="mb-3">
-                        <label for="archivo_excel" class="form-label">Archivo Excel</label>
-                        <input class="form-control" type="file" name="archivo_excel" id="archivo_excel" required accept=".xlsx">
-                    </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="sobrescribirDatos" name="sobrescribirDatos" checked>
-                        <label class="form-check-label" for="sobrescribirDatos">Sobrescribir datos del día</label>
-                    </div>
-                    <input type="hidden" name="tipo_transito" id="tipoTransitoHidden" value="{{ tipo_inicial }}">
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" id="btnProcesarExcel">Procesar Archivo</button>
-            </div>
+  </div>
+</div>
+<div class="modal fade" id="modalSubirExcel" tabindex="-1" aria-labelledby="modalExcelLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalExcelLabel">Cargar Planilla desde Excel</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formSubirExcel" enctype="multipart/form-data">
+          <p class="text-muted">Seleccione el archivo `.xlsx`. Los datos deben empezar en la segunda fila.</p>
+          <div class="mb-3">
+            <label for="archivo_excel" class="form-label">Archivo Excel</label>
+            <input class="form-control" type="file" name="archivo_excel" id="archivo_excel" required accept=".xlsx">
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="sobrescribirDatos" name="sobrescribirDatos" checked>
+            <label class="form-check-label" for="sobrescribirDatos">Sobrescribir datos del día</label>
+          </div>
+          <input type="hidden" name="tipo_transito" id="tipoTransitoHidden" value="{{ tipo_inicial }}">
+        </form>
+
+        <hr>
+        <div class="ia-analysis-box">
+          <h6><i class="bi bi-robot me-1"></i> Análisis Inteligente</h6>
+          <p>
+            Sube primero tu archivo maestro con guías y placas. Luego, haz clic en "Auto-Completar con IA" para que el
+            sistema busque en tu correo
+            y rellene el conductor, ubicación y estado actual de forma automática.
+          </p>
+          <button type="button" class="btn-ia" id="btnAutocompletarIA" onclick="iniciarAutocompletadoIA()">
+            <i class="bi bi-magic me-1"></i> Auto-Completar con IA
+          </button>
         </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnProcesarExcel">Procesar Archivo Maestro</button>
+      </div>
     </div>
+  </div>
 </div>
 <style>
-/* ... (Todo tu CSS existente va aquí) ... */
-.page-title-text {
-    color: #343a40;
-    font-weight: 600;
-}
-.page-title-icon {
-    color: #0b8552;
-    font-size: 1.2em;
-    margin-right: 0.75rem;
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  /* ═══ VARIABLES DE DISEÑO ═══ */
+  :root {
+    --t-primary: #0b8552;
+    --t-primary-dark: #06492f;
+    --t-primary-light: rgba(11, 133, 82, 0.08);
+    --t-accent: #6f42c1;
+    --t-bg: #f0f4f8;
+    --t-card-bg: #ffffff;
+    --t-text: #1e293b;
+    --t-text-muted: #64748b;
+    --t-border: #e2e8f0;
+    --t-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    --t-shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.10);
+    --t-radius: 12px;
+    --t-radius-sm: 8px;
+    --t-transition: all 0.25s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  /* ═══ HEADER DE PÁGINA ═══ */
+  .page-header-container {
+    background: linear-gradient(135deg, var(--t-primary-dark), var(--t-primary));
+    border-radius: var(--t-radius);
+    padding: 1.25rem 1.75rem;
+    box-shadow: var(--t-shadow);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .page-title-text {
+    color: #ffffff !important;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 1.4rem;
+  }
+
+  .page-title-icon {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 1.3em;
+    margin-right: 0.5rem;
     vertical-align: text-bottom;
-}
-.table-header-custom th {
-    background-color: #0b8552 !important;
+  }
+
+  /* ═══ BOTONES (en fondo oscuro del header) ═══ */
+  .action-buttons-bar .btn {
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.82rem;
+    border-radius: var(--t-radius-sm);
+    padding: 0.45rem 1rem;
+    transition: var(--t-transition);
+    border: none;
+  }
+
+  .action-buttons-bar .btn-success {
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+  }
+
+  .action-buttons-bar .btn-success:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+  }
+
+  .action-buttons-bar .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+  }
+
+  .action-buttons-bar .btn-danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  }
+
+  .action-buttons-bar .btn-info {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+    box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
+  }
+
+  .action-buttons-bar .btn-info:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+  }
+
+  .action-buttons-bar .btn-outline-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(4px);
+  }
+
+  .action-buttons-bar .btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+    transform: translateY(-1px);
+  }
+
+  /* ═══ TARJETA DE LA TABLA ═══ */
+  .card.shadow-sm {
+    border: none !important;
+    border-radius: var(--t-radius);
+    box-shadow: var(--t-shadow);
+    overflow: hidden;
+  }
+
+  /* ═══ ENCABEZADOS DE TABLA ═══ */
+  .table-header-custom th {
+    background: linear-gradient(135deg, var(--t-primary-dark), var(--t-primary)) !important;
     color: white;
     text-transform: uppercase;
-    font-size: 0.8rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
     font-weight: 600;
-    letter-spacing: 0.5px;
-    padding: 0.9rem;
-    vertical-align: middle;
-}
-.table tbody td {
-    vertical-align: middle;
-}
-.cell-input-wrapper {
-    padding: 0.25rem 0.5rem !important;
-}
-.cell-input-wrapper .form-control,
-.cell-input-wrapper .form-select {
-    font-size: 0.9rem;
-    padding: 0.5rem;
-    border-color: #e0e5ec;
-    background-color: #fef9e7;
-    transition: all 0.2s ease-in-out;
-}
-.cell-input-wrapper .form-control:focus,
-.cell-input-wrapper .form-select:focus {
-    background-color: #fffde7;
-    border-color: #0b8552;
-    box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.15);
+    letter-spacing: 0.8px;
+    padding: 0.85rem 0.75rem;
+    vertical-align: top;
+    border: none;
+    position: relative;
+  }
+
+  .table-header-custom th::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), transparent);
+  }
+
+  /* ═══ FILTROS EN LAS CABECERAS ═══ */
+  .excel-filter {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    transition: var(--t-transition);
+  }
+
+  .excel-filter::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .excel-filter:focus {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
     outline: none;
-}
-.cell-input-wrapper .form-control:disabled,
-.cell-input-wrapper .form-select:disabled {
+  }
+
+  /* ═══ CUERBO DE LA TABLA ═══ */
+  .table tbody td {
+    vertical-align: middle;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid var(--t-border);
+    transition: var(--t-transition);
+  }
+
+  .table tbody tr {
+    transition: var(--t-transition);
+  }
+
+  .table tbody tr:hover {
+    background-color: var(--t-primary-light) !important;
+  }
+
+  .table tbody tr:nth-child(even) {
+    background-color: #f8fafc;
+  }
+
+  /* ═══ INPUTS DE LA TABLA ═══ */
+  .cell-input-wrapper {
+    padding: 0.15rem 0.35rem !important;
+  }
+
+  .cell-input-wrapper .form-control,
+  .cell-input-wrapper .form-select {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--t-border);
+    border-radius: 6px;
+    background-color: #fffef5;
+    transition: var(--t-transition);
+  }
+
+  .cell-input-wrapper .form-control:focus,
+  .cell-input-wrapper .form-select:focus {
+    background-color: #fffde7;
+    border-color: var(--t-primary);
+    box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.12);
+    outline: none;
+  }
+
+  .cell-input-wrapper .form-control:disabled,
+  .cell-input-wrapper .form-select:disabled {
     background-color: #e9ecef !important;
     cursor: not-allowed;
-}
-.btn-add-item {
-    min-width: 30px;
-    padding: 0.25rem;
-}
-.select-with-btn-container {
+    opacity: 0.7;
+  }
+
+  /* ═══ BOTONES PEQUEÑOS ═══ */
+  .btn-add-item {
+    min-width: 28px;
+    padding: 0.2rem;
+    border-radius: 6px;
+  }
+
+  .select-with-btn-container {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-}
-.aviso-hora-limite {
-    padding: 1rem;
-    border-left: 4px solid #ffc107;
-}
-</style>
-<style>
-  .select-with-btn-container {
-    display: flex;
-    gap: 2px;
   }
+
   .select-with-btn-container select {
     flex: 1;
   }
+
   .select-with-btn-container .btn-add-item {
     padding: 0.15rem 0.3rem;
   }
-  .excel-filter {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.5rem;
-  }
-</style>  
 
-<script>  
+  /* ═══ AVISO HORA LÍMITE ═══ */
+  .aviso-hora-limite {
+    padding: 1rem 1.25rem;
+    border-left: 4px solid #f59e0b;
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border-radius: 0 var(--t-radius-sm) var(--t-radius-sm) 0;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* ═══ MODAL PREMIUM ═══ */
+  .modal-content {
+    border: none;
+    border-radius: var(--t-radius);
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, var(--t-primary-dark), var(--t-primary));
+    color: white;
+    border: none;
+    padding: 1.1rem 1.5rem;
+  }
+
+  .modal-header .modal-title {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .modal-header .btn-close {
+    filter: invert(1);
+    opacity: 0.8;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .modal-footer {
+    border-top: 1px solid var(--t-border);
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-footer .btn-primary {
+    background: linear-gradient(135deg, var(--t-primary), var(--t-primary-dark));
+    border: none;
+    font-weight: 600;
+    border-radius: var(--t-radius-sm);
+    padding: 0.5rem 1.5rem;
+    transition: var(--t-transition);
+  }
+
+  .modal-footer .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(11, 133, 82, 0.35);
+  }
+
+  /* ═══ CAJA DE IA ═══ */
+  .ia-analysis-box {
+    background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+    border: 1px solid #c4b5fd;
+    border-radius: var(--t-radius-sm);
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+  }
+
+  .ia-analysis-box h6 {
+    color: var(--t-accent);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+
+  .ia-analysis-box p {
+    color: var(--t-text-muted);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .btn-ia {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: white;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    border-radius: var(--t-radius-sm);
+    padding: 0.55rem 1.25rem;
+    width: 100%;
+    transition: var(--t-transition);
+  }
+
+  .btn-ia:hover {
+    background: linear-gradient(135deg, #6d28d9, #5b21b6);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(109, 40, 217, 0.35);
+  }
+
+  /* ═══ ALERTAS ═══ */
+  #alert-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 1100;
+  }
+
+  /* ═══ ANIMACIÓN DE ENTRADA ═══ */
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .card.shadow-sm {
+    animation: slideUp 0.4s ease-out;
+  }
+</style>
+
+
+<script>
   // --- Variables globales ---  
-  let datosGeneralInit = {{ datos_general | default([]) | tojson | safe }};  
-  let datosRefineriaInit = {{ datos_refineria | default([]) | tojson | safe }};  
-  const transitoConfig = {{ transito_config | default({}) | tojson | safe }};  
-    
-  let vistaActual = '{{ tipo_inicial | default("general") }}';  
-  let currentData = [];   
-  let edicionTransitoPermitida = true;  
-  let FilaActivaParaAnadirItem = null;  
-  let modalNuevoOrigen = null;  
-  let modalNuevoProducto = null;  
+  let datosGeneralInit = {{ datos_general | default ([]) | tojson | safe }};
+  let datosRefineriaInit = {{ datos_refineria | default ([]) | tojson | safe }};
+  const transitoConfig = {{ transito_config | default ({}) | tojson | safe }};
+
+  let vistaActual = '{{ tipo_inicial | default("general") }}';
+  let currentData = [];
+  let edicionTransitoPermitida = true;
+  let FilaActivaParaAnadirItem = null;
+  let modalNuevoOrigen = null;
+  let modalNuevoProducto = null;
   let modalSubirExcel = null; // Se inicializará después  
 
   // --- Lógica principal que se ejecuta cuando la página ha cargado ---  
-  document.addEventListener('DOMContentLoaded', function() {  
+  document.addEventListener('DOMContentLoaded', function () {
     // 1. INICIALIZAR TODOS LOS MODALES DE BOOTSTRAP AQUÍ  
-    modalNuevoOrigen = new bootstrap.Modal(document.getElementById('modalNuevoOrigen'));  
-    modalNuevoProducto = new bootstrap.Modal(document.getElementById('modalNuevoProducto'));  
-    modalSubirExcel = new bootstrap.Modal(document.getElementById('modalSubirExcel'));  
+    modalNuevoOrigen = new bootstrap.Modal(document.getElementById('modalNuevoOrigen'));
+    modalNuevoProducto = new bootstrap.Modal(document.getElementById('modalNuevoProducto'));
+    modalSubirExcel = new bootstrap.Modal(document.getElementById('modalSubirExcel'));
 
     // 2. ASIGNAR TODOS LOS EVENTOS DE CLIC AQUÍ  
-    const btnProcesarExcel = document.getElementById('btnProcesarExcel');  
-    if (btnProcesarExcel) {  
-      btnProcesarExcel.addEventListener('click', procesarArchivoExcel);  
-    }  
+    const btnProcesarExcel = document.getElementById('btnProcesarExcel');
+    if (btnProcesarExcel) {
+      btnProcesarExcel.addEventListener('click', procesarArchivoExcel);
+    }
 
     // Lógica para los filtros tipo Excel  
-    const filterInputs = document.querySelectorAll('.excel-filter');  
-    filterInputs.forEach(input => {  
-      input.addEventListener('keyup', aplicarFiltros);  
+    const filterInputs = document.querySelectorAll('.excel-filter');
+    filterInputs.forEach(input => {
+      input.addEventListener('keyup', aplicarFiltros);
     });
-    
-    // ✅ NUEVO: Evento para el botón de Eliminar Todo
-     const btnEliminarTodo = document.getElementById('btnEliminarTodo');
-        if (btnEliminarTodo) {
-            btnEliminarTodo.addEventListener('click', function() {
-                const tipo = this.dataset.tipo;
-                const nombrePlanilla = tipo === 'general' ? 'Tránsito Crudo EDSM' : 'Tránsito Crudo Refinería';
-                
-                const confirmacion = confirm(`¿Estás SEGURO de que quieres borrar TODOS los registros de la planilla "${nombrePlanilla}"? Esta acción no se puede deshacer.`);
-                
-                if (confirmacion) {
-                    this.disabled = true;
-                    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Eliminando...';
 
-                    fetch(`/api/transito/eliminar-todo/${tipo}`, {
-                        method: 'DELETE',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        mostrarAlerta(data.message, data.success ? "success" : "danger");
-                        if (data.success) {
-                            // 1. Limpiamos cualquier cambio no guardado en la sesión del navegador.
-                            limpiarEstadoDeSesion();
-                            
-                            // 2. Recargamos la página para mostrar el estado completamente limpio desde el servidor.
-                            setTimeout(() => window.location.reload(), 1500);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error en la solicitud de eliminación masiva:', error);
-                        mostrarAlerta('Error de conexión con el servidor.', 'danger');
-                    })
-                    .finally(() => {
-                        this.disabled = false;
-                        this.innerHTML = '<i class="bi bi-trash3-fill me-1"></i> Eliminar Todo';
-                    });
-                }
+    // ✅ NUEVO: Evento para el botón de Eliminar Todo
+    const btnEliminarTodo = document.getElementById('btnEliminarTodo');
+    if (btnEliminarTodo) {
+      btnEliminarTodo.addEventListener('click', function () {
+        const tipo = this.dataset.tipo;
+        const nombrePlanilla = tipo === 'general' ? 'Tránsito Crudo EDSM' : 'Tránsito Crudo Refinería';
+
+        const confirmacion = confirm(`¿Estás SEGURO de que quieres borrar TODOS los registros de la planilla "${nombrePlanilla}"? Esta acción no se puede deshacer.`);
+
+        if (confirmacion) {
+          this.disabled = true;
+          this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Eliminando...';
+
+          fetch(`/api/transito/eliminar-todo/${tipo}`, {
+            method: 'DELETE',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          })
+            .then(response => response.json())
+            .then(data => {
+              mostrarAlerta(data.message, data.success ? "success" : "danger");
+              if (data.success) {
+                // 1. Limpiamos cualquier cambio no guardado en la sesión del navegador.
+                limpiarEstadoDeSesion();
+
+                // 2. Recargamos la página para mostrar el estado completamente limpio desde el servidor.
+                setTimeout(() => window.location.reload(), 1500);
+              }
+            })
+            .catch(error => {
+              console.error('Error en la solicitud de eliminación masiva:', error);
+              mostrarAlerta('Error de conexión con el servidor.', 'danger');
+            })
+            .finally(() => {
+              this.disabled = false;
+              this.innerHTML = '<i class="bi bi-trash3-fill me-1"></i> Eliminar Todo';
             });
         }
+      });
+    }
 
     // Cargar el estado inicial de la tabla  
-    const estadoRecuperado = cargarEstadoDesdeSesion();  
-    if (estadoRecuperado) {  
-      vistaActual = estadoRecuperado.vista;  
-      currentData = estadoRecuperado.datos;  
-      mostrarAlerta("Se recuperaron los cambios no guardados de tu sesión anterior.", "info");  
-      actualizarTextosDeVista();  
-      redibujarTabla();  
-    } else {  
-      vistaActual = '{{ tipo_inicial | default("general") }}';  
-      renderTabla();  
-    }  
-    
-    verificarEstadoEdicion();  
-  });  
+    const estadoRecuperado = cargarEstadoDesdeSesion();
+    if (estadoRecuperado) {
+      vistaActual = estadoRecuperado.vista;
+      currentData = estadoRecuperado.datos;
+      mostrarAlerta("Se recuperaron los cambios no guardados de tu sesión anterior.", "info");
+      actualizarTextosDeVista();
+      redibujarTabla();
+    } else {
+      vistaActual = '{{ tipo_inicial | default("general") }}';
+      renderTabla();
+    }
+
+    verificarEstadoEdicion();
+  });
 
   // --- FUNCIÓN UNIFICADA PARA PROCESAR EL ARCHIVO EXCEL ---  
-  function procesarArchivoExcel() {  
-    const form = document.getElementById('formSubirExcel');  
-    const fileInput = document.getElementById('archivo_excel');  
-    const btn = document.getElementById('btnProcesarExcel');  
-    
-    if (!fileInput.files || !fileInput.files.length) {  
-      mostrarAlerta("Por favor, seleccione un archivo Excel.", "warning");  
-      return;  
-    }  
+  function procesarArchivoExcel() {
+    const form = document.getElementById('formSubirExcel');
+    const fileInput = document.getElementById('archivo_excel');
+    const btn = document.getElementById('btnProcesarExcel');
 
-    btn.disabled = true;  
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';  
+    if (!fileInput.files || !fileInput.files.length) {
+      mostrarAlerta("Por favor, seleccione un archivo Excel.", "warning");
+      return;
+    }
 
-    const formData = new FormData(form);  
-    
-    fetch('/subir_excel_transito', {  
-      method: 'POST',  
-      body: formData,  
-      headers: { 'X-Requested-With': 'XMLHttpRequest' }  
-    })  
-    .then(response => {  
-      // Manejo de errores mejorado  
-      if (!response.ok) {  
-        return response.json().then(err => { throw new Error(err.message || 'Error desconocido del servidor'); });  
-      }  
-      return response.json();  
-    })  
-    .then(data => {  
-      if (data.success) {  
-        mostrarAlerta(data.message, "success");  
-        modalSubirExcel.hide();  
-        // Recargar la página es la forma más segura de mostrar los datos nuevos  
-        setTimeout(() => {  
-          window.location.reload();  
-        }, 1500);  
-      } else {  
-        throw new Error(data.message || "Ocurrió un error al procesar el archivo.");  
-      }  
-    })  
-    .catch(error => {  
-      mostrarAlerta(`Error: ${error.message}`, "danger");  
-      console.error("Error en la subida:", error);  
-    })  
-    .finally(() => {  
-      btn.disabled = false;  
-      btn.innerHTML = 'Procesar Archivo';  
-    });  
-  }  
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Procesando...';
+
+    const formData = new FormData(form);
+
+    fetch('/subir_excel_transito', {
+      method: 'POST',
+      body: formData,
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(response => {
+        // Manejo de errores mejorado  
+        if (!response.ok) {
+          return response.json().then(err => { throw new Error(err.message || 'Error desconocido del servidor'); });
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          mostrarAlerta(data.message, "success");
+          modalSubirExcel.hide();
+          // Recargar la página es la forma más segura de mostrar los datos nuevos  
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          throw new Error(data.message || "Ocurrió un error al procesar el archivo.");
+        }
+      })
+      .catch(error => {
+        mostrarAlerta(`Error: ${error.message}`, "danger");
+        console.error("Error en la subida:", error);
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = 'Procesar Archivo';
+      });
+  }
+
+  // --- FUNCIÓN PARA EL BOTÓN DE AUTO-COMPLETAR CON IA ---
+  function iniciarAutocompletadoIA() {
+    const btn = document.getElementById('btnAutocompletarIA');
+    const iconoOriginal = '<i class="bi bi-magic me-1"></i> Auto-Completar con IA';
+    const confirmacion = confirm("La Inteligencia Artificial va a escanear los últimos correos y planillas que llegaron para buscar las placas actuales e intentar autocompletar la información faltante (Conductor, Ubicación, Origen, etc).\n\n¿Deseas continuar? (Esto puede tardar unos segundos)");
+
+    if (!confirmacion) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Escaneando correos...';
+
+    // Llamada simulada al backend por ahora
+    fetch('/api/transito/ia_completar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ tipo_planilla: vistaActual })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          mostrarAlerta(data.message || "Se autocompletaron los datos con éxito usando IA.", "success");
+          setTimeout(() => window.location.reload(), 2000);
+        } else {
+          mostrarAlerta("Error de IA: " + (data.message || "No se pudo autocompletar la información."), "warning");
+        }
+      })
+      .catch(err => {
+        mostrarAlerta("Hubo un error al conectar con el servidor de correos/IA.", "danger");
+        console.error(err);
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = iconoOriginal;
+      });
+  }
 
   // --- EL RESTO DE TUS FUNCIONES (SIN CAMBIOS) ---  
   // (Pega aquí el resto de tus funciones como aplicarFiltros, guardarNuevoOrigen, redibujarTabla, etc.)
@@ -415,14 +758,14 @@
     });
 
   function normalizarTexto(txt) {
-    return txt.normalize('NFD').replace(/\p{Diacritic}/gu,'').toUpperCase();
+    return txt.normalize('NFD').replace(/\p{Diacritic}/gu, '').toUpperCase();
   }
 
   function filtrarCiudades(query) {
     if (!query) return [];
     const q = normalizarTexto(query);
     const resultados = [];
-    for (let i=0; i<ciudadesColombia.length; i++) {
+    for (let i = 0; i < ciudadesColombia.length; i++) {
       if (ciudadesColombiaNormalizadas[i].includes(q)) {
         resultados.push(ciudadesColombia[i]);
         if (resultados.length >= LIMITE_SUGERENCIAS_CIUDADES) break;
@@ -430,230 +773,230 @@
     }
     return resultados;
   }
-  function aplicarFiltros() {  
-    const tableBody = document.getElementById('tablaTransitoBody');  
-    const filterInputs = document.querySelectorAll('.excel-filter');  
-    const rows = tableBody.querySelectorAll('tr');  
-    const activeFilters = Array.from(filterInputs).map(input => ({  
-      value: input.value.toUpperCase(),  
-      index: parseInt(input.getAttribute('data-column-index'), 10)  
-    })).filter(filter => filter.value !== '');  
+  function aplicarFiltros() {
+    const tableBody = document.getElementById('tablaTransitoBody');
+    const filterInputs = document.querySelectorAll('.excel-filter');
+    const rows = tableBody.querySelectorAll('tr');
+    const activeFilters = Array.from(filterInputs).map(input => ({
+      value: input.value.toUpperCase(),
+      index: parseInt(input.getAttribute('data-column-index'), 10)
+    })).filter(filter => filter.value !== '');
 
-    rows.forEach(row => {  
-      let shouldShow = true;  
-      const cells = row.querySelectorAll('td');  
+    rows.forEach(row => {
+      let shouldShow = true;
+      const cells = row.querySelectorAll('td');
 
-      for (const filter of activeFilters) {  
-        if (cells.length > filter.index) {  
-          const cellElement = cells[filter.index].querySelector('input, select, textarea');  
-          const cellContent = (cellElement ? cellElement.value : cells[filter.index].textContent).toUpperCase();  
-          
-          if (!cellContent.includes(filter.value)) {  
-            shouldShow = false;  
-            break;  
-          }  
-        } else {  
-          shouldShow = false;  
-          break;  
-        }  
-      }  
-      row.style.display = shouldShow ? '' : 'none';  
-    });  
-  }  
+      for (const filter of activeFilters) {
+        if (cells.length > filter.index) {
+          const cellElement = cells[filter.index].querySelector('input, select, textarea');
+          const cellContent = (cellElement ? cellElement.value : cells[filter.index].textContent).toUpperCase();
 
-  function abrirModalNuevoOrigen(rowIndex) {  
-    if (!edicionTransitoPermitida) {  
-      mostrarAlerta("No se pueden añadir orígenes. Los registros están cerrados.", "warning");  
-      return;  
-    }  
-    FilaActivaParaAnadirItem = rowIndex;  
-    document.getElementById('inputNuevoOrigen').value = '';  
-    modalNuevoOrigen.show();  
-  }  
+          if (!cellContent.includes(filter.value)) {
+            shouldShow = false;
+            break;
+          }
+        } else {
+          shouldShow = false;
+          break;
+        }
+      }
+      row.style.display = shouldShow ? '' : 'none';
+    });
+  }
 
-  function abrirModalNuevoProducto(rowIndex) {  
-    if (!edicionTransitoPermitida) {  
-      mostrarAlerta("No se pueden añadir productos. Los registros están cerrados.", "warning");  
-      return;  
-    }  
-    const fila = currentData[rowIndex];  
-    if (!fila.ORIGEN) {  
-      mostrarAlerta("Por favor, seleccione un origen primero.", "warning");  
-      return;  
-    }  
-    FilaActivaParaAnadirItem = rowIndex;  
-    document.getElementById('inputNuevoProducto').value = '';  
-    document.getElementById('origenAsociadoTexto').textContent = fila.ORIGEN;  
-    modalNuevoProducto.show();  
-  }  
-    
-  function guardarNuevoOrigen() {  
-    const input = document.getElementById('inputNuevoOrigen');  
-    const nuevoOrigenNombre = input.value.trim().toUpperCase();  
-    const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";  
-    if (!nuevoOrigenNombre) {  
-      mostrarAlerta("El nombre del origen no puede estar vacío.", "warning");  
-      return;  
-    }  
-    const btn = document.getElementById('btnGuardarNuevoOrigen');  
-    btn.disabled = true;  
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;  
-    fetch('/api/add-origen', {  
-      method: 'POST',  
-      headers: {  
-        'Content-Type': 'application/json',  
-        'X-Requested-With': 'XMLHttpRequest'  
-      },  
-      body: JSON.stringify({  
-        origen_nombre: nuevoOrigenNombre,  
-        tipo_planilla: tipoPlanilla  
-      })  
-    }).then(res => res.json().then(data => ({  
-      ok: res.ok,  
-      status: res.status,  
-      data  
-    }))).then(({  
-      ok,  
-      status,  
-      data  
-    }) => {  
-      if (!ok) throw new Error(data.message || `Error del servidor (${status})`);  
-      transitoConfig[tipoPlanilla].campos[nuevoOrigenNombre] = {  
-        productos: [],  
-        auto_select_product: ""  
-      };  
-      mostrarAlerta("Origen guardado con éxito.", "success");  
-      modalNuevoOrigen.hide();  
-      if (FilaActivaParaAnadirItem !== null) {  
-        currentData[FilaActivaParaAnadirItem].ORIGEN = nuevoOrigenNombre;  
-        currentData[FilaActivaParaAnadirItem].PRODUCTO = "";  
-      }  
-      redibujarTabla();  
-    }).catch(error => {  
-      if (error.message.includes("SESSION_EXPIRED")) {  
-        window.location.reload();  
-      } else {  
-        mostrarAlerta(`Error: ${error.message}`, "danger");  
-      }  
-    }).finally(() => {  
-      btn.disabled = false;  
-      btn.innerHTML = 'Guardar Origen';  
-    });  
-  }  
+  function abrirModalNuevoOrigen(rowIndex) {
+    if (!edicionTransitoPermitida) {
+      mostrarAlerta("No se pueden añadir orígenes. Los registros están cerrados.", "warning");
+      return;
+    }
+    FilaActivaParaAnadirItem = rowIndex;
+    document.getElementById('inputNuevoOrigen').value = '';
+    modalNuevoOrigen.show();
+  }
 
-  function guardarNuevoProducto() {  
-    const inputProducto = document.getElementById('inputNuevoProducto');  
-    const nuevoProductoNombre = inputProducto.value.trim();  
-    const origenAsociado = document.getElementById('origenAsociadoTexto').textContent;  
-    const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";  
-    if (!nuevoProductoNombre) {  
-      mostrarAlerta("El nombre del producto no puede estar vacío.", "warning");  
-      return;  
-    }  
-    const btn = document.getElementById('btnGuardarNuevoProducto');  
-    btn.disabled = true;  
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;  
-    fetch('/api/add-producto', {  
-      method: 'POST',  
-      headers: {  
-        'Content-Type': 'application/json',  
-        'X-Requested-With': 'XMLHttpRequest'  
-      },  
-      body: JSON.stringify({  
-        origen_nombre: origenAsociado,  
-        producto_nombre: nuevoProductoNombre,  
-        tipo_planilla: tipoPlanilla  
-      })  
-    }).then(res => res.json().then(data => ({  
-      ok: res.ok,  
-      status: res.status,  
-      data  
-    }))).then(({  
-      ok,  
-      status,  
-      data  
-    }) => {  
-      if (!ok) throw new Error(data.message || `Error del servidor (${status})`);  
-      if (!transitoConfig[tipoPlanilla].campos[origenAsociado]) {  
-        transitoConfig[tipoPlanilla].campos[origenAsociado] = {  
-          productos: [],  
-          auto_select_product: ""  
-        };  
-      }  
-      transitoConfig[tipoPlanilla].campos[origenAsociado].productos.push(nuevoProductoNombre);  
-      mostrarAlerta("Producto guardado con éxito.", "success");  
-      modalNuevoProducto.hide();  
-      if (FilaActivaParaAnadirItem !== null) {  
-        currentData[FilaActivaParaAnadirItem].PRODUCTO = nuevoProductoNombre;  
-      }  
-      redibujarTabla();  
-    }).catch(error => {  
-      if (error.message.includes("SESSION_EXPIRED")) {  
-        window.location.reload();  
-      } else {  
-        mostrarAlerta(`Error: ${error.message}`, "danger");  
-      }  
-    }).finally(() => {  
-      btn.disabled = false;  
-      btn.innerHTML = 'Guardar Producto';  
-    });  
-  }  
+  function abrirModalNuevoProducto(rowIndex) {
+    if (!edicionTransitoPermitida) {
+      mostrarAlerta("No se pueden añadir productos. Los registros están cerrados.", "warning");
+      return;
+    }
+    const fila = currentData[rowIndex];
+    if (!fila.ORIGEN) {
+      mostrarAlerta("Por favor, seleccione un origen primero.", "warning");
+      return;
+    }
+    FilaActivaParaAnadirItem = rowIndex;
+    document.getElementById('inputNuevoProducto').value = '';
+    document.getElementById('origenAsociadoTexto').textContent = fila.ORIGEN;
+    modalNuevoProducto.show();
+  }
 
-  function clonarDatosIniciales(datosOriginales) {  
-    const MIN_FILAS = 10;  
-    let datosValidos = Array.isArray(datosOriginales) ? datosOriginales : [];  
-    let datosClonados = JSON.parse(JSON.stringify(datosValidos));  
-    while (datosClonados.length < MIN_FILAS) {  
-      datosClonados.push({  
-        id: null,  
-        FECHA: "",  
-        GUIA: "",  
-        ORIGEN: "",  
-        PRODUCTO: "",  
-        PLACA: "",  
-        API: "",  
-        BSW: "",  
-        NSV: "",  
-        OBSERVACIONES: ""  
-      });  
-    }  
-    return datosClonados;  
-  }  
+  function guardarNuevoOrigen() {
+    const input = document.getElementById('inputNuevoOrigen');
+    const nuevoOrigenNombre = input.value.trim().toUpperCase();
+    const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";
+    if (!nuevoOrigenNombre) {
+      mostrarAlerta("El nombre del origen no puede estar vacío.", "warning");
+      return;
+    }
+    const btn = document.getElementById('btnGuardarNuevoOrigen');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
+    fetch('/api/add-origen', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        origen_nombre: nuevoOrigenNombre,
+        tipo_planilla: tipoPlanilla
+      })
+    }).then(res => res.json().then(data => ({
+      ok: res.ok,
+      status: res.status,
+      data
+    }))).then(({
+      ok,
+      status,
+      data
+    }) => {
+      if (!ok) throw new Error(data.message || `Error del servidor (${status})`);
+      transitoConfig[tipoPlanilla].campos[nuevoOrigenNombre] = {
+        productos: [],
+        auto_select_product: ""
+      };
+      mostrarAlerta("Origen guardado con éxito.", "success");
+      modalNuevoOrigen.hide();
+      if (FilaActivaParaAnadirItem !== null) {
+        currentData[FilaActivaParaAnadirItem].ORIGEN = nuevoOrigenNombre;
+        currentData[FilaActivaParaAnadirItem].PRODUCTO = "";
+      }
+      redibujarTabla();
+    }).catch(error => {
+      if (error.message.includes("SESSION_EXPIRED")) {
+        window.location.reload();
+      } else {
+        mostrarAlerta(`Error: ${error.message}`, "danger");
+      }
+    }).finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar Origen';
+    });
+  }
 
-  function redibujarTabla() {  
-    const tablaTransitoBody = document.getElementById('tablaTransitoBody');  
-    tablaTransitoBody.innerHTML = "";  
-    currentData.forEach((fila, index) => {  
-      const tr = document.createElement("tr");  
-      tr.dataset.index = index;  
-      crearTdFecha(tr, fila, "FECHA");  
-      crearTdInputAlfanumerico(tr, fila, "GUIA");  
-      crearTdOrigen(tr, fila, "ORIGEN");  
-      crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]);  
-      crearTdInputAlfanumerico(tr, fila, "PLACA");  
-      crearTdInputNumerico(tr, fila, 'API');  
-      crearTdInputNumerico(tr, fila, 'BSW');  
-      crearTdInputNumerico(tr, fila, 'NSV');  
-      crearTdTextArea(tr, fila, "OBSERVACIONES");  
-      crearTdBotonEliminar(tr, index);  
-      tablaTransitoBody.appendChild(tr);  
-    });  
-    verificarEstadoEdicion();  
-  }  
+  function guardarNuevoProducto() {
+    const inputProducto = document.getElementById('inputNuevoProducto');
+    const nuevoProductoNombre = inputProducto.value.trim();
+    const origenAsociado = document.getElementById('origenAsociadoTexto').textContent;
+    const tipoPlanilla = vistaActual === "general" ? "EDSM" : "REFINERIA";
+    if (!nuevoProductoNombre) {
+      mostrarAlerta("El nombre del producto no puede estar vacío.", "warning");
+      return;
+    }
+    const btn = document.getElementById('btnGuardarNuevoProducto');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
+    fetch('/api/add-producto', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        origen_nombre: origenAsociado,
+        producto_nombre: nuevoProductoNombre,
+        tipo_planilla: tipoPlanilla
+      })
+    }).then(res => res.json().then(data => ({
+      ok: res.ok,
+      status: res.status,
+      data
+    }))).then(({
+      ok,
+      status,
+      data
+    }) => {
+      if (!ok) throw new Error(data.message || `Error del servidor (${status})`);
+      if (!transitoConfig[tipoPlanilla].campos[origenAsociado]) {
+        transitoConfig[tipoPlanilla].campos[origenAsociado] = {
+          productos: [],
+          auto_select_product: ""
+        };
+      }
+      transitoConfig[tipoPlanilla].campos[origenAsociado].productos.push(nuevoProductoNombre);
+      mostrarAlerta("Producto guardado con éxito.", "success");
+      modalNuevoProducto.hide();
+      if (FilaActivaParaAnadirItem !== null) {
+        currentData[FilaActivaParaAnadirItem].PRODUCTO = nuevoProductoNombre;
+      }
+      redibujarTabla();
+    }).catch(error => {
+      if (error.message.includes("SESSION_EXPIRED")) {
+        window.location.reload();
+      } else {
+        mostrarAlerta(`Error: ${error.message}`, "danger");
+      }
+    }).finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = 'Guardar Producto';
+    });
+  }
 
-  function renderTabla() {  
-    currentData = vistaActual === "general" ? clonarDatosIniciales(datosGeneralInit) : clonarDatosIniciales(datosRefineriaInit);  
-    redibujarTabla();  
-  }  
+  function clonarDatosIniciales(datosOriginales) {
+    const MIN_FILAS = 10;
+    let datosValidos = Array.isArray(datosOriginales) ? datosOriginales : [];
+    let datosClonados = JSON.parse(JSON.stringify(datosValidos));
+    while (datosClonados.length < MIN_FILAS) {
+      datosClonados.push({
+        id: null,
+        FECHA: "",
+        GUIA: "",
+        ORIGEN: "",
+        PRODUCTO: "",
+        PLACA: "",
+        API: "",
+        BSW: "",
+        NSV: "",
+        OBSERVACIONES: ""
+      });
+    }
+    return datosClonados;
+  }
 
-  function crearTdGenerico(tr) {  
-    const td = document.createElement("td");  
-    td.classList.add("align-middle", "px-1");  
-    tr.appendChild(td);  
-    return td;  
-  }  
+  function redibujarTabla() {
+    const tablaTransitoBody = document.getElementById('tablaTransitoBody');
+    tablaTransitoBody.innerHTML = "";
+    currentData.forEach((fila, index) => {
+      const tr = document.createElement("tr");
+      tr.dataset.index = index;
+      crearTdFecha(tr, fila, "FECHA");
+      crearTdInputAlfanumerico(tr, fila, "GUIA");
+      crearTdOrigen(tr, fila, "ORIGEN");
+      crearTdProducto(tr, fila, "PRODUCTO", fila["ORIGEN"]);
+      crearTdInputAlfanumerico(tr, fila, "PLACA");
+      crearTdInputNumerico(tr, fila, 'API');
+      crearTdInputNumerico(tr, fila, 'BSW');
+      crearTdInputNumerico(tr, fila, 'NSV');
+      crearTdTextArea(tr, fila, "OBSERVACIONES");
+      crearTdBotonEliminar(tr, index);
+      tablaTransitoBody.appendChild(tr);
+    });
+    verificarEstadoEdicion();
+  }
 
-  function crearTdTextArea(tr, fila, campoKey) {  
+  function renderTabla() {
+    currentData = vistaActual === "general" ? clonarDatosIniciales(datosGeneralInit) : clonarDatosIniciales(datosRefineriaInit);
+    redibujarTabla();
+  }
+
+  function crearTdGenerico(tr) {
+    const td = document.createElement("td");
+    td.classList.add("align-middle", "px-1");
+    tr.appendChild(td);
+    return td;
+  }
+
+  function crearTdTextArea(tr, fila, campoKey) {
     const td = crearTdGenerico(tr);
     if (campoKey === "OBSERVACIONES") {
       // Split value if already saved (format: "Ciudad | Sugerencia")
@@ -710,18 +1053,18 @@
         items.forEach((nombre, idx) => {
           const item = document.createElement('div');
           item.textContent = nombre;
-            item.style.padding = '4px 6px';
-            item.style.cursor = 'pointer';
-            item.addEventListener('mouseenter', () => {
-              Array.from(lista.children).forEach(c=>c.classList.remove('active'));
-              item.classList.add('active');
-              indiceActivo = idx;
-            });
-            item.addEventListener('mousedown', (e) => { // usar mousedown para antes de blur
-              e.preventDefault();
-              seleccionarCiudad(nombre);
-            });
-            lista.appendChild(item);
+          item.style.padding = '4px 6px';
+          item.style.cursor = 'pointer';
+          item.addEventListener('mouseenter', () => {
+            Array.from(lista.children).forEach(c => c.classList.remove('active'));
+            item.classList.add('active');
+            indiceActivo = idx;
+          });
+          item.addEventListener('mousedown', (e) => { // usar mousedown para antes de blur
+            e.preventDefault();
+            seleccionarCiudad(nombre);
+          });
+          lista.appendChild(item);
         });
         lista.style.display = 'block';
       }
@@ -742,7 +1085,7 @@
 
       inputCiudad.addEventListener('keydown', (e) => {
         const total = lista.children.length;
-        if (['ArrowDown','ArrowUp','Enter','Escape','Tab'].includes(e.key)) {
+        if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab'].includes(e.key)) {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (total) { indiceActivo = (indiceActivo + 1) % total; }
@@ -760,7 +1103,7 @@
             cerrarLista();
             return;
           }
-          Array.from(lista.children).forEach((c,i)=> c.classList.toggle('active', i===indiceActivo));
+          Array.from(lista.children).forEach((c, i) => c.classList.toggle('active', i === indiceActivo));
         }
       });
 
@@ -803,381 +1146,381 @@
       textarea.addEventListener("change", actualizarDatoFila);
       td.appendChild(textarea);
     }
-  }  
+  }
 
-  function crearTdFecha(tr, fila, campoKey) {  
-    const td = crearTdGenerico(tr);  
-    td.classList.add("ps-3");  
-    const input = document.createElement("input");  
-    input.type = "date";  
-    input.className = "form-control form-control-sm";  
-    let fechaValor = fila[campoKey] || "";  
-    if (fechaValor && fechaValor.includes('/')) {  
-      const partes = fechaValor.split('/');  
-      if (partes.length === 3) {  
-        fechaValor = `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`;  
-      }  
-    }  
-    input.value = fechaValor;  
-    input.dataset.field = campoKey;  
-    input.disabled = !edicionTransitoPermitida;  
-    input.addEventListener("change", actualizarDatoFila);  
-    td.appendChild(input);  
-  }  
+  function crearTdFecha(tr, fila, campoKey) {
+    const td = crearTdGenerico(tr);
+    td.classList.add("ps-3");
+    const input = document.createElement("input");
+    input.type = "date";
+    input.className = "form-control form-control-sm";
+    let fechaValor = fila[campoKey] || "";
+    if (fechaValor && fechaValor.includes('/')) {
+      const partes = fechaValor.split('/');
+      if (partes.length === 3) {
+        fechaValor = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+      }
+    }
+    input.value = fechaValor;
+    input.dataset.field = campoKey;
+    input.disabled = !edicionTransitoPermitida;
+    input.addEventListener("change", actualizarDatoFila);
+    td.appendChild(input);
+  }
 
-  function crearTdInputAlfanumerico(tr, fila, campoKey) {  
-    const td = crearTdGenerico(tr);  
-    const input = document.createElement("input");  
-    input.type = "text";  
-    input.className = "form-control form-control-sm";  
-    input.value = fila[campoKey] || "";  
-    input.dataset.field = campoKey;  
-    input.disabled = !edicionTransitoPermitida;  
-    input.addEventListener("change", actualizarDatoFila);  
-    td.appendChild(input);  
-  }  
+  function crearTdInputAlfanumerico(tr, fila, campoKey) {
+    const td = crearTdGenerico(tr);
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "form-control form-control-sm";
+    input.value = fila[campoKey] || "";
+    input.dataset.field = campoKey;
+    input.disabled = !edicionTransitoPermitida;
+    input.addEventListener("change", actualizarDatoFila);
+    td.appendChild(input);
+  }
 
-  function crearTdInputNumerico(tr, fila, campoKey) {  
-    const td = crearTdGenerico(tr);  
-    const input = document.createElement("input");  
-    input.type = "text";  
-    input.className = "form-control form-control-sm text-center";  
-    input.setAttribute('inputmode', 'decimal');  
-    input.value = String(fila[campoKey] || "").replace('.', ',');  
-    input.dataset.field = campoKey;  
-    input.disabled = !edicionTransitoPermitida;  
-    input.addEventListener("change", actualizarDatoFila);  
-    input.addEventListener('keydown', function(event) {  
-      if (!edicionTransitoPermitida) {  
-        event.preventDefault();  
-        return;  
-      }  
-      const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", ".", ","];  
-      if (allowedKeys.includes(event.key)) {  
-        if ((event.key === '.' || event.key === ',') && (input.value.includes(',') || input.value.includes('.'))) {  
-          event.preventDefault();  
-        }  
-        return;  
-      }  
-      if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) {  
-        return;  
-      }  
-      if (!(event.key >= '0' && event.key <= '9')) {  
-        event.preventDefault();  
-      }  
-    });  
-    td.appendChild(input);  
-  }  
+  function crearTdInputNumerico(tr, fila, campoKey) {
+    const td = crearTdGenerico(tr);
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className = "form-control form-control-sm text-center";
+    input.setAttribute('inputmode', 'decimal');
+    input.value = String(fila[campoKey] || "").replace('.', ',');
+    input.dataset.field = campoKey;
+    input.disabled = !edicionTransitoPermitida;
+    input.addEventListener("change", actualizarDatoFila);
+    input.addEventListener('keydown', function (event) {
+      if (!edicionTransitoPermitida) {
+        event.preventDefault();
+        return;
+      }
+      const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", ".", ","];
+      if (allowedKeys.includes(event.key)) {
+        if ((event.key === '.' || event.key === ',') && (input.value.includes(',') || input.value.includes('.'))) {
+          event.preventDefault();
+        }
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && ['a', 'c', 'v', 'x', 'z'].includes(event.key.toLowerCase())) {
+        return;
+      }
+      if (!(event.key >= '0' && event.key <= '9')) {
+        event.preventDefault();
+      }
+    });
+    td.appendChild(input);
+  }
 
-  function crearTdOrigen(tr, fila, campoKey) {  
-    const td = crearTdGenerico(tr);  
-    const divContenedor = document.createElement("div");  
-    divContenedor.className = "select-with-btn-container";  
-    const select = document.createElement("select");  
-    select.className = "form-select form-select-sm";  
-    select.dataset.field = campoKey;  
-    select.disabled = !edicionTransitoPermitida;  
-    const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";  
-    const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;  
-    const origenesDisponibles = configParaTipoActual ?.campos ? Object.keys(configParaTipoActual.campos).sort() : [];  
-    select.innerHTML = '<option value="">Seleccione Origen...</option>';  
-    origenesDisponibles.forEach(nombreOrigen => {  
-      const option = document.createElement("option");  
-      option.value = nombreOrigen;  
-      option.textContent = nombreOrigen;  
-      select.appendChild(option);  
-    });  
-    select.value = fila[campoKey] || "";  
-    select.addEventListener("change", function(event) {  
-      const rowIndex = parseInt(event.target.closest("tr").dataset.index, 10);  
-      const nuevoOrigen = event.target.value;  
-      currentData[rowIndex][campoKey] = nuevoOrigen;  
-      const productoSelectElement = event.target.closest("tr").querySelector('select[data-field="PRODUCTO"]');  
-      if (productoSelectElement) {  
-        const origenConfig = configParaTipoActual ?.campos ?.[nuevoOrigen];  
-        const productos = origenConfig ?.productos || [];  
-        const autoProducto = origenConfig ?.auto_select_product || "";  
-        productoSelectElement.innerHTML = '<option value="">Seleccione Producto...</option>';  
-        productos.forEach(prod => {  
-          const opt = document.createElement("option");  
-          opt.value = prod;  
-          opt.textContent = prod;  
-          productoSelectElement.appendChild(opt);  
-        });  
-        productoSelectElement.value = autoProducto;  
-        currentData[rowIndex]["PRODUCTO"] = autoProducto;  
-      }  
-    });  
-    const btnAdd = document.createElement("button");  
-    btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";  
-    btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';  
-    btnAdd.title = "Añadir nuevo origen";  
-    btnAdd.disabled = !edicionTransitoPermitida;  
-    btnAdd.onclick = function() {  
-      abrirModalNuevoOrigen(parseInt(tr.dataset.index, 10));  
-    };  
-    divContenedor.appendChild(select);  
-    divContenedor.appendChild(btnAdd);  
-    td.appendChild(divContenedor);  
-  }  
+  function crearTdOrigen(tr, fila, campoKey) {
+    const td = crearTdGenerico(tr);
+    const divContenedor = document.createElement("div");
+    divContenedor.className = "select-with-btn-container";
+    const select = document.createElement("select");
+    select.className = "form-select form-select-sm";
+    select.dataset.field = campoKey;
+    select.disabled = !edicionTransitoPermitida;
+    const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
+    const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;
+    const origenesDisponibles = configParaTipoActual?.campos ? Object.keys(configParaTipoActual.campos).sort() : [];
+    select.innerHTML = '<option value="">Seleccione Origen...</option>';
+    origenesDisponibles.forEach(nombreOrigen => {
+      const option = document.createElement("option");
+      option.value = nombreOrigen;
+      option.textContent = nombreOrigen;
+      select.appendChild(option);
+    });
+    select.value = fila[campoKey] || "";
+    select.addEventListener("change", function (event) {
+      const rowIndex = parseInt(event.target.closest("tr").dataset.index, 10);
+      const nuevoOrigen = event.target.value;
+      currentData[rowIndex][campoKey] = nuevoOrigen;
+      const productoSelectElement = event.target.closest("tr").querySelector('select[data-field="PRODUCTO"]');
+      if (productoSelectElement) {
+        const origenConfig = configParaTipoActual?.campos?.[nuevoOrigen];
+        const productos = origenConfig?.productos || [];
+        const autoProducto = origenConfig?.auto_select_product || "";
+        productoSelectElement.innerHTML = '<option value="">Seleccione Producto...</option>';
+        productos.forEach(prod => {
+          const opt = document.createElement("option");
+          opt.value = prod;
+          opt.textContent = prod;
+          productoSelectElement.appendChild(opt);
+        });
+        productoSelectElement.value = autoProducto;
+        currentData[rowIndex]["PRODUCTO"] = autoProducto;
+      }
+    });
+    const btnAdd = document.createElement("button");
+    btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";
+    btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';
+    btnAdd.title = "Añadir nuevo origen";
+    btnAdd.disabled = !edicionTransitoPermitida;
+    btnAdd.onclick = function () {
+      abrirModalNuevoOrigen(parseInt(tr.dataset.index, 10));
+    };
+    divContenedor.appendChild(select);
+    divContenedor.appendChild(btnAdd);
+    td.appendChild(divContenedor);
+  }
 
-  function crearTdProducto(tr, fila, campoKey, origenSeleccionado) {  
-    const td = crearTdGenerico(tr);  
-    const divContenedor = document.createElement("div");  
-    divContenedor.className = "select-with-btn-container";  
-    const select = document.createElement("select");  
-    select.className = "form-select form-select-sm";  
-    select.dataset.field = campoKey;  
-    select.disabled = !edicionTransitoPermitida;  
-    select.innerHTML = '<option value="">Seleccione Producto...</option>';  
-    if (origenSeleccionado) {  
-      const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";  
-      const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;  
-      const origenConfig = configParaTipoActual ?.campos ?.[origenSeleccionado];  
-      if (origenConfig && origenConfig.productos) {  
-        origenConfig.productos.forEach(prod => {  
-          const option = document.createElement("option");  
-          option.value = prod;  
-          option.textContent = prod;  
-          select.appendChild(option);  
-        });  
-        select.value = fila[campoKey] || origenConfig.auto_select_product || "";  
-      }  
-    }  
-    select.addEventListener("change", actualizarDatoFila);  
-    const btnAdd = document.createElement("button");  
-    btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";  
-    btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';  
-    btnAdd.title = "Añadir nuevo producto";  
-    btnAdd.disabled = !edicionTransitoPermitida;  
-    btnAdd.onclick = function() {  
-      abrirModalNuevoProducto(parseInt(tr.dataset.index, 10));  
-    };  
-    divContenedor.appendChild(select);  
-    divContenedor.appendChild(btnAdd);  
-    td.appendChild(divContenedor);  
-  }  
+  function crearTdProducto(tr, fila, campoKey, origenSeleccionado) {
+    const td = crearTdGenerico(tr);
+    const divContenedor = document.createElement("div");
+    divContenedor.className = "select-with-btn-container";
+    const select = document.createElement("select");
+    select.className = "form-select form-select-sm";
+    select.dataset.field = campoKey;
+    select.disabled = !edicionTransitoPermitida;
+    select.innerHTML = '<option value="">Seleccione Producto...</option>';
+    if (origenSeleccionado) {
+      const tipoConfigKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
+      const configParaTipoActual = transitoConfig ? transitoConfig[tipoConfigKey] : null;
+      const origenConfig = configParaTipoActual?.campos?.[origenSeleccionado];
+      if (origenConfig && origenConfig.productos) {
+        origenConfig.productos.forEach(prod => {
+          const option = document.createElement("option");
+          option.value = prod;
+          option.textContent = prod;
+          select.appendChild(option);
+        });
+        select.value = fila[campoKey] || origenConfig.auto_select_product || "";
+      }
+    }
+    select.addEventListener("change", actualizarDatoFila);
+    const btnAdd = document.createElement("button");
+    btnAdd.className = "btn btn-sm btn-outline-secondary btn-add-item";
+    btnAdd.innerHTML = '<i class="bi bi-plus-lg"></i>';
+    btnAdd.title = "Añadir nuevo producto";
+    btnAdd.disabled = !edicionTransitoPermitida;
+    btnAdd.onclick = function () {
+      abrirModalNuevoProducto(parseInt(tr.dataset.index, 10));
+    };
+    divContenedor.appendChild(select);
+    divContenedor.appendChild(btnAdd);
+    td.appendChild(divContenedor);
+  }
 
-  function crearTdBotonEliminar(tr, index) {  
-    const td = document.createElement("td");  
-    td.classList.add("text-center", "align-middle");  
-    const button = document.createElement("button");  
-    button.className = "btn btn-outline-danger btn-sm";  
-    button.innerHTML = '<i class="bi bi-trash"></i>';  
-    button.type = "button";  
-    button.disabled = !edicionTransitoPermitida;  
-    button.onclick = function() {  
-      if (!edicionTransitoPermitida) return;  
-      const registroId = currentData[index].id;  
-      if (registroId) {  
-        eliminarFilaEnServidor(registroId, index);  
-      } else {  
-        if (currentData.length > 1) {  
-          currentData.splice(index, 1);  
-          guardarEstadoEnSesion();  
-          redibujarTabla();  
-        } else {  
-          mostrarAlerta("Debe haber al menos una fila.", "warning");  
-        }  
-      }  
-    };  
-    td.appendChild(button);  
-    tr.appendChild(td);  
-  }  
+  function crearTdBotonEliminar(tr, index) {
+    const td = document.createElement("td");
+    td.classList.add("text-center", "align-middle");
+    const button = document.createElement("button");
+    button.className = "btn btn-outline-danger btn-sm";
+    button.innerHTML = '<i class="bi bi-trash"></i>';
+    button.type = "button";
+    button.disabled = !edicionTransitoPermitida;
+    button.onclick = function () {
+      if (!edicionTransitoPermitida) return;
+      const registroId = currentData[index].id;
+      if (registroId) {
+        eliminarFilaEnServidor(registroId, index);
+      } else {
+        if (currentData.length > 1) {
+          currentData.splice(index, 1);
+          guardarEstadoEnSesion();
+          redibujarTabla();
+        } else {
+          mostrarAlerta("Debe haber al menos una fila.", "warning");
+        }
+      }
+    };
+    td.appendChild(button);
+    tr.appendChild(td);
+  }
 
-  function actualizarDatoFila(event) {  
-    const element = event.target;  
-    const field = element.dataset.field;  
-    const index = parseInt(element.closest("tr").dataset.index, 10);  
-    let value = element.value;  
-    if (element.type === "date") {} else if (element.getAttribute('inputmode') === 'decimal') {  
-      value = value.replace(',', '.');  
-    } else {  
-      value = value.trim();  
-    }  
-    if (currentData && currentData[index] !== undefined) {  
-      currentData[index][field] = value;  
-    }  
-    guardarEstadoEnSesion();  
-  }  
+  function actualizarDatoFila(event) {
+    const element = event.target;
+    const field = element.dataset.field;
+    const index = parseInt(element.closest("tr").dataset.index, 10);
+    let value = element.value;
+    if (element.type === "date") { } else if (element.getAttribute('inputmode') === 'decimal') {
+      value = value.replace(',', '.');
+    } else {
+      value = value.trim();
+    }
+    if (currentData && currentData[index] !== undefined) {
+      currentData[index][field] = value;
+    }
+    guardarEstadoEnSesion();
+  }
 
-  function agregarFilaTransito() {  
-    if (!edicionTransitoPermitida) {  
-      mostrarAlerta("No se pueden añadir filas. Los registros están cerrados.", "warning");  
-      return;  
-    }  
-    const nuevaFilaVacia = {  
-      FECHA: "",  
-      GUIA: "",  
-      ORIGEN: "",  
-      PRODUCTO: "",  
-      PLACA: "",  
-      API: "",  
-      BSW: "",  
-      NSV: "",  
-      OBSERVACIONES: ""  
-    };  
-    currentData.push(nuevaFilaVacia);  
-    guardarEstadoEnSesion();  
-    redibujarTabla();  
-  }  
+  function agregarFilaTransito() {
+    if (!edicionTransitoPermitida) {
+      mostrarAlerta("No se pueden añadir filas. Los registros están cerrados.", "warning");
+      return;
+    }
+    const nuevaFilaVacia = {
+      FECHA: "",
+      GUIA: "",
+      ORIGEN: "",
+      PRODUCTO: "",
+      PLACA: "",
+      API: "",
+      BSW: "",
+      NSV: "",
+      OBSERVACIONES: ""
+    };
+    currentData.push(nuevaFilaVacia);
+    guardarEstadoEnSesion();
+    redibujarTabla();
+  }
 
-  function guardarRegistro() {  
-    if (!edicionTransitoPermitida) {  
-      mostrarAlerta(`Los registros están cerrados.`, "warning");  
-      return;  
-    }  
-    const btn = document.getElementById('btnGuardarTransito');  
-    btn.disabled = true;  
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;  
-    const datosAEnviar = currentData.filter(fila => fila.GUIA && fila.GUIA.trim() !== "");  
-    if (datosAEnviar.length === 0) {  
-      mostrarAlerta("No hay datos nuevos o modificados para guardar.", "warning");  
-      btn.disabled = false;  
-      btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;  
-      return;  
-    }  
-    fetch(`/guardar-registro-transito-${vistaActual}`, {  
-      method: "POST",  
-      headers: {  
-        "Content-Type": "application/json",  
-        "X-Requested-With": "XMLHttpRequest"  
-      },  
-      body: JSON.stringify(datosAEnviar)  
-    }).then(res => res.json().then(data => ({  
-      ok: res.ok,  
-      data  
-    }))).then(({  
-      ok,  
-      data  
-    }) => {  
-      if (!ok) throw new Error(data.message || "Error del servidor");  
-      mostrarAlerta(data.message, "success");  
-      limpiarEstadoDeSesion();  
-      const historialCompleto = data.datos;  
-      if (vistaActual === 'general') {  
-        datosGeneralInit = historialCompleto;  
-      } else {  
-        datosRefineriaInit = historialCompleto;  
-      }  
-      renderTabla();  
-    }).catch(error => {  
-      console.error("Error al guardar:", error);  
-      mostrarAlerta(`Error: ${error.message}`, "danger");  
-    }).finally(() => {  
-      btn.disabled = false;  
-      btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;  
-    });  
-  }  
+  function guardarRegistro() {
+    if (!edicionTransitoPermitida) {
+      mostrarAlerta(`Los registros están cerrados.`, "warning");
+      return;
+    }
+    const btn = document.getElementById('btnGuardarTransito');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Guardando...`;
+    const datosAEnviar = currentData.filter(fila => fila.GUIA && fila.GUIA.trim() !== "");
+    if (datosAEnviar.length === 0) {
+      mostrarAlerta("No hay datos nuevos o modificados para guardar.", "warning");
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
+      return;
+    }
+    fetch(`/guardar-registro-transito-${vistaActual}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: JSON.stringify(datosAEnviar)
+    }).then(res => res.json().then(data => ({
+      ok: res.ok,
+      data
+    }))).then(({
+      ok,
+      data
+    }) => {
+      if (!ok) throw new Error(data.message || "Error del servidor");
+      mostrarAlerta(data.message, "success");
+      limpiarEstadoDeSesion();
+      const historialCompleto = data.datos;
+      if (vistaActual === 'general') {
+        datosGeneralInit = historialCompleto;
+      } else {
+        datosRefineriaInit = historialCompleto;
+      }
+      renderTabla();
+    }).catch(error => {
+      console.error("Error al guardar:", error);
+      mostrarAlerta(`Error: ${error.message}`, "danger");
+    }).finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = `<i class="bi bi-save2-fill me-1"></i> Guardar`;
+    });
+  }
 
-  function eliminarFilaEnServidor(registroId, indexFila) {  
-    if (!confirm("¿Está seguro que desea eliminar este registro permanentemente?")) {  
-      return;  
-    }  
-    const btnEliminar = document.querySelector(`tr[data-index="${indexFila}"] .btn-outline-danger`);  
-    if (btnEliminar) {  
-      btnEliminar.disabled = true;  
-      btnEliminar.innerHTML = '<i class="bi bi-hourglass"></i>';  
-    }  
-    fetch(`/eliminar-registro-transito/${registroId}`, {  
-      method: 'DELETE',  
-      headers: {  
-        'X-Requested-With': 'XMLHttpRequest'  
-      }  
-    }).then(response => {  
-      if (!response.ok) {  
-        throw new Error('Error en la respuesta del servidor');  
-      }  
-      return response.json();  
-    }).then(data => {  
-      if (data.success) {  
-        currentData.splice(indexFila, 1);  
-        if (vistaActual === "general") {  
-          datosGeneralInit = datosGeneralInit.filter(item => item.id !== registroId);  
-        } else {  
-          datosRefineriaInit = datosRefineriaInit.filter(item => item.id !== registroId);  
-        }  
-        mostrarAlerta(data.message, "success");  
-        guardarEstadoEnSesion();  
-        redibujarTabla();  
-      } else {  
-        throw new Error(data.message || "Error al eliminar");  
-      }  
-    }).catch(error => {  
-      console.error("Error al eliminar:", error);  
-      mostrarAlerta(`Error al eliminar: ${error.message}`, "danger");  
-    }).finally(() => {  
-      if (btnEliminar) {  
-        btnEliminar.disabled = false;  
-        btnEliminar.innerHTML = '<i class="bi bi-trash"></i>';  
-      }  
-    });  
-  }  
+  function eliminarFilaEnServidor(registroId, indexFila) {
+    if (!confirm("¿Está seguro que desea eliminar este registro permanentemente?")) {
+      return;
+    }
+    const btnEliminar = document.querySelector(`tr[data-index="${indexFila}"] .btn-outline-danger`);
+    if (btnEliminar) {
+      btnEliminar.disabled = true;
+      btnEliminar.innerHTML = '<i class="bi bi-hourglass"></i>';
+    }
+    fetch(`/eliminar-registro-transito/${registroId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    }).then(response => {
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+      return response.json();
+    }).then(data => {
+      if (data.success) {
+        currentData.splice(indexFila, 1);
+        if (vistaActual === "general") {
+          datosGeneralInit = datosGeneralInit.filter(item => item.id !== registroId);
+        } else {
+          datosRefineriaInit = datosRefineriaInit.filter(item => item.id !== registroId);
+        }
+        mostrarAlerta(data.message, "success");
+        guardarEstadoEnSesion();
+        redibujarTabla();
+      } else {
+        throw new Error(data.message || "Error al eliminar");
+      }
+    }).catch(error => {
+      console.error("Error al eliminar:", error);
+      mostrarAlerta(`Error al eliminar: ${error.message}`, "danger");
+    }).finally(() => {
+      if (btnEliminar) {
+        btnEliminar.disabled = false;
+        btnEliminar.innerHTML = '<i class="bi bi-trash"></i>';
+      }
+    });
+  }
 
-  function guardarEstadoEnSesion() {  
-    const estado = {  
-      vista: vistaActual,  
-      datos: currentData  
-    };  
-    sessionStorage.setItem('estadoTransito', JSON.stringify(estado));  
-  }  
+  function guardarEstadoEnSesion() {
+    const estado = {
+      vista: vistaActual,
+      datos: currentData
+    };
+    sessionStorage.setItem('estadoTransito', JSON.stringify(estado));
+  }
 
-  function cargarEstadoDesdeSesion() {  
-    const estadoGuardado = sessionStorage.getItem('estadoTransito');  
-    if (estadoGuardado) {  
-      return JSON.parse(estadoGuardado);  
-    }  
-    return null;  
-  }  
+  function cargarEstadoDesdeSesion() {
+    const estadoGuardado = sessionStorage.getItem('estadoTransito');
+    if (estadoGuardado) {
+      return JSON.parse(estadoGuardado);
+    }
+    return null;
+  }
 
-  function limpiarEstadoDeSesion() {  
-    sessionStorage.removeItem('estadoTransito');  
-  }  
+  function limpiarEstadoDeSesion() {
+    sessionStorage.removeItem('estadoTransito');
+  }
 
-  function actualizarTextosDeVista() {  
-    const tipoTransitoVisualSpan = document.getElementById("tipoTransitoVisual");  
-    const toggleNombreVistaSpan = document.getElementById("toggleNombreVista");  
-    const tipoConfigActualKey = vistaActual === "general" ? "EDSM" : "REFINERIA";  
-    const tipoConfigOtraKey = vistaActual === "general" ? "REFINERIA" : "EDSM";  
-    const configActual = transitoConfig ? transitoConfig[tipoConfigActualKey] : null;  
-    const configOtra = transitoConfig ? transitoConfig[tipoConfigOtraKey] : null;  
-    if (tipoTransitoVisualSpan) {  
-      tipoTransitoVisualSpan.textContent = configActual ?.nombre_display || (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");  
-    }  
-    if (toggleNombreVistaSpan) {  
-      toggleNombreVistaSpan.textContent = configOtra ?.nombre_display || (vistaActual === "general" ? "Refinería" : "EDSM");  
-    }  
-  }  
+  function actualizarTextosDeVista() {
+    const tipoTransitoVisualSpan = document.getElementById("tipoTransitoVisual");
+    const toggleNombreVistaSpan = document.getElementById("toggleNombreVista");
+    const tipoConfigActualKey = vistaActual === "general" ? "EDSM" : "REFINERIA";
+    const tipoConfigOtraKey = vistaActual === "general" ? "REFINERIA" : "EDSM";
+    const configActual = transitoConfig ? transitoConfig[tipoConfigActualKey] : null;
+    const configOtra = transitoConfig ? transitoConfig[tipoConfigOtraKey] : null;
+    if (tipoTransitoVisualSpan) {
+      tipoTransitoVisualSpan.textContent = configActual?.nombre_display || (vistaActual === "general" ? "Tránsito Crudo EDSM" : "Tránsito Crudo Refinería");
+    }
+    if (toggleNombreVistaSpan) {
+      toggleNombreVistaSpan.textContent = configOtra?.nombre_display || (vistaActual === "general" ? "Refinería" : "EDSM");
+    }
+  }
 
-  function cambiarVista() {  
+  function cambiarVista() {
     vistaActual = vistaActual === "general" ? "refineria" : "general";
     document.getElementById('tipoTransitoHidden').value = vistaActual;
-    document.getElementById('btnEliminarTodo').dataset.tipo = vistaActual;  
-    guardarEstadoEnSesion();  
-    actualizarTextosDeVista();  
-    renderTabla();  
+    document.getElementById('btnEliminarTodo').dataset.tipo = vistaActual;
+    guardarEstadoEnSesion();
+    actualizarTextosDeVista();
+    renderTabla();
   }
-  
 
-  function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {  
-    const alertContainer = document.getElementById('alert-container');  
-    if (!alertContainer) return;  
-    const wrapper = document.createElement('div');  
-    const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : tipo === 'warning' ? 'bi-exclamation-diamond-fill' : 'bi-info-circle-fill';  
-    wrapper.innerHTML = `<div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center shadow" role="alert"><i class="bi ${iconClass} me-2"></i><div>${mensaje}</div><button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button></div>`;  
-    alertContainer.appendChild(wrapper);  
-    const alertElement = wrapper.firstChild;  
-    if (alertElement) {  
-      setTimeout(() => {  
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);  
-        if (bsAlert) {  
-          bsAlert.close();  
-        }  
-      }, duracion);  
-    }  
-  }  
 
-  function verificarEstadoEdicion() {}  
-</script>  
+  function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
+    const alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) return;
+    const wrapper = document.createElement('div');
+    const iconClass = tipo === 'success' ? 'bi-check-circle-fill' : tipo === 'danger' ? 'bi-exclamation-triangle-fill' : tipo === 'warning' ? 'bi-exclamation-diamond-fill' : 'bi-info-circle-fill';
+    wrapper.innerHTML = `<div class="alert alert-${tipo} alert-dismissible fade show d-flex align-items-center shadow" role="alert"><i class="bi ${iconClass} me-2"></i><div>${mensaje}</div><button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
+    alertContainer.appendChild(wrapper);
+    const alertElement = wrapper.firstChild;
+    if (alertElement) {
+      setTimeout(() => {
+        const bsAlert = bootstrap.Alert.getOrCreateInstance(alertElement);
+        if (bsAlert) {
+          bsAlert.close();
+        }
+      }, duracion);
+    }
+  }
+
+  function verificarEstadoEdicion() { }  
+</script>
 
 {% endblock %}

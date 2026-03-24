@@ -97,6 +97,111 @@
             text-align: center;
         }
 
+        /* Controles de Impresión (Calibración de impresora) */
+        #controles-impresion {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1002;
+            background: rgba(40, 167, 69, 0.95);
+            padding: 14px 18px;
+            border-radius: 14px;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .calib-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .calib-row i {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .calib-label {
+            min-width: 60px;
+        }
+
+        .calib-value {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 3px 10px;
+            border-radius: 6px;
+            min-width: 70px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .calib-arrows-v {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .calib-arrows-h {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+        }
+
+        /* Botones base */
+        .calib-btn {
+            background: white !important;
+            border: none !important;
+            color: #1e7e34 !important;
+            font-weight: bold !important;
+            border-radius: 6px !important;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex !important;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        .calib-btn:hover {
+            background: #e6ffed !important;
+            transform: scale(1.08);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Flechas pequeñas */
+        .calib-btn-sm {
+            width: 26px !important;
+            height: 20px !important;
+            font-size: 11px !important;
+            padding: 0 !important;
+        }
+
+        /* Botones de texto (Estirar / Encoger) */
+        .calib-btn-text {
+            width: auto !important;
+            height: 28px !important;
+            padding: 0 12px !important;
+            font-size: 12px !important;
+            letter-spacing: 0.3px;
+        }
+
+        /* Botón de reset */
+        .calib-btn-reset {
+            width: 32px !important;
+            height: 28px !important;
+            font-size: 18px !important;
+            padding: 0 !important;
+            margin-left: 4px;
+        }
+
         /* Panel de Impresión Parcial */
         #panel-impresion-parcial {
             position: fixed;
@@ -457,16 +562,17 @@
                 display: none;
             }
 
-            /* RESETEAR ZOOM PARA IMPRESIÓN - CRÍTICO */
+            /* APLICAR OFFSET Y ESCALA (AJUSTE FINO) PARA IMPRESIÓN - CRÍTICO */
             #contenedor-guia {
-                transform: none !important;
-                transform-origin: initial !important;
+                transform: translate(var(--print-offset-x, 0mm), var(--print-offset-y, 0mm)) scale(var(--print-scale-x, 1), var(--print-scale-y, 1)) !important;
+                transform-origin: top center !important;
             }
 
             .campo,
             .hoja {
                 border: none !important;
             }
+
 
             select {
                 background: transparent !important;
@@ -1220,6 +1326,32 @@
         <button onclick="ajustarZoom(10)" title="Acercar">+</button>
         <button onclick="resetearZoom()" title="Restablecer" style="width: auto; padding: 0 10px;">⟲</button>
     </div>
+
+    <!-- Controles de Ajuste de Impresión -->
+    <div id="controles-impresion" class="no-print" title="Calibración de impresora">
+        <div class="calib-row">
+            <i class="bi bi-arrows-move"></i>
+            <span class="calib-label">Posición:</span>
+            <span id="offset-display" class="calib-value">0mm, 0mm</span>
+            <div class="calib-arrows-v">
+                <button class="calib-btn calib-btn-sm" onclick="ajustarImpresion(0, -1)" title="Arriba">▲</button>
+                <button class="calib-btn calib-btn-sm" onclick="ajustarImpresion(0, 1)" title="Abajo">▼</button>
+            </div>
+            <div class="calib-arrows-h">
+                <button class="calib-btn calib-btn-sm" onclick="ajustarImpresion(-1, 0)" title="Izquierda">◄</button>
+                <button class="calib-btn calib-btn-sm" onclick="ajustarImpresion(1, 0)" title="Derecha">►</button>
+            </div>
+        </div>
+        <div class="calib-row">
+            <i class="bi bi-arrows-expand"></i>
+            <span class="calib-label">Escala:</span>
+            <span id="scale-display" class="calib-value">100%</span>
+            <button class="calib-btn calib-btn-text" onclick="ajustarEscala(0.01)" title="Estirar">+ Estirar</button>
+            <button class="calib-btn calib-btn-text" onclick="ajustarEscala(-0.01)" title="Encoger">− Encoger</button>
+            <button class="calib-btn calib-btn-reset" onclick="resetearImpresion()" title="Resetear todo">⟲</button>
+        </div>
+    </div>
+
     <div id="contenedor-guia">
         <div class="hoja">
             <div class="fila">
@@ -2352,10 +2484,10 @@
                 syncDespachoWrap();
                 syncDireccionWrap();
                 syncCiudadWrap();
-                // RESETEAR ZOOM ANTES DE IMPRIMIR
+                // LIMPIAR ZOOM INLINE para que el @media print con offset de calibración actúe
                 const contenedor = document.getElementById('contenedor-guia');
                 if (contenedor) {
-                    contenedor.style.transform = 'none';
+                    contenedor.style.transform = '';
                 }
             });
 
@@ -2496,9 +2628,10 @@
             document.getElementById('dropdownClientesList').classList.remove('show');
 
             // Sync impresión
-            if (typeof syncDestinoWrap === 'function') {
-                syncDestinoWrap();
-            }
+            if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+            if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+            if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+            if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
         }
 
         // DEPRECATED: autocompletarCliente (se reemplaza por seleccionarCliente y la lógica UI nueva)
@@ -2862,17 +2995,64 @@
             const faltantes = validarCampos();
             if (faltantes.length > 0) {
                 document.body.classList.add('validacion-fallida');
-                // Intentamos mostrar el swal también, aunque el diálogo de impresión puede bloquearlo visualmente
-                // hasta que se cierre, pero al menos la hoja saldrá mal.
             } else {
                 document.body.classList.remove('validacion-fallida');
                 // Lógica existente de wraps
                 if (typeof syncEmpresaTransportadoraWrap === 'function') syncEmpresaTransportadoraWrap();
                 if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+                if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+                if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+                if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
                 const contenedor = document.getElementById('contenedor-guia');
-                if (contenedor) contenedor.style.transform = 'none';
+                // IMPORTANTE: Limpiar el estilo inline para permitir que actúe el !important del @media print con el offset
+                if (contenedor) contenedor.style.transform = '';
             }
         });
+
+        // --- LÓGICA DE CALIBRACIÓN DE IMPRESIÓN ---
+        let printOffsetX = parseFloat(localStorage.getItem('impresora_offset_x')) || 0;
+        let printOffsetY = parseFloat(localStorage.getItem('impresora_offset_y')) || 0;
+        let printScale = parseFloat(localStorage.getItem('impresora_scale')) || 1.0;
+
+        function actualizarDisplayOffset() {
+            document.getElementById('offset-display').textContent = `${printOffsetX}mm, ${printOffsetY}mm`;
+            document.getElementById('scale-display').textContent = `${Math.round(printScale * 100)}%`;
+            // Aplicar variables CSS al root para que el @media print las tome
+            document.documentElement.style.setProperty('--print-offset-x', `${printOffsetX}mm`);
+            document.documentElement.style.setProperty('--print-offset-y', `${printOffsetY}mm`);
+            // Se le aplica la escala en Y para estirar verticalmente que es el problema común con las impresoras inkjet
+            document.documentElement.style.setProperty('--print-scale-y', printScale);
+        }
+
+        function ajustarImpresion(dx, dy) {
+            printOffsetX += dx;
+            printOffsetY += dy;
+            localStorage.setItem('impresora_offset_x', printOffsetX);
+            localStorage.setItem('impresora_offset_y', printOffsetY);
+            actualizarDisplayOffset();
+        }
+
+        function ajustarEscala(dScale) {
+            printScale += dScale;
+            // Evitar que la escala sea menor a 0.5 o mayor a 1.5 por seguridad
+            if (printScale < 0.5) printScale = 0.5;
+            if (printScale > 1.5) printScale = 1.5;
+            localStorage.setItem('impresora_scale', printScale);
+            actualizarDisplayOffset();
+        }
+
+        function resetearImpresion() {
+            printOffsetX = 0;
+            printOffsetY = 0;
+            printScale = 1.0;
+            localStorage.setItem('impresora_offset_x', 0);
+            localStorage.setItem('impresora_offset_y', 0);
+            localStorage.setItem('impresora_scale', 1.0);
+            actualizarDisplayOffset();
+        }
+
+        // Inicializar display
+        window.addEventListener('DOMContentLoaded', actualizarDisplayOffset);
 
     </script>
 </body>

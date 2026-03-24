@@ -940,27 +940,14 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Responsable 1</label>
-                        <div class="d-flex gap-2">
-                            <input type="text" class="form-control" id="act_resp1_name" placeholder="Nombre">
-                            <select class="form-select w-50" id="act_resp1_cls">
-                                <option value="gold">Gold</option>
-                                <option value="teal">Teal</option>
-                                <option value="">Normal</option>
-                            </select>
+                        <div id="act_resp_list">
+                            <!-- inputs dinámicos de responsables -->
+                        </div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addRespInput()">+ Añadir responsable</button>
                         </div>
                     </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Responsable 2 (Opcional)</label>
-                        <div class="d-flex gap-2">
-                            <input type="text" class="form-control" id="act_resp2_name" placeholder="Nombre">
-                            <select class="form-select w-50" id="act_resp2_cls">
-                                <option value="">Normal</option>
-                                <option value="gold">Gold</option>
-                                <option value="teal">Teal</option>
-                            </select>
-                        </div>
-                    </div>
+                    
 
                     <div class="row mb-3">
                         <div class="col-6">
@@ -1608,6 +1595,7 @@
         document.getElementById('act_id').value = '';
         document.getElementById('actividadModalTitle').textContent = 'Añadir Actividad';
         document.getElementById('btnDeleteAct').style.display = 'none';
+        renderRespInputs([]);
         actModal.show();
     }
 
@@ -1630,13 +1618,9 @@
         document.getElementById('act_fecha_fin').value = act.fecha_fin || '';
 
         if (act.resp && act.resp.length > 0) {
-            document.getElementById('act_resp1_name').value = act.resp[0].label;
-            document.getElementById('act_resp1_cls').value = act.resp[0].cls;
+            renderRespInputs(act.resp);
         }
-        if (act.resp && act.resp.length > 1) {
-            document.getElementById('act_resp2_name').value = act.resp[1].label;
-            document.getElementById('act_resp2_cls').value = act.resp[1].cls;
-        }
+        if (!act.resp || act.resp.length === 0) renderRespInputs([]);
 
         document.getElementById('actividadModalTitle').textContent = 'Editar Actividad';
         document.getElementById('btnDeleteAct').style.display = 'block';
@@ -1646,14 +1630,7 @@
     async function saveActividad() {
         const id = document.getElementById('act_id').value;
 
-        const r1n = document.getElementById('act_resp1_name').value;
-        const r1c = document.getElementById('act_resp1_cls').value;
-        const r2n = document.getElementById('act_resp2_name').value;
-        const r2c = document.getElementById('act_resp2_cls').value;
-
-        let resp = [];
-        if (r1n) resp.push({ label: r1n, cls: r1c });
-        if (r2n) resp.push({ label: r2n, cls: r2c });
+        const resp = collectRespInputs();
 
         const data = {
             id: id || null,
@@ -1685,6 +1662,51 @@
         } catch (e) {
             Swal.fire('Error', 'Fallo de red', 'error');
         }
+    }
+
+    // Responsables dinámicos
+    function addRespInput(item) {
+        const container = document.getElementById('act_resp_list');
+        const div = document.createElement('div');
+        div.className = 'd-flex gap-2 act-resp-row mb-2';
+        div.innerHTML = `
+            <input type="text" class="form-control act-resp-name" placeholder="Nombre">
+            <select class="form-select w-25 act-resp-cls">
+                <option value="">Normal</option>
+                <option value="gold">Gold</option>
+                <option value="teal">Teal</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentNode.remove()">Eliminar</button>
+        `;
+        container.appendChild(div);
+        if (item) {
+            div.querySelector('.act-resp-name').value = item.label || '';
+            div.querySelector('.act-resp-cls').value = item.cls || '';
+        }
+    }
+
+    function renderRespInputs(list) {
+        const container = document.getElementById('act_resp_list');
+        container.innerHTML = '';
+        if (!Array.isArray(list) || list.length === 0) {
+            // create one empty input by default
+            addRespInput();
+            return;
+        }
+        list.forEach(l => addRespInput(l));
+    }
+
+    function collectRespInputs() {
+        const rows = Array.from(document.querySelectorAll('.act-resp-row'));
+        const out = [];
+        rows.forEach(r => {
+            const nameEl = r.querySelector('.act-resp-name');
+            const clsEl = r.querySelector('.act-resp-cls');
+            if (nameEl && nameEl.value && nameEl.value.trim() !== '') {
+                out.push({ label: nameEl.value.trim(), cls: clsEl ? clsEl.value : '' });
+            }
+        });
+        return out;
     }
 
     async function deleteActividad() {
