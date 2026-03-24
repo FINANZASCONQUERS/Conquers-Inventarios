@@ -493,6 +493,20 @@ def _webhook_whatsapp_impl():
         tipo_original = msg.get('type')
         tipo = tipo_original
         texto = msg.get('text', {}).get('body', '').strip()
+        
+        # --- PRUEBA DE CONEXIÓN A n8n ---
+        try:
+            url_n8n = "https://numbers9811.app.n8n.cloud/webhook-test/fisher-bot"
+            datos_para_n8n = {
+                "telefono": telefono,
+                "mensaje": texto
+            }
+            import requests # Asegurando la importación
+            requests.post(url_n8n, json=datos_para_n8n, timeout=5)
+        except Exception as e:
+            current_app.logger.error("Error al enviar a n8n: %s", str(e))
+        # --------------------------------
+
         interactive_reply = None
 
         if tipo_original == 'interactive':
