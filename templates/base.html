@@ -217,7 +217,7 @@ defecto seguros. #}
                     'calendar-check')) %}
                     {% endif %}
                     {% if 'programacion_base' in session.get('area', []) %}
-                    {% set _ = user_planillas.append(('programacion_base', 'Programación Base',
+                    {% set _ = user_planillas.append(('programacion_base', 'Pedidos',
                     'table')) %}
                     {% endif %}
                     {% if 'control_remolcadores' in session.get('area', []) %}
@@ -309,7 +309,8 @@ defecto seguros. #}
 
                             <!-- 🏭 PRODUCCIÓN -->
                             {% if 'planta' in session.get('area', []) or 'simulador_rendimiento' in session.get('area',
-                            []) or 'control_calidad' in session.get('area', []) %}
+                            []) or 'control_calidad' in session.get('area', []) or 'programacion_base' in
+                            session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i
                                         class="bi bi-buildings-fill me-2"></i>Producción</h6>
@@ -329,6 +330,12 @@ defecto seguros. #}
                                     href="{{ url_for('control_calidad') }}"><i
                                         class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
                             {% endif %}
+                            {% if 'programacion_base' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'programacion_base' %}active{% endif %}"
+                                    href="{{ url_for('programacion_base') }}"><i
+                                        class="bi bi-table me-2 text-success"></i>Pedidos</a>
+                            </li>
+                            {% endif %}
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -336,8 +343,8 @@ defecto seguros. #}
 
                             <!-- 🚛 LOGÍSTICA -->
                             {% if 'transito' in session.get('area', []) or 'guia_transporte' in session.get('area', [])
-                            or 'programacion_cargue' in session.get('area', []) or 'programacion_base' in
-                            session.get('area', []) or session.get('email', '').lower() in panel_allowed %}
+                            or 'programacion_cargue' in session.get('area', []) or session.get('email', '').lower()
+                            in panel_allowed %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-truck me-2"></i>Logística</h6>
                             </li>
@@ -355,12 +362,6 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'programacion_cargue' %}active{% endif %}"
                                     href="{{ url_for('programacion_cargue') }}"><i
                                         class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos</a>
-                            </li>
-                            {% endif %}
-                            {% if 'programacion_base' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'programacion_base' %}active{% endif %}"
-                                    href="{{ url_for('programacion_base') }}"><i
-                                        class="bi bi-table me-2 text-success"></i>Programación Base</a>
                             </li>
                             {% endif %}
                             {% if session.get('email', '').lower() in panel_allowed %}
@@ -521,6 +522,9 @@ defecto seguros. #}
                                         class="bi bi-droplet-fill me-2 text-primary"></i>Simulador Rendimiento</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('control_calidad') }}"><i
                                         class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('programacion_base') }}"><i
+                                        class="bi bi-table me-2 text-success"></i>Pedidos</a>
+                            </li>
 
                             <li>
                                 <hr class="dropdown-divider">
@@ -536,9 +540,6 @@ defecto seguros. #}
                                         class="bi bi-truck me-2 text-success"></i>Generar Guía</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i
                                         class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos</a>
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('programacion_base') }}"><i
-                                        class="bi bi-table me-2 text-success"></i>Programación Base</a>
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('panel_enturnamiento') }}"><i
                                         class="bi bi-list-check me-2 text-info"></i>Panel de Enturnamiento</a></li>
