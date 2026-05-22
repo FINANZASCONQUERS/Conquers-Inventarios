@@ -82,6 +82,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- Módulo modelo optimización (nuevo) ---
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
+EXCEL_DEFAULT_LP = r"C:\Users\Juan Diego Ayala\OneDrive - conquerstrading\Documentos\ACTIVIDADES FINANCIERAS\MODELO MATEMATICO\Parametros.xlsx"
 
 # --- Blueprint para WhatsApp ---
 # TEMPORALMENTE DESHABILITADO por error de spacy
@@ -837,6 +838,33 @@ class ProgramacionCargue(db.Model):
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Nuevo: momento en que TODOS los campos de refinería quedaron completos (para iniciar conteo de 30 min)
     refineria_completado_en = db.Column(db.DateTime, nullable=True)
+
+
+class ProgramacionBase(db.Model):
+    __tablename__ = 'programacion_base'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha_cargue = db.Column(db.Date, nullable=False, default=date.today)
+    producto = db.Column(db.String(120))
+    cliente = db.Column(db.String(150))
+    destino = db.Column(db.String(150))
+    calidad = db.Column(db.String(20))
+    galones = db.Column(db.Float)
+
+    # Auditoría
+    ultimo_editor = db.Column(db.String(100))
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+def _init_programacion_base_table():
+    from sqlalchemy import inspect
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'programacion_base' not in insp.get_table_names():
+            ProgramacionBase.__table__.create(db.engine)
+
+
+_init_programacion_base_table()
 
 # ---------------- BLOQUEO DE CELDAS (EDICIÓN EN TIEMPO REAL) -----------------
 class ProgramacionCargueLock(db.Model):
@@ -2177,7 +2205,7 @@ USUARIOS = {
     "password": generate_password_hash("Conquers2025"),
     "nombre": "Omar Morales",
     "rol": "viewer",
-    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"]
+    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base"]
 },
 
     "david.restrepo@conquerstrading.com": {
@@ -2199,21 +2227,21 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes"] 
+        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base"] 
     },
     # Juliana (Editor): Tiene acceso a Tránsito, Generar Guía y SIZA Solicitante.
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante"]
+        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base"]
     },
     # Samantha (Editor): Tiene acceso a Generar Guía y SIZA Solicitante.
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["guia_transporte", "programacion_cargue", "siza_solicitante"]
+        "area": ["guia_transporte", "programacion_cargue", "siza_solicitante", "programacion_base"]
     },
 
     "comex@conquerstrading.com": {
@@ -2235,7 +2263,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Baron",
         "rol": "editor",
-        "area": ["siza_solicitante"]
+        "area": ["siza_solicitante", "programacion_base"]
     },
 
     "juandiego.cuadros@conquerstrading.com": {
@@ -2249,7 +2277,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Brando",
         "rol": "editor",
-        "area": ["siza_solicitante"]
+        "area": ["siza_solicitante", "programacion_base"]
     },
 
     "felipe.delavega@conquerstrading.com": {
@@ -2269,14 +2297,14 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Ana Maria Gallo",
         "rol": "logistica_destino",
-        "area": ["programacion_cargue","gestion_compras", "planilla_precios"]
+        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base"]
     },
 
         "refinery.control@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta"] 
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base"] 
     },
         "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -4468,170 +4496,468 @@ def eliminar_evento_remolcador(id):
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
 # ================== MODELO OPTIMIZACIÓN ==================
-@login_required
-@permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion', methods=['GET','POST'])
-def modelo_optimizacion_page():
-    from flask import current_app
-    error = None
-    # Restricción extra: solo Felipe y German (y admin)
-    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
-    if session.get('rol') != 'admin' and session.get('email') not in allowed:
-        flash('No tienes permiso para este módulo.', 'danger')
-        return redirect(url_for('home'))
-    resultados = None
-    grafico_base64 = None
-    grafico_div = None
-    grafico_div = None
-    grafico_div = None
-    grafico_div = None
-    grafico_div = None
-    excel_descargable = False
-    # Importes numéricos (el template aplica el formato)
-    total_volumen = 0.0
-    total_costo_import = 0.0
-    brent_valor = None
-    trm_valor = None
-    generado_en = datetime.utcnow().strftime('%d/%m/%Y %H:%M:%S')
-    generar_excel = 'si'
-    component_data = []
-    componentes_cols = [
-        'USD/BBL CRUDO + FLETE Marino', 'Remolcador a CZF', 'USD/BBL Ingreso a CZF (Alm+OperPort 2)',
-        'USD/BBL %FIN mes', 'USD/BBL Alm+OperPort 1', 'Nacionalización USD/BBL', 'USD/Bbl Exportación', 'Transp Terrestre a CZF'
-    ]
-    componentes_alias = [
-        'CRUDO + FLETE', 'REMOLCADOR', 'INGRESO CZF', 'FINANCIACIÓN', 'ALM+OPER PORT', 'NACIONALIZACIÓN', 'EXPORTACIÓN', 'TRANSP TERRESTRE'
-    ]
-    component_stats = []
-    ranking_spread_imp = []
-    ranking_spread_exp = []
-    if request.method == 'POST':
-        generar_excel = request.form.get('generar_excel','si')
+def _normalize_lp_text(value):
+    if pd.isna(value):
+        return ''
+    return str(value).strip().upper()
+
+
+def _safe_excel_rows(index_like):
+    rows = []
+    for idx in index_like:
         try:
-            excel_path = EXCEL_DEFAULT
-            if 'archivo_excel' in request.files and request.files['archivo_excel'].filename:
-                # Guardar temporalmente
-                up_file = request.files['archivo_excel']
-                tmp_path = os.path.join(BASE_DIR, 'upload_modelo_temp.xlsx')
-                up_file.save(tmp_path)
-                excel_path = tmp_path
-            data = ejecutar_modelo(excel_path, generar_excel == 'si')
-            resultados = data['resumen']
-            grafico_base64 = data['grafico_base64']
-            # Enviar valores crudos como números; el template se encarga del formato
-            brent_valor = float(data['BRENT']) if data['BRENT'] is not None else None
-            trm_valor = float(data.get('TRM')) if data.get('TRM') is not None else None
-            total_volumen = float(sum(r['Volumen'] for r in resultados))
-            total_costo_import = float(sum(r['CostoTotalImp'] for r in resultados))
-            # Construir datos detallados para gráfica interactiva
-            df_det = data['df_result']
-            if not df_det.empty:
-                # Incluimos 'Flete Marino' (valor total) para poder calcular USD/BBL en el tooltip
-                extra_cols = ['Flete Marino'] if 'Flete Marino' in df_det.columns else []
-                sub = df_det[['ID','Producto','Volumen Compra BBL','Puerto Llegada'] + extra_cols + componentes_cols].copy()
-                for _, row in sub.iterrows():
-                    comp_entry = {
-                        'ID': row['ID'],
-                        'Producto': row['Producto'],
-                        'Volumen Compra BBL': float(row['Volumen Compra BBL'] or 0) if row['Volumen Compra BBL'] is not None else 0,
-                        'Puerto Llegada': row['Puerto Llegada'] or ''
-                    }
-                    # Guardamos Flete Marino total para calcular USD/BBL en el frontend (si existe)
-                    if 'Flete Marino' in row.index:
-                        try:
-                            comp_entry['Flete Marino'] = float(row['Flete Marino'] or 0)
-                        except Exception:
-                            comp_entry['Flete Marino'] = 0.0
-                    for col in componentes_cols:
-                        val = row[col]
-                        try:
-                            comp_entry[col] = float(val) if val is not None else 0.0
-                        except Exception:
-                            comp_entry[col] = 0.0
-                    component_data.append(comp_entry)
-                # Estadísticas comparativas por componente
-                for alias, col in zip(componentes_alias, componentes_cols):
-                    serie = df_det[col].astype(float).fillna(0)
-                    component_stats.append({
-                        'alias': alias,
-                        'min': round(float(serie.min()),4),
-                        'max': round(float(serie.max()),4),
-                        'avg': round(float(serie.mean()),4)
-                    })
-                # Rankings spreads
-                if 'Spread Total on Brent IMPORTACIONES' in df_det.columns:
-                    ranking_spread_imp = (
-                        df_det[['ID','Producto','Spread Total on Brent IMPORTACIONES']]
-                        .rename(columns={'Spread Total on Brent IMPORTACIONES':'valor'})
-                        .sort_values('valor', ascending=False)
-                        .head(10)
-                        .to_dict(orient='records')
-                    )
-                if 'Spread Exportaciones' in df_det.columns:
-                    ranking_spread_exp = (
-                        df_det[['ID','Producto','Spread Exportaciones']]
-                        .rename(columns={'Spread Exportaciones':'valor'})
-                        .sort_values('valor', ascending=False)
-                        .head(10)
-                        .to_dict(orient='records')
-                    )
-            if data['excel_bytes']:
-                # Guardar en archivo temporal (no en sesión para evitar exceder tamaño cookie)
-                from uuid import uuid4
-                tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo_excel')
-                os.makedirs(tmp_dir, exist_ok=True)
-                # Limpieza simple de archivos viejos (> 2 horas)
-                try:
-                    import time
-                    now = time.time()
-                    for fname in os.listdir(tmp_dir):
-                        fpath = os.path.join(tmp_dir, fname)
-                        if os.path.isfile(fpath) and now - os.path.getmtime(fpath) > 7200:
-                            try: os.remove(fpath)
-                            except Exception: pass
-                except Exception:
-                    pass
-                filename = f"modelo_{uuid4().hex}.xlsx"
-                file_path = os.path.join(tmp_dir, filename)
-                with open(file_path, 'wb') as f:
-                    f.write(data['excel_bytes'])
-                session['modelo_excel_path'] = file_path
-                excel_descargable = True
-        except Exception as e:
-            current_app.logger.error(f"Error modelo optimización: {e}")
-            error = str(e)
-    return render_template('modelo_optimizacion.html',
-                           nombre=session.get('nombre'),
-                           resultados=resultados,
-                           grafico_base64=grafico_base64,
-                           excel_descargable=excel_descargable,
-                           total_volumen=total_volumen,
-                           total_costo_import=total_costo_import,
-                           brent_valor=brent_valor,
-                           trm_valor=trm_valor,
-                           generado_en=generado_en,
-                           generar_excel=generar_excel,
-                           component_data=component_data,
-                           componentes_cols=componentes_cols,
-                           componentes_alias=componentes_alias,
-                           component_stats=component_stats,
-                           ranking_spread_imp=ranking_spread_imp,
-                           ranking_spread_exp=ranking_spread_exp,
-                           error=error)
+            rows.append(int(idx) + 2)
+        except Exception:
+            continue
+    return sorted(set(rows))
+
+
+def validar_parametros_modelo_optimizacion(excel_path: str) -> dict:
+    validation = {
+        'is_valid': True,
+        'errors': [],
+        'warnings': []
+    }
+
+    def add_issue(bucket: str, code: str, message: str, rows=None):
+        issue = {'code': code, 'message': message}
+        if rows:
+            issue['rows'] = rows
+        validation[bucket].append(issue)
+
+    try:
+        xls = pd.ExcelFile(excel_path)
+    except Exception as exc:
+        add_issue('errors', 'file_read_error', f'No se pudo leer el archivo de parámetros: {exc}')
+        validation['is_valid'] = False
+        return validation
+
+    required_sheets = ['3.COMPRAS', '11.REL_CRUDO_MEZCLA']
+    missing_sheets = [s for s in required_sheets if s not in xls.sheet_names]
+    if missing_sheets:
+        add_issue(
+            'errors',
+            'missing_sheets',
+            f'Faltan hojas requeridas en el archivo de parámetros: {", ".join(missing_sheets)}.'
+        )
+        validation['is_valid'] = False
+        return validation
+
+    # Validaciones críticas de 3.COMPRAS
+    compras = pd.read_excel(xls, sheet_name='3.COMPRAS')
+    compras_cols_required = ['CRUDO O PRODUCTO', 'ORIGEN', 'Volumen Minimo a Compra (BPD)', 'Volumen Disponible a Compra (BPD)']
+    missing_cols_comp = [c for c in compras_cols_required if c not in compras.columns]
+    if missing_cols_comp:
+        add_issue(
+            'errors',
+            'compras_missing_columns',
+            f'En 3.COMPRAS faltan columnas requeridas: {", ".join(missing_cols_comp)}.'
+        )
+    else:
+        vol_min = pd.to_numeric(compras['Volumen Minimo a Compra (BPD)'], errors='coerce')
+        vol_max = pd.to_numeric(compras['Volumen Disponible a Compra (BPD)'], errors='coerce')
+        bad_min_max = compras[(vol_min.notna()) & (vol_max.notna()) & (vol_min > vol_max)]
+        if not bad_min_max.empty:
+            add_issue(
+                'errors',
+                'compras_min_gt_max',
+                'En 3.COMPRAS hay filas con Volumen Minimo a Compra (BPD) mayor que Volumen Disponible a Compra (BPD).',
+                _safe_excel_rows(bad_min_max.index)
+            )
+
+        compras_keys = compras[['CRUDO O PRODUCTO', 'ORIGEN']].copy()
+        compras_keys['CRUDO O PRODUCTO'] = compras_keys['CRUDO O PRODUCTO'].map(_normalize_lp_text)
+        compras_keys['ORIGEN'] = compras_keys['ORIGEN'].map(_normalize_lp_text)
+        dup_comp = compras_keys.duplicated(subset=['CRUDO O PRODUCTO', 'ORIGEN'], keep=False)
+        if dup_comp.any():
+            add_issue(
+                'errors',
+                'compras_duplicate_key',
+                'En 3.COMPRAS hay claves duplicadas por (CRUDO O PRODUCTO, ORIGEN).',
+                _safe_excel_rows(compras.index[dup_comp])
+            )
+
+    # Validaciones críticas de 11.REL_CRUDO_MEZCLA
+    rel = pd.read_excel(xls, sheet_name='11.REL_CRUDO_MEZCLA')
+    rel_cols_required = ['FLUJO', 'CRUDO ORIGEN', 'TIPO FLUJO', 'DESTINO', 'MEZCLA A PERTENECER']
+    missing_cols_rel = [c for c in rel_cols_required if c not in rel.columns]
+    if missing_cols_rel:
+        add_issue(
+            'errors',
+            'rel_missing_columns',
+            f'En 11.REL_CRUDO_MEZCLA faltan columnas requeridas: {", ".join(missing_cols_rel)}.'
+        )
+    else:
+        empty_rows = rel.isna().all(axis=1)
+        if empty_rows.any():
+            add_issue(
+                'warnings',
+                'rel_empty_rows',
+                'En 11.REL_CRUDO_MEZCLA se detectaron filas completamente vacías.',
+                _safe_excel_rows(rel.index[empty_rows])
+            )
+
+        rel_non_empty = rel[~empty_rows].copy()
+        rel_norm = rel_non_empty.copy()
+        for col in ['FLUJO', 'CRUDO ORIGEN', 'TIPO FLUJO', 'DESTINO', 'MEZCLA A PERTENECER']:
+            rel_norm[col] = rel_norm[col].map(_normalize_lp_text)
+
+        valid_types = {'CRUDO', 'PRODUCTO COMPRADO', 'PRODUCTO REFINADO'}
+        bad_type_mask = ~rel_norm['TIPO FLUJO'].isin(valid_types)
+        if bad_type_mask.any():
+            add_issue(
+                'errors',
+                'rel_invalid_tipo_flujo',
+                'En 11.REL_CRUDO_MEZCLA hay filas con TIPO FLUJO fuera del catálogo permitido.',
+                _safe_excel_rows(rel_norm.index[bad_type_mask])
+            )
+
+        mask_cp = rel_norm['TIPO FLUJO'].isin(['CRUDO', 'PRODUCTO COMPRADO'])
+        cp_missing_key = mask_cp & (
+            (rel_norm['FLUJO'] == '') |
+            (rel_norm['DESTINO'] == '') |
+            (rel_norm['MEZCLA A PERTENECER'] == '')
+        )
+        if cp_missing_key.any():
+            add_issue(
+                'errors',
+                'rel_missing_key_crudo_producto',
+                'En 11.REL_CRUDO_MEZCLA hay filas de CRUDO/PRODUCTO COMPRADO con clave incompleta (FLUJO, DESTINO, MEZCLA A PERTENECER).',
+                _safe_excel_rows(rel_norm.index[cp_missing_key])
+            )
+
+        dup_cp = mask_cp & rel_norm.duplicated(subset=['FLUJO', 'DESTINO', 'MEZCLA A PERTENECER'], keep=False)
+        if dup_cp.any():
+            add_issue(
+                'errors',
+                'rel_duplicate_key_crudo_producto',
+                'En 11.REL_CRUDO_MEZCLA hay relaciones duplicadas para CRUDO/PRODUCTO COMPRADO por (FLUJO, DESTINO, MEZCLA A PERTENECER).',
+                _safe_excel_rows(rel_norm.index[dup_cp])
+            )
+
+        mask_ref = rel_norm['TIPO FLUJO'].eq('PRODUCTO REFINADO')
+        ref_missing_key = mask_ref & (
+            (rel_norm['FLUJO'] == '') |
+            (rel_norm['CRUDO ORIGEN'] == '') |
+            (rel_norm['DESTINO'] == '') |
+            (rel_norm['MEZCLA A PERTENECER'] == '')
+        )
+        if ref_missing_key.any():
+            add_issue(
+                'errors',
+                'rel_missing_key_refinado',
+                'En 11.REL_CRUDO_MEZCLA hay filas de PRODUCTO REFINADO con clave incompleta (FLUJO, CRUDO ORIGEN, DESTINO, MEZCLA A PERTENECER).',
+                _safe_excel_rows(rel_norm.index[ref_missing_key])
+            )
+
+        dup_ref = mask_ref & rel_norm.duplicated(
+            subset=['FLUJO', 'CRUDO ORIGEN', 'DESTINO', 'MEZCLA A PERTENECER'],
+            keep=False
+        )
+        if dup_ref.any():
+            add_issue(
+                'errors',
+                'rel_duplicate_key_refinado',
+                'En 11.REL_CRUDO_MEZCLA hay relaciones duplicadas para PRODUCTO REFINADO por (FLUJO, CRUDO ORIGEN, DESTINO, MEZCLA A PERTENECER).',
+                _safe_excel_rows(rel_norm.index[dup_ref])
+            )
+
+    validation['is_valid'] = len(validation['errors']) == 0
+    return validation
+
+
+def _normalize_header_name(value):
+    text = '' if value is None else str(value)
+    text = re.sub(r'\s+', ' ', text.strip())
+    return text.upper()
+
+
+def _parse_premium_overrides(raw_payload):
+    if not raw_payload:
+        return []
+
+    try:
+        data = json.loads(raw_payload)
+    except Exception as exc:
+        raise ValueError(f'Formato inválido en premium_overrides_json: {exc}')
+
+    if not isinstance(data, list):
+        raise ValueError('premium_overrides_json debe ser una lista de objetos.')
+
+    cleaned = {}
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+
+        flujo = str(item.get('flujo') or item.get('flow') or '').strip()
+        origen = str(item.get('origen') or item.get('origin') or '').strip()
+        premium_raw = item.get('premium_usd_bbl', item.get('premium', item.get('value')))
+
+        if not flujo or not origen:
+            continue
+
+        try:
+            premium = float(premium_raw)
+        except Exception:
+            continue
+
+        if abs(premium) < 1e-9:
+            continue
+
+        key = (_normalize_lp_text(flujo), _normalize_lp_text(origen))
+        cleaned[key] = {
+            'flujo': flujo,
+            'origen': origen,
+            'premium_usd_bbl': premium
+        }
+
+    return list(cleaned.values())
+
+
+def _apply_premium_overrides_to_excel(excel_path: str, premium_overrides: list, output_dir: str):
+    if not premium_overrides:
+        return excel_path, []
+
+    wb = openpyxl.load_workbook(excel_path)
+    if '3.COMPRAS' not in wb.sheetnames:
+        return excel_path, []
+
+    ws = wb['3.COMPRAS']
+    header_map = {}
+    for col in range(1, ws.max_column + 1):
+        header_value = ws.cell(row=1, column=col).value
+        header_map[_normalize_header_name(header_value)] = col
+
+    col_flow = next((c for h, c in header_map.items() if 'CRUDO O PRODUCTO' in h), None)
+    col_origin = next((c for h, c in header_map.items() if h == 'ORIGEN' or h.endswith(' ORIGEN')), None)
+    col_price = next((c for h, c in header_map.items() if 'PRECIO DE COMPRA CALCULADO' in h), None)
+
+    if not col_flow or not col_origin or not col_price:
+        return excel_path, []
+
+    df_compras = pd.read_excel(excel_path, sheet_name='3.COMPRAS')
+    flow_col_name = next((c for c in df_compras.columns if _normalize_header_name(c).startswith('CRUDO O PRODUCTO')), None)
+    origin_col_name = next((c for c in df_compras.columns if _normalize_header_name(c) == 'ORIGEN'), None)
+    price_col_name = next((c for c in df_compras.columns if 'PRECIO DE COMPRA CALCULADO' in _normalize_header_name(c)), None)
+
+    base_price_map = {}
+    if flow_col_name and origin_col_name and price_col_name:
+        for _, row in df_compras.iterrows():
+            flow_key = _normalize_lp_text(row.get(flow_col_name))
+            origin_key = _normalize_lp_text(row.get(origin_col_name))
+            if not flow_key or not origin_key:
+                continue
+            try:
+                base_price_map[(flow_key, origin_key)] = float(row.get(price_col_name))
+            except Exception:
+                continue
+
+    override_map = {
+        (_normalize_lp_text(item['flujo']), _normalize_lp_text(item['origen'])): float(item['premium_usd_bbl'])
+        for item in premium_overrides
+    }
+
+    applied = []
+    for row_idx in range(2, ws.max_row + 1):
+        flow_raw = ws.cell(row=row_idx, column=col_flow).value
+        origin_raw = ws.cell(row=row_idx, column=col_origin).value
+        key = (_normalize_lp_text(flow_raw), _normalize_lp_text(origin_raw))
+
+        if key not in override_map:
+            continue
+
+        premium = override_map[key]
+        base_price = base_price_map.get(key)
+        if base_price is None:
+            try:
+                base_price = float(ws.cell(row=row_idx, column=col_price).value)
+            except Exception:
+                continue
+
+        adjusted_price = base_price + premium
+        ws.cell(row=row_idx, column=col_price).value = adjusted_price
+
+        applied.append({
+            'excel_row': row_idx,
+            'flujo': '' if flow_raw is None else str(flow_raw),
+            'origen': '' if origin_raw is None else str(origin_raw),
+            'premium_usd_bbl': premium,
+            'precio_base_usd_bbl': base_price,
+            'precio_ajustado_usd_bbl': adjusted_price
+        })
+
+    if not applied:
+        return excel_path, []
+
+    os.makedirs(output_dir, exist_ok=True)
+    out_path = os.path.join(output_dir, f"param_premium_{uuid.uuid4().hex}.xlsx")
+    wb.save(out_path)
+    return out_path, applied
+
 
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/descargar')
-def descargar_resultado_modelo():
+@app.route('/modelo-optimizacion', methods=['GET'])
+def modelo_optimizacion_page():
     allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
     if session.get('rol') != 'admin' and session.get('email') not in allowed:
         flash('No tienes permiso para este módulo.', 'danger')
         return redirect(url_for('home'))
-    file_path = session.get('modelo_excel_path')
-    if not file_path or not os.path.isfile(file_path):
-        flash('No hay archivo para descargar', 'warning')
+        
+    result_id = session.get('modelo_result_id')
+    resultados = None
+    if result_id:
+        tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+        cache_file_path = os.path.join(tmp_dir, f"res_{result_id}.json")
+        if os.path.isfile(cache_file_path):
+            try:
+                import json
+                with open(cache_file_path, 'r', encoding='utf-8') as f:
+                    cache_data = json.load(f)
+                resultados = cache_data.get('resultados')
+            except Exception:
+                pass
+                
+    return render_template('modelo_optimizacion.html', 
+                           nombre=session.get('nombre'),
+                           cached_resultados=resultados,
+                           cached_result_id=result_id)
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/ejecutar', methods=['POST'])
+def modelo_optimizacion_ejecutar():
+    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
+    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+        
+    try:
+        from modelo_optimizacion_core import ejecutar_modelo as ejecutar_core
+        from uuid import uuid4
+        import json
+        
+        excel_path = EXCEL_DEFAULT_LP
+        uploaded_file = request.files.get('archivo_excel')
+        premium_payload = request.form.get('premium_overrides_json', '')
+        try:
+            premium_overrides = _parse_premium_overrides(premium_payload)
+        except ValueError as exc:
+            return jsonify(success=False, error=str(exc)), 400
+        premium_applied = []
+
+        temp_excel_path = None
+        if uploaded_file and uploaded_file.filename:
+            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+            os.makedirs(tmp_dir, exist_ok=True)
+            temp_excel_path = os.path.join(tmp_dir, f"param_{uuid4().hex}.xlsx")
+            uploaded_file.save(temp_excel_path)
+            excel_path = temp_excel_path
+
+        if premium_overrides:
+            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+            excel_path, premium_applied = _apply_premium_overrides_to_excel(
+                excel_path,
+                premium_overrides,
+                tmp_dir
+            )
+
+        validation = validar_parametros_modelo_optimizacion(excel_path)
+        if not validation.get('is_valid'):
+            return jsonify(
+                success=False,
+                error='Se detectaron inconsistencias en el archivo de parámetros. Corrige los errores antes de ejecutar el modelo.',
+                validation=validation
+            ), 400
+            
+        resultados = ejecutar_core(excel_path)
+        if premium_applied:
+            resultados['premium_overrides_applied'] = premium_applied
+        
+        result_id = uuid4().hex
+        tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+        os.makedirs(tmp_dir, exist_ok=True)
+        
+        # Clean up old files in tmp_modelo
+        try:
+            import time
+            now = time.time()
+            for fname in os.listdir(tmp_dir):
+                fpath = os.path.join(tmp_dir, fname)
+                if os.path.isfile(fpath) and now - os.path.getmtime(fpath) > 7200:
+                    try:
+                        os.remove(fpath)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+            
+        cache_data = {
+            'resultados': resultados,
+            'validation': validation,
+            'premium_overrides_applied': premium_applied,
+            'excel_path': excel_path if (temp_excel_path or premium_applied) else None
+        }
+        
+        cache_file_path = os.path.join(tmp_dir, f"res_{result_id}.json")
+        with open(cache_file_path, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, ensure_ascii=False)
+            
+        session['modelo_result_id'] = result_id
+        
+        return jsonify(success=True, result_id=result_id, resultados=resultados, validation=validation)
+        
+    except Exception as e:
+        app.logger.error(f"Error al ejecutar modelo: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/descargar-informe', methods=['POST'])
+def modelo_optimizacion_descargar_reporte():
+    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
+    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+        flash('No tienes permiso para este módulo.', 'danger')
+        return redirect(url_for('home'))
+        
+    nombre_escenario = request.form.get('nombre_escenario', 'Escenario Base')
+    result_id = session.get('modelo_result_id')
+    
+    if not result_id:
+        flash('No hay resultados de optimización activos para generar el reporte.', 'warning')
         return redirect(url_for('modelo_optimizacion_page'))
-    return send_file(file_path, as_attachment=True, download_name='Resultados_modelo.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        
+    tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+    cache_file_path = os.path.join(tmp_dir, f"res_{result_id}.json")
+    
+    if not os.path.isfile(cache_file_path):
+        flash('Los resultados de optimización han expirado. Por favor, ejecute el modelo nuevamente.', 'warning')
+        return redirect(url_for('modelo_optimizacion_page'))
+        
+    try:
+        import json
+        with open(cache_file_path, 'r', encoding='utf-8') as f:
+            cache_data = json.load(f)
+            
+        resultados = cache_data['resultados']
+        uploaded_excel_path = cache_data['excel_path']
+        
+        excel_path_param = uploaded_excel_path if uploaded_excel_path else EXCEL_DEFAULT_LP
+        
+        from modelo_optimizacion_report import generar_informe_excel
+        report_bytes = generar_informe_excel(nombre_escenario, resultados, excel_path_param=excel_path_param)
+        
+        return send_file(
+            io.BytesIO(report_bytes),
+            as_attachment=True,
+            download_name=f"Resultados_{nombre_escenario.replace(' ', '_')}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        app.logger.error(f"Error al generar reporte Excel: {e}")
+        flash(f'Error al generar el reporte Excel: {str(e)}', 'danger')
+        return redirect(url_for('modelo_optimizacion_page'))
+
 
        
 @login_required
@@ -9890,6 +10216,13 @@ def home_programacion():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
+
+@login_required
+@app.route('/home-programacion-base')
+def home_programacion_base():
+    """Página de inicio unificada - redirecciona a home global."""
+    return redirect(url_for('home_global'))
+
 @login_required
 @permiso_requerido('programacion_cargue')
 @app.route('/programacion-cargue')
@@ -9903,6 +10236,23 @@ def programacion_cargue():
                            nombre=session.get('nombre'),
                            lista_clientes=clientes,
                            lista_conductores=conductores)
+
+
+@login_required
+@permiso_requerido('programacion_base')
+@app.route('/programacion-base')
+def programacion_base():
+    """Muestra la página base de programación de cargue con columnas reducidas."""
+    clientes = cargar_clientes()
+    productos = cargar_productos()
+    return render_template(
+        'programacion_base.html',
+        rol_usuario=session.get('rol'),
+        email_usuario=session.get('email'),
+        nombre=session.get('nombre'),
+        lista_clientes=clientes,
+        lista_productos=productos
+    )
 
 @login_required
 @app.route('/api/conductores', methods=['GET'])
@@ -10142,6 +10492,111 @@ def actualizar_conductor(cedula):
     except Exception as e:
         current_app.logger.error(f"Error actualizando conductor: {e}")
         return jsonify(success=False, message=str(e)), 500
+
+
+PROGRAMACION_BASE_ALLOWED_EMAILS = {
+    'amariagallo@conquerstrading.com',
+    'oci@conquerstrading.com',
+    'carlos.baron@conquerstrading.com',
+    'omar.morales@conquerstrading.com',
+    'production@conquerstrading.com',
+    'logistic@conquerstrading.com',
+    'ops@conquerstrading.com',
+    'brando@conquerstrading.com',
+    'refinery.control@conquerstrading.com'
+}
+
+
+def _campos_editables_programacion_base(email_usuario, rol_usuario):
+    campos = ['fecha_cargue', 'producto', 'cliente', 'destino', 'calidad', 'galones']
+    if rol_usuario == 'admin':
+        return campos
+    if (email_usuario or '').lower() in PROGRAMACION_BASE_ALLOWED_EMAILS:
+        return campos
+    return []
+
+
+@login_required
+@permiso_requerido('programacion_base')
+@app.route('/api/programacion-base', methods=['GET', 'POST'])
+def handle_programacion_base():
+    if request.method == 'POST':
+        nuevo = ProgramacionBase(ultimo_editor=session.get('nombre'))
+        db.session.add(nuevo)
+        db.session.commit()
+        return jsonify(success=True, message='Nueva fila creada.', id=nuevo.id)
+
+    registros = ProgramacionBase.query.order_by(
+        ProgramacionBase.fecha_cargue.desc(),
+        ProgramacionBase.id.desc()
+    ).limit(500).all()
+
+    data = []
+    for r in registros:
+        data.append({
+            'id': r.id,
+            'fecha_cargue': r.fecha_cargue.isoformat() if r.fecha_cargue else None,
+            'producto': r.producto,
+            'cliente': r.cliente,
+            'destino': r.destino,
+            'calidad': r.calidad,
+            'galones': r.galones,
+            'ultimo_editor': r.ultimo_editor,
+            'fecha_actualizacion': r.fecha_actualizacion.isoformat() if r.fecha_actualizacion else None,
+        })
+
+    return jsonify(data)
+
+
+@login_required
+@permiso_requerido('programacion_base')
+@app.route('/api/programacion-base/<int:id>', methods=['PUT', 'DELETE'])
+def update_programacion_base(id):
+    registro = ProgramacionBase.query.get_or_404(id)
+
+    campos_permitidos = _campos_editables_programacion_base(session.get('email'), session.get('rol'))
+    if not campos_permitidos:
+        return jsonify(success=False, message='No tienes permisos para editar.'), 403
+
+    if request.method == 'DELETE':
+        try:
+            db.session.delete(registro)
+            db.session.commit()
+            return jsonify(success=True, message='Registro eliminado correctamente.')
+        except Exception as e:
+            db.session.rollback()
+            return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
+
+    data = request.get_json() or {}
+
+    try:
+        for campo, valor in data.items():
+            if campo not in campos_permitidos:
+                continue
+
+            if campo == 'fecha_cargue':
+                setattr(registro, campo, date.fromisoformat(valor) if valor else date.today())
+            elif campo == 'galones':
+                try:
+                    setattr(registro, campo, float(valor) if valor not in (None, '') else None)
+                except (ValueError, TypeError):
+                    setattr(registro, campo, None)
+            elif campo == 'calidad':
+                calidad = (str(valor).strip().upper() if valor is not None else '')
+                if calidad in ('LIVIANA', 'PESADA'):
+                    setattr(registro, campo, calidad)
+                else:
+                    setattr(registro, campo, None)
+            else:
+                setattr(registro, campo, str(valor).strip() if valor is not None else None)
+
+        registro.ultimo_editor = session.get('nombre')
+        db.session.commit()
+        return jsonify(success=True, message='Registro actualizado correctamente.')
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
 
 @login_required
 @permiso_requerido('programacion_cargue')

@@ -1,0 +1,1433 @@
+{% extends "base.html" %}
+{% block title %}Programacion Base{% endblock %}
+{% block container_class %}container-fluid p-0{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-2 px-2 programacion-base-page" style="max-width: 100%;">
+    <style>
+        :root {
+            --pb-primary: #0b8552;
+            --pb-primary-dark: #086b42;
+            --pb-primary-gradient: linear-gradient(135deg, #0b8552 0%, #0e9d62 100%);
+            --pb-border: #e3e6f0;
+            --pb-bg-soft: #f8f9fc;
+            --pb-header-green: #a8cf8a;
+            --pb-header-green-dark: #8fba6f;
+        }
+
+        .programacion-base-page {
+            background: linear-gradient(180deg, #f4f6f9 0%, #ffffff 100%);
+            min-height: 100vh;
+            padding-bottom: 2rem;
+        }
+
+        .page-header {
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.25rem;
+            border-left: 4px solid var(--pb-primary);
+        }
+
+        .icon-box {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            box-shadow: 0 4px 12px rgba(11, 133, 82, 0.25);
+        }
+
+        .bg-gradient-primary {
+            background: var(--pb-primary-gradient);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin: 0;
+        }
+
+        .btn-modern {
+            padding: 0.625rem 1.2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-modern.btn-primary {
+            background: var(--pb-primary);
+            border-color: var(--pb-primary);
+            color: white;
+        }
+
+        .btn-modern.btn-primary:hover {
+            background: var(--pb-primary-dark);
+            border-color: var(--pb-primary-dark);
+        }
+
+        .card-modern {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            background: white;
+        }
+
+        .card-header-modern {
+            background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+            border-bottom: 3px solid var(--pb-primary);
+            padding: 1.15rem 1.4rem;
+        }
+
+        .header-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(11, 133, 82, 0.1) 0%, rgba(11, 133, 82, 0.15) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--pb-primary);
+            font-size: 1.15rem;
+        }
+
+        .card-title-modern {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .badge-modern {
+            padding: 0.45rem 0.9rem;
+            border-radius: 1.5rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            letter-spacing: 0.3px;
+            background: linear-gradient(135deg, rgba(11, 133, 82, 0.12) 0%, rgba(11, 133, 82, 0.2) 100%);
+            color: var(--pb-primary);
+            border: 1px solid rgba(11, 133, 82, 0.25);
+        }
+
+        .table-responsive-modern {
+            max-height: calc(100vh - 290px);
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 2px solid var(--pb-border);
+            border-radius: 0 0 1rem 1rem;
+        }
+
+        .table-modern {
+            margin-bottom: 0;
+            font-size: 0.9rem;
+        }
+
+        .thead-modern th {
+            position: sticky;
+            top: 0;
+            background: linear-gradient(180deg, var(--pb-header-green) 0%, var(--pb-header-green-dark) 100%);
+            color: #1f2d1f;
+            z-index: 10;
+            font-size: 0.82rem;
+            padding: 0.9rem 0.8rem;
+            text-align: center;
+            font-weight: 700;
+            border: 1px solid #7e9f69;
+            white-space: nowrap;
+        }
+
+        .tbody-modern td {
+            padding: 0.45rem;
+            border-color: #e9ecef !important;
+            vertical-align: middle;
+            background: #fff;
+            color: #1f2d1f;
+        }
+
+        .tbody-modern tr:nth-child(odd) td {
+            background: #fcfdfb;
+        }
+
+        .base-input,
+        .base-select {
+            width: 100%;
+            border: 1px solid transparent;
+            border-radius: 0.5rem;
+            background: rgba(11, 133, 82, 0.04);
+            padding: 0.4rem 0.55rem;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            color: #1f2d1f;
+            -webkit-text-fill-color: #1f2d1f;
+        }
+
+        .base-input::placeholder {
+            color: #6c757d;
+            -webkit-text-fill-color: #6c757d;
+        }
+
+        .base-select option {
+            color: #1f2d1f;
+            background: #ffffff;
+        }
+
+        .base-input:hover,
+        .base-select:hover {
+            border-color: rgba(11, 133, 82, 0.25);
+            background: rgba(11, 133, 82, 0.08);
+        }
+
+        .base-input:focus,
+        .base-select:focus {
+            outline: none;
+            border-color: var(--pb-primary);
+            box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.14);
+            background: #fff;
+        }
+
+        .base-input.is-saving,
+        .base-select.is-saving {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .base-input.is-saved,
+        .base-select.is-saved {
+            background: #d1e7dd;
+            border-color: #198754;
+        }
+
+        .base-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .base-input-with-action {
+            padding-right: 2.2rem;
+        }
+
+        .btn-add-new-item-base {
+            position: absolute;
+            right: 0.3rem;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1.55rem;
+            height: 1.55rem;
+            border-radius: 0.35rem;
+            border: 1px solid #198754;
+            background: #ffffff;
+            color: #198754;
+            font-size: 0.82rem;
+            padding: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .btn-add-new-item-base:hover {
+            background: #198754;
+            color: #ffffff;
+        }
+
+        .btn-delete-row-base {
+            width: 2rem;
+            height: 2rem;
+            border: 1px solid #dc3545;
+            border-radius: 0.45rem;
+            background: #ffffff;
+            color: #dc3545;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-delete-row-base:hover {
+            background: #dc3545;
+            color: #ffffff;
+        }
+
+        .btn-delete-row-base:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .historial-filters-bar {
+            background: #f8f9fc;
+            border-bottom: 2px solid #e3e6f0;
+        }
+
+        .historial-filters-bar .form-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: #2c3e50;
+        }
+
+        .historial-filters-bar .fecha-rapida-base {
+            font-size: 0.7rem;
+        }
+
+        .bbl-readonly {
+            display: inline-block;
+            width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #d7dee7;
+            background: #eef4ef;
+            color: #1f2d1f;
+            padding: 0.4rem 0.55rem;
+            font-size: 0.88rem;
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .status-banner {
+            font-size: 0.82rem;
+            border-radius: 999px;
+            padding: 0.35rem 0.8rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-info {
+            background: #e7f1ff;
+            color: #0c5460;
+            border: 1px solid #b8daff;
+        }
+
+        .status-success {
+            background: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+
+        .status-danger {
+            background: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+
+        .empty-state {
+            padding: 2.4rem 1rem;
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+
+        /* Forzar legibilidad cuando el tema global está en dark-mode */
+        html.dark-mode .programacion-base-page,
+        html.dark-mode .programacion-base-page .page-header,
+        html.dark-mode .programacion-base-page .card-modern,
+        html.dark-mode .programacion-base-page .card-header-modern,
+        html.dark-mode .programacion-base-page .tbody-modern td {
+            color: #1f2d1f !important;
+        }
+
+        html.dark-mode .programacion-base-page .page-header,
+        html.dark-mode .programacion-base-page .card-modern {
+            background: #ffffff !important;
+        }
+
+        html.dark-mode .programacion-base-page .card-header-modern {
+            background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%) !important;
+        }
+
+        html.dark-mode .programacion-base-page .base-input,
+        html.dark-mode .programacion-base-page .base-select {
+            background: rgba(11, 133, 82, 0.04) !important;
+            color: #1f2d1f !important;
+            -webkit-text-fill-color: #1f2d1f !important;
+            border-color: transparent !important;
+        }
+
+        html.dark-mode .programacion-base-page .btn-add-new-item-base {
+            background: #ffffff !important;
+            color: #198754 !important;
+            border-color: #198754 !important;
+        }
+
+        html.dark-mode .programacion-base-page .bbl-readonly {
+            background: #eef4ef !important;
+            color: #1f2d1f !important;
+            border-color: #d7dee7 !important;
+        }
+
+        html.dark-mode .programacion-base-page .btn-delete-row-base {
+            background: #ffffff !important;
+            color: #dc3545 !important;
+            border-color: #dc3545 !important;
+        }
+
+        html.dark-mode .programacion-base-page .historial-filters-bar {
+            background: #f8f9fc !important;
+            border-bottom-color: #e3e6f0 !important;
+        }
+
+        html.dark-mode .programacion-base-page .historial-filters-bar .form-label {
+            color: #2c3e50 !important;
+        }
+
+        html.dark-mode .programacion-base-page .historial-filters-bar input,
+        html.dark-mode .programacion-base-page .historial-filters-bar .input-group-text {
+            color: #1f2d1f !important;
+            background: #ffffff !important;
+            border-color: #d5dde8 !important;
+        }
+
+        html.dark-mode .programacion-base-page .base-input::placeholder {
+            color: #6c757d !important;
+            -webkit-text-fill-color: #6c757d !important;
+        }
+
+        html.dark-mode .programacion-base-page .base-select option {
+            color: #1f2d1f !important;
+            background: #ffffff !important;
+        }
+
+        html.dark-mode .programacion-base-page .page-subtitle,
+        html.dark-mode .programacion-base-page .empty-state,
+        html.dark-mode .programacion-base-page small.text-muted {
+            color: #6c757d !important;
+        }
+    </style>
+
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-lg-8 mb-3 mb-lg-0">
+                <div class="d-flex align-items-center">
+                    <div class="icon-box bg-gradient-primary">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h2 class="page-title">Programacion Base de Cargue</h2>
+                        <p class="page-subtitle">Vista reducida con columnas clave para operacion diaria</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <span id="base-status" class="status-banner status-info">
+                    <i class="fas fa-info-circle"></i>
+                    Listo para editar
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-modern">
+        <div class="card-header-modern">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <div class="d-flex align-items-center">
+                        <div class="header-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h5 class="card-title-modern mb-0">Tabla Base de Programacion</h5>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end mt-3 mt-md-0">
+                    <div class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                        <span class="badge-modern">
+                            <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
+                        </span>
+                        <button id="btn-add-row-base" class="btn btn-sm btn-modern btn-primary" type="button">
+                            <i class="fas fa-plus me-1"></i>Agregar fila
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="historial-filters-bar">
+            <div class="container-fluid py-3">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-5">
+                        <label class="form-label small fw-semibold mb-1">
+                            <i class="fas fa-calendar-alt me-1"></i>Rango de Fechas
+                        </label>
+                        <div class="row g-1 mb-1">
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text px-2" style="font-size:0.7rem">Desde</span>
+                                    <input type="date" id="filter-base-fecha-desde" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text px-2" style="font-size:0.7rem">Hasta</span>
+                                    <input type="date" id="filter-base-fecha-hasta" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="btn-group btn-group-sm w-100" role="group" aria-label="Rango rapido base">
+                            <button type="button" class="btn btn-outline-primary fecha-rapida-base" data-rango="hoy">Hoy</button>
+                            <button type="button" class="btn btn-outline-primary fecha-rapida-base" data-rango="semana">Semana</button>
+                            <button type="button" class="btn btn-outline-primary fecha-rapida-base" data-rango="mes">Mes</button>
+                            <button type="button" class="btn btn-outline-primary fecha-rapida-base" data-rango="año">Año</button>
+                            <button type="button" class="btn btn-outline-secondary fecha-rapida-base" data-rango="todo">Todo</button>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button id="btn-apply-base-filters" class="btn btn-primary btn-sm w-100">
+                            <i class="fas fa-filter me-1"></i>Filtrar
+                        </button>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="badge bg-secondary" id="base-total-badge">Total: 0 registros</span>
+                            <button id="btn-clear-base-filters" class="btn btn-link btn-sm text-decoration-none" type="button">
+                                <i class="fas fa-times me-1"></i>Limpiar filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive-modern">
+                <table class="table table-modern align-middle mb-0">
+                    <thead class="thead-modern">
+                        <tr>
+                            <th style="min-width: 170px;">Fecha de cargue</th>
+                            <th style="min-width: 180px;">Producto</th>
+                            <th style="min-width: 220px;">Cliente</th>
+                            <th style="min-width: 220px;">Destino</th>
+                            <th style="min-width: 230px;">Calidad(Liviana-Pesada)</th>
+                            <th style="min-width: 160px;">Galones</th>
+                            <th style="min-width: 140px;">BBL</th>
+                            <th style="min-width: 110px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="base-table-body" class="tbody-modern">
+                    </tbody>
+                </table>
+                <datalist id="datalist-productos"></datalist>
+                <datalist id="datalist-clientes"></datalist>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalAgregarClienteBase" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Agregar Cliente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="nombreNuevoClienteBase" class="form-label">Nombre del Cliente</label>
+                        <input type="text" class="form-control" id="nombreNuevoClienteBase" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="direccionNuevoClienteBase" class="form-label">Direccion</label>
+                        <input type="text" class="form-control" id="direccionNuevoClienteBase" required>
+                    </div>
+                    <div class="mb-0">
+                        <label for="ciudadNuevoClienteBase" class="form-label">Ciudad y Departamento</label>
+                        <input type="text" class="form-control" id="ciudadNuevoClienteBase" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="btnGuardarClienteBase">Guardar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalAgregarProductoBase" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-box-open me-2"></i>Agregar Producto</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-0">
+                        <label for="nombreNuevoProductoBase" class="form-label">Nombre del Producto</label>
+                        <input type="text" class="form-control" id="nombreNuevoProductoBase" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarProductoBase">Guardar Producto</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const apiBase = '/api/programacion-base';
+        const tbody = document.getElementById('base-table-body');
+        const btnAddRow = document.getElementById('btn-add-row-base');
+        const statusEl = document.getElementById('base-status');
+        const datalistProductos = document.getElementById('datalist-productos');
+        const datalistClientes = document.getElementById('datalist-clientes');
+        const filterDesdeInput = document.getElementById('filter-base-fecha-desde');
+        const filterHastaInput = document.getElementById('filter-base-fecha-hasta');
+        const btnAplicarFiltros = document.getElementById('btn-apply-base-filters');
+        const btnLimpiarFiltros = document.getElementById('btn-clear-base-filters');
+        const baseTotalBadge = document.getElementById('base-total-badge');
+
+        const modalClienteEl = document.getElementById('modalAgregarClienteBase');
+        const modalProductoEl = document.getElementById('modalAgregarProductoBase');
+        const btnGuardarCliente = document.getElementById('btnGuardarClienteBase');
+        const btnGuardarProducto = document.getElementById('btnGuardarProductoBase');
+
+        const nombreNuevoClienteInput = document.getElementById('nombreNuevoClienteBase');
+        const direccionNuevoClienteInput = document.getElementById('direccionNuevoClienteBase');
+        const ciudadNuevoClienteInput = document.getElementById('ciudadNuevoClienteBase');
+        const nombreNuevoProductoInput = document.getElementById('nombreNuevoProductoBase');
+
+        const modalCliente = modalClienteEl ? new bootstrap.Modal(modalClienteEl) : null;
+        const modalProducto = modalProductoEl ? new bootstrap.Modal(modalProductoEl) : null;
+
+        let catalogoClientes = {{ lista_clientes|default([], true)|tojson|safe }};
+        let catalogoProductos = {{ lista_productos|default([], true)|tojson|safe }};
+        let pendingCreateInput = null;
+        let pendingCreateField = '';
+        let allRows = [];
+
+        const columns = [
+            { field: 'fecha_cargue', type: 'date' },
+            { field: 'producto', type: 'datalist', listId: 'datalist-productos', creatable: true },
+            { field: 'cliente', type: 'datalist', listId: 'datalist-clientes', creatable: true },
+            { field: 'destino', type: 'text' },
+            { field: 'calidad', type: 'select' },
+            { field: 'galones', type: 'number' },
+            { field: 'bbl', type: 'computed' },
+            { field: 'acciones', type: 'actions' }
+        ];
+
+        function setStatus(message, level) {
+            statusEl.className = 'status-banner';
+            if (level === 'success') {
+                statusEl.classList.add('status-success');
+                statusEl.innerHTML = '<i class="fas fa-check-circle"></i>' + message;
+            } else if (level === 'danger') {
+                statusEl.classList.add('status-danger');
+                statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i>' + message;
+            } else {
+                statusEl.classList.add('status-info');
+                statusEl.innerHTML = '<i class="fas fa-info-circle"></i>' + message;
+            }
+        }
+
+        function safeValue(value) {
+            if (value === null || value === undefined) {
+                return '';
+            }
+            return String(value);
+        }
+
+        function normalizeCatalogValue(value) {
+            return safeValue(value).trim().toUpperCase();
+        }
+
+        function normalizeForSave(field, value) {
+            const text = safeValue(value).trim();
+            if (field === 'producto' || field === 'cliente' || field === 'calidad') {
+                return text.toUpperCase();
+            }
+            return text;
+        }
+
+        function uniqueSorted(values) {
+            return Array.from(new Set(values.filter(Boolean))).sort(function (a, b) {
+                return a.localeCompare(b, 'es');
+            });
+        }
+
+        function getClienteNombre(cliente) {
+            if (!cliente) {
+                return '';
+            }
+            if (typeof cliente === 'string') {
+                return normalizeCatalogValue(cliente);
+            }
+            return normalizeCatalogValue(
+                cliente.NOMBRE_CLIENTE || cliente.nombre || cliente.cliente || ''
+            );
+        }
+
+        function getProductoNombre(producto) {
+            if (!producto) {
+                return '';
+            }
+            if (typeof producto === 'string') {
+                return normalizeCatalogValue(producto);
+            }
+            return normalizeCatalogValue(
+                producto.PRODUCTO || producto.producto || producto.nombre || ''
+            );
+        }
+
+        function getClientesNombres() {
+            return uniqueSorted(catalogoClientes.map(getClienteNombre));
+        }
+
+        function getProductosNombres() {
+            return uniqueSorted(catalogoProductos.map(getProductoNombre));
+        }
+
+        function refillDatalist(datalistEl, values) {
+            if (!datalistEl) {
+                return;
+            }
+            datalistEl.innerHTML = '';
+            values.forEach(function (value) {
+                const option = document.createElement('option');
+                option.value = value;
+                datalistEl.appendChild(option);
+            });
+        }
+
+        function actualizarDatalists() {
+            refillDatalist(datalistClientes, getClientesNombres());
+            refillDatalist(datalistProductos, getProductosNombres());
+        }
+
+        function toDateInputValue(value) {
+            if (!value) {
+                return '';
+            }
+            return String(value).slice(0, 10);
+        }
+
+        function toNumericInputValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            const asNumber = Number(value);
+            return Number.isFinite(asNumber) ? String(asNumber) : '';
+        }
+
+        function calcularBbl(galones) {
+            const num = Number(galones);
+            if (!Number.isFinite(num) || num < 0) {
+                return null;
+            }
+            return num / 42;
+        }
+
+        function formatoBbl(galones) {
+            const bbl = calcularBbl(galones);
+            if (bbl === null) {
+                return '-';
+            }
+            return bbl.toLocaleString('es-CO', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function updateBblPreview(input) {
+            const tr = input.closest('tr');
+            if (!tr) {
+                return;
+            }
+            const bblEl = tr.querySelector('.bbl-readonly');
+            if (!bblEl) {
+                return;
+            }
+            bblEl.textContent = formatoBbl(input.value);
+        }
+
+        function isKnownValue(field, value) {
+            const normalized = normalizeCatalogValue(value);
+            if (!normalized) {
+                return true;
+            }
+            const values = field === 'producto' ? getProductosNombres() : getClientesNombres();
+            return values.includes(normalized);
+        }
+
+        function toggleCreateButton(input, field) {
+            const wrapper = input.closest('.base-input-group');
+            if (!wrapper) {
+                return;
+            }
+            const btn = wrapper.querySelector('.btn-add-new-item-base');
+            if (!btn) {
+                return;
+            }
+
+            const value = normalizeCatalogValue(input.value);
+            const shouldShow = !!value && !isKnownValue(field, value);
+            btn.style.display = shouldShow ? 'inline-flex' : 'none';
+        }
+
+        function createComputedCell(row) {
+            const td = document.createElement('td');
+            const readonly = document.createElement('span');
+            readonly.className = 'bbl-readonly';
+            readonly.textContent = formatoBbl(row.galones);
+            td.appendChild(readonly);
+            return td;
+        }
+
+        function createActionCell(row) {
+            const td = document.createElement('td');
+            td.className = 'text-center';
+
+            const btnDelete = document.createElement('button');
+            btnDelete.type = 'button';
+            btnDelete.className = 'btn-delete-row-base';
+            btnDelete.title = 'Eliminar fila';
+            btnDelete.innerHTML = '<i class="fas fa-trash-alt"></i>';
+            btnDelete.addEventListener('click', function () {
+                deleteRow(row.id, btnDelete);
+            });
+
+            td.appendChild(btnDelete);
+            return td;
+        }
+
+        function sortRowsByFecha(rows) {
+            return (rows || []).slice().sort(function (a, b) {
+                const dateA = a && a.fecha_cargue ? new Date(a.fecha_cargue) : null;
+                const dateB = b && b.fecha_cargue ? new Date(b.fecha_cargue) : null;
+
+                const timeA = dateA && !Number.isNaN(dateA.getTime()) ? dateA.getTime() : null;
+                const timeB = dateB && !Number.isNaN(dateB.getTime()) ? dateB.getTime() : null;
+
+                if (timeA === null && timeB === null) {
+                    return Number(b.id || 0) - Number(a.id || 0);
+                }
+                if (timeA === null) {
+                    return 1;
+                }
+                if (timeB === null) {
+                    return -1;
+                }
+                if (timeA !== timeB) {
+                    return timeB - timeA;
+                }
+                return Number(b.id || 0) - Number(a.id || 0);
+            });
+        }
+
+        function getRowDateMs(row) {
+            if (!row || !row.fecha_cargue) {
+                return null;
+            }
+            const dateStr = String(row.fecha_cargue).slice(0, 10);
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            return Number.isNaN(dateObj.getTime()) ? null : dateObj.getTime();
+        }
+
+        function applyFiltersAndRender() {
+            const fechaDesde = filterDesdeInput ? filterDesdeInput.value : '';
+            const fechaHasta = filterHastaInput ? filterHastaInput.value : '';
+
+            if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+                setStatus('La fecha desde no puede ser mayor que la fecha hasta', 'danger');
+                return;
+            }
+
+            const rowsFiltradas = (allRows || []).filter(function (row) {
+                const rowFecha = row && row.fecha_cargue ? String(row.fecha_cargue).slice(0, 10) : '';
+
+                if (fechaDesde && (!rowFecha || rowFecha < fechaDesde)) {
+                    return false;
+                }
+
+                if (fechaHasta && (!rowFecha || rowFecha > fechaHasta)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            const emptyMessage = allRows.length > 0
+                ? 'No hay registros para el rango de fecha seleccionado.'
+                : 'No hay datos en la tabla base. Usa "Agregar fila" para crear el primer registro.';
+
+            renderRows(rowsFiltradas, emptyMessage);
+
+            if (allRows.length > 0) {
+                setStatus('Mostrando ' + rowsFiltradas.length + ' de ' + allRows.length + ' filas', 'info');
+            }
+
+            if (baseTotalBadge) {
+                baseTotalBadge.textContent = 'Total: ' + rowsFiltradas.length + ' registros';
+            }
+        }
+
+        function formatDateLocal(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
+
+        function clearQuickButtonsBase() {
+            document.querySelectorAll('.fecha-rapida-base').forEach(function (b) {
+                b.classList.remove('active');
+                b.classList.remove('btn-primary');
+                if (!b.classList.contains('btn-outline-secondary')) {
+                    b.classList.add('btn-outline-primary');
+                }
+            });
+        }
+
+        function openCreateModal(field, input) {
+            pendingCreateField = field;
+            pendingCreateInput = input;
+            const currentValue = normalizeCatalogValue(input.value);
+
+            if (field === 'cliente' && modalCliente) {
+                nombreNuevoClienteInput.value = currentValue;
+                direccionNuevoClienteInput.value = '';
+                ciudadNuevoClienteInput.value = '';
+                modalCliente.show();
+                setTimeout(function () {
+                    nombreNuevoClienteInput.focus();
+                }, 100);
+                return;
+            }
+
+            if (field === 'producto' && modalProducto) {
+                nombreNuevoProductoInput.value = currentValue;
+                modalProducto.show();
+                setTimeout(function () {
+                    nombreNuevoProductoInput.focus();
+                }, 100);
+            }
+        }
+
+        function applyCreatedValueToInput(field, createdValue) {
+            if (!pendingCreateInput || pendingCreateField !== field) {
+                return;
+            }
+
+            const value = normalizeCatalogValue(createdValue);
+            pendingCreateInput.value = value;
+            toggleCreateButton(pendingCreateInput, field);
+
+            const tr = pendingCreateInput.closest('tr');
+            if (tr && tr.dataset.id) {
+                saveCell(tr.dataset.id, pendingCreateInput);
+            }
+
+            pendingCreateInput = null;
+            pendingCreateField = '';
+        }
+
+        function createCell(row, column) {
+            const td = document.createElement('td');
+
+            if (column.type === 'computed') {
+                return createComputedCell(row);
+            }
+
+            if (column.type === 'actions') {
+                return createActionCell(row);
+            }
+
+            let input;
+
+            if (column.type === 'select') {
+                input = document.createElement('select');
+                input.className = 'base-select';
+                input.dataset.field = column.field;
+                const current = safeValue(row[column.field]).toUpperCase();
+
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                emptyOpt.textContent = 'Seleccionar...';
+                input.appendChild(emptyOpt);
+
+                ['LIVIANA', 'PESADA'].forEach(function (opt) {
+                    const option = document.createElement('option');
+                    option.value = opt;
+                    option.textContent = opt;
+                    if (current === opt) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+            } else if (column.type === 'datalist') {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'base-input-group';
+
+                input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'base-input base-input-with-action';
+                input.dataset.field = column.field;
+                input.value = safeValue(row[column.field]);
+                input.setAttribute('list', column.listId);
+
+                const btnCreate = document.createElement('button');
+                btnCreate.type = 'button';
+                btnCreate.className = 'btn-add-new-item-base';
+                btnCreate.title = column.field === 'cliente' ? 'Agregar cliente' : 'Agregar producto';
+                btnCreate.innerHTML = '<i class="fas fa-plus"></i>';
+                btnCreate.addEventListener('click', function () {
+                    openCreateModal(column.field, input);
+                });
+
+                input.addEventListener('input', function () {
+                    toggleCreateButton(input, column.field);
+                });
+
+                wrapper.appendChild(input);
+                wrapper.appendChild(btnCreate);
+                td.appendChild(wrapper);
+
+                setTimeout(function () {
+                    toggleCreateButton(input, column.field);
+                }, 0);
+            } else {
+                input = document.createElement('input');
+                input.className = 'base-input';
+                input.dataset.field = column.field;
+
+                if (column.type === 'date') {
+                    input.type = 'date';
+                    input.value = toDateInputValue(row[column.field]);
+                } else if (column.type === 'number') {
+                    input.type = 'number';
+                    input.step = 'any';
+                    input.min = '0';
+                    input.value = toNumericInputValue(row[column.field]);
+                    input.addEventListener('input', function () {
+                        updateBblPreview(input);
+                    });
+                } else {
+                    input.type = 'text';
+                    input.value = safeValue(row[column.field]);
+                }
+            }
+
+            input.dataset.lastSaved = normalizeForSave(column.field, input.value);
+
+            input.addEventListener('change', function () {
+                saveCell(row.id, input);
+            });
+            input.addEventListener('blur', function () {
+                saveCell(row.id, input);
+            });
+
+            if (column.type !== 'datalist') {
+                td.appendChild(input);
+            }
+            return td;
+        }
+
+        function renderRows(rows, emptyMessage) {
+            tbody.innerHTML = '';
+
+            if (!rows || rows.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 8;
+                td.className = 'empty-state';
+                td.textContent = emptyMessage || 'No hay datos en la tabla base. Usa "Agregar fila" para crear el primer registro.';
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+                return;
+            }
+
+            const rowsOrdenadas = sortRowsByFecha(rows);
+            rowsOrdenadas.forEach(function (row) {
+                const tr = document.createElement('tr');
+                tr.dataset.id = row.id;
+                columns.forEach(function (column) {
+                    tr.appendChild(createCell(row, column));
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function fetchRows() {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Cargando datos...</td></tr>';
+            try {
+                const response = await fetch(apiBase, { method: 'GET' });
+                if (!response.ok) {
+                    throw new Error('No se pudieron cargar los registros.');
+                }
+                const data = await response.json();
+                allRows = Array.isArray(data) ? data : [];
+                applyFiltersAndRender();
+            } catch (error) {
+                allRows = [];
+                renderRows([]);
+                setStatus(error.message || 'Error cargando la informacion.', 'danger');
+            }
+        }
+
+        async function saveCell(rowId, input) {
+            const field = input.dataset.field;
+            let value = input.value;
+
+            if (field === 'calidad' || field === 'producto' || field === 'cliente') {
+                value = normalizeCatalogValue(value);
+                input.value = value;
+            }
+
+            const normalizedValue = normalizeForSave(field, value);
+            if (input.dataset.lastSaved === normalizedValue) {
+                return;
+            }
+
+            if (field === 'galones' && normalizedValue !== '') {
+                const asNumber = Number(normalizedValue);
+                if (!Number.isFinite(asNumber) || asNumber < 0) {
+                    setStatus('Galones debe ser un numero mayor o igual a cero', 'danger');
+                    return;
+                }
+                value = asNumber;
+            }
+
+            input.classList.add('is-saving');
+            input.disabled = true;
+
+            try {
+                const payload = {};
+                payload[field] = value;
+
+                const response = await fetch(apiBase + '/' + rowId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo guardar el cambio.');
+                }
+
+                input.dataset.lastSaved = normalizedValue;
+                input.classList.remove('is-saving');
+                input.classList.add('is-saved');
+                setTimeout(function () {
+                    input.classList.remove('is-saved');
+                }, 700);
+
+                if (field === 'galones') {
+                    updateBblPreview(input);
+                }
+
+                if (field === 'producto' || field === 'cliente') {
+                    toggleCreateButton(input, field);
+                }
+
+                if (field === 'fecha_cargue') {
+                    await fetchRows();
+                    setStatus('Cambios guardados correctamente', 'success');
+                    return;
+                }
+
+                setStatus('Cambios guardados correctamente', 'success');
+            } catch (error) {
+                input.classList.remove('is-saving');
+                setStatus(error.message || 'Error guardando cambios.', 'danger');
+            } finally {
+                input.disabled = false;
+            }
+        }
+
+        async function deleteRow(rowId, button) {
+            if (!rowId) {
+                return;
+            }
+
+            const confirmar = confirm('¿Seguro que deseas eliminar esta fila? Esta accion no se puede deshacer.');
+            if (!confirmar) {
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+            }
+            setStatus('Eliminando fila...', 'info');
+
+            try {
+                const response = await fetch(apiBase + '/' + rowId, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo eliminar la fila.');
+                }
+
+                await fetchRows();
+                setStatus('Fila eliminada correctamente', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error eliminando fila', 'danger');
+                if (button) {
+                    button.disabled = false;
+                }
+            }
+        }
+
+        async function guardarNuevoCliente() {
+            const nombre = normalizeCatalogValue(nombreNuevoClienteInput.value);
+            const direccion = safeValue(direccionNuevoClienteInput.value).trim();
+            const ciudad = safeValue(ciudadNuevoClienteInput.value).trim();
+
+            if (!nombre || !direccion || !ciudad) {
+                setStatus('Completa nombre, direccion y ciudad del cliente', 'danger');
+                return;
+            }
+
+            btnGuardarCliente.disabled = true;
+            setStatus('Guardando cliente nuevo...', 'info');
+
+            try {
+                const response = await fetch('/agregar_cliente_ajax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre: nombre,
+                        direccion: direccion,
+                        ciudad: ciudad
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo crear el cliente.');
+                }
+
+                const nuevoCliente = result.nuevo_cliente || {
+                    NOMBRE_CLIENTE: nombre,
+                    DIRECCION: direccion,
+                    CIUDAD_Y_DPTO: ciudad
+                };
+
+                catalogoClientes.push(nuevoCliente);
+                actualizarDatalists();
+                applyCreatedValueToInput('cliente', getClienteNombre(nuevoCliente));
+
+                if (modalCliente) {
+                    modalCliente.hide();
+                }
+                setStatus('Cliente creado correctamente', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error creando cliente', 'danger');
+            } finally {
+                btnGuardarCliente.disabled = false;
+            }
+        }
+
+        async function guardarNuevoProducto() {
+            const producto = normalizeCatalogValue(nombreNuevoProductoInput.value);
+
+            if (!producto) {
+                setStatus('El nombre del producto es obligatorio', 'danger');
+                return;
+            }
+
+            btnGuardarProducto.disabled = true;
+            setStatus('Guardando producto nuevo...', 'info');
+
+            try {
+                const response = await fetch('/agregar_producto_ajax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        producto: producto
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo crear el producto.');
+                }
+
+                const nuevoProducto = result.nuevo_producto || {
+                    PRODUCTO: producto
+                };
+
+                catalogoProductos.push(nuevoProducto);
+                actualizarDatalists();
+                applyCreatedValueToInput('producto', getProductoNombre(nuevoProducto));
+
+                if (modalProducto) {
+                    modalProducto.hide();
+                }
+                setStatus('Producto creado correctamente', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error creando producto', 'danger');
+            } finally {
+                btnGuardarProducto.disabled = false;
+            }
+        }
+
+        async function addRow() {
+            btnAddRow.disabled = true;
+            setStatus('Creando nueva fila...', 'info');
+            try {
+                const response = await fetch(apiBase, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No fue posible crear la fila.');
+                }
+                await fetchRows();
+                setStatus('Nueva fila creada', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error creando fila.', 'danger');
+            } finally {
+                btnAddRow.disabled = false;
+            }
+        }
+
+        btnAddRow.addEventListener('click', addRow);
+
+        if (btnAplicarFiltros) {
+            btnAplicarFiltros.addEventListener('click', applyFiltersAndRender);
+        }
+
+        if (btnLimpiarFiltros) {
+            btnLimpiarFiltros.addEventListener('click', function () {
+                if (filterDesdeInput) {
+                    filterDesdeInput.value = '';
+                }
+                if (filterHastaInput) {
+                    filterHastaInput.value = '';
+                }
+                clearQuickButtonsBase();
+                applyFiltersAndRender();
+            });
+        }
+
+        if (filterDesdeInput) {
+            filterDesdeInput.addEventListener('change', function () {
+                clearQuickButtonsBase();
+                applyFiltersAndRender();
+            });
+        }
+
+        if (filterHastaInput) {
+            filterHastaInput.addEventListener('change', function () {
+                clearQuickButtonsBase();
+                applyFiltersAndRender();
+            });
+        }
+
+        document.querySelectorAll('.fecha-rapida-base').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const rango = this.dataset.rango;
+                const hoy = new Date();
+                let desde = '';
+                let hasta = '';
+
+                switch (rango) {
+                    case 'hoy':
+                        desde = formatDateLocal(hoy);
+                        hasta = formatDateLocal(hoy);
+                        break;
+                    case 'semana': {
+                        const dayOfWeek = hoy.getDay();
+                        const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+                        const lunes = new Date(hoy);
+                        lunes.setDate(hoy.getDate() - diffToMon);
+                        desde = formatDateLocal(lunes);
+                        hasta = formatDateLocal(hoy);
+                        break;
+                    }
+                    case 'mes':
+                        desde = formatDateLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+                        hasta = formatDateLocal(hoy);
+                        break;
+                    case 'año':
+                        desde = formatDateLocal(new Date(hoy.getFullYear(), 0, 1));
+                        hasta = formatDateLocal(hoy);
+                        break;
+                    case 'todo':
+                        desde = '';
+                        hasta = '';
+                        break;
+                }
+
+                if (filterDesdeInput) {
+                    filterDesdeInput.value = desde;
+                }
+                if (filterHastaInput) {
+                    filterHastaInput.value = hasta;
+                }
+
+                clearQuickButtonsBase();
+                if (rango !== 'todo') {
+                    this.classList.add('active');
+                    this.classList.remove('btn-outline-primary');
+                    this.classList.add('btn-primary');
+                }
+
+                applyFiltersAndRender();
+            });
+        });
+
+        if (btnGuardarCliente) {
+            btnGuardarCliente.addEventListener('click', guardarNuevoCliente);
+        }
+
+        if (btnGuardarProducto) {
+            btnGuardarProducto.addEventListener('click', guardarNuevoProducto);
+        }
+
+        if (modalClienteEl) {
+            modalClienteEl.addEventListener('hidden.bs.modal', function () {
+                nombreNuevoClienteInput.value = '';
+                direccionNuevoClienteInput.value = '';
+                ciudadNuevoClienteInput.value = '';
+                if (pendingCreateField === 'cliente') {
+                    pendingCreateField = '';
+                    pendingCreateInput = null;
+                }
+            });
+        }
+
+        if (modalProductoEl) {
+            modalProductoEl.addEventListener('hidden.bs.modal', function () {
+                nombreNuevoProductoInput.value = '';
+                if (pendingCreateField === 'producto') {
+                    pendingCreateField = '';
+                    pendingCreateInput = null;
+                }
+            });
+        }
+
+        actualizarDatalists();
+        fetchRows();
+    });
+</script>
+{% endblock %}

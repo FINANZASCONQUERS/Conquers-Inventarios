@@ -1,485 +1,2879 @@
 {% extends 'base.html' %}
-{% block title %}Modelo Optimización | Conquers{% endblock %}
+{% block title %}Modelo Optimización LP | Conquers{% endblock %}
+{% block main_classes %}px-0{% endblock %}
+{% block container_class %}container-fluid px-1 px-md-2 px-xxl-4 py-3{% endblock %}
 {% block content %}
-<div class="container-fluid px-2 px-md-4">
-	<h1 class="h3 mb-4">Modelo de Optimización de Contratos</h1>
-	<form method="post" enctype="multipart/form-data" class="mb-3 p-3 border rounded bg-white shadow-sm">
-		<div class="row g-3 align-items-end">
-			<div class="col-xl-4 col-md-6">
-				<label class="form-label fw-semibold small">Archivo Variables.xlsx (opcional)</label>
-				<input type="file" class="form-control form-control-sm" name="archivo_excel" accept=".xlsx">
-			</div>
-			<div class="col-xl-2 col-md-3">
-				<label class="form-label fw-semibold small">Generar Excel</label>
-				<select name="generar_excel" class="form-select form-select-sm">
-					<option value="si" {% if generar_excel!='no' %}selected{% endif %}>Sí</option>
-					<option value="no" {% if generar_excel=='no' %}selected{% endif %}>No</option>
-				</select>
-			</div>
-			<div class="col-xl-2 col-md-3">
-				<button type="submit" class="btn btn-success btn-sm w-100"><i class="bi bi-cpu me-1"></i> Ejecutar</button>
-			</div>
-			{% if excel_descargable %}
-			<div class="col-xl-2 col-md-4">
-				<a href="{{ url_for('descargar_resultado_modelo') }}" class="btn btn-primary btn-sm w-100"><i class="bi bi-download me-1"></i> Descargar</a>
-			</div>
-			{% endif %}
-		</div>
-	</form>
 
-	{% if error %}
-		<div class="alert alert-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}</div>
-	{% endif %}
+<!-- ═══════════════ INLINE STYLES ═══════════════ -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
-	{% if resultados %}
-	<div class="row g-3 mb-4">
-		<div class="col-md-4 col-xl-3">
-			<div class="p-3 bg-white border rounded shadow-sm h-100">
-				<div class="small text-muted">Total Volumen (BBL)</div>
-				<div class="fs-5 fw-bold" id="cardTotalVolumen">{{ '{:,.0f}'.format(total_volumen|float) }}</div>
-			</div>
-		</div>
-		<div class="col-md-4 col-xl-3">
-			<div class="p-3 bg-white border rounded shadow-sm h-100">
-				<div class="small text-muted">Costo Total Importación (USD)</div>
-				<div class="fs-5 fw-bold" id="cardTotalCostoImp">${{ '{:,.2f}'.format(total_costo_import|float) }}</div>
-			</div>
-		</div>
-		<div class="col-md-4 col-xl-3">
-			<div class="p-3 bg-white border rounded shadow-sm h-100">
-				<div class="small text-muted">BRENT</div>
-				<div class="fs-5 fw-bold">${{ '{:,.2f}'.format(brent_valor|float) }}</div>
-			</div>
-		</div>
-		<div class="col-md-4 col-xl-3">
-			<div class="p-3 bg-white border rounded shadow-sm h-100">
-				<div class="small text-muted">TRM</div>
-				<div class="fs-5 fw-bold">{% if trm_valor %}${{ '{:,.2f}'.format(trm_valor|float) }}{% else %}-{% endif %}</div>
-			</div>
-		</div>
-		<div class="col-md-12 col-xl-3 d-flex align-items-end">
-			<div class="text-muted small">Generado: {{ generado_en }}</div>
-		</div>
-	</div>
-	{% endif %}
+/* ── Design Tokens ── */
+:root {
+    --mo-primary: #0a7c5d;
+    --mo-primary-glow: rgba(10, 124, 93, 0.12);
+    --mo-primary-gradient: linear-gradient(135deg, #0a7c5d, #076249);
+    
+    --mo-emerald: #10b981;
+    --mo-emerald-light: #34d399;
+    --mo-emerald-gradient: linear-gradient(135deg, #10b981, #06b6d4);
+    
+    --mo-indigo: #6366f1;
+    --mo-indigo-gradient: linear-gradient(135deg, #6366f1, #3b82f6);
+    
+    --mo-amber: #f59e0b;
+    --mo-amber-gradient: linear-gradient(135deg, #f59e0b, #d97706);
+    
+    --mo-rose: #ef4444;
+    --mo-rose-gradient: linear-gradient(135deg, #ef4444, #b91c1c);
+    
+    --mo-purple: #8b5cf6;
+    --mo-purple-gradient: linear-gradient(135deg, #8b5cf6, #ec4899);
 
-	{% if component_data %}
-	<div class="card shadow-sm border-0 mb-4">
-		<div class="card-header bg-dark text-white py-2">
-			<div class="d-flex flex-wrap align-items-center gap-3">
-				<strong>Filtros</strong>
-				<div class="d-flex flex-wrap gap-2 w-100 w-lg-auto">
-					<select id="selID" class="form-select form-select-sm filtro-select" title="ID"></select>
-					<select id="selProducto" class="form-select form-select-sm filtro-select" title="Producto"></select>
-					<select id="selPuerto" class="form-select form-select-sm filtro-select" title="Puerto Llegada"></select>
-					<select id="selVolumen" class="form-select form-select-sm filtro-select" title="Rango Volumen (BBL)"></select>
-					<button id="btnResetFiltros" class="btn btn-outline-light btn-sm"><i class="bi bi-arrow-counterclockwise"></i></button>
-				</div>
-			</div>
-		</div>
-		<div class="card-body pb-3">
-			<div class="mb-2 small text-muted">Activar/Desactivar Componentes:</div>
-			<div class="d-flex flex-wrap gap-2 mb-3">
-				{% for alias in componentes_alias %}
-				<div class="form-check form-check-inline">
-					<input class="form-check-input comp-toggle" type="checkbox" value="{{ loop.index0 }}" id="comp{{ loop.index0 }}" checked>
-					<label class="form-check-label small" for="comp{{ loop.index0 }}">{{ alias }}</label>
-				</div>
-				{% endfor %}
-			</div>
-			<div class="ratio" style="--bs-aspect-ratio:55%;">
-				<canvas id="chartStacked"></canvas>
-			</div>
-			<div class="small text-muted mt-2" id="resumenFiltro"></div>
-					{% if component_stats %}
-					<hr>
-					<div class="row g-3">
-						<div class="col-lg-6">
-							<h6 class="fw-semibold">Resumen Componentes (USD/BBL)</h6>
-							<div class="table-responsive" style="max-height:260px;">
-								<table class="table table-sm table-striped align-middle mb-0">
-									<thead class="table-light">
-										<tr><th>Componente</th><th class="text-end">Min</th><th class="text-end">Prom</th><th class="text-end">Max</th></tr>
-									</thead>
-									<tbody>
-										{% for c in component_stats %}
-										<tr>
-											<td>{{ c.alias }}</td>
-											<td class="text-end">${{ '%.4f'|format(c.min) }}</td>
-											<td class="text-end text-primary">${{ '%.4f'|format(c.avg) }}</td>
-											<td class="text-end">${{ '%.4f'|format(c.max) }}</td>
-										</tr>
-										{% endfor %}
-									</tbody>
-								</table>
-							</div>
-						</div>
-						<div class="col-lg-3">
-							<h6 class="fw-semibold">Top Spread Importaciones</h6>
-							<ol class="small mb-0">
-								{% for r in ranking_spread_imp %}
-									<li><strong>{{ r.ID }}</strong> {{ r.Producto }} <span class="text-muted">(${{ '%.4f'|format(r.valor) }})</span></li>
-								{% endfor %}
-							</ol>
-						</div>
-						<div class="col-lg-3">
-							<h6 class="fw-semibold">Top Spread Exportaciones</h6>
-							<ol class="small mb-0">
-								{% for r in ranking_spread_exp %}
-									<li><strong>{{ r.ID }}</strong> {{ r.Producto }} <span class="text-muted">(${{ '%.4f'|format(r.valor) }})</span></li>
-								{% endfor %}
-							</ol>
-						</div>
-					</div>
-					{% endif %}
+    --mo-surface: #ffffff;
+    --mo-surface-alt: #f8fafc;
+    --mo-border: #e2e8f0;
+    --mo-text: #0f172a;
+    --mo-text-muted: #64748b;
+    --mo-radius: 20px;
+    --mo-radius-lg: 24px;
+    --mo-radius-sm: 12px;
+    --mo-shadow: 0 4px 20px rgba(15, 23, 42, 0.04), 0 2px 6px rgba(15, 23, 42, 0.02);
+    --mo-shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03);
+    --mo-transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --mo-kpi-bg: rgba(255, 255, 255, 0.85);
+    --mo-kpi-border: rgba(226, 232, 240, 0.8);
+    --mo-tabs-bg: rgba(241, 245, 249, 0.8);
+    --mo-tabs-border: rgba(226, 232, 240, 0.8);
+    --mo-tab-hover-bg: rgba(226, 232, 240, 0.6);
+    --mo-table-header-bg: rgba(241, 245, 249, 0.95);
+    --mo-table-header-color: #334155;
+    --mo-vol-bar-bg: #f1f5f9;
+    --mo-border-neon: rgba(16, 185, 129, 0.15);
+    --mo-scrollbar-thumb: rgba(148, 163, 184, 0.3);
+    --mo-scrollbar-thumb-hover: rgba(100, 116, 139, 0.5);
+    --mo-card-overlay: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.15) 100%);
+    --mo-font-title: 'Sora', 'Poppins', sans-serif;
+    --mo-font-body: 'IBM Plex Sans', 'Poppins', sans-serif;
+}
 
-						{% if component_data and resultados %}
-						<div class="card shadow-sm border-0 mb-4" id="cardComparacion">
-							<div class="card-header bg-secondary text-white py-2 d-flex flex-wrap align-items-center gap-2">
-								<strong>Comparación Lado a Lado</strong>
-								<select id="cmpA" class="form-select form-select-sm w-auto"></select>
-								<select id="cmpB" class="form-select form-select-sm w-auto"></select>
-								<button class="btn btn-outline-light btn-sm" id="btnSwap" title="Intercambiar"><i class="bi bi-arrow-left-right"></i></button>
-								<div class="ms-auto small" id="cmpInfo"></div>
-							</div>
-							<div class="card-body">
-								<div id="tablaComparacionWrapper" class="table-responsive" style="max-height:540px;">
-									<!-- Tabla comparación dinámica -->
-								</div>
-								<div class="small text-muted mt-2">Diferencia = B - A | %Dif = (B - A) / A. Colores: verde ↑ mejor, rojo ↓ peor (según criterio costo/spread).</div>
-							</div>
-						</div>
-						{% endif %}
-		</div>
-	</div>
-	{% endif %}
+/* Support for custom professional-theme.css dark mode */
+html.dark-mode, [data-bs-theme="dark"] {
+    --mo-surface: #1e293b;
+    --mo-surface-alt: #0f172a;
+    --mo-border: #334155;
+    --mo-text: #f8fafc;
+    --mo-text-muted: #94a3b8;
+    --mo-shadow: 0 4px 30px rgba(0, 0, 0, 0.25);
+    --mo-shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.4);
+    
+    --mo-kpi-bg: rgba(30, 41, 59, 0.65);
+    --mo-kpi-border: rgba(51, 65, 85, 0.65);
+    --mo-tabs-bg: rgba(15, 23, 42, 0.6);
+    --mo-tabs-border: rgba(30, 41, 59, 0.6);
+    --mo-tab-hover-bg: rgba(51, 65, 85, 0.5);
+    --mo-table-header-bg: rgba(15, 23, 42, 0.95);
+    --mo-table-header-color: #cbd5e1;
+    --mo-vol-bar-bg: #1e293b;
+    --mo-border-neon: rgba(16, 185, 129, 0.25);
+    --mo-scrollbar-thumb: rgba(71, 85, 105, 0.6);
+    --mo-scrollbar-thumb-hover: rgba(100, 116, 139, 0.8);
+    --mo-card-overlay: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.01) 100%);
+}
 
-	{% if resultados %}
-	<div class="card border-0 shadow-sm">
-		<div class="card-header bg-success text-white py-2">Detalle Resumido</div>
-		<div class="table-responsive" style="max-height:550px;">
-			<table class="table table-sm table-hover mb-0 align-middle table-modern">
-				<thead>
-					<tr class="th-shadow">
-						<th class="sticky-col col-id">ID</th>
-						<th class="sticky-col-2 col-contrato">Contrato</th>
-						<th class="sticky-col-3 col-producto">Producto</th>
-						<th class="text-end">Volumen (BBL)</th>
-						<th class="text-end">Petróleo (USD)</th>
-						<th class="text-end">Flete (USD)</th>
-						<th class="text-end">Financiación (USD)</th>
-						<th class="text-end">Alm & Oper 1 (USD)</th>
-						<th class="text-end">Ingreso CZF (USD)</th>
-						<th class="text-end">Remolcador (USD)</th>
-						<th class="text-end">Transp Ter (USD)</th>
-						<th class="text-end">Alm & Oper 2 (USD)</th>
-						<th class="text-end">Nacionalización (USD)</th>
-						<th class="text-end">Exportación (USD)</th>
-						<th class="text-end">Costo Total Imp (USD)</th>
-						<th class="text-end">Spread Imp (USD/BBL)</th>
-						<th class="text-end">Spread Exp (USD/BBL)</th>
-						<th class="text-end">Utilidad Exp (USD/BBL)</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for fila in resultados %}
-					<tr>
-						<td class="sticky-col col-id">{{ fila.ID }}</td>
-						<td class="sticky-col-2 col-contrato">{{ fila.CONTRATO }}</td>
-						<td class="sticky-col-3 col-producto">{{ fila.Producto }}</td>
-						<td class="text-end">{{ '{:,.0f}'.format(fila.Volumen|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.PetroleoUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.FleteUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.FinanciacionUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.AlmOper1USD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.IngresoCZFUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.RemolcadorUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.TranspTerUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.AlmOper2USD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.NacionalizacionUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.ExportacionUSD|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.CostoTotalImp|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.SpreadImp|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.SpreadExp|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(fila.UtilidadExp|default(0)|float) }}</td>
-					</tr>
-					{% endfor %}
-				</tbody>
-				<tfoot>
-					<tr>
-						<td class="sticky-col col-id">Totales</td>
-						<td class="sticky-col-2 col-contrato"></td>
-						<td class="sticky-col-3 col-producto"></td>
-						<td class="text-end">{{ '{:,.0f}'.format(total_volumen|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='PetroleoUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='FleteUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='FinanciacionUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='AlmOper1USD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='IngresoCZFUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='RemolcadorUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='TranspTerUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='AlmOper2USD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='NacionalizacionUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(resultados|sum(attribute='ExportacionUSD')|default(0)|float) }}</td>
-						<td class="text-end">${{ '{:,.2f}'.format(total_costo_import|float) }}</td>
-						<td class="text-end">-</td>
-						<td class="text-end">-</td>
-						<td class="text-end">-</td>
-					</tr>
-				</tfoot>
-			</table>
-		</div>
-	</div>
-	{% endif %}
+#moDashboardRoot {
+    font-family: var(--mo-font-body);
+    position: relative;
+    isolation: isolate;
+}
+#moDashboardRoot::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    background:
+        radial-gradient(circle at 8% 12%, rgba(14, 116, 144, 0.08), transparent 28%),
+        radial-gradient(circle at 88% 18%, rgba(245, 158, 11, 0.08), transparent 24%),
+        radial-gradient(circle at 42% 82%, rgba(16, 185, 129, 0.08), transparent 30%);
+    z-index: 0;
+    pointer-events: none;
+}
+#moDashboardRoot > * {
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Page Header ── */
+.mo-header { margin-bottom: 2rem; position: relative; }
+.mo-header h1 {
+    font-size: 1.85rem; font-weight: 800; 
+    background: linear-gradient(135deg, var(--mo-text) 40%, var(--mo-primary) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: flex; align-items: center; gap: .7rem;
+    letter-spacing: -0.5px;
+    font-family: var(--mo-font-title);
+}
+html.dark-mode .mo-header h1 {
+    background: linear-gradient(135deg, #ffffff 40%, var(--mo-emerald-light) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.mo-header h1 i { font-size: 1.6rem; opacity: .85; color: var(--mo-primary); }
+html.dark-mode .mo-header h1 i { color: var(--mo-emerald-light); }
+
+.mo-header-subtitle {
+    margin-top: 0.3rem;
+    color: var(--mo-text-muted);
+    font-size: 0.88rem;
+    max-width: 740px;
+}
+.mo-last-run {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    margin-left: 0.35rem;
+    background: rgba(10, 124, 93, 0.08);
+    color: var(--mo-primary);
+    border: 1px solid rgba(10, 124, 93, 0.14);
+    font-weight: 600;
+}
+html.dark-mode .mo-last-run {
+    color: var(--mo-emerald-light);
+    border-color: rgba(16, 185, 129, 0.24);
+}
+
+.mo-badge-status {
+    font-size: .72rem; padding: .35rem .85rem; border-radius: 30px;
+    font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border: 1px solid rgba(255,255,255,0.15);
+}
+
+/* ── FUTURISTIC COMMAND CENTER ── */
+.mo-upload-zone {
+    border: 2px dashed var(--mo-border);
+    border-radius: var(--mo-radius);
+    padding: 2rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    background: var(--mo-kpi-bg);
+    backdrop-filter: blur(10px);
+    transition: var(--mo-transition);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+.mo-upload-zone::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mo-card-overlay);
+    pointer-events: none;
+    z-index: 1;
+    border-radius: inherit;
+}
+.mo-upload-zone:hover, .mo-upload-zone.drag-over {
+    border-color: var(--mo-emerald);
+    background: rgba(16, 185, 129, 0.04);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.12);
+}
+.mo-upload-zone .upload-icon {
+    font-size: 2.8rem;
+    color: var(--mo-text-muted);
+    margin-bottom: 0.6rem;
+    transition: var(--mo-transition);
+    z-index: 2;
+}
+.mo-upload-zone:hover .upload-icon,
+.mo-upload-zone.drag-over .upload-icon {
+    color: var(--mo-emerald);
+    transform: scale(1.1) translateY(-2px);
+}
+.mo-upload-zone .upload-label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--mo-text);
+    margin-bottom: 0.2rem;
+    z-index: 2;
+}
+.mo-upload-zone .upload-hint {
+    font-size: 0.8rem;
+    color: var(--mo-text-muted);
+    z-index: 2;
+}
+.mo-file-badge {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: var(--mo-primary-glow); color: var(--mo-primary);
+    padding: .35rem .9rem; border-radius: 20px; font-size: .8rem;
+    font-weight: 700; margin-top: .6rem; z-index: 2;
+    border: 1px solid rgba(10, 124, 93, 0.15);
+}
+html.dark-mode .mo-file-badge {
+    color: var(--mo-emerald-light);
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.mo-controls-card {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    backdrop-filter: blur(10px);
+    border-radius: var(--mo-radius);
+    padding: 1.6rem;
+    box-shadow: var(--mo-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.1rem;
+    height: 100%;
+    transition: var(--mo-transition);
+    position: relative;
+    overflow: hidden;
+}
+.mo-controls-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mo-card-overlay);
+    pointer-events: none;
+    z-index: 1;
+}
+.mo-controls-card:hover {
+    box-shadow: var(--mo-shadow-lg);
+    border-color: rgba(10, 124, 93, 0.2);
+}
+.mo-controls-card > * {
+    position: relative;
+    z-index: 2;
+}
+
+/* Form inputs inside controls */
+.mo-controls-card .form-control {
+    background: var(--mo-vol-bar-bg);
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius-sm);
+    color: var(--mo-text);
+    padding: 0.6rem 0.9rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: var(--mo-transition);
+}
+.mo-controls-card .form-control:focus {
+    background: var(--mo-surface);
+    border-color: var(--mo-primary);
+    box-shadow: 0 0 0 4px var(--mo-primary-glow);
+}
+
+/* ── Buttons ── */
+.mo-btn-exec {
+    background: linear-gradient(135deg, var(--mo-primary), var(--primary-dark));
+    color: #fff; border: none; padding: .65rem 1.6rem; border-radius: var(--mo-radius-sm);
+    font-weight: 700; font-size: .88rem; transition: var(--mo-transition);
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    box-shadow: 0 4px 14px rgba(10, 124, 93, 0.25);
+}
+.mo-btn-exec:hover {
+    transform: translateY(-2px); box-shadow: 0 6px 20px rgba(10, 124, 93, 0.4);
+    color: #fff;
+}
+.mo-btn-exec:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.mo-btn-download {
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    color: #fff; border: 1px solid rgba(255,255,255,0.08); padding: .65rem 1.4rem; border-radius: var(--mo-radius-sm);
+    font-weight: 600; font-size: .88rem; transition: var(--mo-transition);
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+html.dark-mode .mo-btn-download {
+    background: linear-gradient(135deg, #334155, #1e293b);
+}
+.mo-btn-download:hover {
+    background: linear-gradient(135deg, var(--mo-emerald), var(--mo-emerald-light));
+    border-color: transparent;
+    color: #fff; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.mo-btn-soft {
+    background: var(--mo-surface);
+    color: var(--mo-text);
+    border: 1px solid var(--mo-border);
+    padding: .62rem 1rem;
+    border-radius: var(--mo-radius-sm);
+    font-weight: 600;
+    font-size: .84rem;
+    transition: var(--mo-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+}
+.mo-btn-soft:hover {
+    border-color: rgba(10, 124, 93, 0.35);
+    background: rgba(10, 124, 93, 0.08);
+    transform: translateY(-1px);
+}
+
+.mo-premium-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    border: 1px solid rgba(10, 124, 93, 0.28);
+    background: rgba(10, 124, 93, 0.09);
+    color: #0b5c47;
+    border-radius: 999px;
+    font-size: .74rem;
+    font-weight: 700;
+    padding: .24rem .62rem;
+}
+html.dark-mode .mo-premium-badge {
+    color: #9de8d0;
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(16, 185, 129, 0.38);
+}
+
+.mo-premium-input {
+    min-width: 96px;
+    text-align: right;
+}
+
+.mo-refi-process-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .7rem;
+    margin-bottom: .8rem;
+}
+.mo-refi-process-item {
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface-soft);
+    border-radius: 12px;
+    padding: .55rem .75rem;
+}
+.mo-refi-process-item .name {
+    font-size: .74rem;
+    font-weight: 700;
+    color: var(--mo-text-muted);
+    letter-spacing: .2px;
+    text-transform: uppercase;
+}
+.mo-refi-process-item .value {
+    font-size: .95rem;
+    font-weight: 700;
+    color: var(--mo-text);
+}
+
+.mo-refi-group {
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+    border-radius: 12px;
+    margin-bottom: .7rem;
+    overflow: hidden;
+}
+.mo-refi-group > summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .6rem;
+    padding: .6rem .8rem;
+    font-size: .82rem;
+    font-weight: 700;
+    background: var(--mo-kpi-bg);
+    border-bottom: 1px solid var(--mo-border);
+}
+.mo-refi-group > summary::-webkit-details-marker {
+    display: none;
+}
+.mo-refi-group-total {
+    color: var(--mo-primary);
+}
+.mo-refi-grand-total {
+    border: 1px dashed var(--mo-border);
+    border-radius: 10px;
+    padding: .55rem .8rem;
+    font-size: .82rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    background: var(--mo-surface-soft);
+}
+
+/* ── Action Command Ribbon ── */
+.mo-command-strip {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius-sm);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--mo-shadow);
+    padding: 0.55rem;
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+.mo-command-btn {
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+    color: var(--mo-text);
+    border-radius: 10px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: var(--mo-transition);
+}
+.mo-command-btn:hover {
+    border-color: rgba(10, 124, 93, 0.35);
+    background: rgba(10, 124, 93, 0.08);
+    transform: translateY(-1px);
+}
+.mo-command-btn.active {
+    background: var(--mo-primary-gradient);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 5px 14px rgba(10, 124, 93, 0.24);
+}
+
+/* ── High-Fidelity KPI Cards ── */
+.mo-kpi-grid {
+    display: grid; gap: 1.2rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.mo-kpi {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    backdrop-filter: blur(16px);
+    border-radius: var(--mo-radius);
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--mo-kpi-shadow);
+    transition: var(--mo-transition);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    text-align: left;
+    appearance: none;
+}
+.mo-kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 4px;
+    background: var(--kpi-color);
+    opacity: 0.85;
+}
+.mo-kpi::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mo-card-overlay);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Color schemes per card type */
+.mo-kpi-utilidad {
+    --kpi-color: var(--mo-emerald);
+    --kpi-glow-shadow: 0 12px 30px rgba(16, 185, 129, 0.18);
+}
+.mo-kpi-margen {
+    --kpi-color: var(--mo-indigo);
+    --kpi-glow-shadow: 0 12px 30px rgba(99, 102, 241, 0.18);
+}
+.mo-kpi-compras {
+    --kpi-color: var(--mo-purple);
+    --kpi-glow-shadow: 0 12px 30px rgba(139, 92, 246, 0.18);
+}
+.mo-kpi-ventas {
+    --kpi-color: var(--mo-amber);
+    --kpi-glow-shadow: 0 12px 30px rgba(245, 158, 11, 0.18);
+}
+.mo-kpi-costos {
+    --kpi-color: var(--mo-rose);
+    --kpi-glow-shadow: 0 12px 30px rgba(239, 68, 68, 0.18);
+}
+
+.mo-kpi:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: var(--kpi-glow-shadow);
+    border-color: var(--kpi-color);
+}
+.mo-kpi:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(14, 116, 144, 0.25), var(--kpi-glow-shadow);
+}
+.mo-kpi .kpi-label {
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--mo-text-muted);
+    margin-bottom: 0.5rem;
+    z-index: 2;
+}
+.mo-kpi .kpi-value {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    font-variant-numeric: tabular-nums;
+    z-index: 2;
+    background: linear-gradient(135deg, var(--mo-text) 60%, var(--mo-text-muted) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.mo-kpi .kpi-sub {
+    margin-top: 0.35rem;
+    font-size: 0.74rem;
+    color: var(--mo-text-muted);
+    z-index: 2;
+}
+.mo-kpi.is-linked {
+    cursor: pointer;
+}
+html.dark-mode .mo-kpi .kpi-value {
+    background: linear-gradient(135deg, #ffffff 60%, var(--mo-text-muted) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.mo-kpi .kpi-icon {
+    position: absolute;
+    bottom: -10px; right: -5px;
+    font-size: 4rem;
+    opacity: 0.05;
+    color: var(--mo-text);
+    z-index: 0;
+    transition: var(--mo-transition);
+}
+.mo-kpi:hover .kpi-icon {
+    opacity: 0.09;
+    transform: rotate(-10deg) scale(1.1);
+}
+
+/* ── SEGMENTED GLASS PILL TAB BAR ── */
+.mo-tabs-container {
+    background: var(--mo-tabs-bg);
+    border: 1px solid var(--mo-tabs-border);
+    backdrop-filter: blur(10px);
+    border-radius: var(--mo-radius-sm);
+    padding: 0.35rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--mo-shadow);
+}
+.mo-tabs {
+    border-bottom: none !important;
+    gap: 0.25rem;
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+}
+.mo-tabs::-webkit-scrollbar {
+    display: none; /* Safari/Chrome */
+}
+.mo-tabs .nav-item {
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+.mo-tabs .nav-link {
+    border-radius: 8px !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--mo-text-muted) !important;
+    padding: 0.65rem 1.15rem !important;
+    font-weight: 600;
+    font-size: 0.82rem;
+    transition: var(--mo-transition);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    position: relative;
+}
+.mo-tabs .nav-link:hover {
+    color: var(--mo-text) !important;
+    background: var(--mo-tab-hover-bg) !important;
+}
+.mo-tabs .nav-link.active {
+    color: #ffffff !important;
+    background: var(--mo-primary-gradient) !important;
+    box-shadow: 0 4px 12px var(--mo-primary-glow) !important;
+}
+.mo-tab-content {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* ── Tab Headers (Glass Panels) ── */
+.mo-tab-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    background: var(--mo-kpi-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius);
+    padding: 1.25rem 1.6rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--mo-shadow);
+    transition: var(--mo-transition);
+    position: relative;
+}
+.mo-tab-header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 20%; height: 60%; width: 4px;
+    background: var(--mo-primary);
+    border-radius: 0 4px 4px 0;
+}
+.mo-tab-header:hover {
+    box-shadow: var(--mo-shadow-lg);
+    border-color: rgba(10, 124, 93, 0.2);
+}
+.mo-tab-info { flex: 1; }
+.mo-tab-title {
+    font-size: 1.05rem; font-weight: 700; color: var(--mo-text);
+    margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.5rem;
+}
+.mo-tab-description {
+    font-size: 0.8rem; color: var(--mo-text-muted); margin-bottom: 0; line-height: 1.5;
+}
+.mo-tab-search { width: 290px; flex-shrink: 0; }
+.mo-tab-search .input-group {
+    background: var(--mo-vol-bar-bg);
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius-sm);
+    overflow: hidden;
+    transition: var(--mo-transition);
+}
+.mo-tab-search .input-group:focus-within {
+    border-color: var(--mo-primary);
+    box-shadow: 0 0 0 4px var(--mo-primary-glow);
+    background: var(--mo-surface);
+}
+.mo-tab-search .input-group-text {
+    background: transparent; border: none; color: var(--mo-text-muted);
+    padding-left: 0.9rem; padding-right: 0.4rem;
+}
+.mo-tab-search .form-control {
+    background: transparent; border: none; font-size: 0.85rem; color: var(--mo-text);
+    padding: 0.55rem 0.9rem 0.55rem 0.4rem;
+}
+.mo-tab-search .form-control:focus { box-shadow: none; background: transparent; }
+
+/* ── Sleek Custom Tables ── */
+.mo-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    border-radius: var(--mo-radius-sm);
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+}
+
+/* Custom scrollbars */
+.mo-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.mo-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.mo-scroll::-webkit-scrollbar-thumb {
+    background: var(--mo-scrollbar-thumb);
+    border-radius: 10px;
+    transition: var(--mo-transition);
+}
+.mo-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--mo-scrollbar-thumb-hover);
+}
+
+.mo-table {
+    font-size: .82rem;
+    margin-bottom: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.mo-table thead th {
+    background: var(--mo-table-header-bg);
+    color: var(--mo-table-header-color);
+    backdrop-filter: blur(10px);
+    font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .6px;
+    padding: 0.8rem 1rem; border-bottom: 2px solid var(--mo-border-neon) !important; border-top: none !important;
+    position: sticky; top: 0; z-index: 2;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.mo-table tbody td {
+    padding: 0.7rem 1rem; vertical-align: middle; 
+    border-bottom: 1px solid var(--mo-border); border-top: none;
+    color: var(--mo-text); transition: var(--mo-transition);
+}
+.mo-table tbody tr { transition: var(--mo-transition); background: transparent; }
+.mo-table tbody tr:hover { background: rgba(10, 124, 93, 0.04) !important; }
+html.dark-mode .mo-table tbody tr:hover { background: rgba(10, 124, 93, 0.08) !important; }
+.mo-table tfoot td, .mo-table tfoot th {
+    background: rgba(10, 124, 93, 0.04); font-weight: 700;
+    color: var(--mo-primary); border-top: 2px solid var(--mo-primary) !important; border-bottom: none;
+    padding: 0.8rem 1rem;
+}
+html.dark-mode .mo-table tfoot td, html.dark-mode .mo-table tfoot th {
+    color: var(--mo-emerald-light); border-top-color: var(--mo-emerald-light) !important;
+}
+
+/* ── Progress volume capsules ── */
+.mo-vol-bar {
+    height: 8px; border-radius: 8px; background: var(--mo-vol-bar-bg);
+    overflow: hidden; min-width: 100px; position: relative;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.06);
+}
+.mo-vol-bar-fill {
+    height: 100%; border-radius: 8px;
+    background: var(--mo-emerald-gradient);
+    box-shadow: 0 0 6px rgba(16,185,129,0.3);
+    transition: width 0.8s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Badges ── */
+.mo-badge-warn {
+    font-size: .68rem; padding: .25rem .55rem; border-radius: 30px;
+    background: rgba(245,158,11,.12); color: #d97706; font-weight: 700;
+    border: 1px solid rgba(245,158,11,.2);
+}
+.mo-badge-danger {
+    font-size: .68rem; padding: .25rem .55rem; border-radius: 30px;
+    background: rgba(239,68,68,.1); color: var(--mo-rose); font-weight: 700;
+    border: 1px solid rgba(239,68,68,.18);
+}
+.mo-badge-ok {
+    font-size: .68rem; padding: .25rem .55rem; border-radius: 30px;
+    background: var(--mo-primary-glow); color: var(--mo-emerald); font-weight: 700;
+    border: 1px solid rgba(16,185,129,.18);
+}
+html.dark-mode .mo-badge-ok {
+    color: var(--mo-emerald-light);
+}
+
+/* ── Story + Insight Section ── */
+.mo-insight-card {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius);
+    padding: 1.35rem 1.45rem;
+    box-shadow: var(--mo-shadow);
+    backdrop-filter: blur(12px);
+    position: relative;
+    overflow: hidden;
+}
+.mo-insight-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mo-card-overlay);
+    pointer-events: none;
+    z-index: 1;
+}
+.mo-insight-card > * {
+    position: relative;
+    z-index: 2;
+}
+.mo-insight-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--mo-primary);
+    margin-bottom: 0.45rem;
+}
+.mo-story-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    color: var(--mo-text);
+    font-family: var(--mo-font-title);
+}
+.mo-story-copy {
+    font-size: 0.84rem;
+    color: var(--mo-text-muted);
+    line-height: 1.55;
+    margin-bottom: 0.25rem;
+}
+.mo-story-copy-soft {
+    font-size: 0.79rem;
+    color: color-mix(in srgb, var(--mo-text-muted) 88%, transparent);
+}
+.mo-stepper {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.9rem;
+}
+.mo-step {
+    border: 1px solid var(--mo-border);
+    border-radius: 10px;
+    padding: 0.5rem 0.55rem;
+    background: var(--mo-surface);
+    min-height: 70px;
+}
+.mo-step span {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mo-text-muted);
+    margin-bottom: 0.2rem;
+    font-weight: 700;
+}
+.mo-step strong {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    color: var(--mo-text);
+}
+.mo-step.is-done {
+    border-color: rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.08);
+}
+.mo-step.is-active {
+    border-color: rgba(14, 116, 144, 0.4);
+    background: rgba(14, 116, 144, 0.08);
+}
+.mo-step.is-risk {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.08);
+}
+.mo-story-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+}
+.mo-story-metric {
+    border: 1px solid var(--mo-border);
+    border-radius: 10px;
+    padding: 0.55rem 0.65rem;
+    background: var(--mo-surface);
+}
+.mo-story-metric .metric-label {
+    display: block;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.55px;
+    color: var(--mo-text-muted);
+    font-weight: 700;
+    margin-bottom: 0.18rem;
+}
+.mo-story-metric .metric-value {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--mo-text);
+    font-weight: 700;
+    line-height: 1.3;
+}
+.mo-story-metric.is-ok {
+    border-left: 4px solid var(--mo-emerald);
+}
+.mo-story-metric.is-warn {
+    border-left: 4px solid var(--mo-amber);
+}
+.mo-story-metric.is-risk {
+    border-left: 4px solid var(--mo-rose);
+}
+
+.mo-story-actions {
+    margin-top: 0.95rem;
+    border-top: 1px dashed color-mix(in srgb, var(--mo-border) 80%, transparent);
+    padding-top: 0.7rem;
+}
+.mo-story-actions-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--mo-text-muted);
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+}
+.mo-story-actions-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+.mo-story-action-btn {
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+    color: var(--mo-text);
+    border-radius: 10px;
+    padding: 0.5rem 0.55rem;
+    font-size: 0.73rem;
+    font-weight: 600;
+    line-height: 1.3;
+    text-align: left;
+    transition: var(--mo-transition);
+}
+.mo-story-action-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(10, 124, 93, 0.35);
+    background: rgba(10, 124, 93, 0.08);
+}
+.mo-signal-list {
+    display: grid;
+    gap: 0.55rem;
+    max-height: 388px;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+}
+.mo-signal-list::-webkit-scrollbar {
+    width: 6px;
+}
+.mo-signal-list::-webkit-scrollbar-thumb {
+    background: var(--mo-scrollbar-thumb);
+    border-radius: 10px;
+}
+.mo-signal-item {
+    width: 100%;
+    text-align: left;
+    border-radius: 12px;
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+    padding: 0.65rem 0.75rem;
+    transition: var(--mo-transition);
+}
+.mo-signal-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+.mo-signal-item .mo-signal-title {
+    display: block;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mo-text-muted);
+    margin-bottom: 0.2rem;
+    font-weight: 700;
+}
+.mo-signal-item strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--mo-text);
+    margin-bottom: 0.1rem;
+}
+.mo-signal-item small {
+    display: block;
+    font-size: 0.74rem;
+    color: var(--mo-text-muted);
+    line-height: 1.35;
+}
+.mo-signal-ok { border-left: 4px solid var(--mo-emerald); }
+.mo-signal-warn { border-left: 4px solid var(--mo-amber); }
+.mo-signal-risk { border-left: 4px solid var(--mo-rose); }
+
+.mo-mini-metrics {
+    margin-top: 0.9rem;
+    display: grid;
+    gap: 0.65rem;
+}
+.mo-mini-metric {
+    padding: 0.55rem 0.65rem;
+    border-radius: 10px;
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+}
+.mo-mini-metric .label {
+    font-size: 0.72rem;
+    color: var(--mo-text-muted);
+    margin-bottom: 0.12rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.mo-mini-metric .label strong {
+    color: var(--mo-text);
+    font-size: 0.8rem;
+}
+.mo-mini-bar {
+    height: 6px;
+    background: var(--mo-vol-bar-bg);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.mo-mini-bar-fill {
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    transition: width 0.55s ease;
+}
+.mo-mini-bar-fill.balance {
+    background: linear-gradient(90deg, #0ea5e9, #10b981);
+}
+.mo-mini-bar-fill.logistica {
+    background: linear-gradient(90deg, #f59e0b, #f97316);
+}
+
+/* ── PREMIUM ALERT WARNING BANNER ── */
+#moWarningBannerSection {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.22);
+    border-radius: var(--mo-radius);
+    padding: 1.4rem 1.6rem;
+    box-shadow: var(--mo-shadow);
+    color: var(--mo-text);
+    backdrop-filter: blur(10px);
+}
+#moWarningBannerSection h5 { color: #d97706 !important; font-weight: 800; }
+html.dark-mode #moWarningBannerSection h5 { color: var(--mo-amber) !important; }
+#moWarningBannerSection p, #moWarningBannerSection li { color: var(--mo-text-muted) !important; font-size: 0.82rem; line-height: 1.5; }
+#moWarningBannerSection ul { margin-top: 0.5rem; }
+
+/* ── HIGH-TECH LOADER OVERLAY ── */
+.mo-overlay {
+    position: fixed; inset: 0; z-index: 99999;
+    background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(8px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.mo-overlay .spinner-ring {
+    width: 64px; height: 64px; border: 4px solid rgba(16, 185, 129, 0.15);
+    border-top-color: var(--mo-emerald); border-radius: 50%;
+    animation: mo-spin .8s cubic-bezier(0.4, 0, 0.2, 1) infinite; margin-bottom: 1.5rem;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+}
+@keyframes mo-spin { to { transform: rotate(360deg); } }
+.mo-overlay h5 { color: #fff; font-weight: 700; font-size: 1.15rem; letter-spacing: 0.5px; }
+.mo-overlay p { color: var(--mo-text-muted); font-size: .85rem; margin-top: .4rem; }
+
+/* ── Glass-like Chart Containers ── */
+.mo-chart-card {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    backdrop-filter: blur(10px);
+    border-radius: var(--mo-radius);
+    padding: 1.4rem;
+    box-shadow: var(--mo-shadow);
+    transition: var(--mo-transition);
+    position: relative;
+    overflow: hidden;
+}
+.mo-chart-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--mo-card-overlay);
+    pointer-events: none;
+    z-index: 1;
+}
+.mo-chart-card:hover {
+    box-shadow: var(--mo-shadow-lg);
+    border-color: rgba(10, 124, 93, 0.15);
+}
+.mo-chart-card > * { position: relative; z-index: 2; }
+.mo-chart-wrap { position: relative; height: 320px; }
+.mo-chart-wrap.is-bar { height: 290px; }
+.mo-chart-wrap.is-donut { height: 280px; }
+.mo-chart-wrap.is-composition { height: 360px; }
+.mo-chart-kicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 0.55rem;
+    color: var(--mo-text-muted);
+}
+
+/* ── Animations ── */
+@keyframes mo-fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.mo-animate { animation: mo-fadeUp .5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.mo-animate-d1 { animation-delay: .06s; }
+.mo-animate-d2 { animation-delay: .12s; }
+.mo-animate-d3 { animation-delay: .18s; }
+.mo-animate-d4 { animation-delay: .24s; }
+.mo-animate-d5 { animation-delay: .3s; }
+@keyframes mo-pulseFocus {
+    0% { box-shadow: 0 0 0 0 rgba(14, 116, 144, 0.26); }
+    100% { box-shadow: 0 0 0 12px rgba(14, 116, 144, 0); }
+}
+.mo-highlight-pulse {
+    border-color: rgba(14, 116, 144, 0.45) !important;
+    animation: mo-pulseFocus 1.15s ease-out;
+}
+
+/* ── Compact Mode ── */
+#moDashboardRoot.mo-compact-mode .mo-table thead th,
+#moDashboardRoot.mo-compact-mode .mo-table tbody td,
+#moDashboardRoot.mo-compact-mode .mo-table tfoot td {
+    padding-top: 0.46rem;
+    padding-bottom: 0.46rem;
+}
+#moDashboardRoot.mo-compact-mode .mo-tab-header {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+#moDashboardRoot.mo-compact-mode .mo-kpi {
+    padding-top: 1.05rem;
+    padding-bottom: 1.05rem;
+}
+
+/* ── Empty state ── */
+.mo-empty {
+    text-align: center; padding: 4rem 1.5rem; color: var(--mo-text-muted);
+    background: var(--mo-kpi-bg); border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius); box-shadow: var(--mo-shadow);
+}
+.mo-empty i { font-size: 3.5rem; opacity: .4; margin-bottom: 1rem; color: var(--mo-primary); }
+html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
+.mo-empty h5 { font-weight: 700; color: var(--mo-text); }
+
+@media (max-width: 768px) {
+    .mo-tab-header { flex-direction: column; align-items: stretch; gap: 1rem; }
+    .mo-tab-search { width: 100%; }
+    .mo-stepper { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mo-story-metrics { grid-template-columns: 1fr; }
+    .mo-story-actions-list { grid-template-columns: 1fr; }
+    .mo-command-btn { flex: 1 1 calc(50% - 0.45rem); justify-content: center; }
+    .mo-signal-list { max-height: none; }
+    .mo-chart-wrap.is-composition { height: 300px; }
+}
+</style>
+
+<!-- ═══════════════ LOADING OVERLAY ═══════════════ -->
+<div id="moOverlay" class="mo-overlay d-none">
+    <div class="spinner-ring"></div>
+    <h5>Resolviendo modelo matemático…</h5>
+    <p>Por favor espere. Esta operación puede tardar hasta 120 segundos.</p>
 </div>
+
+<!-- ═══════════════ PAGE CONTENT ═══════════════ -->
+<div class="container-fluid px-1 px-md-2 px-xxl-3 pb-4" id="moDashboardRoot">
+
+    <!-- Header -->
+    <div class="mo-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <h1><i class="bi bi-graph-up-arrow"></i> Modelo de Optimización LP</h1>
+            <p class="mo-header-subtitle mb-0">
+                Centro de control para interpretar resultados del solver: rentabilidad, equilibrio de volúmenes, costos y señales operativas.
+                <span class="mo-last-run" id="moLastRunText"><i class="bi bi-clock-history"></i> Sin ejecuciones recientes</span>
+            </p>
+        </div>
+        <div id="moStatusBadge"></div>
+    </div>
+
+    <!-- ── Upload & Controls Row ── -->
+    <div class="row g-3 mb-4" id="moControlsSection">
+        <div class="col-lg-5">
+            <div class="mo-upload-zone" id="moDropZone">
+                <input type="file" id="moFileInput" accept=".xlsx,.xls" class="d-none">
+                <div class="upload-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+                <div class="upload-label">Arrastra tu archivo de parámetros aquí</div>
+                <div class="upload-hint">o haz clic para seleccionar · Formato .xlsx</div>
+                <div id="moFileBadge"></div>
+            </div>
+        </div>
+        <div class="col-lg-4 d-flex flex-column justify-content-center gap-3">
+            <div>
+                <label class="form-label fw-semibold small mb-1" for="moEscenario">Nombre del Escenario</label>
+                <input type="text" class="form-control" id="moEscenario" placeholder="Ej: Escenario Base Mayo 2026" value="Escenario Base">
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="mo-btn-exec" id="moRunBtn" type="button">
+                    <i class="bi bi-cpu"></i> Ejecutar Modelo
+                </button>
+                <button class="mo-btn-download d-none" id="moDownloadBtn" type="button">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Descargar Informe
+                </button>
+                <button class="mo-btn-soft" id="moClearPremiumBtn" type="button" title="Restablecer ajustes premium del escenario">
+                    <i class="bi bi-arrow-counterclockwise"></i> Limpiar Premium
+                </button>
+                <span class="mo-premium-badge d-none" id="moPremiumBadge">
+                    <i class="bi bi-sliders"></i> Premiums activos: 0
+                </span>
+            </div>
+        </div>
+        <div class="col-lg-3 d-flex align-items-end">
+            <div id="moAlertArea" class="w-100"></div>
+        </div>
+    </div>
+
+    <!-- ── Warning Banner (For Infeasible/Non-Optimal results with visible tables) ── -->
+    <div id="moWarningBannerSection" class="alert alert-warning mb-4 d-none">
+        <div class="d-flex gap-3 align-items-start">
+            <div class="fs-3 text-warning px-1"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div>
+                <h5 class="fw-bold mb-1 text-dark">Escenario Inviable (Infeasible)</h5>
+                <p class="small mb-2 text-dark">
+                    <strong>Nota:</strong> Los datos y gráficos que se muestran a continuación corresponden al <strong>intento de aproximación del solucionador</strong> antes de declarar la inviabilidad. El modelo matemático no pudo encontrar ninguna combinación que satisfaga simultáneamente el 100% de las restricciones físicas o de calidad del modelo.
+                </p>
+                <div class="small text-dark">
+                    <strong>Recomendaciones para resolver la inviabilidad en tu archivo Excel:</strong>
+                    <ul class="mb-0 mt-1 ps-3">
+                        <li>Revisa que los límites de calidad en la pestaña <code>8.LIMITES_CALIDAD</code> no sean mutuamente excluyentes o demasiado restrictivos (por ejemplo, límites de destilación o densidades imposibles de cumplir con los crudos disponibles).</li>
+                        <li>Verifica que las capacidades en las rutas de transporte y compras no estén bloqueando flujos obligatorios.</li>
+                        <li>Asegúrate de que las relaciones de mezcla y proporciones mínimas de crudo/refinado sumen correctamente y sean consistentes.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── KPI Cards ── -->
+    <div class="mo-kpi-grid mb-4 d-none" id="moKpiSection">
+        <button type="button" class="mo-kpi mo-animate is-linked" data-mo-tab-target="tabVentas" data-mo-wrap-target="ventasTableWrap">
+            <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+            <div class="kpi-label">Utilidad Total (USD/Día)</div>
+            <div class="kpi-value" id="kpiUtilidad">—</div>
+            <div class="kpi-sub" id="kpiUtilidadHint">Haz clic para ver fuentes de ingreso.</div>
+        </button>
+        <button type="button" class="mo-kpi mo-animate mo-animate-d1 is-linked" data-mo-tab-target="tabCostos" data-mo-wrap-target="costosOpTableWrap">
+            <div class="kpi-icon"><i class="bi bi-percent"></i></div>
+            <div class="kpi-label">Margen Neto (USD/BBL)</div>
+            <div class="kpi-value" id="kpiMargen">—</div>
+            <div class="kpi-sub" id="kpiMargenHint">Margen sobre volumen vendido.</div>
+        </button>
+        <button type="button" class="mo-kpi mo-animate mo-animate-d2 is-linked" data-mo-tab-target="tabCompras" data-mo-wrap-target="comprasTableWrap">
+            <div class="kpi-icon"><i class="bi bi-box-seam"></i></div>
+            <div class="kpi-label">Vol. Compras (BPD)</div>
+            <div class="kpi-value" id="kpiVolCompras">—</div>
+            <div class="kpi-sub" id="kpiComprasHint">Detalle de abastecimiento.</div>
+        </button>
+        <button type="button" class="mo-kpi mo-animate mo-animate-d3 is-linked" data-mo-tab-target="tabVentas" data-mo-wrap-target="ventasTableWrap">
+            <div class="kpi-icon"><i class="bi bi-truck"></i></div>
+            <div class="kpi-label">Vol. Ventas (BPD)</div>
+            <div class="kpi-value" id="kpiVolVentas">—</div>
+            <div class="kpi-sub" id="kpiVentasHint">Contratos y corrientes activas.</div>
+        </button>
+        <button type="button" class="mo-kpi mo-animate mo-animate-d4 is-linked" data-mo-tab-target="tabTransporte" data-mo-wrap-target="transporteTableWrap">
+            <div class="kpi-icon"><i class="bi bi-gear"></i></div>
+            <div class="kpi-label">Costo Operación Total (USD)</div>
+            <div class="kpi-value" id="kpiCostoOp">—</div>
+            <div class="kpi-sub" id="kpiCostoHint">Incluye costos logísticos y operacionales.</div>
+        </button>
+    </div>
+
+    <div class="mo-command-strip d-none mb-4" id="moCommandStrip">
+        <button type="button" class="mo-command-btn active" data-mo-tab-target="tabCompras" data-mo-wrap-target="comprasTableWrap">
+            <i class="bi bi-joystick"></i> Ir a compras
+        </button>
+        <button type="button" class="mo-command-btn" data-mo-tab-target="tabVentas" data-mo-wrap-target="ventasTableWrap">
+            <i class="bi bi-lightning-charge"></i> Ir a ventas
+        </button>
+        <button type="button" class="mo-command-btn" data-mo-tab-target="tabCostos" data-mo-wrap-target="costosOpTableWrap">
+            <i class="bi bi-cash-stack"></i> Revisar costos
+        </button>
+        <button type="button" class="mo-command-btn" data-mo-tab-target="tabComposicion" data-mo-wrap-target="composicionTableWrap">
+            <i class="bi bi-bezier2"></i> Revisar composición
+        </button>
+        <button type="button" class="mo-command-btn" id="moCompactToggle" data-mo-toggle="compact">
+            <i class="bi bi-layout-text-window-reverse"></i><span class="mo-compact-label">Vista compacta</span>
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4 d-none" id="moInsightSection">
+        <div class="col-xl-7">
+            <div class="mo-insight-card mo-animate mo-animate-d1">
+                <div class="mo-insight-kicker">Lectura Ejecutiva</div>
+                <h4 class="mo-story-title">Resumen del escenario</h4>
+                <p class="mo-story-copy" id="moNarrativeSummary">
+                    Ejecuta el modelo para generar una lectura automática de desempeño y riesgos operativos.
+                </p>
+                <p class="mo-story-copy mo-story-copy-soft" id="moNarrativeSecondary">
+                    Aquí verás automáticamente los principales puntos de control del escenario y dónde enfocar la revisión.
+                </p>
+                <div class="mo-stepper" id="moFlowStepper">
+                    <div class="mo-step" data-step="compras"><span>1. Compras</span><strong>Carga de insumos</strong></div>
+                    <div class="mo-step" data-step="ventas"><span>2. Ventas</span><strong>Monetización de volúmenes</strong></div>
+                    <div class="mo-step" data-step="logistica"><span>3. Logística</span><strong>Costos por rutas y destinos</strong></div>
+                    <div class="mo-step" data-step="resultado"><span>4. Resultado</span><strong>Utilidad final y viabilidad</strong></div>
+                </div>
+                <div class="mo-story-metrics" id="moStoryMetrics">
+                    <div class="mo-story-metric is-ok">
+                        <span class="metric-label">Estado Solver</span>
+                        <span class="metric-value">Sin ejecutar</span>
+                    </div>
+                    <div class="mo-story-metric is-ok">
+                        <span class="metric-label">Utilidad Neta</span>
+                        <span class="metric-value">—</span>
+                    </div>
+                    <div class="mo-story-metric is-warn">
+                        <span class="metric-label">Balance Compras/Ventas</span>
+                        <span class="metric-value">—</span>
+                    </div>
+                    <div class="mo-story-metric is-warn">
+                        <span class="metric-label">Prioridad Operativa</span>
+                        <span class="metric-value">Esperando corrida</span>
+                    </div>
+                </div>
+                <div class="mo-story-actions">
+                    <h6 class="mo-story-actions-title">Acciones Recomendadas</h6>
+                    <div class="mo-story-actions-list" id="moStoryActionsList">
+                        <button type="button" class="mo-story-action-btn" data-mo-tab-target="tabCompras" data-mo-wrap-target="comprasTableWrap">
+                            <i class="bi bi-upload me-1"></i> Cargar parámetros y ejecutar modelo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="mo-insight-card mo-animate mo-animate-d2">
+                <div class="mo-insight-kicker">Señales del Solver</div>
+                <div class="mo-signal-list" id="moSignalList">
+                    <button type="button" class="mo-signal-item mo-signal-ok">
+                        <span class="mo-signal-title">Esperando resultados</span>
+                        <strong>Sin datos ejecutados</strong>
+                        <small>Lanza el modelo para visualizar alertas e insights automáticos.</small>
+                    </button>
+                </div>
+                <div class="mo-mini-metrics">
+                    <div class="mo-mini-metric">
+                        <div class="label">Balance ventas/compras <strong id="moGaugeBalance">0%</strong></div>
+                        <div class="mo-mini-bar"><div class="mo-mini-bar-fill balance" id="moGaugeBalanceBar"></div></div>
+                    </div>
+                    <div class="mo-mini-metric">
+                        <div class="label">Peso logístico sobre costos <strong id="moGaugeLogistica">0%</strong></div>
+                        <div class="mo-mini-bar"><div class="mo-mini-bar-fill logistica" id="moGaugeLogisticaBar"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Detail Tabs ── -->
+    <div class="d-none" id="moTabsSection">
+        <ul class="nav nav-tabs mo-tabs" id="moTabNav" role="tablist">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabCompras" role="tab"><i class="bi bi-cart3 me-1"></i>Compras</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabVentas" role="tab"><i class="bi bi-shop me-1"></i>Ventas</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabTransporte" role="tab"><i class="bi bi-signpost-2 me-1"></i>Transporte</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabBlending" role="tab"><i class="bi bi-droplet-half me-1"></i>Blending</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabRefinacion" role="tab"><i class="bi bi-building me-1"></i>Refinación</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCostos" role="tab"><i class="bi bi-wallet2 me-1"></i>Costos</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabComposicion" role="tab"><i class="bi bi-pie-chart me-1"></i>Composición</a></li>
+        </ul>
+        <div class="tab-content mo-tab-content" id="moTabContent">
+            <!-- Compras -->
+            <div class="tab-pane fade show active" id="tabCompras" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-cart3"></i> Abastecimiento y Compras de Crudo</h5>
+                        <p class="mo-tab-description">Visualiza el volumen y costo de crudos y diluyentes adquiridos para el sistema. Permite analizar los costos unitarios de adquisición y volúmenes por origen en tiempo real.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="compras" placeholder="Buscar compras...">
+                        </div>
+                    </div>
+                </div>
+                <div class="mo-scroll" id="comprasTableWrap"></div>
+            </div>
+            <!-- Ventas -->
+            <div class="tab-pane fade" id="tabVentas" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-shop"></i> Ingresos y Ventas Contractuales</h5>
+                        <p class="mo-tab-description">Resumen detallado de los ingresos brutos generados por la comercialización de crudo y refinados. Los precios reflejan los fletes de entrega y los ajustes contractuales por desviación de calidad/densidad.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="ventas" placeholder="Buscar ventas...">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-xl-7"><div class="mo-scroll" id="ventasTableWrap"></div></div>
+                    <div class="col-xl-5">
+                        <div class="mo-chart-card mb-3">
+                            <div class="mo-chart-kicker">Distribución de Volumen</div>
+                            <div class="mo-chart-wrap is-bar"><canvas id="chartVentasBar"></canvas></div>
+                        </div>
+                        <div class="mo-chart-card">
+                            <div class="mo-chart-kicker">Participación de Ingresos</div>
+                            <div class="mo-chart-wrap is-donut"><canvas id="chartVentasPie"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Transporte -->
+            <div class="tab-pane fade" id="tabTransporte" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-signpost-2"></i> Logística y Rutas de Transporte</h5>
+                        <p class="mo-tab-description">Monitoreo detallado del flujo logístico por oleoductos y camiones cisterna. Permite controlar los fletes cobrados por ruta, orígenes, destinos y costos totales de envío.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="transporte" placeholder="Buscar rutas...">
+                        </div>
+                    </div>
+                </div>
+                <div class="mo-scroll" id="transporteTableWrap"></div>
+            </div>
+            <!-- Blending -->
+            <div class="tab-pane fade" id="tabBlending" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-droplet-half"></i> Recetas y Especificaciones de Blending</h5>
+                        <p class="mo-tab-description">Muestra la calidad resultante (API, Azufre, Viscosidad, etc.) de las mezclas en cada centro de blend. Los valores indican cumplimiento exacto de las especificaciones físicas.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="blending" placeholder="Buscar mezclas...">
+                        </div>
+                    </div>
+                </div>
+                <div class="mo-scroll" id="blendingTableWrap"></div>
+            </div>
+            <!-- Refinación -->
+            <div class="tab-pane fade" id="tabRefinacion" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-building"></i> Procesamiento y Productos de Refinación</h5>
+                        <p class="mo-tab-description">Desglose de los productos refinados resultantes (como nafta, IFO, etc.) a partir del procesamiento de los diferentes crudos alimentados en cada refinería activa.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="refinacion" placeholder="Buscar productos...">
+                        </div>
+                    </div>
+                </div>
+                <div class="mo-scroll" id="refinacionTableWrap"></div>
+            </div>
+            <!-- Costos -->
+            <div class="tab-pane fade" id="tabCostos" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-wallet2"></i> Costos de Operación y Throughput</h5>
+                        <p class="mo-tab-description">Análisis integrado de costos de refinación, cargos fijos y variables del sistema por throughput y costos de refinados en el blend. Un solo buscador filtra todas las tablas.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="costos" placeholder="Buscar en costos...">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <h6 class="fw-bold small text-uppercase mb-2"><i class="bi bi-building me-1"></i>Throughput Refinerías</h6>
+                        <div class="mo-scroll" id="throughputTableWrap"></div>
+                    </div>
+                    <div class="col-lg-6">
+                        <h6 class="fw-bold small text-uppercase mb-2"><i class="bi bi-gear me-1"></i>Costos Operacionales</h6>
+                        <div class="mo-scroll" id="costosOpTableWrap"></div>
+                        <h6 class="fw-bold small text-uppercase mb-2 mt-3"><i class="bi bi-droplet me-1"></i>Costos Op. Refinados en Blend</h6>
+                        <div class="mo-scroll" id="costosOpRefTableWrap"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Composición -->
+            <div class="tab-pane fade" id="tabComposicion" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-pie-chart"></i> Desglose y Proporciones de Composición</h5>
+                        <p class="mo-tab-description">Identifica qué porcentaje y volumen de cada crudo de origen o producto intermedio compone físicamente las mezclas y recetas de blending resultantes del modelo.</p>
+                    </div>
+                    <div class="mo-tab-search">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control mo-filter-input" data-tab="composicion" placeholder="Buscar componentes...">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-xl-7"><div class="mo-scroll" id="composicionTableWrap"></div></div>
+                    <div class="col-xl-5">
+                        <div class="mo-chart-card">
+                            <div class="mo-chart-kicker">Composición por Blend</div>
+                            <div class="mo-chart-wrap is-composition"><canvas id="chartComposicion"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Empty State ── -->
+    <div id="moEmptyState" class="mo-empty">
+        <div id="moEmptyIcon"><i class="bi bi-calculator"></i></div>
+        <h5 id="moEmptyTitle" class="fw-bold">Sin resultados aún</h5>
+        <p id="moEmptyDesc" class="small">Sube el archivo de parámetros y ejecuta el modelo para ver los resultados optimizados.</p>
+    </div>
+
+</div><!-- /container -->
+
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-{% if component_data %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script type="application/json" id="rawDataJSON">{{ component_data | tojson | safe }}</script>
-<script type="application/json" id="compColsJSON">{{ componentes_cols | tojson | safe }}</script>
-<script type="application/json" id="compAliasesJSON">{{ componentes_alias | tojson | safe }}</script>
-{% if resultados %}<script type="application/json" id="resumenDataJSON">{{ resultados | tojson | safe }}</script>{% endif %}
+
+{% if cached_resultados %}
+<script type="application/json" id="cachedResultsJSON">{{ cached_resultados | tojson | safe }}</script>
+{% endif %}
+
 <script>
 (() => {
-	const rawData = JSON.parse(document.getElementById('rawDataJSON').textContent);
-	const compCols = JSON.parse(document.getElementById('compColsJSON').textContent);
-	const compAliases = JSON.parse(document.getElementById('compAliasesJSON').textContent);
-	const colores = ['#1f77b4','#d62728','#ff9800','#279e68','#8c564b','#6a5acd','#17becf','#b5bd61'];
-	const selID = document.getElementById('selID');
-	const selProd = document.getElementById('selProducto');
-	const selPuerto = document.getElementById('selPuerto');
-	const selVolumen = document.getElementById('selVolumen');
-	const resumenFiltro = document.getElementById('resumenFiltro');
-	const toggles = [...document.querySelectorAll('.comp-toggle')];
-	let chart;
-	// Elementos de tarjetas que se actualizarán con el filtro
-	const cardVol = document.getElementById('cardTotalVolumen');
-	const cardCosto = document.getElementById('cardTotalCostoImp');
-	// Resumen (para costo total importación por contrato)
-	let resumenRows = [];
-	if (document.getElementById('resumenDataJSON')) {
-		try { resumenRows = JSON.parse(document.getElementById('resumenDataJSON').textContent); } catch(e) { resumenRows = []; }
-	}
+'use strict';
 
-	function uniqueSorted(arr, key){
-		return [...new Set(arr.map(o => (o[key] ?? '').toString()))].filter(v=>v!=='' ).sort((a,b)=>a.localeCompare(b,'es')); }
+/* ═══════════════ HELPERS ═══════════════ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const fmtN = (v, d=2) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString('en-US', {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtM = v => v == null || isNaN(v) ? '—' : '$' + fmtN(v, 2);
+const fmtI = v => v == null || isNaN(v) ? '—' : Math.round(Number(v)).toLocaleString('en-US');
+const fmtP = (v, d=1) => v == null || isNaN(v) ? '—' : `${fmtN(v, d)}%`;
+const fmtDeltaP = (v, d=1) => v == null || isNaN(v) ? '—' : `${v >= 0 ? '+' : ''}${fmtN(v, d)}%`;
+const toNum = v => Number(v) || 0;
+const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+const escHtml = (v) => String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
-	function buildVolumeBins(data, bins=5){
-		const vols = data.map(r=>r['Volumen Compra BBL']||0).filter(v=>v>0);
-		if(!vols.length) return [];
-		const min = Math.min(...vols), max = Math.max(...vols);
-		const step = (max-min)/bins;
-		const ranges=[];
-		for(let i=0;i<bins;i++){
-			const a = min + i*step;
-			const b = i===bins-1? max : (min + (i+1)*step);
-			ranges.push({label:`${Math.round(a).toLocaleString()} - ${Math.round(b).toLocaleString()}`, min:a, max:b});
-		}
-		return ranges;
-	}
+const normalizeSolverStatus = (status) => {
+    const raw = String(status ?? '').trim();
+    if (!raw) return '';
+    const lowered = raw.toLowerCase();
+    if (lowered === 'optimal') return 'optimal';
+    if (lowered === 'infeasible') return 'infeasible';
+    if (lowered === 'not solved') return 'not solved';
+    return lowered;
+};
 
-	function populateSelect(select, values, label){
-		select.innerHTML='';
-		const optAll = document.createElement('option');
-		optAll.value=''; optAll.textContent=`Todos ${label||''}`; select.appendChild(optAll);
-		values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; select.appendChild(o); });
-	}
+const solverStatusLabel = (status) => {
+    const normalized = normalizeSolverStatus(status);
+    if (normalized === 'optimal') return 'Óptimo';
+    if (normalized === 'infeasible') return 'Infeasible';
+    return String(status ?? 'Sin estado');
+};
 
-	function initFilters(){
-		populateSelect(selID, uniqueSorted(rawData,'ID'), 'ID');
-		populateSelect(selProd, uniqueSorted(rawData,'Producto'), 'Productos');
-		populateSelect(selPuerto, uniqueSorted(rawData,'Puerto Llegada'), 'Puertos');
-		const bins = buildVolumeBins(rawData,6);
-		selVolumen.innerHTML='';
-		const optAll = document.createElement('option'); optAll.value=''; optAll.textContent='Todos Volúmenes'; selVolumen.appendChild(optAll);
-		bins.forEach(b=>{ const o=document.createElement('option'); o.value=`${b.min}|${b.max}`; o.textContent=b.label; selVolumen.appendChild(o); });
-	}
+function formatValidationIssues(validation, bucket = 'errors', maxItems = 8) {
+    const issues = Array.isArray(validation?.[bucket]) ? validation[bucket] : [];
+    if (!issues.length) return '';
 
-	function aplicaFiltro(){
-		const vID = selID.value;
-		const vProd = selProd.value;
-		const vPuerto = selPuerto.value;
-		const vVol = selVolumen.value; let minV=-Infinity,maxV=Infinity;
-		if(vVol){ const parts=vVol.split('|'); minV=parseFloat(parts[0]); maxV=parseFloat(parts[1]); }
-		const filtrado = rawData.filter(r=>
-			(!vID || r.ID==vID) &&
-			(!vProd || r.Producto==vProd) &&
-			(!vPuerto || (r['Puerto Llegada']||'')==vPuerto) &&
-			( (r['Volumen Compra BBL']||0) >= minV && (r['Volumen Compra BBL']||0) <= maxV )
-		);
-		return filtrado;
-	}
+    const lines = issues.slice(0, maxItems).map(issue => {
+        const message = issue?.message ? String(issue.message) : 'Inconsistencia detectada.';
+        const rows = Array.isArray(issue?.rows) && issue.rows.length
+            ? ` Filas: ${issue.rows.slice(0, 8).join(', ')}${issue.rows.length > 8 ? ', ...' : ''}.`
+            : '';
+        return `- ${message}${rows}`;
+    });
 
-	function construir(){
-		const datos = aplicaFiltro();
-		const activos = toggles.filter(t=>t.checked).map(t=>parseInt(t.value));
-		const labels = datos.map(r=> r.ID + '\n' + (r.Producto||''));
-		const datasets = activos.map(i=>({
-			label: compAliases[i],
-			data: datos.map(r=> r[compCols[i]] || 0),
-			backgroundColor: colores[i%colores.length],
-			stack: 'stack'
-		}));
-		const totVol = datos.reduce((s,r)=> s + (r['Volumen Compra BBL']||0),0);
-		resumenFiltro.textContent = `${datos.length} contratos filtrados | Volumen total: ${Math.round(totVol).toLocaleString()} BBL`;
+    if (issues.length > maxItems) {
+        lines.push(`- ... y ${issues.length - maxItems} observaciones más.`);
+    }
+    return lines.join('\n');
+}
 
-		// Actualizar tarjetas
-		if (cardVol) { cardVol.textContent = (Math.round(totVol)).toLocaleString(); }
-		if (cardCosto) {
-			// mapear claves ID|Producto para filtrar el resumen correspondiente
-			const claves = new Set(datos.map(r => `${r.ID}|${r.Producto||''}`));
-			const costoTotal = resumenRows
-				.filter(r => claves.has(`${r.ID}|${r.Producto||''}`))
-				.reduce((acc, r) => acc + (Number(r.CostoTotalImp)||0), 0);
-			cardCosto.textContent = '$' + (costoTotal.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}));
-		}
-		const ctx = document.getElementById('chartStacked').getContext('2d');
-		if(chart) chart.destroy();
-		chart = new Chart(ctx, {
-			type: 'bar',
-			data: {labels, datasets},
-			options:{
-				indexAxis:'y',
-				responsive:true,
-				maintainAspectRatio:false,
-				// Evita tooltips del "vecino": requiere intersección con la barra y usa distancia en eje Y
-				interaction:{mode:'nearest', intersect:true, axis:'y'},
-				plugins:{
-					legend:{position:'bottom'},
-					tooltip:{
-						// Mejora legibilidad del recuadro
-						padding: 10,
-						bodyFont: { size: 13 },
-						titleFont: { size: 13 },
-						footerFont: { size: 12 },
-						callbacks:{
-							title:(items)=> items[0].label.replace('\n',' '),
-							label:(ctx)=>{
-								const label = ctx.dataset.label;
-								const val = ctx.parsed.x;
-								// Encontrar fila original por índice
-								const idx = ctx.dataIndex;
-								const row = (aplicaFiltro())[idx];
-								if(label && label.toUpperCase().includes('CRUDO') && label.toUpperCase().includes('FLETE')){
-									const vol = (row && Number(row['Volumen Compra BBL'])) || 0;
-									const fleteTotal = (row && Number(row['Flete Marino'])) || 0;
-									const fleteBbl = vol>0 ? (fleteTotal/vol) : 0;
-									// El valor de la barra CRUDO+FLETE ya representa (Spread on Brent + fleteBbl)
-									// Por tanto spread = val - fleteBbl (con mínimo 0 si datos faltan)
-									const spread = val - fleteBbl;
-									const fmt = (n)=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
-									return `CRUDO + FLETE: $${fmt(val)} USD/BBL (Spread: $${fmt(spread)} + Flete: $${fmt(fleteBbl)})`;
-								}
-								const fmt = (n)=> Number(n).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2});
-								return `${label}: $${fmt(val)} USD/BBL`;
-							},
-							footer:(items)=>{
-								const total = items.reduce((s,i)=> s + i.parsed.x,0);
-								return 'Total: $' + Number(total).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) + ' USD/BBL';
-							}
-						}
-					}
-				},
-				scales:{
-					x:{stacked:true, title:{display:true, text:'USD/BBL'}, ticks:{ callback:(value)=> '$' + Number(value).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2}) }},
-					y:{stacked:true, ticks:{autoSkip:false}}
-				}
-			}
-		});
-	}
+const BLEND_RENAMES = {
+    'BLENDING CARTAGENA 2': 'HSFO CARTAGENA 3 MGO',
+    'VLSFO CARTAGENA 2': 'HSFO CARTAGENA 3 MGO'
+};
 
-	function bind(){
-		[selID, selProd, selPuerto, selVolumen].forEach(s=> s.addEventListener('change', construir));
-		toggles.forEach(t=> t.addEventListener('change', construir));
-		document.getElementById('btnResetFiltros').addEventListener('click', e=>{
-			e.preventDefault();
-			[selID, selProd, selPuerto, selVolumen].forEach(s=> s.value='');
-			toggles.forEach(t=> t.checked = true);
-			construir();
-		});
-	}
+const normalizeToken = (value) => String(value ?? '').trim().toUpperCase();
 
-	initFilters();
-	bind();
-	construir();
+function renameBlendLabel(value) {
+    const raw = String(value ?? '').trim();
+    if (!raw) return raw;
+    const key = normalizeToken(raw);
+    if (BLEND_RENAMES[key]) return BLEND_RENAMES[key];
+    if (key.includes('CARTAGENA 2') && key.includes('BLEND')) return 'HSFO CARTAGENA 3 MGO';
+    return raw;
+}
+
+function premiumKey(flow, origin) {
+    return `${normalizeToken(flow)}||${normalizeToken(origin)}`;
+}
+
+let premiumOverrides = {};
+
+function getPremiumFor(flow, origin) {
+    const key = premiumKey(flow, origin);
+    return Number(premiumOverrides[key]) || 0;
+}
+
+function collectPremiumOverridesPayload() {
+    return Object.entries(premiumOverrides)
+        .filter(([, value]) => Number.isFinite(Number(value)) && Math.abs(Number(value)) > 1e-9)
+        .map(([key, value]) => {
+            const [flujo, origen] = key.split('||');
+            return {
+                flujo,
+                origen,
+                premium_usd_bbl: Number(value)
+            };
+        });
+}
+
+function loadPremiumMapFromResults(results) {
+    premiumOverrides = premiumOverrides || {};
+    const applied = Array.isArray(results?.premium_overrides_applied) ? results.premium_overrides_applied : [];
+    if (!applied.length) return;
+
+    premiumOverrides = {};
+    applied.forEach(item => {
+        const flujo = item?.flujo;
+        const origen = item?.origen;
+        const premium = Number(item?.premium_usd_bbl);
+        if (!flujo || !origen || !Number.isFinite(premium) || Math.abs(premium) < 1e-9) return;
+        premiumOverrides[premiumKey(flujo, origen)] = premium;
+    });
+}
+
+function updatePremiumControlsUI() {
+    const badge = $('#moPremiumBadge');
+    if (!badge) return;
+    const count = Object.keys(premiumOverrides || {}).length;
+    badge.classList.toggle('d-none', count === 0);
+    badge.innerHTML = `<i class="bi bi-sliders"></i> Premiums activos: ${count}`;
+}
+
+const COLORS = {
+    navy: '#1e3a5f', emerald: '#10b981', indigo: '#6366f1',
+    blue: '#3b82f6', amber: '#f59e0b', rose: '#ef4444',
+    teal: '#14b8a6', purple: '#8b5cf6', cyan: '#06b6d4',
+    orange: '#f97316', lime: '#84cc16', pink: '#ec4899'
+};
+const PALETTE = [COLORS.emerald, COLORS.blue, COLORS.amber, COLORS.indigo, COLORS.teal, COLORS.purple, COLORS.cyan, COLORS.orange, COLORS.rose, COLORS.lime, COLORS.pink, COLORS.navy];
+
+let currentResults = null;
+let chartInstances = {};
+let compactMode = false;
+
+function getChartTheme() {
+    const styles = getComputedStyle(document.documentElement);
+    return {
+        text: styles.getPropertyValue('--mo-text').trim() || '#0f172a',
+        muted: styles.getPropertyValue('--mo-text-muted').trim() || '#64748b',
+        grid: styles.getPropertyValue('--mo-border').trim() || '#e2e8f0',
+        surface: styles.getPropertyValue('--mo-surface').trim() || '#ffffff'
+    };
+}
+
+function hexToRgba(hex, alpha = 1) {
+    const clean = String(hex || '').replace('#', '');
+    if (clean.length !== 6) return `rgba(15, 23, 42, ${alpha})`;
+    const n = Number.parseInt(clean, 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function makeGradient(chart, fromColor, toColor, horizontal = false) {
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return toColor;
+
+    const gradient = horizontal
+        ? ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+        : ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+
+    gradient.addColorStop(0, fromColor);
+    gradient.addColorStop(1, toColor);
+    return gradient;
+}
+
+const centerDoughnutTextPlugin = {
+    id: 'moCenterText',
+    afterDraw(chart, args, pluginOptions) {
+        if (chart.config.type !== 'doughnut') return;
+        const meta = chart.getDatasetMeta(0);
+        if (!meta || !meta.data || !meta.data.length) return;
+
+        const { ctx } = chart;
+        const centerX = meta.data[0].x;
+        const centerY = meta.data[0].y;
+        const theme = getChartTheme();
+        const title = pluginOptions?.title || '';
+        const value = pluginOptions?.value || '';
+        const subtitle = pluginOptions?.subtitle || '';
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (title) {
+            ctx.fillStyle = theme.muted;
+            ctx.font = '600 11px "IBM Plex Sans", sans-serif';
+            ctx.fillText(title, centerX, centerY - 14);
+        }
+        if (value) {
+            ctx.fillStyle = theme.text;
+            ctx.font = '700 13px "Sora", sans-serif';
+            ctx.fillText(value, centerX, centerY + 1);
+        }
+        if (subtitle) {
+            ctx.fillStyle = theme.muted;
+            ctx.font = '500 10px "IBM Plex Sans", sans-serif';
+            ctx.fillText(subtitle, centerX, centerY + 15);
+        }
+
+        ctx.restore();
+    }
+};
+
+if (typeof Chart !== 'undefined' && Chart.registry?.plugins && !Chart.registry.plugins.get('moCenterText')) {
+    Chart.register(centerDoughnutTextPlugin);
+}
+
+/* ═══════════════ DRAG & DROP ═══════════════ */
+const dropZone = $('#moDropZone');
+const fileInput = $('#moFileInput');
+const fileBadge = $('#moFileBadge');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; showFileBadge(); }
+});
+fileInput.addEventListener('change', showFileBadge);
+
+function showFileBadge() {
+    const f = fileInput.files[0];
+    fileBadge.innerHTML = f
+        ? `<span class="mo-file-badge"><i class="bi bi-file-earmark-check"></i> ${f.name}</span>`
+        : '';
+}
+
+/* ═══════════════ EXECUTE MODEL ═══════════════ */
+$('#moRunBtn').addEventListener('click', async () => {
+    const btn = $('#moRunBtn');
+    const overlay = $('#moOverlay');
+    const alertArea = $('#moAlertArea');
+    alertArea.innerHTML = '';
+
+    btn.disabled = true;
+    overlay.classList.remove('d-none');
+
+    const formData = new FormData();
+    if (fileInput.files[0]) formData.append('archivo_excel', fileInput.files[0]);
+    const premiumPayload = collectPremiumOverridesPayload();
+    if (premiumPayload.length) {
+        formData.append('premium_overrides_json', JSON.stringify(premiumPayload));
+    }
+
+    try {
+        const resp = await fetch('/modelo-optimizacion/ejecutar', { method: 'POST', body: formData });
+        const data = await resp.json();
+        const validationErrors = formatValidationIssues(data.validation, 'errors');
+
+        if (!resp.ok || !data.success) {
+            const baseError = data.error || 'Error desconocido del servidor';
+            const fullError = validationErrors ? `${baseError}\n${validationErrors}` : baseError;
+            throw new Error(fullError);
+        }
+
+        currentResults = data.resultados;
+        loadPremiumMapFromResults(currentResults);
+        updatePremiumControlsUI();
+        const statusNorm = normalizeSolverStatus(currentResults?.status);
+        renderDashboard(currentResults);
+        
+        if (statusNorm === 'optimal') {
+            alertArea.innerHTML = `<div class="alert alert-success alert-dismissible fade show py-2 small" role="alert">
+                <i class="bi bi-check-circle me-1"></i><strong>Modelo resuelto exitosamente:</strong> Se encontró una solución óptima viable.
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>`;
+        } else if (statusNorm === 'infeasible') {
+            alertArea.innerHTML = `<div class="alert alert-warning alert-dismissible fade show py-2 small mb-0" role="alert">
+                <i class="bi bi-exclamation-triangle me-1"></i><strong>Escenario Inviable (Infeasible):</strong> El solucionador no pudo satisfacer todas las restricciones de calidad, capacidad o balance.
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>`;
+        } else {
+            alertArea.innerHTML = `<div class="alert alert-danger alert-dismissible fade show py-2 small mb-0" role="alert">
+                <i class="bi bi-exclamation-octagon me-1"></i><strong>Modelo no resuelto (${currentResults.status}):</strong> No se pudo encontrar una solución óptima.
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>`;
+        }
+
+        const validationWarnings = formatValidationIssues(data.validation, 'warnings', 6);
+        if (validationWarnings) {
+            alertArea.innerHTML += `<div class="alert alert-info alert-dismissible fade show py-2 small mt-2 mb-0" role="alert">
+                <i class="bi bi-info-circle me-1"></i><strong>Validación previa:</strong><br>${escHtml(validationWarnings).replace(/\n/g, '<br>')}
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>`;
+        }
+
+    } catch (err) {
+        const safeMsg = escHtml(err?.message || 'Error desconocido').replace(/\n/g, '<br>');
+        alertArea.innerHTML = `<div class="alert alert-danger alert-dismissible fade show py-2 small" role="alert">
+            <i class="bi bi-exclamation-triangle me-1"></i>${safeMsg}
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button></div>`;
+    } finally {
+        overlay.classList.add('d-none');
+        btn.disabled = false;
+    }
+});
+
+/* ═══════════════ DOWNLOAD REPORT ═══════════════ */
+$('#moDownloadBtn').addEventListener('click', () => {
+    const nombre = $('#moEscenario').value || 'Escenario Base';
+    const form = document.createElement('form');
+    form.method = 'POST'; form.action = '/modelo-optimizacion/descargar-informe';
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'nombre_escenario'; inp.value = nombre;
+    form.appendChild(inp); document.body.appendChild(form);
+    form.submit(); form.remove();
+});
+
+/* ═══════════════ RENDER DASHBOARD ═══════════════ */
+function renderDashboard(r) {
+    resetFilters();
+    const statusNorm = normalizeSolverStatus(r?.status);
+    if (!r || statusNorm === 'undefined' || statusNorm === 'not solved') {
+        const statusStr = r?.status || 'ERROR';
+        $('#moStatusBadge').innerHTML = `<span class="mo-badge-status bg-danger text-white">${statusStr}</span>`;
+        
+        $('#moEmptyIcon').innerHTML = `<i class="bi bi-calculator"></i>`;
+        $('#moEmptyTitle').innerHTML = `Sin resultados aún`;
+        $('#moEmptyDesc').innerHTML = `Sube el archivo de parámetros y ejecuta el modelo para ver los resultados optimizados.`;
+
+        $('#moEmptyState').classList.remove('d-none');
+        $('#moWarningBannerSection').classList.add('d-none');
+        $('#moKpiSection').classList.add('d-none');
+        $('#moCommandStrip').classList.add('d-none');
+        $('#moInsightSection').classList.add('d-none');
+        $('#moTabsSection').classList.add('d-none');
+        $('#moDownloadBtn').classList.add('d-none');
+        $('#moLastRunText').innerHTML = '<i class="bi bi-clock-history"></i> Sin ejecuciones recientes';
+        return;
+    }
+
+    // Show dashboard containers
+    $('#moEmptyState').classList.add('d-none');
+    $('#moKpiSection').classList.remove('d-none');
+    $('#moCommandStrip').classList.remove('d-none');
+    $('#moInsightSection').classList.remove('d-none');
+    $('#moTabsSection').classList.remove('d-none');
+    $('#moDownloadBtn').classList.remove('d-none');
+
+    // Handle warning banner and status badge depending on optimization outcome
+    if (statusNorm === 'infeasible') {
+        $('#moStatusBadge').innerHTML = `<span class="mo-badge-status bg-danger text-white">Inviable</span>`;
+        $('#moWarningBannerSection').classList.remove('d-none');
+    } else if (statusNorm && statusNorm !== 'optimal') {
+        $('#moStatusBadge').innerHTML = `<span class="mo-badge-status bg-warning text-dark">${r.status}</span>`;
+        $('#moWarningBannerSection').classList.remove('d-none');
+    } else {
+        $('#moStatusBadge').innerHTML = `<span class="mo-badge-status bg-success text-white">Óptimo</span>`;
+        $('#moWarningBannerSection').classList.add('d-none');
+    }
+
+    // KPIs
+    const utilidad = r.utilidad_total || 0;
+    const volC = r.vol_compras_total || 0;
+    const volV = r.vol_ventas_total || 0;
+    const margen = volV > 0 ? utilidad / volV : 0;
+
+    const costoTransp = (r.transporte || []).reduce((s, t) => s + (t['Costo Total USD'] || 0), 0);
+    const costoThru = (r.throughput || []).reduce((s, t) => s + (t['Costo Total USD'] || 0), 0);
+    const costoOp = (r.costos_operacionales || []).reduce((s, t) => s + (t['Costo Total USD'] || 0), 0);
+    const costoOpRef = (r.costos_operacionales_ref || []).reduce((s, t) => s + (t['Costo Total USD'] || 0), 0);
+    const costoTotal = costoTransp + costoThru + costoOp + costoOpRef;
+
+    $('#kpiUtilidad').textContent = fmtM(utilidad);
+    $('#kpiMargen').textContent = fmtM(margen);
+    $('#kpiVolCompras').textContent = fmtI(volC);
+    $('#kpiVolVentas').textContent = fmtI(volV);
+    $('#kpiCostoOp').textContent = fmtM(costoTotal);
+
+    const kpiData = {
+        utilidad,
+        margen,
+        volC,
+        volV,
+        costoTotal,
+        costoTransp,
+        costoThru,
+        costoOp,
+        costoOpRef
+    };
+    updateKpiHints(kpiData);
+    renderNarrativeAndSignals(r, kpiData);
+
+    // Tabs
+    renderCompras(r.compras || []);
+    renderVentas(r.ventas || []);
+    renderTransporte(r.transporte || []);
+    renderBlending(r.blending || []);
+    renderRefinacion(r.refinacion || []);
+    renderThroughput(r.throughput || []);
+    renderCostosOp(r.costos_operacionales || [], r.costos_operacionales_ref || []);
+    renderComposicion(r.composicion_blending || []);
+
+    const activeHref = document.querySelector('#moTabNav .nav-link.active')?.getAttribute('href') || '#tabCompras';
+    syncCommandButtons(activeHref.replace('#', ''));
+}
+
+function getTopItem(data, valueGetter) {
+    return (data || []).reduce((best, item) => {
+        const value = toNum(valueGetter(item));
+        if (!best || value > best.value) {
+            return { item, value };
+        }
+        return best;
+    }, null);
+}
+
+function setMiniGauge(valueId, barId, pctValue) {
+    const valueEl = document.getElementById(valueId);
+    const barEl = document.getElementById(barId);
+    if (!valueEl || !barEl) return;
+
+    const pctClean = clamp(toNum(pctValue), 0, 120);
+    valueEl.textContent = fmtP(pctValue, 1);
+    barEl.style.width = `${pctClean}%`;
+}
+
+function updateKpiHints(meta) {
+    const spread = meta.volC > 0 ? ((meta.volV - meta.volC) / meta.volC) * 100 : 0;
+    const logistPct = meta.costoTotal > 0 ? (meta.costoTransp / meta.costoTotal) * 100 : 0;
+
+    $('#kpiUtilidadHint').textContent = meta.utilidad >= 0
+        ? 'Resultado positivo del escenario actual.'
+        : 'Resultado negativo, revisar ventas y costos.';
+    $('#kpiMargenHint').textContent = `Margen por barril: ${fmtM(meta.margen)}.`;
+    $('#kpiComprasHint').textContent = `Cobertura respecto a ventas: ${fmtDeltaP(spread, 1)}.`;
+    $('#kpiVentasHint').textContent = `Volumen vendido total: ${fmtI(meta.volV)} BPD.`;
+    $('#kpiCostoHint').textContent = `Participación logística: ${fmtP(logistPct, 1)} del costo total.`;
+}
+
+function updateFlowStepper(statusRaw) {
+    const status = normalizeSolverStatus(statusRaw);
+    const steps = {
+        compras: document.querySelector('[data-step="compras"]'),
+        ventas: document.querySelector('[data-step="ventas"]'),
+        logistica: document.querySelector('[data-step="logistica"]'),
+        resultado: document.querySelector('[data-step="resultado"]')
+    };
+
+    Object.values(steps).forEach(step => {
+        if (!step) return;
+        step.classList.remove('is-done', 'is-active', 'is-risk');
+    });
+
+    steps.compras?.classList.add('is-done');
+    steps.ventas?.classList.add('is-done');
+
+    if (status === 'optimal') {
+        steps.logistica?.classList.add('is-done');
+        steps.resultado?.classList.add('is-done');
+    } else if (status === 'infeasible') {
+        steps.logistica?.classList.add('is-active');
+        steps.resultado?.classList.add('is-risk');
+    } else {
+        steps.logistica?.classList.add('is-active');
+        steps.resultado?.classList.add('is-active');
+    }
+}
+
+function renderNarrativeAndSignals(r, meta) {
+    const escenario = escHtml(($('#moEscenario')?.value || 'Escenario Base').trim() || 'Escenario Base');
+    const statusRaw = r.status || 'Sin estado';
+    const status = normalizeSolverStatus(statusRaw);
+    const statusLabel = solverStatusLabel(statusRaw);
+    const balancePct = meta.volC > 0 ? (meta.volV / meta.volC) * 100 : 0;
+    const logistPct = meta.costoTotal > 0 ? (meta.costoTransp / meta.costoTotal) * 100 : 0;
+    const spreadPct = meta.volC > 0 ? ((meta.volV - meta.volC) / meta.volC) * 100 : 0;
+
+    const topCompra = getTopItem(r.compras, row => row['Costo Total USD']);
+    const topVenta = getTopItem(r.ventas, row => row['Ingreso Con Densidad Contractual (USD)'] || row['Costo Total']);
+    const topRuta = getTopItem(r.transporte, row => row['Costo Total USD']);
+
+    const textoStatus = status === 'infeasible'
+        ? 'El solver detecta restricciones incompatibles; interpreta los números como aproximación diagnóstica.'
+        : status === 'optimal'
+            ? 'El solver encontró una configuración viable y económicamente consistente.'
+            : 'El solver devolvió una solución parcial; se recomienda revisar límites y capacidades.';
+
+    const narrativa = `Escenario ${escenario} con estado ${statusLabel}. ${textoStatus} Utilidad estimada ${fmtM(meta.utilidad)} y margen ${fmtM(meta.margen)} por barril vendido.`;
+    $('#moNarrativeSummary').textContent = narrativa;
+    const narrativaSecundaria = `Compras ${fmtI(meta.volC)} BPD vs ventas ${fmtI(meta.volV)} BPD (${fmtDeltaP(spreadPct, 1)}). Logística representa ${fmtP(logistPct, 1)} del costo total${topRuta ? ` y la ruta de mayor impacto es ${topRuta.item['Ruta'] || 'N/A'}` : ''}.`;
+    const secondaryEl = $('#moNarrativeSecondary');
+    if (secondaryEl) secondaryEl.textContent = narrativaSecundaria;
+
+    const ventasPorPunto = {};
+    (r.ventas || []).forEach(item => {
+        const punto = item['Punto de Venta'] || 'N/A';
+        ventasPorPunto[punto] = (ventasPorPunto[punto] || 0) + toNum(item['Volumen Vendido BPD']);
+    });
+    const totalVolVentas = Object.values(ventasPorPunto).reduce((sum, value) => sum + value, 0);
+    const mayorPunto = Object.entries(ventasPorPunto).sort((a, b) => b[1] - a[1])[0];
+    const concentracion = totalVolVentas > 0 && mayorPunto ? (mayorPunto[1] / totalVolVentas) * 100 : 0;
+
+    const statusClass = status === 'optimal' ? 'is-ok' : (status === 'infeasible' ? 'is-risk' : 'is-warn');
+    const balanceClass = balancePct >= 95 && balancePct <= 105 ? 'is-ok' : (balancePct >= 90 && balancePct <= 110 ? 'is-warn' : 'is-risk');
+    const priority = (() => {
+        if (status === 'infeasible') return { label: 'Recuperar factibilidad', cls: 'is-risk' };
+        if (meta.utilidad < 0) return { label: 'Elevar margen comercial', cls: 'is-risk' };
+        if (logistPct > 35) return { label: 'Reducir costo logístico', cls: 'is-warn' };
+        if (concentracion > 60) return { label: 'Diversificar puntos de venta', cls: 'is-warn' };
+        return { label: 'Escalar escenario rentable', cls: 'is-ok' };
+    })();
+
+    const storyMetrics = [
+        { label: 'Estado Solver', value: statusLabel, cls: statusClass },
+        { label: 'Utilidad Neta', value: fmtM(meta.utilidad), cls: meta.utilidad >= 0 ? 'is-ok' : 'is-risk' },
+        { label: 'Balance Compras/Ventas', value: fmtP(balancePct, 1), cls: balanceClass },
+        { label: 'Prioridad Operativa', value: priority.label, cls: priority.cls }
+    ];
+
+    const metricsEl = $('#moStoryMetrics');
+    if (metricsEl) {
+        metricsEl.innerHTML = storyMetrics.map(metric => {
+            return `<div class="mo-story-metric ${metric.cls}">
+                <span class="metric-label">${metric.label}</span>
+                <span class="metric-value">${metric.value}</span>
+            </div>`;
+        }).join('');
+    }
+
+    const storyActions = [];
+    if (status === 'infeasible') {
+        storyActions.push({
+            icon: 'bi bi-droplet-half',
+            text: 'Revisar límites de calidad en blending',
+            tab: 'tabBlending',
+            wrap: 'blendingTableWrap'
+        });
+        storyActions.push({
+            icon: 'bi bi-box-seam',
+            text: 'Validar abastecimiento y capacidades',
+            tab: 'tabCompras',
+            wrap: 'comprasTableWrap'
+        });
+    } else {
+        storyActions.push({
+            icon: 'bi bi-shop',
+            text: 'Auditar corrientes de mayor ingreso',
+            tab: 'tabVentas',
+            wrap: 'ventasTableWrap'
+        });
+        storyActions.push({
+            icon: 'bi bi-signpost-2',
+            text: 'Optimizar rutas de mayor costo',
+            tab: 'tabTransporte',
+            wrap: 'transporteTableWrap'
+        });
+    }
+
+    storyActions.push({
+        icon: 'bi bi-wallet2',
+        text: 'Revisar estructura de costos operativos',
+        tab: 'tabCostos',
+        wrap: 'costosOpTableWrap'
+    });
+
+    const actionsEl = $('#moStoryActionsList');
+    if (actionsEl) {
+        actionsEl.innerHTML = storyActions.slice(0, 3).map(action => {
+            return `<button type="button" class="mo-story-action-btn" data-mo-tab-target="${action.tab}" data-mo-wrap-target="${action.wrap}">
+                <i class="${action.icon} me-1"></i>${action.text}
+            </button>`;
+        }).join('');
+    }
+
+    const signals = [
+        {
+            level: meta.utilidad >= 0 ? 'ok' : 'risk',
+            title: 'Rentabilidad',
+            value: fmtM(meta.utilidad),
+            detail: meta.utilidad >= 0 ? 'Resultado neto positivo del día operativo.' : 'Utilidad negativa, conviene revisar mix comercial.',
+            tab: 'tabVentas',
+            wrap: 'ventasTableWrap'
+        },
+        {
+            level: balancePct >= 95 && balancePct <= 105 ? 'ok' : 'warn',
+            title: 'Balance de Volúmenes',
+            value: fmtP(balancePct, 1),
+            detail: 'Relación entre volumen vendido y comprado para el escenario.',
+            tab: 'tabCompras',
+            wrap: 'comprasTableWrap'
+        },
+        {
+            level: concentracion > 60 ? 'risk' : 'ok',
+            title: 'Concentración de Ventas',
+            value: mayorPunto ? `${fmtP(concentracion, 1)} en ${escHtml(mayorPunto[0])}` : 'Sin datos',
+            detail: 'Detecta dependencia excesiva de un punto de venta.',
+            tab: 'tabVentas',
+            wrap: 'ventasTableWrap'
+        },
+        {
+            level: logistPct > 35 ? 'warn' : 'ok',
+            title: 'Costo Logístico',
+            value: fmtP(logistPct, 1),
+            detail: 'Porcentaje de logística sobre el costo total del sistema.',
+            tab: 'tabTransporte',
+            wrap: 'transporteTableWrap'
+        }
+    ];
+
+    if (topCompra) {
+        signals.push({
+            level: 'warn',
+            title: 'Compra de Mayor Impacto',
+            value: `${escHtml(topCompra.item['Crudo o Producto'] || 'N/A')} · ${fmtM(topCompra.value)}`,
+            detail: 'Producto con mayor peso económico en abastecimiento.',
+            tab: 'tabCompras',
+            wrap: 'comprasTableWrap'
+        });
+    }
+    if (topVenta) {
+        signals.push({
+            level: 'ok',
+            title: 'Fuente Principal de Ingreso',
+            value: `${escHtml(renameBlendLabel(topVenta.item['Corriente Venta'] || 'N/A'))} · ${fmtM(topVenta.value)}`,
+            detail: 'Corriente comercial más relevante para ingresos.',
+            tab: 'tabVentas',
+            wrap: 'ventasTableWrap'
+        });
+    }
+    if (topRuta) {
+        signals.push({
+            level: 'warn',
+            title: 'Ruta Más Costosa',
+            value: `${escHtml(topRuta.item['Ruta'] || 'N/A')} · ${fmtM(topRuta.value)}`,
+            detail: 'Ruta logística con mayor costo acumulado.',
+            tab: 'tabTransporte',
+            wrap: 'transporteTableWrap'
+        });
+    }
+    if (status === 'infeasible') {
+        signals.unshift({
+            level: 'risk',
+            title: 'Alerta de Viabilidad',
+            value: 'Escenario Inviable',
+            detail: 'Revisa límites de calidad y capacidad para recuperar factibilidad.',
+            tab: 'tabBlending',
+            wrap: 'blendingTableWrap'
+        });
+    }
+
+    $('#moSignalList').innerHTML = signals.slice(0, 4).map(signal => {
+        return `<button type="button" class="mo-signal-item mo-signal-${signal.level}" data-mo-tab-target="${signal.tab}" data-mo-wrap-target="${signal.wrap}">
+            <span class="mo-signal-title">${signal.title}</span>
+            <strong>${signal.value}</strong>
+            <small>${signal.detail}</small>
+        </button>`;
+    }).join('');
+
+    setMiniGauge('moGaugeBalance', 'moGaugeBalanceBar', balancePct);
+    setMiniGauge('moGaugeLogistica', 'moGaugeLogisticaBar', logistPct);
+    updateFlowStepper(statusRaw);
+    $('#moLastRunText').innerHTML = `<i class="bi bi-clock-history"></i> ${new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}`;
+}
+
+/* ═══════════════ TABLE BUILDERS ═══════════════ */
+
+function buildTable(headers, rows, footerCells) {
+    let html = '<table class="table table-sm table-hover mo-table"><thead><tr>';
+    headers.forEach(h => {
+        const align = h.align === 'right' ? ' class="text-end"' : '';
+        html += `<th${align}>${h.label}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+    rows.forEach(cells => {
+        html += '<tr>';
+        cells.forEach((c, i) => {
+            const align = headers[i]?.align === 'right' ? ' class="text-end"' : '';
+            html += `<td${align}>${c}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    if (footerCells) {
+        html += '<tfoot><tr>';
+        footerCells.forEach((c, i) => {
+            const align = headers[i]?.align === 'right' ? ' class="text-end"' : '';
+            html += `<td${align}>${c}</td>`;
+        });
+        html += '</tr></tfoot>';
+    }
+    html += '</table>';
+    return html;
+}
+
+/* ── COMPRAS ── */
+function renderCompras(data) {
+    if (!data.length) { $('#comprasTableWrap').innerHTML = emptyMsg('compras'); return; }
+    const maxVol = Math.max(...data.map(d => d['Volumen Comprado BPD'] || 0));
+    const headers = [
+        {label:'Crudo / Producto', align:'left'},
+        {label:'Origen', align:'left'},
+        {label:'Variante Transporte', align:'left'},
+        {label:'Volumen BPD', align:'right'},
+        {label:'Vol. Relativo', align:'left'},
+        {label:'Peso kg/gal', align:'right'},
+        {label:'Precio Base USD/BBL', align:'right'},
+        {label:'Premium USD/BBL', align:'right'},
+        {label:'Precio Ajustado USD/BBL', align:'right'},
+        {label:'Costo Ajustado USD', align:'right'}
+    ];
+    const totVol = data.reduce((s,d) => s + (d['Volumen Comprado BPD']||0), 0);
+    const totCostAdjusted = data.reduce((s,d) => {
+        const vol = toNum(d['Volumen Comprado BPD']);
+        const basePrice = toNum(d['Precio Compra USD/BBL']);
+        const flowBase = d['Flujo Base Premium'] || d['Crudo o Producto'];
+        const originBase = d['Origen Base Premium'] || d['Origen'];
+        const premium = getPremiumFor(flowBase, originBase);
+        return s + (vol * (basePrice + premium));
+    }, 0);
+    const rows = data.map(d => {
+        const vol = d['Volumen Comprado BPD'] || 0;
+        const pct = maxVol > 0 ? (vol / maxVol * 100) : 0;
+        const flowLabel = d['Crudo o Producto'] || '';
+        const flowBase = d['Flujo Base Premium'] || flowLabel;
+        const originBase = d['Origen Base Premium'] || d['Origen'] || '';
+        const basePrice = toNum(d['Precio Compra USD/BBL']);
+        const premium = getPremiumFor(flowBase, originBase);
+        const adjustedPrice = basePrice + premium;
+        const adjustedCost = vol * adjustedPrice;
+        const premiumInput = `<input type="number" class="form-control form-control-sm mo-premium-input" data-flow="${escHtml(flowBase)}" data-origin="${escHtml(originBase)}" step="0.01" value="${fmtN(premium, 2)}">`;
+        return [
+            flowLabel,
+            d['Origen'],
+            d['Variante Transporte'] || 'SIN RUTA',
+            fmtN(vol, 1),
+            `<div class="mo-vol-bar"><div class="mo-vol-bar-fill" style="width:${pct.toFixed(1)}%"></div></div>`,
+            fmtN(d['Peso por Galon kg/gal'], 4),
+            fmtM(basePrice),
+            premiumInput,
+            fmtM(adjustedPrice),
+            fmtM(adjustedCost)
+        ];
+    });
+    const footer = ['<strong>TOTAL</strong>', '', '', `<strong>${fmtN(totVol,1)}</strong>`, '', '', '', '', '', `<strong>${fmtM(totCostAdjusted)}</strong>`];
+    $('#comprasTableWrap').innerHTML = buildTable(headers, rows, footer);
+}
+
+/* ── VENTAS ── */
+function renderVentas(data) {
+    if (!data.length) {
+        $('#ventasTableWrap').innerHTML = emptyMsg('ventas');
+        destroyChart('ventasBar');
+        destroyChart('ventasPie');
+        return;
+    }
+    const headers = [
+        {label:'Corriente', align:'left'},
+        {label:'Punto Venta', align:'left'},
+        {label:'Vol. BPD', align:'right'},
+        {label:'Precio USD/BBL', align:'right'},
+        {label:'Ingreso USD', align:'right'},
+        {label:'Crudo Origen', align:'left'}
+    ];
+    const totVol = data.reduce((s,d) => s + (d['Volumen Vendido BPD']||0), 0);
+    const totIng = data.reduce((s,d) => s + (d['Ingreso Con Densidad Contractual (USD)']||d['Costo Total']||0), 0);
+    const rows = data.map(d => [
+        renameBlendLabel(d['Corriente Venta']),
+        d['Punto de Venta'],
+        fmtN(d['Volumen Vendido BPD'], 1),
+        fmtM(d['Precio de venta USD/BBL']),
+        fmtM(d['Ingreso Con Densidad Contractual (USD)'] || d['Costo Total']),
+        d['Crudo Origen(SoloRefinados)'] || '—'
+    ]);
+    const footer = ['<strong>TOTAL</strong>', '', `<strong>${fmtN(totVol,1)}</strong>`, '', `<strong>${fmtM(totIng)}</strong>`, ''];
+    $('#ventasTableWrap').innerHTML = buildTable(headers, rows, footer);
+
+    // Charts
+    renderVentasCharts(data);
+}
+
+function renderVentasCharts(data) {
+    const theme = getChartTheme();
+
+    // Group by Punto de Venta for bar chart
+    const byPV = {};
+    data.forEach(d => {
+        const pv = d['Punto de Venta'] || 'N/A';
+        byPV[pv] = (byPV[pv] || 0) + (d['Volumen Vendido BPD'] || 0);
+    });
+    const pvLabels = Object.keys(byPV);
+    const pvValues = Object.values(byPV);
+
+    destroyChart('ventasBar');
+    chartInstances.ventasBar = new Chart($('#chartVentasBar'), {
+        type: 'bar',
+        data: {
+            labels: pvLabels,
+            datasets: [{
+                label: 'Volumen BPD',
+                data: pvValues,
+                backgroundColor: (ctx) => {
+                    const base = PALETTE[ctx.dataIndex % PALETTE.length];
+                    return makeGradient(ctx.chart, hexToRgba(base, 0.55), base);
+                },
+                borderColor: (ctx) => PALETTE[ctx.dataIndex % PALETTE.length],
+                borderWidth: 1.4,
+                borderRadius: 10,
+                borderSkipped: false,
+                barThickness: 44,
+                maxBarThickness: 48
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            animation: { duration: 1100, easing: 'easeOutCubic' },
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Volumen por Punto de Venta (BPD)', font: { size: 13, weight: 700 }, color: theme.text },
+                tooltip: {
+                    backgroundColor: theme.surface,
+                    titleColor: theme.text,
+                    bodyColor: theme.muted,
+                    borderColor: theme.grid,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: (ctx) => `${ctx.dataset.label}: ${fmtN(ctx.raw, 1)} BPD`
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => fmtI(v), color: theme.muted },
+                    grid: { color: hexToRgba(theme.grid, 0.55), drawBorder: false }
+                },
+                x: {
+                    ticks: { font: { size: 10, weight: 600 }, color: theme.muted },
+                    grid: { color: hexToRgba(theme.grid, 0.35), drawBorder: false }
+                }
+            },
+            onClick: (_, elements) => {
+                if (!elements.length) return;
+                const selected = pvLabels[elements[0].index];
+                const ventasFilter = document.querySelector('.mo-filter-input[data-tab="ventas"]');
+                if (ventasFilter) ventasFilter.value = selected;
+                applyTabFilter('ventas', selected);
+            },
+            onHover: (event, elements, chart) => {
+                if (chart?.canvas) chart.canvas.style.cursor = elements.length ? 'pointer' : 'default';
+            }
+        }
+    });
+
+    // Group by Corriente for pie chart
+    const byCor = {};
+    data.forEach(d => {
+        const cor = renameBlendLabel(d['Corriente Venta'] || 'N/A');
+        byCor[cor] = (byCor[cor] || 0) + (d['Ingreso Con Densidad Contractual (USD)'] || d['Costo Total'] || 0);
+    });
+    const corLabels = Object.keys(byCor);
+    const corValues = Object.values(byCor);
+    const totalIngresos = corValues.reduce((sum, value) => sum + value, 0);
+
+    destroyChart('ventasPie');
+    chartInstances.ventasPie = new Chart($('#chartVentasPie'), {
+        type: 'doughnut',
+        data: {
+            labels: corLabels,
+            datasets: [{
+                data: corValues,
+                backgroundColor: corLabels.map((_, index) => {
+                    const base = PALETTE[index % PALETTE.length];
+                    return hexToRgba(base, 0.9);
+                }),
+                borderWidth: 2,
+                borderColor: theme.surface,
+                hoverOffset: 10,
+                spacing: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '62%',
+            animation: { duration: 1000, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 10, weight: 600 },
+                        padding: 10,
+                        usePointStyle: true,
+                        color: theme.muted
+                    }
+                },
+                title: { display: true, text: 'Ingresos por Corriente (USD)', font: { size: 13, weight: 700 }, color: theme.text },
+                tooltip: {
+                    backgroundColor: theme.surface,
+                    titleColor: theme.text,
+                    bodyColor: theme.muted,
+                    borderColor: theme.grid,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: ctx => {
+                            const pct = totalIngresos > 0 ? (toNum(ctx.raw) / totalIngresos) * 100 : 0;
+                            return `${ctx.label}: ${fmtM(ctx.raw)} (${fmtP(pct, 1)})`;
+                        }
+                    }
+                },
+                moCenterText: {
+                    title: 'Total',
+                    value: fmtM(totalIngresos),
+                    subtitle: 'Ingresos'
+                }
+            },
+            onClick: (_, elements) => {
+                if (!elements.length) return;
+                const selected = corLabels[elements[0].index];
+                const ventasFilter = document.querySelector('.mo-filter-input[data-tab="ventas"]');
+                if (ventasFilter) ventasFilter.value = selected;
+                applyTabFilter('ventas', selected);
+            },
+            onHover: (event, elements, chart) => {
+                if (chart?.canvas) chart.canvas.style.cursor = elements.length ? 'pointer' : 'default';
+            }
+        }
+    });
+}
+
+/* ── TRANSPORTE ── */
+function renderTransporte(data) {
+    if (!data.length) { $('#transporteTableWrap').innerHTML = emptyMsg('transporte'); return; }
+    const headers = [
+        {label:'Flujo', align:'left'}, {label:'Origen', align:'left'}, {label:'Destino', align:'left'},
+        {label:'Ruta', align:'left'}, {label:'Vol. BPD', align:'right'},
+        {label:'Peso kg/gal', align:'right'}, {label:'Peso TPD', align:'right'},
+        {label:'Costo USD/BBL', align:'right'}, {label:'Costo Total USD', align:'right'}
+    ];
+    const totVol = data.reduce((s,d) => s + (d['Volumen Transportado BPD']||0), 0);
+    const totWeight = data.reduce((s,d) => s + (d['Peso Transportado TPD']||0), 0);
+    const totCost = data.reduce((s,d) => s + (d['Costo Total USD']||0), 0);
+    const rows = data.map(d => [
+        renameBlendLabel(d['Flujo']), d['Origen'], d['Destino'], d['Ruta'],
+        fmtN(d['Volumen Transportado BPD'], 1),
+        fmtN(d['Peso por Galon kg/gal'], 4),
+        fmtN(d['Peso Transportado TPD'], 2),
+        fmtM(d['Costo de transporte USD/BBL']),
+        fmtM(d['Costo Total USD'])
+    ]);
+    const footer = ['<strong>TOTAL</strong>','','','', `<strong>${fmtN(totVol,1)}</strong>`, '', `<strong>${fmtN(totWeight,2)}</strong>`, '', `<strong>${fmtM(totCost)}</strong>`];
+    $('#transporteTableWrap').innerHTML = buildTable(headers, rows, footer);
+}
+
+/* ── BLENDING ── */
+function renderBlending(data) {
+    if (!data.length) { $('#blendingTableWrap').innerHTML = emptyMsg('blending'); return; }
+    const qualityCols = ['API','%AZUFRE','Viscosidad Cst','ACID NUMBER mg KOH/g',
+        'Micro Carbon Residue % m/m','Water by Distillation % v/v',
+        'Vanadium (V) mg/kg','Sodium (Na) mg/kg'];
+    const headers = [
+        {label:'Mezcla', align:'left'}, {label:'Centro Blend', align:'left'},
+        {label:'Vol. BPD', align:'right'},
+        ...qualityCols.map(c => ({label: c.length > 18 ? c.substring(0,16)+'…' : c, align:'right'}))
+    ];
+    const rows = data.map(d => [
+        renameBlendLabel(d['Mezcla']), d['Centro de Blending'], fmtN(d['Volumen BPD'], 1),
+        ...qualityCols.map(c => {
+            const v = d[c];
+            if (v === 0 || v === 0.0 || v == null) return `<span class="mo-badge-warn">0.00</span>`;
+            return fmtN(v, 4);
+        })
+    ]);
+    const totVol = data.reduce((s,d) => s + (d['Volumen BPD']||0), 0);
+    const footer = ['<strong>TOTAL</strong>', '', `<strong>${fmtN(totVol,1)}</strong>`, ...qualityCols.map(() => '')];
+    $('#blendingTableWrap').innerHTML = buildTable(headers, rows, footer);
+}
+
+/* ── REFINACIÓN ── */
+function renderRefinacion(data) {
+    if (!data.length) { $('#refinacionTableWrap').innerHTML = emptyMsg('refinación'); return; }
+
+    const groupedByProducto = {};
+    const groupedByProceso = {};
+
+    data.forEach(item => {
+        const producto = item['Producto Refinado'] || 'N/A';
+        const proceso = item['Planta de Refinacion'] || 'N/A';
+        if (!groupedByProducto[producto]) groupedByProducto[producto] = [];
+        groupedByProducto[producto].push(item);
+        groupedByProceso[proceso] = (groupedByProceso[proceso] || 0) + toNum(item['Volumen Producido BPD']);
+    });
+
+    const totalGeneral = data.reduce((sum, item) => sum + toNum(item['Volumen Producido BPD']), 0);
+    const processCards = Object.entries(groupedByProceso)
+        .sort((a, b) => b[1] - a[1])
+        .map(([proceso, volumen]) => {
+            return `<div class="mo-refi-process-item">
+                <div class="name">${escHtml(proceso)}</div>
+                <div class="value">${fmtN(volumen, 1)} BPD</div>
+            </div>`;
+        }).join('');
+
+    const groupsHtml = Object.entries(groupedByProducto)
+        .sort((a, b) => a[0].localeCompare(b[0], 'es'))
+        .map(([producto, items]) => {
+            const subtotal = items.reduce((sum, row) => sum + toNum(row['Volumen Producido BPD']), 0);
+            const rows = items.map(row => {
+                return `<tr>
+                    <td>${escHtml(row['Crudo Origen'] || '—')}</td>
+                    <td>${escHtml(row['Planta de Refinacion'] || '—')}</td>
+                    <td class="text-end">${fmtN(row['Volumen Producido BPD'], 1)}</td>
+                </tr>`;
+            }).join('');
+
+            return `<details class="mo-refi-group" open>
+                <summary>
+                    <span>${escHtml(producto)}</span>
+                    <span class="mo-refi-group-total">${fmtN(subtotal, 1)} BPD</span>
+                </summary>
+                <table class="table table-sm table-hover mo-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Crudo Origen</th>
+                            <th>Planta de Refinación</th>
+                            <th class="text-end">Volumen Producido BPD</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </details>`;
+        }).join('');
+
+    $('#refinacionTableWrap').innerHTML = `
+        <div class="mo-refi-process-grid">${processCards}</div>
+        ${groupsHtml}
+        <div class="mo-refi-grand-total">Total conjunto refinado/proceso: ${fmtN(totalGeneral, 1)} BPD</div>
+    `;
+}
+
+/* ── THROUGHPUT ── */
+function renderThroughput(data) {
+    if (!data.length) { $('#throughputTableWrap').innerHTML = emptyMsg('throughput'); return; }
+    const headers = [
+        {label:'Refinería', align:'left'}, {label:'Throughput BPD', align:'right'},
+        {label:'Costo Ref. USD/BPD', align:'right'}, {label:'Costo Total USD', align:'right'}
+    ];
+    const totVol = data.reduce((s,d) => s + (d['Throughput Refineria BPD']||0), 0);
+    const totCost = data.reduce((s,d) => s + (d['Costo Total USD']||0), 0);
+    const rows = data.map(d => [
+        d['Refineria'], fmtN(d['Throughput Refineria BPD'], 1),
+        fmtM(d['Costo de Refinacion USD/BPD']), fmtM(d['Costo Total USD'])
+    ]);
+    const footer = ['<strong>TOTAL</strong>', `<strong>${fmtN(totVol,1)}</strong>`, '', `<strong>${fmtM(totCost)}</strong>`];
+    $('#throughputTableWrap').innerHTML = buildTable(headers, rows, footer);
+}
+
+/* ── COSTOS OPERACIONALES ── */
+function renderCostosOp(dataOp, dataRef) {
+    // Operacionales
+    if (!dataOp.length) {
+        $('#costosOpTableWrap').innerHTML = emptyMsg('costos operacionales');
+    } else {
+        const headers = [
+            {label:'Centro Operación', align:'left'}, {label:'Throughput BPD', align:'right'},
+            {label:'Costo Op USD/BPD', align:'right'}, {label:'Costo Total USD', align:'right'}
+        ];
+        const totCost = dataOp.reduce((s,d) => s + (d['Costo Total USD']||0), 0);
+        const rows = dataOp.map(d => [
+            d['Centro de Operacion'], fmtN(d['Throughput Centro de Operacion BPD'], 1),
+            fmtM(d['Costos Operacionales USD/BPD']), fmtM(d['Costo Total USD'])
+        ]);
+        const footer = ['<strong>TOTAL</strong>', '', '', `<strong>${fmtM(totCost)}</strong>`];
+        $('#costosOpTableWrap').innerHTML = buildTable(headers, rows, footer);
+    }
+
+    // Refinados en blend
+    if (!dataRef.length) {
+        $('#costosOpRefTableWrap').innerHTML = emptyMsg('costos refinados');
+    } else {
+        const headers = [
+            {label:'Centro Operación', align:'left'}, {label:'Throughput Ref. BPD', align:'right'},
+            {label:'Costo Op Ref. USD/BPD', align:'right'}, {label:'Costo Total USD', align:'right'}
+        ];
+        const totCost = dataRef.reduce((s,d) => s + (d['Costo Total USD']||0), 0);
+        const rows = dataRef.map(d => [
+            d['Centro de Operacion'], fmtN(d['Throughput Centro de Operacion Refinados BPD'], 1),
+            fmtM(d['Costos Operacionales Refinados USD/BPD']), fmtM(d['Costo Total USD'])
+        ]);
+        const footer = ['<strong>TOTAL</strong>', '', '', `<strong>${fmtM(totCost)}</strong>`];
+        $('#costosOpRefTableWrap').innerHTML = buildTable(headers, rows, footer);
+    }
+}
+
+/* ── COMPOSICIÓN BLENDING ── */
+function renderComposicion(data) {
+    if (!data.length) {
+        $('#composicionTableWrap').innerHTML = emptyMsg('composición');
+        destroyChart('composicion');
+        return;
+    }
+    const theme = getChartTheme();
+    const headers = [
+        {label:'Crudo/Refinado', align:'left'}, {label:'Crudo Origen', align:'left'},
+        {label:'Centro Op.', align:'left'}, {label:'Blend', align:'left'},
+        {label:'Volumen BPD', align:'right'}
+    ];
+    const totVol = data.reduce((s,d) => s + (d['Volumen a Blending BPD']||0), 0);
+    const rows = data.map(d => [
+        d['Crudo/Refinado'], d['Crudo origen'] || '—', d['Centro de Operacion'],
+        renameBlendLabel(d['Blend']), fmtN(d['Volumen a Blending BPD'], 1)
+    ]);
+    const footer = ['<strong>TOTAL</strong>', '', '', '', `<strong>${fmtN(totVol,1)}</strong>`];
+    $('#composicionTableWrap').innerHTML = buildTable(headers, rows, footer);
+
+    // Pie chart grouping by Blend
+    const byBlend = {};
+    data.forEach(d => {
+        const blend = renameBlendLabel(d['Blend'] || 'N/A');
+        byBlend[blend] = (byBlend[blend] || 0) + (d['Volumen a Blending BPD'] || 0);
+    });
+    const labels = Object.keys(byBlend);
+    const values = Object.values(byBlend);
+    const totalBlend = values.reduce((sum, value) => sum + value, 0);
+
+    destroyChart('composicion');
+    chartInstances.composicion = new Chart($('#chartComposicion'), {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: labels.map((_, index) => hexToRgba(PALETTE[index % PALETTE.length], 0.92)),
+                borderColor: theme.surface,
+                borderWidth: 2,
+                hoverOffset: 10,
+                spacing: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '60%',
+            animation: { duration: 1000, easing: 'easeOutQuart' },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        font: { size: 10, weight: 600 },
+                        padding: 10,
+                        usePointStyle: true,
+                        color: theme.muted
+                    }
+                },
+                title: { display: true, text: 'Volumen por Blend (BPD)', font: { size: 13, weight: 700 }, color: theme.text },
+                tooltip: {
+                    backgroundColor: theme.surface,
+                    titleColor: theme.text,
+                    bodyColor: theme.muted,
+                    borderColor: theme.grid,
+                    borderWidth: 1,
+                    callbacks: {
+                        label: ctx => {
+                            const pct = totalBlend > 0 ? (toNum(ctx.raw) / totalBlend) * 100 : 0;
+                            return `${ctx.label}: ${fmtN(ctx.raw, 1)} BPD (${fmtP(pct, 1)})`;
+                        }
+                    }
+                },
+                moCenterText: {
+                    title: 'Total',
+                    value: fmtN(totalBlend, 1),
+                    subtitle: 'BPD'
+                }
+            },
+            onClick: (_, elements) => {
+                if (!elements.length) return;
+                const selected = labels[elements[0].index];
+                const composicionFilter = document.querySelector('.mo-filter-input[data-tab="composicion"]');
+                if (composicionFilter) composicionFilter.value = selected;
+                applyTabFilter('composicion', selected);
+            },
+            onHover: (event, elements, chart) => {
+                if (chart?.canvas) chart.canvas.style.cursor = elements.length ? 'pointer' : 'default';
+            }
+        }
+    });
+}
+
+/* ═══════════════ FILTER MECHANISMS ═══════════════ */
+function filterArray(arr, query) {
+    if (!query) return arr;
+    const q = query.toLowerCase();
+    return arr.filter(row => {
+        return Object.entries(row).some(([key, val]) => {
+            if (val == null) return false;
+            return String(val).toLowerCase().includes(q);
+        });
+    });
+}
+
+function initFilters() {
+    document.querySelectorAll('.mo-filter-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const tab = e.target.getAttribute('data-tab');
+            const query = e.target.value;
+            applyTabFilter(tab, query);
+        });
+    });
+}
+
+function applyTabFilter(tab, query) {
+    if (!currentResults) return;
+    
+    if (tab === 'compras') {
+        renderCompras(filterArray(currentResults.compras || [], query));
+    } else if (tab === 'ventas') {
+        renderVentas(filterArray(currentResults.ventas || [], query));
+    } else if (tab === 'transporte') {
+        renderTransporte(filterArray(currentResults.transporte || [], query));
+    } else if (tab === 'blending') {
+        renderBlending(filterArray(currentResults.blending || [], query));
+    } else if (tab === 'refinacion') {
+        renderRefinacion(filterArray(currentResults.refinacion || [], query));
+    } else if (tab === 'costos') {
+        const filteredThru = filterArray(currentResults.throughput || [], query);
+        const filteredOp = filterArray(currentResults.costos_operacionales || [], query);
+        const filteredOpRef = filterArray(currentResults.costos_operacionales_ref || [], query);
+        
+        renderThroughput(filteredThru);
+        renderCostosOp(filteredOp, filteredOpRef);
+    } else if (tab === 'composicion') {
+        renderComposicion(filterArray(currentResults.composicion_blending || [], query));
+    }
+}
+
+function resetFilters() {
+    document.querySelectorAll('.mo-filter-input').forEach(input => {
+        input.value = '';
+    });
+}
+
+/* ═══════════════ INTERACTIVE CONTROLS ═══════════════ */
+function openTab(tabId) {
+    const trigger = document.querySelector(`#moTabNav .nav-link[href="#${tabId}"]`);
+    if (!trigger) return;
+
+    if (window.bootstrap?.Tab) {
+        window.bootstrap.Tab.getOrCreateInstance(trigger).show();
+    } else {
+        trigger.click();
+    }
+}
+
+function focusWrap(wrapId) {
+    const wrap = document.getElementById(wrapId);
+    if (!wrap) return;
+
+    wrap.classList.remove('mo-highlight-pulse');
+    void wrap.offsetWidth;
+    wrap.classList.add('mo-highlight-pulse');
+    wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function syncCommandButtons(activeTabId) {
+    $$('.mo-command-btn[data-mo-tab-target]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-mo-tab-target') === activeTabId);
+    });
+}
+
+function toggleCompactMode() {
+    compactMode = !compactMode;
+    $('#moDashboardRoot')?.classList.toggle('mo-compact-mode', compactMode);
+
+    const compactBtn = $('#moCompactToggle');
+    if (!compactBtn) return;
+    compactBtn.classList.toggle('active', compactMode);
+    const label = compactBtn.querySelector('.mo-compact-label');
+    if (label) {
+        label.textContent = compactMode ? 'Vista detallada' : 'Vista compacta';
+    }
+}
+
+function initInteractiveControls() {
+    document.addEventListener('click', (event) => {
+        const trigger = event.target.closest('[data-mo-tab-target], [data-mo-toggle]');
+        if (!trigger) return;
+
+        if (trigger.getAttribute('data-mo-toggle') === 'compact') {
+            toggleCompactMode();
+            return;
+        }
+
+        const tabId = trigger.getAttribute('data-mo-tab-target');
+        const wrapId = trigger.getAttribute('data-mo-wrap-target');
+
+        if (tabId) {
+            openTab(tabId);
+            syncCommandButtons(tabId);
+        }
+        if (wrapId) {
+            if (tabId) {
+                window.setTimeout(() => focusWrap(wrapId), 180);
+            } else {
+                focusWrap(wrapId);
+            }
+        }
+    });
+
+    $('#moTabNav')?.addEventListener('shown.bs.tab', (event) => {
+        const href = event.target?.getAttribute('href') || '';
+        syncCommandButtons(href.replace('#', ''));
+    });
+
+    document.addEventListener('change', (event) => {
+        const input = event.target.closest('.mo-premium-input');
+        if (!input) return;
+
+        const flow = input.getAttribute('data-flow') || '';
+        const origin = input.getAttribute('data-origin') || '';
+        const key = premiumKey(flow, origin);
+        const raw = String(input.value ?? '').trim();
+        const premium = Number(raw);
+
+        if (!raw || !Number.isFinite(premium) || Math.abs(premium) < 1e-9) {
+            delete premiumOverrides[key];
+        } else {
+            premiumOverrides[key] = premium;
+        }
+
+        updatePremiumControlsUI();
+        if (!currentResults) return;
+        const comprasFilter = document.querySelector('.mo-filter-input[data-tab="compras"]');
+        const query = comprasFilter ? comprasFilter.value : '';
+        renderCompras(filterArray(currentResults.compras || [], query));
+    });
+
+    $('#moClearPremiumBtn')?.addEventListener('click', () => {
+        premiumOverrides = {};
+        updatePremiumControlsUI();
+        if (!currentResults) return;
+        const comprasFilter = document.querySelector('.mo-filter-input[data-tab="compras"]');
+        const query = comprasFilter ? comprasFilter.value : '';
+        renderCompras(filterArray(currentResults.compras || [], query));
+    });
+}
+
+/* ═══════════════ UTILITIES ═══════════════ */
+function emptyMsg(section) {
+    return `<div class="mo-empty py-4"><i class="bi bi-inbox"></i><p class="small mb-0">No hay datos de ${section}.</p></div>`;
+}
+
+function destroyChart(key) {
+    if (chartInstances[key]) { chartInstances[key].destroy(); chartInstances[key] = null; }
+}
+
+/* ═══════════════ INIT ═══════════════ */
+initInteractiveControls();
+initFilters();
+updatePremiumControlsUI();
+// If cached results exist from server-side, render immediately
+const cachedEl = document.getElementById('cachedResultsJSON');
+if (cachedEl) {
+    try {
+        currentResults = JSON.parse(cachedEl.textContent);
+        loadPremiumMapFromResults(currentResults);
+        updatePremiumControlsUI();
+        renderDashboard(currentResults);
+    } catch (e) { console.error('Error parsing cached results:', e); }
+}
+
 })();
-
-	// ===== COMPARACIÓN LADO A LADO =====
-	(() => {
-		if(!document.getElementById('resumenDataJSON')) return; // No hay datos
-		const resumen = JSON.parse(document.getElementById('resumenDataJSON').textContent); // [{ID, CONTRATO, Producto, Volumen,...}]
-		const compData = JSON.parse(document.getElementById('rawDataJSON').textContent);   // component_data
-		const compCols = JSON.parse(document.getElementById('compColsJSON').textContent);
-		const compAliases = JSON.parse(document.getElementById('compAliasesJSON').textContent);
-		const selA = document.getElementById('cmpA');
-		const selB = document.getElementById('cmpB');
-		const wrapper = document.getElementById('tablaComparacionWrapper');
-		const info = document.getElementById('cmpInfo');
-		const btnSwap = document.getElementById('btnSwap');
-
-		// Construir claves únicas (ID|Producto) para evitar colisiones
-		function keyOf(r){ return r.ID + '|' + (r.Producto||''); }
-		const mapResumen = {}; resumen.forEach(r => { mapResumen[keyOf(r)] = r; });
-		const mapComp = {}; compData.forEach(r => { mapComp[keyOf(r)] = r; });
-
-		function poblarSelect(sel){
-			sel.innerHTML = ''; const opt = document.createElement('option'); opt.value=''; opt.textContent='Seleccione'; sel.appendChild(opt);
-			resumen.forEach(r => { const o = document.createElement('option'); o.value = keyOf(r); o.textContent = r.ID + ' - ' + (r.Producto||''); sel.appendChild(o); });
-		}
-		poblarSelect(selA); poblarSelect(selB);
-
-		function fmt(v, dec=4, money=false){ if(v===null||v===undefined||isNaN(v)) return '-'; const f = dec===0?0:dec; const num = Number(v).toFixed(f); return money? ('$'+num): num; }
-		function fmtInt(v){ if(v===null||v===undefined||isNaN(v)) return '-'; return Number(v).toLocaleString(undefined,{maximumFractionDigits:0}); }
-		function fmtMoney2(v){ if(v===null||v===undefined||isNaN(v)) return '-'; return '$'+Number(v).toFixed(2); }
-		function diffClass(metric, val){
-			if(val==='-'|| val===null) return '';
-			if(metric==='SpreadImp' || metric==='SpreadExp' || metric==='UtilidadExp'){
-				return parseFloat(val) > 0 ? 'table-success' : (parseFloat(val)<0? 'table-danger':'');
-			} else { // Costos -> menor mejor
-				return parseFloat(val) < 0 ? 'table-success' : (parseFloat(val)>0? 'table-danger':'');
-			}
-		}
-
-		const resumenMetrics = [
-			{field:'Volumen', label:'Volumen (BBL)', fmt:(v)=>fmtInt(v), metric:'Volumen'},
-			{field:'SpreadImp', label:'Spread Importación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'SpreadImp'},
-			{field:'CostoTotalImp', label:'Costo Total Importación (USD)', fmt:(v)=>fmtMoney2(v), metric:'CostoTotalImp'},
-			{field:'SpreadExp', label:'Spread Exportación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'SpreadExp'},
-			{field:'UtilidadExp', label:'Utilidad Exportación (USD/BBL)', fmt:(v)=>fmt(v,4,true), metric:'UtilidadExp'}
-		];
-
-		function render(){
-			const ka = selA.value, kb = selB.value;
-			const aR = mapResumen[ka]; const bR = mapResumen[kb];
-			const aC = mapComp[ka]; const bC = mapComp[kb];
-			if(!ka || !kb){ wrapper.innerHTML = '<div class="text-muted p-3">Selecciona dos contratos para comparar.</div>'; info.textContent=''; return; }
-			if(!aR||!bR||!aC||!bC){ wrapper.innerHTML = '<div class="text-warning p-3">No se encontraron datos completos para ambos contratos.</div>'; return; }
-			info.textContent = (aR.ID + ' vs ' + bR.ID);
-			let html = '<table class="table table-sm table-bordered align-middle mb-0">';
-			html += '<thead class="table-light"><tr><th>Concepto</th><th>'+aR.ID+'</th><th>'+bR.ID+'</th><th>Diferencia</th><th>%Dif</th></tr></thead><tbody>';
-			// Componentes
-			for(let i=0;i<compCols.length;i++){
-				const col = compCols[i]; const alias = compAliases[i];
-				const va = aC[col]||0; const vb = bC[col]||0; const diff = vb - va; const pct = va!==0? diff/va*100: null;
-				const cls = diffClass('CostoTotalImp', diff.toFixed(4));
-				html += `<tr class="${cls}"><td>${alias}</td><td class="text-end">${fmt(va,4,true)}</td><td class="text-end">${fmt(vb,4,true)}</td><td class="text-end">${fmt(diff,4,true)}</td><td class="text-end">${pct===null?'-':fmt(pct,2)+'%'}</td></tr>`;
-			}
-			html += '<tr class="table-secondary"><th colspan="5">Métricas Resumen</th></tr>';
-			resumenMetrics.forEach(m => {
-				const va = aR[m.field]; const vb = bR[m.field]; const diff = (vb - va); const pct = va!==0? diff/va*100: null;
-				const cls = diffClass(m.metric, diff.toFixed(4));
-				html += `<tr class="${cls}"><td>${m.label}</td><td class="text-end">${m.fmt(va)}</td><td class="text-end">${m.fmt(vb)}</td><td class="text-end">${m.field==='Volumen'?fmtInt(diff): (m.metric==='CostoTotalImp'?fmtMoney2(diff):fmt(diff,4,true))}</td><td class="text-end">${pct===null?'-':fmt(pct,2)+'%'}</td></tr>`;
-			});
-			html += '</tbody></table>';
-			wrapper.innerHTML = html;
-		}
-
-		selA.addEventListener('change', render); selB.addEventListener('change', render);
-		btnSwap.addEventListener('click', e=>{ e.preventDefault(); const tmp = selA.value; selA.value = selB.value; selB.value = tmp; render(); });
-	})();
 </script>
-{% endif %}
 {% endblock %}

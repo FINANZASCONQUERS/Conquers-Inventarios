@@ -432,6 +432,7 @@
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Paso 2: Curva de Destilación</h5>
                     <div class="actions">
+                        <button id="btn-curve-template" class="btn btn-sm btn-info text-white" title="Generar porcentajes automáticos"><i class="fas fa-magic me-1"></i>Plantilla %</button>
                         <button id="btn-save-crude" class="btn btn-sm btn-warning"
                             title="Guardar la curva y propiedades actuales"><i
                                 class="fas fa-save me-1"></i>Guardar</button>
@@ -440,6 +441,7 @@
                     </div>
                 </div>
                 <div class="card-body">
+                    <div class="small text-muted mb-2"><i class="fas fa-info-circle"></i> <b>Tip:</b> Puedes pegar datos copiados desde Excel (selecciona una celda y Ctrl+V).</div>
                     <div class="table-responsive" style="max-height: 280px;">
                         <table class="table table-sm table-hover">
                             <thead>
@@ -584,6 +586,64 @@
                         class="fas fa-file-pdf me-1"></i>PDF</button>
                 <button type="button" class="btn btn-success" id="btn-kero-comparison-xlsx"><i
                         class="fas fa-file-excel me-1"></i>Excel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Plantilla Curva -->
+<div class="modal fade" id="curveTemplateModal" tabindex="-1" aria-labelledby="curveTemplateModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="curveTemplateModalLabel"><i class="fas fa-magic me-2"></i>Generador Rápido de Curva (% Destilado)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border text-muted small mb-4">
+                    Genera las filas de porcentajes automáticamente sin tener que hacer click en "Añadir punto" uno por uno.
+                </div>
+                
+                <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-2 rounded">
+                    <div>
+                        <label class="form-label fw-bold mb-0 text-dark">Plantilla Estándar de Laboratorio</label>
+                        <div class="small text-muted mt-1">Genera: IBP, 5%, 10%, 20%... 90%, 95%.<br>Ideal para destilaciones simuladas estándar.</div>
+                    </div>
+                    <button class="btn btn-sm btn-success" id="btn-apply-lab-template">
+                        <i class="fas fa-bolt me-1"></i>Aplicar
+                    </button>
+                </div>
+                
+                <hr>
+
+                <h6 class="fw-bold mb-3 text-dark">Generación Dinámica Personalizada</h6>
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="template-include-ibp" checked>
+                    <label class="form-check-label" for="template-include-ibp">Incluir IBP (0%) al inicio</label>
+                </div>
+                <div class="row g-3">
+                    <div class="col-4">
+                        <label class="form-label text-muted">Desde %</label>
+                        <input type="number" class="form-control" id="template-start" value="5" min="1" max="100">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted">Hasta %</label>
+                        <input type="number" class="form-control" id="template-end" value="95" min="1" max="100">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted">Avanzar de</label>
+                        <select class="form-select" id="template-step">
+                            <option value="1">1 en 1 %</option>
+                            <option value="2">2 en 2 %</option>
+                            <option value="5" selected>5 en 5 %</option>
+                            <option value="10">10 en 10 %</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-generate-template">Generar Filas</button>
             </div>
         </div>
     </div>
@@ -856,6 +916,11 @@
             this.dom.btnKeroComparisonPdf = document.getElementById('btn-kero-comparison-pdf');
             this.dom.btnKeroComparisonXlsx = document.getElementById('btn-kero-comparison-xlsx');
 
+            this.dom.btnCurveTemplate = document.getElementById('btn-curve-template');
+            this.dom.curveTemplateModal = document.getElementById('curveTemplateModal');
+            this.dom.btnGenerateTemplate = document.getElementById('btn-generate-template');
+            this.dom.btnApplyLabTemplate = document.getElementById('btn-apply-lab-template');
+
             // Inputs
             this.dom.savedCrudesSelect = document.getElementById('saved-crudes-select');
             this.dom.crudeApiInput = document.getElementById('crude-api');
@@ -902,11 +967,69 @@
             this.dom.btnOpenPrint.addEventListener('click', () => this.printMixtureReport());
             this.dom.btnExportJson.addEventListener('click', () => this.exportMixtureJson());
             this.dom.btnExportPdf.addEventListener('click', () => this.downloadMixturePdf());
+            
+            if (this.dom.btnCurveTemplate) {
+                this.dom.btnCurveTemplate.addEventListener('click', () => {
+                    new bootstrap.Modal(this.dom.curveTemplateModal).show();
+                });
+            }
+            if (this.dom.btnGenerateTemplate) {
+                this.dom.btnGenerateTemplate.addEventListener('click', () => this.generateCurveTemplate());
+            }
+            if (this.dom.btnApplyLabTemplate) {
+                this.dom.btnApplyLabTemplate.addEventListener('click', () => this.generateLabTemplate());
+            }
 
             this.dom.curveBody.addEventListener('click', (e) => {
                 if (e.target.closest('.btn-remove-point')) {
                     e.target.closest('tr').remove();
                 }
+            });
+
+            // Pegar datos en la tabla (Pegar desde Excel)
+            this.dom.curveBody.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                if(!paste) return;
+                
+                const rows = paste.split(/[\r\n]+/).filter(row => row.trim() !== '');
+                const targetRow = e.target.closest('tr');
+                let targetCell = e.target.closest('td');
+                
+                let startRowIndex = targetRow ? Array.from(this.dom.curveBody.children).indexOf(targetRow) : 0;
+                let startColIndex = targetCell ? Array.from(targetRow.children).indexOf(targetCell) : 0;
+
+                // Si no hay fila seleccionada, reescribe desde el principio
+                if(!targetRow) {
+                    this.dom.curveBody.innerHTML = '';
+                    startRowIndex = 0;
+                }
+
+                rows.forEach((rowStr, i) => {
+                    // Excel usa \t. Coma puede ser separador o decimal dependiendo de la region, vamos a intentar delimitar por tabs o ; preferentemente
+                    const columns = rowStr.split(/\t|;/);
+                    let tr = this.dom.curveBody.children[startRowIndex + i];
+                    if(!tr) {
+                        this._addCurvePoint('', '');
+                        tr = this.dom.curveBody.lastElementChild;
+                    }
+                    
+                    const inputs = tr.querySelectorAll('input');
+                    columns.forEach((colData, j) => {
+                        let cellData = colData.trim();
+                        // Tratar comas como decimales si hay números
+                        if (cellData.match(/^[0-9]+,[0-9]+$/)) cellData = cellData.replace(',', '.');
+                        
+                        if (cellData === '' || isNaN(parseFloat(cellData.replace('IBP','0')))) return; // Ignorar nulos o no números
+
+                        const inputToFill = inputs[startColIndex + j];
+                        if (inputToFill) {
+                            if(cellData.toUpperCase() === 'IBP') inputToFill.value = 0;
+                            else inputToFill.value = parseFloat(cellData);
+                            inputToFill.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    });
+                });
             });
 
             // Listeners para conversión de temperatura en AMBAS tablas
@@ -1028,12 +1151,42 @@
         _addCurvePoint(p = '', tC = '') {
             const row = document.createElement('tr');
             const tF = tC !== '' ? ((parseFloat(tC) * 9 / 5) + 32).toFixed(1) : '';
+            // Si el porcentaje es 0, mostrar "IBP" visualmente (aunque el value siga siendo 0 para JS logica) o no.
+            // Para simplicidad, p==0 es 0.
             row.innerHTML = `
-            <td><input type="number" class="form-control form-control-sm percent-input" value="${p}" placeholder="%"></td>
-            <td><input type="number" class="form-control form-control-sm temp-f-input" value="${tF}" placeholder="°F"></td>
-            <td><input type="number" class="form-control form-control-sm temp-c-input" value="${tC}" placeholder="°C"></td>
+            <td><input type="number" class="form-control form-control-sm percent-input fw-bold" value="${p}" placeholder="%"></td>
+            <td><input type="number" class="form-control form-control-sm temp-f-input fw-bold" value="${tF}" placeholder="°F"></td>
+            <td><input type="number" class="form-control form-control-sm temp-c-input text-primary fw-bold" value="${tC}" placeholder="°C"></td>
             <td><button class="btn btn-sm btn-outline-danger btn-remove-point" title="Eliminar punto"><i class="fas fa-times"></i></button></td>`;
             this.dom.curveBody.appendChild(row);
+        },
+
+        generateLabTemplate() {
+            this.dom.curveBody.innerHTML = '';
+            const points = [0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95];
+            points.forEach(p => this._addCurvePoint(p, ''));
+            const modal = bootstrap.Modal.getInstance(this.dom.curveTemplateModal);
+            if (modal) modal.hide();
+        },
+
+        generateCurveTemplate() {
+            this.dom.curveBody.innerHTML = '';
+            const includeIbp = document.getElementById('template-include-ibp').checked;
+            const start = parseFloat(document.getElementById('template-start').value) || 5;
+            const end = parseFloat(document.getElementById('template-end').value) || 95;
+            const step = parseFloat(document.getElementById('template-step').value) || 5;
+            
+            if (includeIbp) {
+                this._addCurvePoint(0, '');
+            }
+            for (let i = start; i <= end; i += step) {
+                this._addCurvePoint(i, '');
+            }
+            if(end === 100 && (end-start)%step !== 0) {
+                 this._addCurvePoint(100, '');
+            }
+            const modal = bootstrap.Modal.getInstance(this.dom.curveTemplateModal);
+            if (modal) modal.hide();
         },
 
         _addAssayRow(range = '', incrWt = '', incrVol = '') {
