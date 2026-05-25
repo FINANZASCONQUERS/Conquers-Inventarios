@@ -4,6 +4,7 @@ import json
 import hashlib
 from datetime import datetime, time, date, timedelta
 import os
+import unicodedata
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory, has_app_context # Añadido send_file, current_app, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -10561,7 +10562,90 @@ def _programacion_cargue_despachada(registro_prog):
 def _normalizar_texto_match_programacion(valor):
     if valor is None:
         return ''
-    return re.sub(r'\s+', ' ', str(valor).strip().upper())
+    texto = str(valor)
+    texto = unicodedata.normalize('NFKD', texto)
+    texto = ''.join(ch for ch in texto if not unicodedata.combining(ch))
+    texto = texto.upper()
+    texto = re.sub(r'[^A-Z0-9]+', ' ', texto)
+    return re.sub(r'\s+', ' ', texto).strip()
+
+
+CLIENTE_STOPWORDS_MATCH = {
+    'SAS', 'SA', 'LTDA', 'CIA', 'COMPANIA', 'COMPANIA', 'CO',
+    'DE', 'DEL', 'LA', 'LAS', 'LOS', 'Y', 'E'
+}
+
+
+DESTINO_STOPWORDS_MATCH = {
+    'COLOMBIA', 'CIUDAD', 'MUNICIPIO', 'DEPARTAMENTO', 'DPTO'
+}
+
+
+def _tokens_para_match(valor, tipo='general'):
+    texto = _normalizar_texto_match_programacion(valor)
+    if not texto:
+        return []
+
+    stopwords = set()
+    if tipo == 'cliente':
+        stopwords = CLIENTE_STOPWORDS_MATCH
+    elif tipo == 'destino':
+        stopwords = DESTINO_STOPWORDS_MATCH
+
+    tokens = []
+    for tok in texto.split():
+        if len(tok) <= 1:
+            continue
+        if tok in stopwords:
+            continue
+        tokens.append(tok)
+    return tokens
+
+
+def _tokens_similares(a, b):
+    if a == b:
+        return True
+    if len(a) >= 4 and len(b) >= 4 and (a.startswith(b) or b.startswith(a)):
+        return True
+    # Captura variantes como CARIB/CARIBE.
+    if len(a) >= 5 and len(b) >= 5 and a[:5] == b[:5]:
+        return True
+    return False
+
+
+def _coincide_texto_flexible(ref, cand, tipo='general'):
+    ref_n = _normalizar_texto_match_programacion(ref)
+    cand_n = _normalizar_texto_match_programacion(cand)
+
+    if not ref_n or not cand_n:
+        return False
+
+    if ref_n == cand_n or ref_n in cand_n or cand_n in ref_n:
+        return True
+
+    ref_tokens = _tokens_para_match(ref_n, tipo=tipo)
+    cand_tokens = _tokens_para_match(cand_n, tipo=tipo)
+    if not ref_tokens or not cand_tokens:
+        return False
+
+    if len(ref_tokens) <= len(cand_tokens):
+        menores, mayores = ref_tokens, cand_tokens
+    else:
+        menores, mayores = cand_tokens, ref_tokens
+
+    usados = set()
+    matched = 0
+    for tk in menores:
+        for idx, tk2 in enumerate(mayores):
+            if idx in usados:
+                continue
+            if _tokens_similares(tk, tk2):
+                usados.add(idx)
+                matched += 1
+                break
+
+    ratio = matched / max(1, len(menores))
+    return ratio >= 0.6
 
 
 def _to_float_or_none(valor):
@@ -10604,6 +10688,15 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
         ProgramacionCargue.fecha_programacion == fecha_ref
     ).all()
 
+    # Fallback controlado por si la fecha del pedido quedó corrida frente a lo real.
+    if not candidatos:
+        fecha_desde = fecha_ref - timedelta(days=3)
+        fecha_hasta = fecha_ref + timedelta(days=3)
+        candidatos = ProgramacionCargue.query.filter(
+            ProgramacionCargue.fecha_programacion >= fecha_desde,
+            ProgramacionCargue.fecha_programacion <= fecha_hasta
+        ).all()
+
     mejor_candidato = None
     mejor_score = -1
 
@@ -10631,17 +10724,26 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
         score = 4
         coincidencias_fuertes = 0
 
-        if cliente_ref and cliente_cand and cliente_ref == cliente_cand:
+        if cliente_ref and cliente_cand and _coincide_texto_flexible(cliente_ref, cliente_cand, tipo='cliente'):
             score += 3
             coincidencias_fuertes += 1
 
-        if destino_ref and destino_cand and destino_ref == destino_cand:
+        if destino_ref and destino_cand and _coincide_texto_flexible(destino_ref, destino_cand, tipo='destino'):
             score += 2
             coincidencias_fuertes += 1
 
-        if galones_ref is not None and galones_cand is not None and abs(galones_ref - galones_cand) <= 1:
-            score += 2
-            coincidencias_fuertes += 1
+        if galones_ref is not None and galones_cand is not None:
+            diferencia_gal = abs(galones_ref - galones_cand)
+            tolerancia_gal = max(120.0, min(2000.0, abs(galones_ref) * 0.18))
+            if diferencia_gal <= tolerancia_gal:
+                score += 2
+                coincidencias_fuertes += 1
+
+            if diferencia_gal <= 200:
+                score += 1
+
+        if candidato.fecha_programacion and candidato.fecha_programacion == fecha_ref:
+            score += 1
 
         # Seguridad: no vincular solo por producto y fecha.
         if coincidencias_fuertes == 0:
