@@ -278,6 +278,37 @@
             cursor: not-allowed;
         }
 
+        .base-actions-group {
+            display: inline-flex;
+            gap: 0.35rem;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-send-row-base {
+            width: 2rem;
+            height: 2rem;
+            border: 1px solid #0d6efd;
+            border-radius: 0.45rem;
+            background: #ffffff;
+            color: #0d6efd;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-send-row-base:hover {
+            background: #0d6efd;
+            color: #ffffff;
+        }
+
+        .btn-send-row-base:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .historial-filters-bar {
             background: #f8f9fc;
             border-bottom: 2px solid #e3e6f0;
@@ -305,6 +336,56 @@
             font-size: 0.88rem;
             text-align: right;
             font-weight: 600;
+        }
+
+        .readonly-date {
+            display: inline-block;
+            width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #d7dee7;
+            background: #f4f6fa;
+            color: #2c3e50;
+            padding: 0.4rem 0.55rem;
+            font-size: 0.84rem;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .estado-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 100%;
+            border-radius: 999px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            border: 1px solid transparent;
+        }
+
+        .estado-pill.pendiente-confirmacion {
+            background: #fff4cc;
+            color: #8a6d1d;
+            border-color: #f7e39b;
+        }
+
+        .estado-pill.pendiente-envio {
+            background: #e7f1ff;
+            color: #0b4f8f;
+            border-color: #bdd7f7;
+        }
+
+        .estado-pill.programado {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-color: #b7dfe7;
+        }
+
+        .estado-pill.despachado {
+            background: #d1e7dd;
+            color: #0f5132;
+            border-color: #badbcc;
         }
 
         .status-banner {
@@ -385,6 +466,12 @@
             border-color: #dc3545 !important;
         }
 
+        html.dark-mode .programacion-base-page .btn-send-row-base {
+            background: #ffffff !important;
+            color: #0d6efd !important;
+            border-color: #0d6efd !important;
+        }
+
         html.dark-mode .programacion-base-page .historial-filters-bar {
             background: #f8f9fc !important;
             border-bottom-color: #e3e6f0 !important;
@@ -399,6 +486,12 @@
             color: #1f2d1f !important;
             background: #ffffff !important;
             border-color: #d5dde8 !important;
+        }
+
+        html.dark-mode .programacion-base-page .readonly-date {
+            background: #f4f6fa !important;
+            color: #2c3e50 !important;
+            border-color: #d7dee7 !important;
         }
 
         html.dark-mode .programacion-base-page .base-input::placeholder {
@@ -427,7 +520,7 @@
                     </div>
                     <div class="ms-3">
                         <h2 class="page-title">Pedidos</h2>
-                        <p class="page-subtitle">Vista reducida con columnas clave para operacion diaria</p>
+                        <p class="page-subtitle">Control de pedidos y envío a Programación de Cargue</p>
                     </div>
                 </div>
             </div>
@@ -449,7 +542,7 @@
                             <i class="fas fa-calendar-alt"></i>
                         </div>
                         <div class="ms-3">
-                            <h5 class="card-title-modern mb-0">Tabla Base de Programacion</h5>
+                            <h5 class="card-title-modern mb-0">Tabla de Pedidos</h5>
                         </div>
                     </div>
                 </div>
@@ -470,7 +563,7 @@
                 <div class="row g-3 align-items-end">
                     <div class="col-md-5">
                         <label class="form-label small fw-semibold mb-1">
-                            <i class="fas fa-calendar-alt me-1"></i>Rango de Fechas
+                            <i class="fas fa-calendar-alt me-1"></i>Rango de Fechas Estimadas
                         </label>
                         <div class="row g-1 mb-1">
                             <div class="col-6">
@@ -515,13 +608,16 @@
                 <table class="table table-modern align-middle mb-0">
                     <thead class="thead-modern">
                         <tr>
-                            <th style="min-width: 170px;">Fecha de cargue</th>
+                            <th style="min-width: 180px;">Fecha Estimada Cargue</th>
+                            <th style="min-width: 190px;">Fecha Cargue Confirmada</th>
                             <th style="min-width: 180px;">Producto</th>
                             <th style="min-width: 220px;">Cliente</th>
                             <th style="min-width: 220px;">Destino</th>
                             <th style="min-width: 230px;">Calidad(Liviana-Pesada)</th>
                             <th style="min-width: 160px;">Galones</th>
                             <th style="min-width: 140px;">BBL</th>
+                            <th style="min-width: 170px;">Estado</th>
+                            <th style="min-width: 150px;">Fecha Despacho</th>
                             <th style="min-width: 110px;">Acciones</th>
                         </tr>
                     </thead>
@@ -622,12 +718,15 @@
 
         const columns = [
             { field: 'fecha_cargue', type: 'date' },
+            { field: 'fecha_cargue_confirmada', type: 'date' },
             { field: 'producto', type: 'datalist', listId: 'datalist-productos', creatable: true },
             { field: 'cliente', type: 'datalist', listId: 'datalist-clientes', creatable: true },
             { field: 'destino', type: 'text' },
             { field: 'calidad', type: 'select' },
             { field: 'galones', type: 'number' },
             { field: 'bbl', type: 'computed' },
+            { field: 'estado_programacion', type: 'status' },
+            { field: 'fecha_despacho', type: 'readonly_date' },
             { field: 'acciones', type: 'actions' }
         ];
 
@@ -798,9 +897,85 @@
             return td;
         }
 
+        function formatDateDisplay(value) {
+            if (!value) {
+                return '-';
+            }
+            const base = String(value).slice(0, 10);
+            const parts = base.split('-');
+            if (parts.length !== 3) {
+                return base;
+            }
+            return parts[2] + '/' + parts[1] + '/' + parts[0];
+        }
+
+        function createReadonlyDateCell(value) {
+            const td = document.createElement('td');
+            const readonly = document.createElement('span');
+            readonly.className = 'readonly-date';
+            readonly.textContent = formatDateDisplay(value);
+            td.appendChild(readonly);
+            return td;
+        }
+
+        function getEstadoPillClass(estado) {
+            const current = safeValue(estado).toUpperCase();
+            if (current === 'DESPACHADO') {
+                return 'despachado';
+            }
+            if (current === 'PROGRAMADO' || current === 'CARGANDO') {
+                return 'programado';
+            }
+            if (current === 'PENDIENTE ENVIO') {
+                return 'pendiente-envio';
+            }
+            return 'pendiente-confirmacion';
+        }
+
+        function createEstadoCell(row) {
+            const td = document.createElement('td');
+            const pill = document.createElement('span');
+            const estado = safeValue(row.estado_programacion || 'PENDIENTE CONFIRMACION').toUpperCase();
+            pill.className = 'estado-pill ' + getEstadoPillClass(estado);
+            pill.textContent = estado;
+            td.appendChild(pill);
+            return td;
+        }
+
+        function isDespachadoPedido(row) {
+            const estado = safeValue(row && row.estado_programacion).toUpperCase();
+            return estado === 'DESPACHADO' || !!(row && row.fecha_despacho);
+        }
+
+        function getFechaOrdenPedidoMs(row) {
+            const fechaBase = (row && row.fecha_cargue) || (row && row.fecha_cargue_confirmada) || '';
+            if (!fechaBase) {
+                return null;
+            }
+            const dateStr = String(fechaBase).slice(0, 10);
+            const dateObj = new Date(dateStr + 'T00:00:00');
+            return Number.isNaN(dateObj.getTime()) ? null : dateObj.getTime();
+        }
+
         function createActionCell(row) {
             const td = document.createElement('td');
             td.className = 'text-center';
+
+            const actions = document.createElement('div');
+            actions.className = 'base-actions-group';
+
+            const puedeEnviar = !!row.fecha_cargue_confirmada && !row.enviado_programacion;
+            if (puedeEnviar) {
+                const btnSend = document.createElement('button');
+                btnSend.type = 'button';
+                btnSend.className = 'btn-send-row-base';
+                btnSend.title = 'Enviar a Programación de Cargue';
+                btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                btnSend.addEventListener('click', function () {
+                    enviarPedido(row.id, btnSend);
+                });
+                actions.appendChild(btnSend);
+            }
 
             const btnDelete = document.createElement('button');
             btnDelete.type = 'button';
@@ -811,20 +986,25 @@
                 deleteRow(row.id, btnDelete);
             });
 
-            td.appendChild(btnDelete);
+            actions.appendChild(btnDelete);
+            td.appendChild(actions);
             return td;
         }
 
         function sortRowsByFecha(rows) {
             return (rows || []).slice().sort(function (a, b) {
-                const dateA = a && a.fecha_cargue ? new Date(a.fecha_cargue) : null;
-                const dateB = b && b.fecha_cargue ? new Date(b.fecha_cargue) : null;
+                const despA = isDespachadoPedido(a);
+                const despB = isDespachadoPedido(b);
 
-                const timeA = dateA && !Number.isNaN(dateA.getTime()) ? dateA.getTime() : null;
-                const timeB = dateB && !Number.isNaN(dateB.getTime()) ? dateB.getTime() : null;
+                if (despA !== despB) {
+                    return despA ? 1 : -1;
+                }
+
+                const timeA = getFechaOrdenPedidoMs(a);
+                const timeB = getFechaOrdenPedidoMs(b);
 
                 if (timeA === null && timeB === null) {
-                    return Number(b.id || 0) - Number(a.id || 0);
+                    return Number(a.id || 0) - Number(b.id || 0);
                 }
                 if (timeA === null) {
                     return 1;
@@ -833,19 +1013,10 @@
                     return -1;
                 }
                 if (timeA !== timeB) {
-                    return timeB - timeA;
+                    return timeA - timeB;
                 }
-                return Number(b.id || 0) - Number(a.id || 0);
+                return Number(a.id || 0) - Number(b.id || 0);
             });
-        }
-
-        function getRowDateMs(row) {
-            if (!row || !row.fecha_cargue) {
-                return null;
-            }
-            const dateStr = String(row.fecha_cargue).slice(0, 10);
-            const dateObj = new Date(dateStr + 'T00:00:00');
-            return Number.isNaN(dateObj.getTime()) ? null : dateObj.getTime();
         }
 
         function applyFiltersAndRender() {
@@ -953,6 +1124,14 @@
                 return createComputedCell(row);
             }
 
+            if (column.type === 'status') {
+                return createEstadoCell(row);
+            }
+
+            if (column.type === 'readonly_date') {
+                return createReadonlyDateCell(row[column.field]);
+            }
+
             if (column.type === 'actions') {
                 return createActionCell(row);
             }
@@ -1053,7 +1232,7 @@
             if (!rows || rows.length === 0) {
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
-                td.colSpan = 8;
+                td.colSpan = 11;
                 td.className = 'empty-state';
                 td.textContent = emptyMessage || 'No hay datos en la tabla base. Usa "Agregar fila" para crear el primer registro.';
                 tr.appendChild(td);
@@ -1073,7 +1252,7 @@
         }
 
         async function fetchRows() {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Cargando datos...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="empty-state"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Cargando datos...</td></tr>';
             try {
                 const response = await fetch(apiBase, { method: 'GET' });
                 if (!response.ok) {
@@ -1145,7 +1324,7 @@
                     toggleCreateButton(input, field);
                 }
 
-                if (field === 'fecha_cargue') {
+                if (field === 'fecha_cargue' || field === 'fecha_cargue_confirmada') {
                     await fetchRows();
                     setStatus('Cambios guardados correctamente', 'success');
                     return;
@@ -1157,6 +1336,36 @@
                 setStatus(error.message || 'Error guardando cambios.', 'danger');
             } finally {
                 input.disabled = false;
+            }
+        }
+
+        async function enviarPedido(rowId, button) {
+            if (!rowId) {
+                return;
+            }
+
+            if (button) {
+                button.disabled = true;
+            }
+            setStatus('Enviando pedido a Programación de Cargue...', 'info');
+
+            try {
+                const response = await fetch(apiBase + '/' + rowId + '/enviar-programacion', {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No se pudo enviar el pedido.');
+                }
+
+                await fetchRows();
+                setStatus(result.message || 'Pedido enviado correctamente', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error enviando pedido', 'danger');
+                if (button) {
+                    button.disabled = false;
+                }
             }
         }
 
@@ -1186,7 +1395,7 @@
                 }
 
                 await fetchRows();
-                setStatus('Fila eliminada correctamente', 'success');
+                setStatus(result.message || 'Fila eliminada correctamente', 'success');
             } catch (error) {
                 setStatus(error.message || 'Error eliminando fila', 'danger');
                 if (button) {

@@ -844,12 +844,17 @@ class ProgramacionBase(db.Model):
     __tablename__ = 'programacion_base'
 
     id = db.Column(db.Integer, primary_key=True)
+    # Fecha estimada de cargue (se mantiene el nombre de columna existente para compatibilidad)
     fecha_cargue = db.Column(db.Date, nullable=False, default=date.today)
+    # Fecha real/confirmada de cargue
+    fecha_cargue_confirmada = db.Column(db.Date, nullable=True)
     producto = db.Column(db.String(120))
     cliente = db.Column(db.String(150))
     destino = db.Column(db.String(150))
     calidad = db.Column(db.String(20))
     galones = db.Column(db.Float)
+    # Vínculo con programación de cargue cuando el pedido se envía
+    programacion_cargue_id = db.Column(db.Integer, nullable=True)
 
     # Auditoría
     ultimo_editor = db.Column(db.String(100))
@@ -865,6 +870,36 @@ def _init_programacion_base_table():
 
 
 _init_programacion_base_table()
+
+
+def _ensure_programacion_base_columns():
+    """Asegura columnas nuevas en `programacion_base` para sincronización con programación."""
+    from sqlalchemy import inspect, text
+    with app.app_context():
+        insp = inspect(db.engine)
+        if 'programacion_base' not in insp.get_table_names():
+            return
+
+        cols = [c['name'] for c in insp.get_columns('programacion_base')]
+
+        if 'fecha_cargue_confirmada' not in cols:
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE programacion_base ADD COLUMN fecha_cargue_confirmada DATE'))
+                print('[INIT] Columna fecha_cargue_confirmada añadida a programacion_base')
+            except Exception as e:
+                print('[INIT] No se pudo añadir fecha_cargue_confirmada:', e)
+
+        if 'programacion_cargue_id' not in cols:
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text('ALTER TABLE programacion_base ADD COLUMN programacion_cargue_id INTEGER'))
+                print('[INIT] Columna programacion_cargue_id añadida a programacion_base')
+            except Exception as e:
+                print('[INIT] No se pudo añadir programacion_cargue_id:', e)
+
+
+_ensure_programacion_base_columns()
 
 # ---------------- BLOQUEO DE CELDAS (EDICIÓN EN TIEMPO REAL) -----------------
 class ProgramacionCargueLock(db.Model):
@@ -10508,12 +10543,88 @@ PROGRAMACION_BASE_ALLOWED_EMAILS = {
 
 
 def _campos_editables_programacion_base(email_usuario, rol_usuario):
-    campos = ['fecha_cargue', 'producto', 'cliente', 'destino', 'calidad', 'galones']
+    campos = ['fecha_cargue', 'fecha_cargue_confirmada', 'producto', 'cliente', 'destino', 'calidad', 'galones']
     if rol_usuario == 'admin':
         return campos
     if (email_usuario or '').lower() in PROGRAMACION_BASE_ALLOWED_EMAILS:
         return campos
     return []
+
+
+def _programacion_cargue_despachada(registro_prog):
+    if not registro_prog:
+        return False
+    estado = (registro_prog.estado or '').strip().upper()
+    return estado == 'DESPACHADO' or bool(registro_prog.fecha_despacho)
+
+
+def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
+    """Sincroniza un pedido de `programacion_base` hacia `programacion_cargue`.
+
+    - Si `force_create=True`, crea registro en `programacion_cargue` cuando no exista vínculo.
+    - Si el registro vinculado está despachado, no sobrescribe información operativa.
+    """
+    if not registro_base:
+        return None, False
+
+    if not registro_base.fecha_cargue_confirmada:
+        raise ValueError('Debes registrar Fecha de Cargue Confirmada antes de enviar a Programación de Cargue.')
+
+    registro_prog = None
+    creado = False
+
+    if registro_base.programacion_cargue_id:
+        registro_prog = ProgramacionCargue.query.get(registro_base.programacion_cargue_id)
+
+    if registro_prog is None and not force_create:
+        return None, False
+
+    if registro_prog is None:
+        registro_prog = ProgramacionCargue(
+            fecha_programacion=registro_base.fecha_cargue_confirmada,
+            producto_a_cargar=(registro_base.producto or '').strip().upper() or None,
+            cliente=(registro_base.cliente or '').strip() or None,
+            destino=(registro_base.destino or '').strip() or None,
+            estado='PROGRAMADO',
+            ultimo_editor=session.get('nombre')
+        )
+
+        if registro_base.galones not in (None, ''):
+            try:
+                galones = float(registro_base.galones)
+                registro_prog.galones = galones
+                registro_prog.barriles = round(galones / 42, 2)
+            except (TypeError, ValueError):
+                registro_prog.galones = None
+                registro_prog.barriles = None
+
+        db.session.add(registro_prog)
+        db.session.flush()
+        registro_base.programacion_cargue_id = registro_prog.id
+        creado = True
+        return registro_prog, creado
+
+    if _programacion_cargue_despachada(registro_prog):
+        return registro_prog, creado
+
+    registro_prog.fecha_programacion = registro_base.fecha_cargue_confirmada or registro_prog.fecha_programacion
+    registro_prog.producto_a_cargar = (registro_base.producto or '').strip().upper() or registro_prog.producto_a_cargar
+    registro_prog.cliente = (registro_base.cliente or '').strip() or registro_prog.cliente
+    registro_prog.destino = (registro_base.destino or '').strip() or registro_prog.destino
+
+    if registro_base.galones not in (None, ''):
+        try:
+            galones = float(registro_base.galones)
+            registro_prog.galones = galones
+            registro_prog.barriles = round(galones / 42, 2)
+        except (TypeError, ValueError):
+            pass
+
+    if not (registro_prog.estado or '').strip():
+        registro_prog.estado = 'PROGRAMADO'
+
+    registro_prog.ultimo_editor = session.get('nombre')
+    return registro_prog, creado
 
 
 @login_required
@@ -10527,20 +10638,45 @@ def handle_programacion_base():
         return jsonify(success=True, message='Nueva fila creada.', id=nuevo.id)
 
     registros = ProgramacionBase.query.order_by(
-        ProgramacionBase.fecha_cargue.desc(),
-        ProgramacionBase.id.desc()
+        ProgramacionBase.fecha_cargue.asc(),
+        ProgramacionBase.id.asc()
     ).limit(500).all()
+
+    prog_ids = [r.programacion_cargue_id for r in registros if r.programacion_cargue_id]
+    prog_map = {}
+    if prog_ids:
+        registros_prog = ProgramacionCargue.query.filter(ProgramacionCargue.id.in_(prog_ids)).all()
+        prog_map = {p.id: p for p in registros_prog}
 
     data = []
     for r in registros:
+        prog = prog_map.get(r.programacion_cargue_id)
+        despachado = _programacion_cargue_despachada(prog)
+
+        if prog:
+            estado_programacion = (prog.estado or 'PROGRAMADO').strip().upper()
+        elif r.fecha_cargue_confirmada:
+            estado_programacion = 'PENDIENTE ENVIO'
+        else:
+            estado_programacion = 'PENDIENTE CONFIRMACION'
+
+        if despachado:
+            estado_programacion = 'DESPACHADO'
+
         data.append({
             'id': r.id,
             'fecha_cargue': r.fecha_cargue.isoformat() if r.fecha_cargue else None,
+            'fecha_cargue_confirmada': r.fecha_cargue_confirmada.isoformat() if r.fecha_cargue_confirmada else None,
             'producto': r.producto,
             'cliente': r.cliente,
             'destino': r.destino,
             'calidad': r.calidad,
             'galones': r.galones,
+            'programacion_cargue_id': prog.id if prog else None,
+            'enviado_programacion': bool(prog),
+            'estado_programacion': estado_programacion,
+            'fecha_despacho': prog.fecha_despacho.isoformat() if (prog and prog.fecha_despacho) else None,
+            'despachado': despachado,
             'ultimo_editor': r.ultimo_editor,
             'fecha_actualizacion': r.fecha_actualizacion.isoformat() if r.fecha_actualizacion else None,
         })
@@ -10560,9 +10696,37 @@ def update_programacion_base(id):
 
     if request.method == 'DELETE':
         try:
+            programacion_id = registro.programacion_cargue_id
+
+            # Limpieza defensiva: si por datos históricos hay más pedidos apuntando
+            # al mismo registro de programación, se desvinculan antes de eliminar.
+            if programacion_id:
+                otros_pedidos = ProgramacionBase.query.filter(
+                    ProgramacionBase.programacion_cargue_id == programacion_id,
+                    ProgramacionBase.id != registro.id
+                ).all()
+                for pedido_relacionado in otros_pedidos:
+                    pedido_relacionado.programacion_cargue_id = None
+                    pedido_relacionado.ultimo_editor = session.get('nombre')
+
+                registro_prog = ProgramacionCargue.query.get(programacion_id)
+            else:
+                registro_prog = None
+
             db.session.delete(registro)
+
+            if registro_prog is not None:
+                db.session.delete(registro_prog)
+
             db.session.commit()
-            return jsonify(success=True, message='Registro eliminado correctamente.')
+
+            if registro_prog is not None:
+                return jsonify(
+                    success=True,
+                    message='Pedido eliminado correctamente y también su registro enlazado en Programación de Cargue.'
+                )
+
+            return jsonify(success=True, message='Pedido eliminado correctamente.')
         except Exception as e:
             db.session.rollback()
             return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
@@ -10570,12 +10734,20 @@ def update_programacion_base(id):
     data = request.get_json() or {}
 
     try:
+        campos_sync = {'fecha_cargue', 'fecha_cargue_confirmada', 'producto', 'cliente', 'destino', 'galones'}
+        campos_tocados = set()
+
         for campo, valor in data.items():
             if campo not in campos_permitidos:
                 continue
 
-            if campo == 'fecha_cargue':
-                setattr(registro, campo, date.fromisoformat(valor) if valor else date.today())
+            campos_tocados.add(campo)
+
+            if campo in ('fecha_cargue', 'fecha_cargue_confirmada'):
+                if campo == 'fecha_cargue':
+                    setattr(registro, campo, date.fromisoformat(valor) if valor else date.today())
+                else:
+                    setattr(registro, campo, date.fromisoformat(valor) if valor else None)
             elif campo == 'galones':
                 try:
                     setattr(registro, campo, float(valor) if valor not in (None, '') else None)
@@ -10590,10 +10762,43 @@ def update_programacion_base(id):
             else:
                 setattr(registro, campo, str(valor).strip() if valor is not None else None)
 
+        # Si el pedido ya está enviado, mantener datos sincronizados en Programación de Cargue.
+        if registro.programacion_cargue_id and campos_tocados.intersection(campos_sync):
+            _sincronizar_programacion_desde_pedido(registro, force_create=False)
+
         registro.ultimo_editor = session.get('nombre')
         db.session.commit()
         return jsonify(success=True, message='Registro actualizado correctamente.')
 
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
+
+
+@login_required
+@permiso_requerido('programacion_base')
+@app.route('/api/programacion-base/<int:id>/enviar-programacion', methods=['POST'])
+def enviar_pedido_a_programacion(id):
+    registro = ProgramacionBase.query.get_or_404(id)
+
+    campos_permitidos = _campos_editables_programacion_base(session.get('email'), session.get('rol'))
+    if not campos_permitidos:
+        return jsonify(success=False, message='No tienes permisos para enviar pedidos.'), 403
+
+    try:
+        prog, creado = _sincronizar_programacion_desde_pedido(registro, force_create=True)
+        registro.ultimo_editor = session.get('nombre')
+        db.session.commit()
+
+        accion = 'creado y enviado' if creado else 'actualizado en Programación de Cargue'
+        return jsonify(
+            success=True,
+            message=f'Pedido {accion} correctamente.',
+            programacion_id=(prog.id if prog else None)
+        )
+    except ValueError as ve:
+        db.session.rollback()
+        return jsonify(success=False, message=str(ve)), 400
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
@@ -10632,6 +10837,9 @@ def handle_programacion():
                 fila[c.name] = val.isoformat()
             else:
                 fila[c.name] = val
+
+        fila['es_diluyente_pesado'] = _es_diluyente_pesado_desde_pedido(r)
+
         # Añadimos flag calculado: si ya pasaron 30 min desde completado
         if r.refineria_completado_en:
             fila['refineria_bloqueado'] = (ahora - r.refineria_completado_en) > timedelta(minutes=30)
@@ -10650,13 +10858,62 @@ def handle_programacion():
         data.append(fila)
     return jsonify(data)
 
+
+def _normalizar_texto_programacion(valor):
+    if valor is None:
+        return ''
+    return re.sub(r'\s+', ' ', str(valor).strip().upper())
+
+
+def _parsear_float_programacion(valor):
+    """Convierte números con separador decimal punto o coma."""
+    if valor in (None, ''):
+        return None
+
+    if isinstance(valor, (int, float)):
+        return float(valor)
+
+    texto = str(valor).strip().replace(' ', '')
+    if not texto:
+        return None
+
+    if ',' in texto and '.' in texto:
+        # Si la coma va al final, asumimos formato 1.234,56; de lo contrario 1,234.56.
+        if texto.rfind(',') > texto.rfind('.'):
+            texto = texto.replace('.', '').replace(',', '.')
+        else:
+            texto = texto.replace(',', '')
+    elif ',' in texto:
+        texto = texto.replace('.', '').replace(',', '.')
+
+    return float(texto)
+
+
+def _es_diluyente_pesado_desde_pedido(registro_programacion):
+    """Determina si el registro está asociado a un pedido de diluyente pesado."""
+    if not registro_programacion:
+        return False
+
+    pedido = ProgramacionBase.query.filter_by(programacion_cargue_id=registro_programacion.id) \
+        .order_by(ProgramacionBase.id.desc()) \
+        .first()
+
+    producto_fuente = _normalizar_texto_programacion(
+        (pedido.producto if pedido else None) or registro_programacion.producto_a_cargar
+    )
+    calidad_fuente = _normalizar_texto_programacion(pedido.calidad if pedido else None)
+
+    es_diluyente = 'DILUY' in producto_fuente
+    es_pesado = 'PESAD' in calidad_fuente or 'PESAD' in producto_fuente
+    return es_diluyente and es_pesado
+
 @login_required
 @permiso_requerido('programacion_cargue')
 @app.route('/api/programacion/<int:id>', methods=['PUT'])
 def update_programacion(id):
     """Actualiza un registro de programación con permisos por campo. (VERSIÓN CORREGIDA)"""
     registro = ProgramacionCargue.query.get_or_404(id)
-    data = request.get_json()
+    data = request.get_json() or {}
     
     # La lógica de permisos no necesita cambios, está bien.
     permisos = {
@@ -10678,6 +10935,8 @@ def update_programacion(id):
         return jsonify(success=False, message="No tienes permisos para editar."), 403
 
     try:
+        mensaje_api_corregido_invalido = None
+
         # Bloqueo nuevo: si TODOS los campos de refinería estuvieron completos y pasaron >30 min, refinería ya no puede editar
         campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
         ahora = datetime.utcnow()
@@ -10723,13 +10982,23 @@ def update_programacion(id):
                 elif campo in campos_numericos:
                     # Intenta convertir a float. Si el valor está vacío o no es un número, lo establece a None.
                     try:
-                        setattr(registro, campo, float(valor) if valor is not None and valor != '' else None)
+                        setattr(registro, campo, _parsear_float_programacion(valor))
                     except (ValueError, TypeError):
                         setattr(registro, campo, None) # Si la conversión falla, pone None
                 
                 # 4. Para todos los demás campos (strings), simplemente asigna el valor
                 else:
                     setattr(registro, campo, valor)
+
+        # Regla de negocio: API Corregido para diluyente pesado no puede superar 59.
+        if 'api_corregido' in data:
+            api_corregido = registro.api_corregido
+            if api_corregido is not None and api_corregido > 59 and _es_diluyente_pesado_desde_pedido(registro):
+                registro.api_corregido = None
+                mensaje_api_corregido_invalido = (
+                    'Este registro corresponde a un diluyente pesado: API Corregido no debe ser mayor a 59. '
+                    'Se limpió el valor para evitar impresión con dato inválido.'
+                )
 
         # --- FIN DE LA CORRECCIÓN ---
 
@@ -10752,6 +11021,15 @@ def update_programacion(id):
                 registro.refineria_completado_en = None
 
         db.session.commit()
+
+        if mensaje_api_corregido_invalido:
+            return jsonify(
+                success=False,
+                message=mensaje_api_corregido_invalido,
+                clear_field='api_corregido',
+                es_diluyente_pesado=True,
+                bloquear_impresion=True
+            ), 400
         
         return jsonify(success=True, message="Registro actualizado correctamente.")
 
