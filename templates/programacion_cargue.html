@@ -1224,6 +1224,7 @@
         // --- DATOS GLOBALES INYECTADOS ---
         let conductores = {{ lista_conductores | default ([]) | tojson | safe
     }};
+    let contextoModalConductor = { rowId: null };
 
     // --- Nuevo: Guardar/Actualizar Conductor (SISTEMA COMPLETO) ---
     const btnGuardarConductor = document.getElementById('btnGuardarConductor');
@@ -1232,6 +1233,98 @@
     const infoBadge = document.getElementById('infoBadgeConductor');
     const infoBadgeText = document.getElementById('infoBadgeText');
     const cedulaOriginalField = document.getElementById('cedulaOriginalConductor');
+
+    function extraerConductorDesdeRespuesta(data, fallback = {}) {
+        const conductor = data?.conductor || data?.nuevo_conductor || {};
+        return {
+            'NOMBRE CONDUCTOR': normalizarConductorApellidoNombre(
+                conductor['NOMBRE CONDUCTOR'] || conductor['CONDUCTOR'] || fallback.nombre || ''
+            ),
+            'N° DOCUMENTO': String(conductor['N° DOCUMENTO'] || conductor['CEDULA'] || fallback.cedula || '').trim(),
+            'PLACA': String(conductor['PLACA'] || fallback.placa || '').trim().toUpperCase(),
+            'PLACA REMOLQUE': String(conductor['PLACA REMOLQUE'] || fallback.tanque || '').trim().toUpperCase(),
+            'CELULAR': String(conductor['CELULAR'] || fallback.celular || '').trim(),
+            'EMPRESA': String(conductor['EMPRESA'] || fallback.empresa || '').trim().toUpperCase()
+        };
+    }
+
+    function setRowFieldEditorValue(row, field, value) {
+        const cell = row?.querySelector(`td[data-field="${field}"]`);
+        if (!cell) return;
+
+        const input = cell.querySelector('input.editable-input');
+        const select = cell.querySelector('select.editable-select');
+        const span = cell.querySelector('.cell-editor');
+
+        if (input) {
+            input.value = value || '';
+        } else if (select) {
+            select.value = value || '';
+        } else if (span) {
+            span.textContent = value || '';
+        } else {
+            cell.textContent = value || '';
+        }
+    }
+
+    async function sincronizarFilaProgramacionDesdeConductor(conductorData) {
+        const rowId = contextoModalConductor.rowId;
+        if (!rowId) return;
+
+        const row = tbody.querySelector(`tr[data-id="${rowId}"]`);
+        if (!row) return;
+
+        const payload = {
+            nombre_conductor: conductorData['NOMBRE CONDUCTOR'] || null,
+            cedula_conductor: conductorData['N° DOCUMENTO'] || null,
+            placa: conductorData['PLACA'] || null,
+            tanque: conductorData['PLACA REMOLQUE'] || null,
+            celular_conductor: conductorData['CELULAR'] || null,
+            empresa_transportadora: conductorData['EMPRESA'] || null
+        };
+
+        const statusIndicator = row.querySelector('.save-indicator');
+        if (statusIndicator) {
+            statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+        }
+
+        try {
+            const resp = await fetch(`/api/programacion/${rowId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+
+            if (resp.ok && result.success) {
+                setRowFieldEditorValue(row, 'nombre_conductor', conductorData['NOMBRE CONDUCTOR']);
+                setRowFieldEditorValue(row, 'cedula_conductor', conductorData['N° DOCUMENTO']);
+                setRowFieldEditorValue(row, 'placa', conductorData['PLACA']);
+                setRowFieldEditorValue(row, 'tanque', conductorData['PLACA REMOLQUE']);
+                setRowFieldEditorValue(row, 'celular_conductor', conductorData['CELULAR']);
+                setRowFieldEditorValue(row, 'empresa_transportadora', conductorData['EMPRESA']);
+
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                }
+            } else {
+                const msg = result?.message || 'No se pudo actualizar la fila de programación.';
+                showToast('warning', `Conductor guardado, pero la fila no se actualizó: ${msg}`);
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                }
+            }
+        } catch (err) {
+            showToast('warning', 'Conductor guardado, pero hubo error actualizando la fila actual.');
+            if (statusIndicator) {
+                statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+            }
+        } finally {
+            if (statusIndicator) {
+                setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
+            }
+        }
+    }
 
     // --- Autocompletado inteligente en el campo CÉDULA ---
     // Cuando el usuario escribe o pega una cédula, busca si ya existe y carga los datos
@@ -1382,6 +1475,8 @@
                 const data = await resp.json();
 
                 if (data.success) {
+                    const conductorGuardado = extraerConductorDesdeRespuesta(data, bodyData);
+
                     let msgExito = 'Conductor guardado correctamente';
                     if (originalCedula && originalCedula !== cedula) {
                         msgExito = 'Placa reasignada al nuevo conductor correctamente';
@@ -1393,12 +1488,16 @@
                     // Refrescar datos desde el servidor (fuente de verdad)
                     await refrescarConductoresDesdeServidor();
 
+                    // Si el modal se abrió desde una fila, persistir esa misma fila con los nuevos datos.
+                    await sincronizarFilaProgramacionDesdeConductor(conductorGuardado);
+
                     // Cerrar modal y limpiar
                     const modalEl = document.getElementById('modalAgregarConductor');
                     const modalInstance = bootstrap.Modal.getInstance(modalEl);
                     if (modalInstance) modalInstance.hide();
                     document.getElementById('formAgregarConductor').reset();
                     cedulaOriginalField.value = '';
+                    contextoModalConductor.rowId = null;
                     ocultarInfoBadge();
 
                 } else {
@@ -1413,6 +1512,15 @@
                 // Restaurar texto según contexto
                 this.textContent = cedulaOriginalField.value ? 'Actualizar Conductor' : 'Guardar Conductor';
             }
+        });
+    }
+
+    const modalConductorEl = document.getElementById('modalAgregarConductor');
+    if (modalConductorEl) {
+        modalConductorEl.addEventListener('hidden.bs.modal', () => {
+            contextoModalConductor.rowId = null;
+            cedulaOriginalField.value = '';
+            ocultarInfoBadge();
         });
     }
 
@@ -1470,6 +1578,9 @@
         // Llenar dropdowns de los modales de gestión
         actualizarDropdownEmpresas();
         // actualizarDropdownClientes(); // Esta funcion puede estar definida mas abajo o necesitar ser redefinida
+
+        // Asegurar catálogo de conductores más reciente del servidor.
+        await refrescarConductoresDesdeServidor();
 
         // Llenar productoSelect si existe
         const prodSel = document.getElementById('productoSelect');
@@ -1541,6 +1652,7 @@
 
     // Llamada inicial
     cargarDatos();
+    setInterval(refrescarConductoresDesdeServidor, 60000);
 
     // --- NUEVO: Filtrado Dinámico para Rendimiento (Typeahead) ---
     tbody.addEventListener('input', function (e) {
@@ -1674,10 +1786,12 @@
         const input = td.querySelector('input');
         const field = input.dataset.col;
         const val = input.value.trim();
+        const rowContext = td.closest('tr');
 
         if (btnAdd) {
             // Lógica existente para Agregar Nuevo
             if (field === 'cliente') {
+                contextoModalConductor.rowId = null;
                 const modalEl = document.getElementById('modalAgregarCliente');
                 const form = document.getElementById('formAgregarCliente');
                 form.reset();
@@ -1686,6 +1800,7 @@
                 modal.show();
             } else {
                 // ABRIR MODAL EN MODO CREAR CONDUCTOR
+                contextoModalConductor.rowId = rowContext ? rowContext.dataset.id : null;
                 const modalEl = document.getElementById('modalAgregarConductor');
                 const form = document.getElementById('formAgregarConductor');
                 form.reset();
@@ -1726,6 +1841,7 @@
             }
 
             if (conductorMatch) {
+                contextoModalConductor.rowId = rowContext ? rowContext.dataset.id : null;
                 const modalEl = document.getElementById('modalAgregarConductor');
                 const form = document.getElementById('formAgregarConductor');
                 form.reset();
@@ -3057,6 +3173,32 @@
             .then(({ ok, data }) => {
                 if (ok) {
                     statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+
+                    if (data && data.conductor_sync) {
+                        const sync = data.conductor_sync;
+                        if (Object.prototype.hasOwnProperty.call(sync, 'nombre_conductor')) {
+                            setRowFieldEditorValue(row, 'nombre_conductor', sync.nombre_conductor || '');
+                        }
+                        if (Object.prototype.hasOwnProperty.call(sync, 'cedula_conductor')) {
+                            setRowFieldEditorValue(row, 'cedula_conductor', sync.cedula_conductor || '');
+                        }
+                        if (Object.prototype.hasOwnProperty.call(sync, 'placa')) {
+                            setRowFieldEditorValue(row, 'placa', sync.placa || '');
+                        }
+                        if (Object.prototype.hasOwnProperty.call(sync, 'tanque')) {
+                            setRowFieldEditorValue(row, 'tanque', sync.tanque || '');
+                        }
+                        if (Object.prototype.hasOwnProperty.call(sync, 'celular_conductor')) {
+                            setRowFieldEditorValue(row, 'celular_conductor', sync.celular_conductor || '');
+                        }
+                        if (Object.prototype.hasOwnProperty.call(sync, 'empresa_transportadora')) {
+                            setRowFieldEditorValue(row, 'empresa_transportadora', sync.empresa_transportadora || '');
+                        }
+
+                        if (sync.matched === false && (field === 'placa' || field === 'cedula_conductor')) {
+                            showToast('info', 'No se encontró conductor para esos datos; se limpiaron campos dependientes para evitar inconsistencias.');
+                        }
+                    }
 
                     if (field === 'api_corregido') {
                         refreshPrintButtonState(row);

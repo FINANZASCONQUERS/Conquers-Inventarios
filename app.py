@@ -10327,19 +10327,28 @@ def _deduplicar_conductores(conductores):
 
 
 def _liberar_placa_en_lista(conductores, placa_normalizada, cedula_excluida, tipo='PLACA'):
-    """Quita una placa (cabezote o remolque) de cualquier conductor que NO sea cedula_excluida."""
-    campo = 'PLACA' if tipo == 'PLACA' else 'PLACA REMOLQUE'
+    """Quita una placa de cualquier conductor (en cabezote o remolque) distinto al excluido."""
     reasignaciones = []
     for c in conductores:
-        placa_actual = _normalizar_placa(c.get(campo, ''))
-        if placa_actual == placa_normalizada and not _cedula_igual(c.get('N° DOCUMENTO', ''), cedula_excluida):
+        if _cedula_igual(c.get('N° DOCUMENTO', ''), cedula_excluida):
+            continue
+
+        liberado = False
+        placa_actual = _normalizar_placa(c.get('PLACA', ''))
+        remolque_actual = _normalizar_placa(c.get('PLACA REMOLQUE', ''))
+
+        if placa_actual == placa_normalizada:
+            c['PLACA'] = ''
+            liberado = True
+
+        if remolque_actual == placa_normalizada:
+            c['PLACA REMOLQUE'] = ''
+            liberado = True
+
+        if liberado:
             nombre_anterior = c.get('NOMBRE CONDUCTOR', 'Desconocido')
-            if tipo == 'PLACA':
-                c['PLACA'] = ''
-                # Solo liberar remolque si se libera el cabezote
-            else:
-                c['PLACA REMOLQUE'] = ''
             reasignaciones.append(nombre_anterior)
+
     return reasignaciones
 
 
@@ -10348,40 +10357,51 @@ def _sync_conductor_postgres(cedula, nombre, placa, placa_remolque, celular, emp
     try:
         cedula_str = str(cedula).strip()
         nombre_norm = _formatear_nombre_conductor_apellido_nombre(nombre) or ''
+        placa_norm = _normalizar_placa(placa)
+        placa_remolque_norm = _normalizar_placa(placa_remolque)
         conductor_db = Conductor.query.filter_by(cedula=cedula_str).first()
         if conductor_db:
             conductor_db.nombre = nombre_norm
-            conductor_db.placa = placa
-            conductor_db.placa_remolque = placa_remolque
+            conductor_db.placa = placa_norm
+            conductor_db.placa_remolque = placa_remolque_norm
             conductor_db.celular = celular
         else:
             conductor_db = Conductor(
                 nombre=nombre_norm,
                 cedula=cedula_str,
-                placa=placa,
-                placa_remolque=placa_remolque,
+                placa=placa_norm,
+                placa_remolque=placa_remolque_norm,
                 celular=celular
             )
             db.session.add(conductor_db)
 
-        # Liberar placa en PostgreSQL si otro conductor la tenía
-        if placa and len(placa) > 3:
-            otros = Conductor.query.filter(
-                Conductor.placa == placa,
-                Conductor.cedula != cedula_str
-            ).all()
-            for otro in otros:
-                current_app.logger.info(f"[PG] Placa {placa} liberada de {otro.nombre} → {nombre}")
-                otro.placa = ''
+        # Liberar placas en PostgreSQL aunque existan formatos históricos (ej: ABC-123 vs ABC123).
+        otros = Conductor.query.filter(Conductor.cedula != cedula_str).all()
+        for otro in otros:
+            placa_otro_norm = _normalizar_placa(otro.placa)
+            remolque_otro_norm = _normalizar_placa(otro.placa_remolque)
 
-        if placa_remolque and len(placa_remolque) > 3:
-            otros_rem = Conductor.query.filter(
-                Conductor.placa_remolque == placa_remolque,
-                Conductor.cedula != cedula_str
-            ).all()
-            for otro in otros_rem:
-                current_app.logger.info(f"[PG] Remolque {placa_remolque} liberado de {otro.nombre} → {nombre}")
-                otro.placa_remolque = ''
+            # Normalizar formato legado para reducir falsos negativos futuros.
+            if otro.placa != placa_otro_norm:
+                otro.placa = placa_otro_norm
+            if otro.placa_remolque != remolque_otro_norm:
+                otro.placa_remolque = remolque_otro_norm
+
+            if placa_norm and len(placa_norm) > 3:
+                if placa_otro_norm == placa_norm:
+                    current_app.logger.info(f"[PG] Placa {placa_norm} liberada de {otro.nombre} → {nombre_norm}")
+                    otro.placa = ''
+                if remolque_otro_norm == placa_norm:
+                    current_app.logger.info(f"[PG] Remolque {placa_norm} liberado de {otro.nombre} → {nombre_norm}")
+                    otro.placa_remolque = ''
+
+            if placa_remolque_norm and len(placa_remolque_norm) > 3:
+                if remolque_otro_norm == placa_remolque_norm:
+                    current_app.logger.info(f"[PG] Remolque {placa_remolque_norm} liberado de {otro.nombre} → {nombre_norm}")
+                    otro.placa_remolque = ''
+                if placa_otro_norm == placa_remolque_norm:
+                    current_app.logger.info(f"[PG] Placa {placa_remolque_norm} liberada de {otro.nombre} → {nombre_norm}")
+                    otro.placa = ''
 
         db.session.commit()
     except Exception as e:
@@ -10393,7 +10413,7 @@ def _sync_conductor_postgres(cedula, nombre, placa, placa_remolque, celular, emp
 @app.route('/api/conductores', methods=['POST'])
 def agregar_conductor():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         placa_norm = _normalizar_placa(data.get('placa', ''))
         remolque_norm = _normalizar_placa(data.get('tanque', ''))
         nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
@@ -10414,16 +10434,8 @@ def agregar_conductor():
         if not nombre or not cedula:
             return jsonify(success=False, message="Nombre y Cédula son obligatorios"), 400
 
-        # Cargar y deduplicar
-        json_path = os.path.join(current_app.root_path, 'static', 'Conductores.json')
-        conductores = []
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                try:
-                    conductores = json.load(f)
-                except json.JSONDecodeError:
-                    conductores = []
-        conductores = _deduplicar_conductores(conductores)
+        # Cargar snapshot consolidado (DB + JSON) y deduplicar por cédula.
+        conductores = _deduplicar_conductores(cargar_conductores())
 
         # 1. Verificar duplicados de Cédula
         for c in conductores:
@@ -10443,9 +10455,8 @@ def agregar_conductor():
                 current_app.logger.info(f"Remolque {remolque_norm} reasignado de {nombre_ant} → {nombre}")
 
         conductores.append(nuevo_conductor)
-
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(conductores, f, ensure_ascii=False, indent=4)
+        if not guardar_conductores(conductores):
+            return jsonify(success=False, message='No se pudo guardar Conductores.json'), 500
 
         # Sincronizar con PostgreSQL
         _sync_conductor_postgres(cedula, nombre, placa_norm, remolque_norm, celular, empresa)
@@ -10460,7 +10471,7 @@ def agregar_conductor():
 @app.route('/api/conductores/<cedula>', methods=['PUT'])
 def actualizar_conductor(cedula):
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         placa_norm = _normalizar_placa(data.get('placa', ''))
         remolque_norm = _normalizar_placa(data.get('tanque', ''))
         nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
@@ -10472,16 +10483,8 @@ def actualizar_conductor(cedula):
         if not nombre:
             return jsonify(success=False, message="Nombre es obligatorio"), 400
 
-        # Cargar y deduplicar
-        json_path = os.path.join(current_app.root_path, 'static', 'Conductores.json')
-        conductores = []
-        if os.path.exists(json_path):
-            with open(json_path, 'r', encoding='utf-8') as f:
-                try:
-                    conductores = json.load(f)
-                except json.JSONDecodeError:
-                    conductores = []
-        conductores = _deduplicar_conductores(conductores)
+        # Cargar snapshot consolidado (DB + JSON) y deduplicar por cédula.
+        conductores = _deduplicar_conductores(cargar_conductores())
 
         # Buscar al conductor que estamos editando
         encontrado = False
@@ -10517,9 +10520,8 @@ def actualizar_conductor(cedula):
             "EMPRESA": empresa
         }
         conductores[idx_conductor_actual] = conductor_actualizado
-
-        with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(conductores, f, ensure_ascii=False, indent=4)
+        if not guardar_conductores(conductores):
+            return jsonify(success=False, message='No se pudo guardar Conductores.json'), 500
 
         # Sincronizar con PostgreSQL
         _sync_conductor_postgres(cedula, nombre, placa_norm, remolque_norm, celular, empresa)
@@ -11374,6 +11376,100 @@ def _parsear_float_programacion(valor):
     return float(texto)
 
 
+def _buscar_conductor_catalogo_por_claves(placa=None, cedula=None, nombre=None):
+    """Busca un conductor en el catálogo consolidado usando prioridad placa -> cédula -> nombre."""
+    conductores = cargar_conductores()
+    if not conductores:
+        return None
+
+    placa_norm = _normalizar_placa(placa)
+    cedula_norm = str(cedula or '').strip()
+    nombre_norm = _formatear_nombre_conductor_apellido_nombre(nombre) or ''
+
+    if placa_norm:
+        for c in conductores:
+            if _normalizar_placa(c.get('PLACA', '')) == placa_norm:
+                return c
+
+    if cedula_norm:
+        for c in conductores:
+            if _cedula_igual(c.get('N° DOCUMENTO', ''), cedula_norm):
+                return c
+
+    if nombre_norm:
+        for c in conductores:
+            nombre_c = _formatear_nombre_conductor_apellido_nombre(c.get('NOMBRE CONDUCTOR', '')) or ''
+            if nombre_c == nombre_norm:
+                return c
+
+    return None
+
+
+def _payload_conductor_programacion(registro, matched=False):
+    """Devuelve los campos de conductor de un registro de programación para sincronizar frontend."""
+    return {
+        'matched': bool(matched),
+        'nombre_conductor': registro.nombre_conductor,
+        'cedula_conductor': registro.cedula_conductor,
+        'placa': registro.placa,
+        'tanque': registro.tanque,
+        'celular_conductor': registro.celular_conductor,
+        'empresa_transportadora': registro.empresa_transportadora
+    }
+
+
+def _sincronizar_conductor_en_programacion(registro, campos_tocados):
+    """Sincroniza datos de conductor en Programación usando el catálogo maestro."""
+    claves_conductor = {'placa', 'cedula_conductor', 'nombre_conductor'}
+    tocados = set(campos_tocados or [])
+    if not tocados.intersection(claves_conductor):
+        return None
+
+    conductor = _buscar_conductor_catalogo_por_claves(
+        placa=registro.placa,
+        cedula=registro.cedula_conductor,
+        nombre=registro.nombre_conductor
+    )
+
+    if conductor:
+        registro.nombre_conductor = _formatear_nombre_conductor_apellido_nombre(conductor.get('NOMBRE CONDUCTOR', '')) or registro.nombre_conductor
+        registro.cedula_conductor = str(conductor.get('N° DOCUMENTO', '')).strip() or registro.cedula_conductor
+        registro.placa = _normalizar_placa(conductor.get('PLACA', '')) or registro.placa
+
+        remolque = _normalizar_placa(conductor.get('PLACA REMOLQUE', ''))
+        if remolque:
+            registro.tanque = remolque
+
+        celular = str(conductor.get('CELULAR', '')).strip()
+        if celular:
+            registro.celular_conductor = celular
+
+        empresa = str(conductor.get('EMPRESA', '')).upper().strip()
+        if empresa:
+            registro.empresa_transportadora = empresa
+
+        return _payload_conductor_programacion(registro, matched=True)
+
+    # Si cambiaron la placa o cédula y no existe conductor, limpiar dependientes para evitar datos viejos.
+    placa_norm_actual = _normalizar_placa(registro.placa)
+    cedula_norm_actual = str(registro.cedula_conductor or '').strip()
+
+    placa_editada = 'placa' in tocados and len(placa_norm_actual) >= 4
+    cedula_editada = 'cedula_conductor' in tocados and len(cedula_norm_actual) >= 5
+
+    if placa_editada or cedula_editada:
+        registro.nombre_conductor = None
+        registro.cedula_conductor = None
+        registro.celular_conductor = None
+        registro.empresa_transportadora = None
+        if cedula_editada:
+            # Si el cambio fue por cédula y no hubo match, la placa/tanque también quedan en blanco.
+            registro.placa = None
+            registro.tanque = None
+
+    return _payload_conductor_programacion(registro, matched=False)
+
+
 def _es_diluyente_pesado_desde_pedido(registro_programacion):
     """Determina si el registro está asociado a un pedido de diluyente pesado."""
     if not registro_programacion:
@@ -11421,6 +11517,8 @@ def update_programacion(id):
 
     try:
         mensaje_api_corregido_invalido = None
+        payload_conductor_sync = None
+        campos_tocados = set()
 
         # Bloqueo nuevo: si TODOS los campos de refinería estuvieron completos y pasaron >30 min, refinería ya no puede editar
         campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
@@ -11445,6 +11543,7 @@ def update_programacion(id):
 
         for campo, valor in data.items():
             if campo in campos_permitidos:
+                campos_tocados.add(campo)
                 
                 # Normalización automática de productos
                 if campo == 'producto_a_cargar' and valor:
@@ -11481,6 +11580,8 @@ def update_programacion(id):
                         setattr(registro, campo, _a_mayuscula_guardado(valor) if valor not in (None, '') else None)
                     else:
                         setattr(registro, campo, valor)
+
+        payload_conductor_sync = _sincronizar_conductor_en_programacion(registro, campos_tocados)
 
         # Regla de negocio: no permitir DESPACHADO con campos críticos incompletos.
         cambia_a_despachado = (
@@ -11542,7 +11643,11 @@ def update_programacion(id):
                 bloquear_impresion=True
             ), 400
         
-        return jsonify(success=True, message="Registro actualizado correctamente.")
+        return jsonify(
+            success=True,
+            message="Registro actualizado correctamente.",
+            conductor_sync=payload_conductor_sync
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -16885,13 +16990,92 @@ def planilla_precios():
                            nombre=session.get("nombre"))
 
 def cargar_conductores():
-    """Función auxiliar para cargar conductores desde Conductores.json de forma segura."""
+    """Carga conductores priorizando DB y manteniendo EMPRESA desde JSON."""
+
+    def _cargar_conductores_json_solo():
+        try:
+            ruta_conductores = os.path.join(BASE_DIR, 'static', 'Conductores.json')
+            with open(ruta_conductores, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data if isinstance(data, list) else []
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+    def _normalizar_dict_conductor(conductor):
+        if not isinstance(conductor, dict):
+            return {
+                'PLACA': '',
+                'PLACA REMOLQUE': '',
+                'NOMBRE CONDUCTOR': '',
+                'N° DOCUMENTO': '',
+                'CELULAR': '',
+                'EMPRESA': ''
+            }
+
+        return {
+            'PLACA': _normalizar_placa(conductor.get('PLACA', '')),
+            'PLACA REMOLQUE': _normalizar_placa(conductor.get('PLACA REMOLQUE', '')),
+            'NOMBRE CONDUCTOR': _formatear_nombre_conductor_apellido_nombre(conductor.get('NOMBRE CONDUCTOR', '')) or '',
+            'N° DOCUMENTO': str(conductor.get('N° DOCUMENTO', '')).strip(),
+            'CELULAR': str(conductor.get('CELULAR', '')).strip(),
+            'EMPRESA': str(conductor.get('EMPRESA', '')).upper().strip()
+        }
+
+    conductores_json = [_normalizar_dict_conductor(c) for c in _cargar_conductores_json_solo()]
+    conductores_json = _deduplicar_conductores(conductores_json)
+
+    # Si no hay contexto de app (scripts utilitarios), usamos JSON como fallback seguro.
+    if not has_app_context():
+        return conductores_json
+
     try:
-        ruta_conductores = os.path.join(BASE_DIR, 'static', 'Conductores.json')
-        with open(ruta_conductores, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
+        registros_db = Conductor.query.order_by(Conductor.id.asc()).all()
+    except Exception as e:
+        print(f"Advertencia: no se pudo consultar conductores en DB: {e}")
+        return conductores_json
+
+    if not registros_db:
+        return conductores_json
+
+    empresa_por_cedula = {}
+    for c in conductores_json:
+        ced = str(c.get('N° DOCUMENTO', '')).strip()
+        if ced:
+            empresa_por_cedula[ced] = str(c.get('EMPRESA', '')).upper().strip()
+
+    conductores_merged = []
+    cedulas_en_db = set()
+
+    for r in registros_db:
+        ced = str(r.cedula or '').strip()
+        cedulas_en_db.add(ced)
+        conductores_merged.append({
+            'PLACA': _normalizar_placa(r.placa or ''),
+            'PLACA REMOLQUE': _normalizar_placa(r.placa_remolque or ''),
+            'NOMBRE CONDUCTOR': _formatear_nombre_conductor_apellido_nombre(r.nombre or '') or '',
+            'N° DOCUMENTO': ced,
+            'CELULAR': str(r.celular or '').strip(),
+            'EMPRESA': empresa_por_cedula.get(ced, '')
+        })
+
+    # Conservar conductores que solo existan en JSON (aún no sincronizados a DB).
+    for c in conductores_json:
+        ced = str(c.get('N° DOCUMENTO', '')).strip()
+        if not ced:
+            continue
+        if ced not in cedulas_en_db:
+            conductores_merged.append(_normalizar_dict_conductor(c))
+
+    conductores_merged = _deduplicar_conductores(conductores_merged)
+    conductores_merged.sort(key=lambda x: (x.get('NOMBRE CONDUCTOR', ''), x.get('N° DOCUMENTO', '')))
+
+    # Sincronizar snapshot JSON para que frontend y fallback usen la misma vista.
+    try:
+        guardar_conductores(conductores_merged)
+    except Exception as sync_err:
+        print(f"Advertencia: no se pudo sincronizar Conductores.json desde DB: {sync_err}")
+
+    return conductores_merged
 
 def buscar_conductor_por_placa(placa):
     """
@@ -16902,8 +17086,13 @@ def buscar_conductor_por_placa(placa):
     if not placa_norm:
         return None
 
-    # Primero buscar en PostgreSQL
-    conductor_db = Conductor.query.filter_by(placa=placa_norm).first()
+    # Primero buscar en PostgreSQL de forma robusta (normaliza placa almacenada).
+    placa_expr = func.replace(
+        func.replace(func.upper(func.coalesce(Conductor.placa, '')), ' ', ''),
+        '-',
+        ''
+    )
+    conductor_db = Conductor.query.filter(placa_expr == placa_norm).first()
     if conductor_db:
         return {
             'PLACA': conductor_db.placa or '-',
@@ -16937,6 +17126,231 @@ def guardar_conductores(conductores):
         # Captura errores de escritura o de permisos
         print(f"ERROR AL GUARDAR: No se pudo escribir en el archivo Conductores.json. Causa: {e}")
         return False # Devuelve False si hubo un error
+
+
+def _normalizar_registro_conductor(conductor):
+    if not isinstance(conductor, dict):
+        conductor = {}
+
+    return {
+        'NOMBRE CONDUCTOR': _formatear_nombre_conductor_apellido_nombre(conductor.get('NOMBRE CONDUCTOR', '')) or '',
+        'N° DOCUMENTO': str(conductor.get('N° DOCUMENTO', '')).strip(),
+        'PLACA': _normalizar_placa(conductor.get('PLACA', '')),
+        'PLACA REMOLQUE': _normalizar_placa(conductor.get('PLACA REMOLQUE', '')),
+        'CELULAR': str(conductor.get('CELULAR', '')).strip(),
+        'EMPRESA': str(conductor.get('EMPRESA', '')).upper().strip()
+    }
+
+
+def _puntaje_calidad_conductor(conductor):
+    if not isinstance(conductor, dict):
+        return 0
+
+    score = 0
+    if conductor.get('NOMBRE CONDUCTOR'):
+        score += 2
+    if conductor.get('PLACA'):
+        score += 4
+    if conductor.get('PLACA REMOLQUE'):
+        score += 3
+    if conductor.get('CELULAR'):
+        score += 1
+    if conductor.get('EMPRESA'):
+        score += 1
+    return score
+
+
+def _respaldar_conductores_json():
+    """Crea copia de seguridad de Conductores.json y devuelve la ruta creada."""
+    ruta_actual = os.path.join(BASE_DIR, 'static', 'Conductores.json')
+    if not os.path.exists(ruta_actual):
+        return None
+
+    sello = datetime.now().strftime('%Y%m%d_%H%M%S')
+    backup_nombre = f'Conductores_backup_{sello}.json'
+    backup_path = os.path.join(BASE_DIR, 'static', backup_nombre)
+    with open(ruta_actual, 'r', encoding='utf-8') as src:
+        contenido = src.read()
+    with open(backup_path, 'w', encoding='utf-8') as dst:
+        dst.write(contenido)
+    return backup_path
+
+
+def _depurar_conductores_completo(eliminar_no_presentes=True, dry_run=False):
+    """Depura conductores en memoria y sincroniza DB + JSON con backup."""
+    conductores = cargar_conductores()
+    total_entrada = len(conductores)
+
+    stats = {
+        'total_entrada': total_entrada,
+        'dry_run': bool(dry_run),
+        'eliminados_sin_campos': 0,
+        'deduplicados_por_cedula': 0,
+        'colisiones_placa_limpiadas': 0,
+        'colisiones_remolque_limpiadas': 0,
+        'remolques_iguales_a_placa': 0,
+        'actualizados_db': 0,
+        'creados_db': 0,
+        'eliminados_db': 0,
+        'backup_json': None,
+        'total_final': 0
+    }
+
+    # 1) Normalizar y descartar filas inválidas.
+    normalizados = []
+    for c in conductores:
+        row = _normalizar_registro_conductor(c)
+        if not row['N° DOCUMENTO'] or not row['NOMBRE CONDUCTOR']:
+            stats['eliminados_sin_campos'] += 1
+            continue
+
+        if row['PLACA'] and row['PLACA'] == row['PLACA REMOLQUE']:
+            row['PLACA REMOLQUE'] = ''
+            stats['remolques_iguales_a_placa'] += 1
+
+        normalizados.append(row)
+
+    # 2) Deduplicar por cédula conservando el registro más completo.
+    mejores_por_cedula = {}
+    for row in normalizados:
+        ced = row['N° DOCUMENTO']
+        actual = mejores_por_cedula.get(ced)
+        if not actual:
+            mejores_por_cedula[ced] = row
+            continue
+
+        if _puntaje_calidad_conductor(row) >= _puntaje_calidad_conductor(actual):
+            mejores_por_cedula[ced] = row
+        stats['deduplicados_por_cedula'] += 1
+
+    limpios = list(mejores_por_cedula.values())
+
+    # 3) Resolver colisiones de placa/remolque globalmente.
+    dueño_por_placa = {}
+    score_por_cedula = {r['N° DOCUMENTO']: _puntaje_calidad_conductor(r) for r in limpios}
+
+    for r in limpios:
+        ced = r['N° DOCUMENTO']
+        for p in (r.get('PLACA', ''), r.get('PLACA REMOLQUE', '')):
+            if not p:
+                continue
+            dueño = dueño_por_placa.get(p)
+            if not dueño:
+                dueño_por_placa[p] = ced
+                continue
+            if score_por_cedula.get(ced, 0) > score_por_cedula.get(dueño, 0):
+                dueño_por_placa[p] = ced
+
+    for r in limpios:
+        ced = r['N° DOCUMENTO']
+        placa = r.get('PLACA', '')
+        rem = r.get('PLACA REMOLQUE', '')
+
+        if placa and dueño_por_placa.get(placa) != ced:
+            r['PLACA'] = ''
+            stats['colisiones_placa_limpiadas'] += 1
+
+        if rem and dueño_por_placa.get(rem) != ced:
+            r['PLACA REMOLQUE'] = ''
+            stats['colisiones_remolque_limpiadas'] += 1
+
+    # 4) Sincronizar DB por cédula.
+    db_rows = Conductor.query.order_by(Conductor.id.asc()).all()
+    db_por_cedula = {str(r.cedula or '').strip(): r for r in db_rows}
+    limpios_por_cedula = {r['N° DOCUMENTO']: r for r in limpios}
+
+    for ced, row in limpios_por_cedula.items():
+        row_db = db_por_cedula.get(ced)
+        if row_db:
+            cambio = (
+                (row_db.nombre or '') != row['NOMBRE CONDUCTOR']
+                or (row_db.placa or '') != row['PLACA']
+                or (row_db.placa_remolque or '') != row['PLACA REMOLQUE']
+                or (row_db.celular or '') != row['CELULAR']
+            )
+            if cambio:
+                stats['actualizados_db'] += 1
+
+            if not dry_run and cambio:
+                row_db.nombre = row['NOMBRE CONDUCTOR']
+                row_db.placa = row['PLACA']
+                row_db.placa_remolque = row['PLACA REMOLQUE']
+                row_db.celular = row['CELULAR']
+        else:
+            stats['creados_db'] += 1
+            if not dry_run:
+                db.session.add(
+                    Conductor(
+                        nombre=row['NOMBRE CONDUCTOR'],
+                        cedula=ced,
+                        placa=row['PLACA'],
+                        placa_remolque=row['PLACA REMOLQUE'],
+                        celular=row['CELULAR']
+                    )
+                )
+
+    if eliminar_no_presentes:
+        for ced_db, row_db in db_por_cedula.items():
+            if ced_db and ced_db not in limpios_por_cedula:
+                stats['eliminados_db'] += 1
+                if not dry_run:
+                    db.session.delete(row_db)
+
+    if not dry_run:
+        db.session.commit()
+
+    # 5) Respaldar y escribir snapshot limpio en JSON.
+    limpios.sort(key=lambda x: (x.get('NOMBRE CONDUCTOR', ''), x.get('N° DOCUMENTO', '')))
+    if not dry_run:
+        try:
+            stats['backup_json'] = _respaldar_conductores_json()
+        except Exception:
+            stats['backup_json'] = None
+
+        if not guardar_conductores(limpios):
+            raise RuntimeError('No se pudo guardar Conductores.json durante la depuración.')
+
+    stats['total_final'] = len(limpios)
+    return {'conductores': limpios, **stats}
+
+
+@login_required
+@app.route('/api/conductores/depurar', methods=['POST'])
+def depurar_conductores_ajax():
+    """Depura conductores problemáticos y sincroniza DB + JSON."""
+    usuarios_autorizados = {
+        'ops@conquerstrading.com',
+        'logistic@conquerstrading.com',
+        'production@conquerstrading.com',
+        'refinery.control@conquerstrading.com'
+    }
+
+    if session.get('rol') != 'admin' and (session.get('email') not in usuarios_autorizados):
+        return jsonify(success=False, message='No tienes permiso para depurar conductores.'), 403
+
+    data = request.get_json() or {}
+    eliminar_no_presentes = bool(data.get('eliminar_no_presentes', True))
+    dry_run = bool(data.get('dry_run', False))
+
+    try:
+        resultado = _depurar_conductores_completo(
+            eliminar_no_presentes=eliminar_no_presentes,
+            dry_run=dry_run
+        )
+        return jsonify(
+            success=True,
+            message=(
+                f"Depuración de conductores {'(simulación) ' if dry_run else ''}completada. "
+                f"Final: {resultado.get('total_final', 0)} | "
+                f"Eliminados inválidos: {resultado.get('eliminados_sin_campos', 0)} | "
+                f"Duplicados cédula: {resultado.get('deduplicados_por_cedula', 0)}"
+            ),
+            resultado=resultado
+        )
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Error depurando conductores')
+        return jsonify(success=False, message=f'No se pudo depurar conductores: {e}'), 500
 
 def cargar_empresas():
     """Función auxiliar para cargar empresas desde EmpresasTransportadoras.json."""
@@ -17088,7 +17502,7 @@ def actualizar_producto_ajax():
 @login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])
 def agregar_conductor_ajax():
-    data = request.get_json()
+    data = request.get_json() or {}
     nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
     cedula = str(data.get('cedula', '')).strip()
     placa = _normalizar_placa(data.get('placa', ''))
