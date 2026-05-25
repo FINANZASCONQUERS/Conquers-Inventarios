@@ -10573,16 +10573,23 @@ def _to_float_or_none(valor):
         return None
 
 
+def _fecha_referencia_pedido(registro_base):
+    if not registro_base:
+        return None
+    return registro_base.fecha_cargue_confirmada or registro_base.fecha_cargue
+
+
 def _encontrar_programacion_existente_para_pedido(registro_base):
     """Busca una programación ya cargada para vincular un pedido existente.
 
     Criterios:
-    - Misma fecha de programación (fecha confirmada del pedido).
+    - Misma fecha de programación (confirmada o estimada del pedido).
     - Mismo producto (exacto o contención normalizada).
     - Al menos una coincidencia adicional fuerte: cliente, destino o galones.
     - No estar vinculada a otro pedido.
     """
-    if not registro_base or not registro_base.fecha_cargue_confirmada:
+    fecha_ref = _fecha_referencia_pedido(registro_base)
+    if not registro_base or not fecha_ref:
         return None
 
     producto_ref = _normalizar_texto_match_programacion(registro_base.producto)
@@ -10594,7 +10601,7 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
         return None
 
     candidatos = ProgramacionCargue.query.filter(
-        ProgramacionCargue.fecha_programacion == registro_base.fecha_cargue_confirmada
+        ProgramacionCargue.fecha_programacion == fecha_ref
     ).all()
 
     mejor_candidato = None
@@ -10647,6 +10654,72 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
     return mejor_candidato
 
 
+def _sincronizar_pedido_desde_programacion(registro_prog, usuario=None):
+    """Actualiza el pedido vinculado con los valores reales de Programación."""
+    if not registro_prog:
+        return False
+
+    pedido = ProgramacionBase.query.filter_by(programacion_cargue_id=registro_prog.id) \
+        .order_by(ProgramacionBase.id.desc()) \
+        .first()
+
+    if not pedido:
+        return False
+
+    actualizado = False
+
+    if registro_prog.fecha_programacion and pedido.fecha_cargue_confirmada != registro_prog.fecha_programacion:
+        pedido.fecha_cargue_confirmada = registro_prog.fecha_programacion
+        actualizado = True
+
+    galones_prog = _to_float_or_none(registro_prog.galones)
+    galones_pedido = _to_float_or_none(pedido.galones)
+    if galones_prog is not None:
+        if galones_pedido is None or abs(galones_pedido - galones_prog) > 0.01:
+            pedido.galones = galones_prog
+            actualizado = True
+
+    if actualizado and usuario:
+        pedido.ultimo_editor = usuario
+
+    return actualizado
+
+
+def _reconciliar_pedidos_antiguos(limite=500, usuario=None):
+    """Intenta vincular pedidos viejos con programaciones ya cargadas."""
+    try:
+        limite = int(limite)
+    except (TypeError, ValueError):
+        limite = 500
+
+    limite = max(1, min(limite, 2000))
+
+    pedidos = ProgramacionBase.query.filter(
+        ProgramacionBase.programacion_cargue_id.is_(None)
+    ).order_by(
+        ProgramacionBase.fecha_cargue.asc(),
+        ProgramacionBase.id.asc()
+    ).limit(limite).all()
+
+    revisados = 0
+    vinculados = 0
+
+    for pedido in pedidos:
+        revisados += 1
+        registro_prog = _encontrar_programacion_existente_para_pedido(pedido)
+        if not registro_prog:
+            continue
+
+        pedido.programacion_cargue_id = registro_prog.id
+        if usuario:
+            pedido.ultimo_editor = usuario
+
+        _sincronizar_pedido_desde_programacion(registro_prog, usuario=usuario)
+        vinculados += 1
+
+    return revisados, vinculados
+
+
 def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
     """Sincroniza un pedido de `programacion_base` hacia `programacion_cargue`.
 
@@ -10656,8 +10729,9 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
     if not registro_base:
         return None, False
 
-    if not registro_base.fecha_cargue_confirmada:
-        raise ValueError('Debes registrar Fecha de Cargue Confirmada antes de enviar a Programación de Cargue.')
+    fecha_ref = _fecha_referencia_pedido(registro_base)
+    if not fecha_ref:
+        raise ValueError('Debes registrar al menos una fecha de cargue en el pedido para poder vincularlo.')
 
     registro_prog = None
     creado = False
@@ -10676,8 +10750,11 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
             registro_base.programacion_cargue_id = registro_existente.id
 
     if registro_prog is None:
+        if not registro_base.fecha_cargue_confirmada:
+            raise ValueError('Para crear una nueva Programación de Cargue debes registrar Fecha de Cargue Confirmada. Si ya existe cargada, usa Vincular cargado.')
+
         registro_prog = ProgramacionCargue(
-            fecha_programacion=registro_base.fecha_cargue_confirmada,
+            fecha_programacion=fecha_ref,
             producto_a_cargar=(registro_base.producto or '').strip().upper() or None,
             cliente=(registro_base.cliente or '').strip() or None,
             destino=(registro_base.destino or '').strip() or None,
@@ -10701,6 +10778,7 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
         return registro_prog, creado
 
     if _programacion_cargue_despachada(registro_prog):
+        _sincronizar_pedido_desde_programacion(registro_prog, usuario=session.get('nombre'))
         return registro_prog, creado
 
     registro_prog.fecha_programacion = registro_base.fecha_cargue_confirmada or registro_prog.fecha_programacion
@@ -10720,6 +10798,7 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
         registro_prog.estado = 'PROGRAMADO'
 
     registro_prog.ultimo_editor = session.get('nombre')
+    _sincronizar_pedido_desde_programacion(registro_prog, usuario=session.get('nombre'))
     return registro_prog, creado
 
 
@@ -10767,7 +10846,8 @@ def handle_programacion_base():
             'cliente': r.cliente,
             'destino': r.destino,
             'calidad': r.calidad,
-            'galones': r.galones,
+            # Mostrar en pedidos el valor real cuando ya existe programación vinculada.
+            'galones': (prog.galones if (prog and prog.galones not in (None, '')) else r.galones),
             'programacion_cargue_id': prog.id if prog else None,
             'enviado_programacion': bool(prog),
             'estado_programacion': estado_programacion,
@@ -10905,6 +10985,31 @@ def enviar_pedido_a_programacion(id):
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
+
+
+@login_required
+@permiso_requerido('programacion_base')
+@app.route('/api/programacion-base/reconciliar-vinculos', methods=['POST'])
+def reconciliar_vinculos_programacion_base():
+    campos_permitidos = _campos_editables_programacion_base(session.get('email'), session.get('rol'))
+    if not campos_permitidos:
+        return jsonify(success=False, message='No tienes permisos para reconciliar pedidos.'), 403
+
+    payload = request.get_json(silent=True) or {}
+    limite = payload.get('limite', 500)
+
+    try:
+        revisados, vinculados = _reconciliar_pedidos_antiguos(limite=limite, usuario=session.get('nombre'))
+        db.session.commit()
+        return jsonify(
+            success=True,
+            revisados=revisados,
+            vinculados=vinculados,
+            message=f'Reconciliación completada: {vinculados} pedido(s) vinculados de {revisados} revisados.'
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f'Error reconciliando vínculos: {str(e)}'), 500
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -11122,6 +11227,9 @@ def update_programacion(id):
             # Si aún no ha pasado el bloqueo definitivo, permitir reiniciar el reloj
             if (ahora - registro.refineria_completado_en) <= timedelta(minutes=30):
                 registro.refineria_completado_en = None
+
+        # Mantener el pedido vinculado con el dato real de Programación de Cargue.
+        _sincronizar_pedido_desde_programacion(registro, usuario=session.get('nombre'))
 
         db.session.commit()
 

@@ -551,6 +551,9 @@
                         <span class="badge-modern">
                             <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                         </span>
+                        <button id="btn-link-loaded-base" class="btn btn-sm btn-modern btn-outline-success" type="button">
+                            <i class="fas fa-link me-1"></i>Vincular cargado
+                        </button>
                         <button id="btn-add-row-base" class="btn btn-sm btn-modern btn-primary" type="button">
                             <i class="fas fa-plus me-1"></i>Agregar fila
                         </button>
@@ -688,6 +691,7 @@
         const apiBase = '/api/programacion-base';
         const tbody = document.getElementById('base-table-body');
         const btnAddRow = document.getElementById('btn-add-row-base');
+        const btnVincularCargado = document.getElementById('btn-link-loaded-base');
         const statusEl = document.getElementById('base-status');
         const datalistProductos = document.getElementById('datalist-productos');
         const datalistClientes = document.getElementById('datalist-clientes');
@@ -1519,7 +1523,40 @@
             }
         }
 
+        async function vincularCargadoEnLote() {
+            if (!btnVincularCargado) {
+                return;
+            }
+
+            btnVincularCargado.disabled = true;
+            setStatus('Vinculando pedidos viejos con lo ya cargado...', 'info');
+
+            try {
+                const response = await fetch(apiBase + '/reconciliar-vinculos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ limite: 1200 })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'No fue posible reconciliar vínculos.');
+                }
+
+                await fetchRows();
+                setStatus(result.message || 'Reconciliación completada', 'success');
+            } catch (error) {
+                setStatus(error.message || 'Error reconciliando vínculos', 'danger');
+            } finally {
+                btnVincularCargado.disabled = false;
+            }
+        }
+
         btnAddRow.addEventListener('click', addRow);
+
+        if (btnVincularCargado) {
+            btnVincularCargado.addEventListener('click', vincularCargadoEnLote);
+        }
 
         if (btnAplicarFiltros) {
             btnAplicarFiltros.addEventListener('click', applyFiltersAndRender);
