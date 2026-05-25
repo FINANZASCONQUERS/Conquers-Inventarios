@@ -10558,6 +10558,95 @@ def _programacion_cargue_despachada(registro_prog):
     return estado == 'DESPACHADO' or bool(registro_prog.fecha_despacho)
 
 
+def _normalizar_texto_match_programacion(valor):
+    if valor is None:
+        return ''
+    return re.sub(r'\s+', ' ', str(valor).strip().upper())
+
+
+def _to_float_or_none(valor):
+    try:
+        if valor in (None, ''):
+            return None
+        return float(valor)
+    except (TypeError, ValueError):
+        return None
+
+
+def _encontrar_programacion_existente_para_pedido(registro_base):
+    """Busca una programación ya cargada para vincular un pedido existente.
+
+    Criterios:
+    - Misma fecha de programación (fecha confirmada del pedido).
+    - Mismo producto (exacto o contención normalizada).
+    - Al menos una coincidencia adicional fuerte: cliente, destino o galones.
+    - No estar vinculada a otro pedido.
+    """
+    if not registro_base or not registro_base.fecha_cargue_confirmada:
+        return None
+
+    producto_ref = _normalizar_texto_match_programacion(registro_base.producto)
+    cliente_ref = _normalizar_texto_match_programacion(registro_base.cliente)
+    destino_ref = _normalizar_texto_match_programacion(registro_base.destino)
+    galones_ref = _to_float_or_none(registro_base.galones)
+
+    if not producto_ref:
+        return None
+
+    candidatos = ProgramacionCargue.query.filter(
+        ProgramacionCargue.fecha_programacion == registro_base.fecha_cargue_confirmada
+    ).all()
+
+    mejor_candidato = None
+    mejor_score = -1
+
+    for candidato in candidatos:
+        # Evita enlazar múltiples pedidos al mismo registro de programación.
+        pedido_ya_vinculado = ProgramacionBase.query.filter(
+            ProgramacionBase.programacion_cargue_id == candidato.id,
+            ProgramacionBase.id != registro_base.id
+        ).first()
+        if pedido_ya_vinculado:
+            continue
+
+        producto_cand = _normalizar_texto_match_programacion(candidato.producto_a_cargar)
+        cliente_cand = _normalizar_texto_match_programacion(candidato.cliente)
+        destino_cand = _normalizar_texto_match_programacion(candidato.destino)
+        galones_cand = _to_float_or_none(candidato.galones)
+
+        producto_match = (
+            producto_ref == producto_cand or
+            (producto_ref and producto_cand and (producto_ref in producto_cand or producto_cand in producto_ref))
+        )
+        if not producto_match:
+            continue
+
+        score = 4
+        coincidencias_fuertes = 0
+
+        if cliente_ref and cliente_cand and cliente_ref == cliente_cand:
+            score += 3
+            coincidencias_fuertes += 1
+
+        if destino_ref and destino_cand and destino_ref == destino_cand:
+            score += 2
+            coincidencias_fuertes += 1
+
+        if galones_ref is not None and galones_cand is not None and abs(galones_ref - galones_cand) <= 1:
+            score += 2
+            coincidencias_fuertes += 1
+
+        # Seguridad: no vincular solo por producto y fecha.
+        if coincidencias_fuertes == 0:
+            continue
+
+        if score > mejor_score:
+            mejor_score = score
+            mejor_candidato = candidato
+
+    return mejor_candidato
+
+
 def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
     """Sincroniza un pedido de `programacion_base` hacia `programacion_cargue`.
 
@@ -10578,6 +10667,13 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
 
     if registro_prog is None and not force_create:
         return None, False
+
+    # Si no hay vínculo todavía, primero intentamos enlazar con una fila ya cargada.
+    if registro_prog is None:
+        registro_existente = _encontrar_programacion_existente_para_pedido(registro_base)
+        if registro_existente is not None:
+            registro_prog = registro_existente
+            registro_base.programacion_cargue_id = registro_existente.id
 
     if registro_prog is None:
         registro_prog = ProgramacionCargue(
@@ -10786,11 +10882,18 @@ def enviar_pedido_a_programacion(id):
         return jsonify(success=False, message='No tienes permisos para enviar pedidos.'), 403
 
     try:
+        vinculo_previo = registro.programacion_cargue_id
         prog, creado = _sincronizar_programacion_desde_pedido(registro, force_create=True)
         registro.ultimo_editor = session.get('nombre')
         db.session.commit()
 
-        accion = 'creado y enviado' if creado else 'actualizado en Programación de Cargue'
+        if creado:
+            accion = 'creado y enviado'
+        elif not vinculo_previo and prog:
+            accion = 'vinculado con una programación ya cargada'
+        else:
+            accion = 'actualizado en Programación de Cargue'
+
         return jsonify(
             success=True,
             message=f'Pedido {accion} correctamente.',
