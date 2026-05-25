@@ -10347,15 +10347,16 @@ def _sync_conductor_postgres(cedula, nombre, placa, placa_remolque, celular, emp
     """Sincroniza un conductor con la tabla PostgreSQL."""
     try:
         cedula_str = str(cedula).strip()
+        nombre_norm = _formatear_nombre_conductor_apellido_nombre(nombre) or ''
         conductor_db = Conductor.query.filter_by(cedula=cedula_str).first()
         if conductor_db:
-            conductor_db.nombre = nombre
+            conductor_db.nombre = nombre_norm
             conductor_db.placa = placa
             conductor_db.placa_remolque = placa_remolque
             conductor_db.celular = celular
         else:
             conductor_db = Conductor(
-                nombre=nombre,
+                nombre=nombre_norm,
                 cedula=cedula_str,
                 placa=placa,
                 placa_remolque=placa_remolque,
@@ -10395,7 +10396,7 @@ def agregar_conductor():
         data = request.get_json()
         placa_norm = _normalizar_placa(data.get('placa', ''))
         remolque_norm = _normalizar_placa(data.get('tanque', ''))
-        nombre = data.get('nombre', '').upper().strip()
+        nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
         cedula = str(data.get('cedula', '')).strip()
         celular = str(data.get('celular', '')).strip()
         empresa = data.get('empresa', '').upper().strip()
@@ -10462,7 +10463,7 @@ def actualizar_conductor(cedula):
         data = request.get_json()
         placa_norm = _normalizar_placa(data.get('placa', ''))
         remolque_norm = _normalizar_placa(data.get('tanque', ''))
-        nombre = data.get('nombre', '').upper().strip()
+        nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
         cedula = str(cedula).strip()
         celular = str(data.get('celular', '')).strip()
         empresa = data.get('empresa', '').upper().strip()
@@ -10557,6 +10558,12 @@ def _programacion_cargue_despachada(registro_prog):
         return False
     estado = (registro_prog.estado or '').strip().upper()
     return estado == 'DESPACHADO' or bool(registro_prog.fecha_despacho)
+
+
+def _producto_es_diluyente(producto):
+    if producto is None:
+        return False
+    return 'DILUY' in str(producto).strip().upper()
 
 
 def _normalizar_texto_match_programacion(valor):
@@ -10858,8 +10865,8 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
         registro_prog = ProgramacionCargue(
             fecha_programacion=fecha_ref,
             producto_a_cargar=(registro_base.producto or '').strip().upper() or None,
-            cliente=(registro_base.cliente or '').strip() or None,
-            destino=(registro_base.destino or '').strip() or None,
+            cliente=_a_mayuscula_guardado(registro_base.cliente),
+            destino=_normalizar_destino_ciudad(registro_base.destino),
             estado='PROGRAMADO',
             ultimo_editor=session.get('nombre')
         )
@@ -10885,8 +10892,8 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
 
     registro_prog.fecha_programacion = registro_base.fecha_cargue_confirmada or registro_prog.fecha_programacion
     registro_prog.producto_a_cargar = (registro_base.producto or '').strip().upper() or registro_prog.producto_a_cargar
-    registro_prog.cliente = (registro_base.cliente or '').strip() or registro_prog.cliente
-    registro_prog.destino = (registro_base.destino or '').strip() or registro_prog.destino
+    registro_prog.cliente = _a_mayuscula_guardado(registro_base.cliente) or registro_prog.cliente
+    registro_prog.destino = _normalizar_destino_ciudad(registro_base.destino) or registro_prog.destino
 
     if registro_base.galones not in (None, ''):
         try:
@@ -11026,6 +11033,13 @@ def update_programacion_base(id):
                     setattr(registro, campo, date.fromisoformat(valor) if valor else date.today())
                 else:
                     setattr(registro, campo, date.fromisoformat(valor) if valor else None)
+            elif campo == 'producto':
+                producto = str(valor).strip().upper() if valor is not None else None
+                registro.producto = producto or None
+                if not _producto_es_diluyente(registro.producto):
+                    registro.calidad = None
+            elif campo == 'destino':
+                registro.destino = _normalizar_destino_ciudad(valor)
             elif campo == 'galones':
                 try:
                     setattr(registro, campo, float(valor) if valor not in (None, '') else None)
@@ -11033,12 +11047,17 @@ def update_programacion_base(id):
                     setattr(registro, campo, None)
             elif campo == 'calidad':
                 calidad = (str(valor).strip().upper() if valor is not None else '')
-                if calidad in ('LIVIANA', 'PESADA'):
+                producto_referencia = data.get('producto', registro.producto)
+                if _producto_es_diluyente(producto_referencia) and calidad in ('LIVIANA', 'PESADA'):
                     setattr(registro, campo, calidad)
                 else:
                     setattr(registro, campo, None)
             else:
                 setattr(registro, campo, str(valor).strip() if valor is not None else None)
+
+        # Regla de negocio: la calidad LIVIANA/PESADA solo aplica para productos diluyentes.
+        if not _producto_es_diluyente(registro.producto):
+            registro.calidad = None
 
         # Si el pedido ya está enviado, mantener datos sincronizados en Programación de Cargue.
         if registro.programacion_cargue_id and campos_tocados.intersection(campos_sync):
@@ -11164,6 +11183,10 @@ def handle_programacion():
             fila['refinery_completo'] = refinery_completo
         except Exception:
             fila['refinery_completo'] = False
+
+        faltantes_despacho = _campos_obligatorios_despacho_faltantes(r)
+        fila['campos_obligatorios_faltantes'] = [x['campo'] for x in faltantes_despacho]
+        fila['faltan_datos_obligatorios'] = bool(faltantes_despacho)
             
         data.append(fila)
     return jsonify(data)
@@ -11173,6 +11196,158 @@ def _normalizar_texto_programacion(valor):
     if valor is None:
         return ''
     return re.sub(r'\s+', ' ', str(valor).strip().upper())
+
+
+def _normalizar_destino_ciudad(valor):
+    """Normaliza destino para que guarde solo la ciudad (sin departamento)."""
+    if valor is None:
+        return None
+
+    texto = str(valor).strip().upper()
+    if not texto:
+        return None
+
+    for separador in (',', '-', '/', '|', ';'):
+        if separador in texto:
+            texto = texto.split(separador, 1)[0]
+
+    texto = re.sub(r'[^A-ZÁÉÍÓÚÜÑ ]+', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto or None
+
+
+NOMBRES_COMUNES_CONDUCTOR = {
+    'JUAN', 'JOSE', 'LUIS', 'CARLOS', 'JORGE', 'DIEGO', 'MIGUEL', 'ANDRES',
+    'JHON', 'JONATHAN', 'PEDRO', 'DANIEL', 'DAVID', 'RICARDO', 'ROBERTO',
+    'RAFAEL', 'ALFREDO', 'MANUEL', 'ALEXANDER', 'EDWIN', 'EDGAR', 'FERNANDO',
+    'FRANCISCO', 'CESAR', 'OSCAR', 'WILLIAM', 'HECTOR', 'SANTIAGO', 'JULIAN'
+}
+
+
+def _formatear_nombre_conductor_apellido_nombre(valor):
+    """Normaliza nombre de conductor al formato APELLIDO(S) NOMBRE(S)."""
+    if valor is None:
+        return None
+
+    texto = re.sub(r'\s+', ' ', str(valor).strip().upper())
+    if not texto:
+        return None
+
+    if ',' in texto:
+        partes = [p.strip() for p in texto.split(',', 1)]
+        if len(partes) == 2 and partes[0] and partes[1]:
+            texto = f"{partes[0]} {partes[1]}"
+
+    tokens = [t for t in texto.split(' ') if t]
+    if len(tokens) >= 3:
+        primer_token_es_nombre = tokens[0] in NOMBRES_COMUNES_CONDUCTOR
+        ultimo_token_es_nombre = tokens[-1] in NOMBRES_COMUNES_CONDUCTOR
+
+        # Heurística: cuando detectamos "NOMBRE(S) APELLIDO(S)", reordenamos.
+        if primer_token_es_nombre and not ultimo_token_es_nombre:
+            if len(tokens) >= 4:
+                texto = ' '.join(tokens[-2:] + tokens[:-2])
+            else:
+                texto = ' '.join(tokens[-1:] + tokens[:-1])
+    elif len(tokens) == 2:
+        if tokens[0] in NOMBRES_COMUNES_CONDUCTOR and tokens[1] not in NOMBRES_COMUNES_CONDUCTOR:
+            texto = f"{tokens[1]} {tokens[0]}"
+
+    return texto
+
+
+DESPACHO_OBLIGATORIOS_CONFIG = {
+    'empresa_transportadora': 'Empresa transportadora',
+    'placa': 'Placa',
+    'tanque': 'Tanque',
+    'nombre_conductor': 'Conductor',
+    'cedula_conductor': 'Cedula',
+    'producto_a_cargar': 'Producto',
+    'cliente': 'Cliente',
+    'destino': 'Ciudad destino',
+    'tipo_guia': 'Tipo guia',
+    'numero_guia': 'Numero guia',
+    'galones': 'Galones',
+    'fecha_despacho': 'Fecha despacho'
+}
+
+
+def _campos_obligatorios_despacho_faltantes(registro):
+    """Lista campos mínimos que deben estar completos para pasar a DESPACHADO."""
+    faltantes = []
+    if not registro:
+        return faltantes
+
+    for campo, etiqueta in DESPACHO_OBLIGATORIOS_CONFIG.items():
+        valor = getattr(registro, campo, None)
+
+        if campo == 'galones':
+            galones = _to_float_or_none(valor)
+            if galones is None or galones <= 0:
+                faltantes.append({'campo': campo, 'label': etiqueta})
+            continue
+
+        if isinstance(valor, str):
+            if not valor.strip():
+                faltantes.append({'campo': campo, 'label': etiqueta})
+        elif valor is None:
+            faltantes.append({'campo': campo, 'label': etiqueta})
+
+    return faltantes
+
+
+def _a_mayuscula_guardado(valor):
+    if valor is None:
+        return None
+    return str(valor).strip().upper()
+
+
+PROGRAMACION_MAYUSCULA_CAMPOS = {
+    'destino',
+    'nombre_conductor',
+    'cliente',
+    'producto_a_cargar',
+    'empresa_transportadora',
+    'placa',
+    'tanque',
+    'cedula_conductor',
+    'numero_guia',
+    'precintos'
+}
+
+
+def _normalizar_mayusculas_programacion_existente(usuario=None):
+    """Normaliza a MAYÚSCULA campos clave de Programación de Cargue históricos."""
+    registros = ProgramacionCargue.query.all()
+    actualizados = 0
+
+    for r in registros:
+        cambios = False
+        for campo in PROGRAMACION_MAYUSCULA_CAMPOS:
+            valor = getattr(r, campo, None)
+            if valor in (None, ''):
+                continue
+
+            if campo == 'destino':
+                valor_norm = _normalizar_destino_ciudad(valor)
+            elif campo == 'nombre_conductor':
+                valor_norm = _formatear_nombre_conductor_apellido_nombre(valor)
+            else:
+                valor_norm = _a_mayuscula_guardado(valor)
+
+            if valor_norm is None:
+                valor_norm = _a_mayuscula_guardado(valor)
+
+            if valor_norm != valor:
+                setattr(r, campo, valor_norm)
+                cambios = True
+
+        if cambios:
+            if usuario:
+                r.ultimo_editor = usuario
+            actualizados += 1
+
+    return actualizados
 
 
 def _parsear_float_programacion(valor):
@@ -11298,7 +11473,30 @@ def update_programacion(id):
                 
                 # 4. Para todos los demás campos (strings), simplemente asigna el valor
                 else:
-                    setattr(registro, campo, valor)
+                    if campo == 'destino':
+                        setattr(registro, campo, _normalizar_destino_ciudad(valor))
+                    elif campo == 'nombre_conductor':
+                        setattr(registro, campo, _formatear_nombre_conductor_apellido_nombre(valor))
+                    elif campo in PROGRAMACION_MAYUSCULA_CAMPOS:
+                        setattr(registro, campo, _a_mayuscula_guardado(valor) if valor not in (None, '') else None)
+                    else:
+                        setattr(registro, campo, valor)
+
+        # Regla de negocio: no permitir DESPACHADO con campos críticos incompletos.
+        cambia_a_despachado = (
+            'estado' in data and _normalizar_texto_programacion(data.get('estado')) == 'DESPACHADO'
+        )
+        if cambia_a_despachado:
+            faltantes_despacho = _campos_obligatorios_despacho_faltantes(registro)
+            if faltantes_despacho:
+                etiquetas = ', '.join(x['label'] for x in faltantes_despacho)
+                return jsonify(
+                    success=False,
+                    message=f'No puedes pasar a DESPACHADO: faltan campos obligatorios ({etiquetas}).',
+                    bloquear_despachado=True,
+                    missing_fields=[x['campo'] for x in faltantes_despacho],
+                    missing_labels=[x['label'] for x in faltantes_despacho]
+                ), 400
 
         # Regla de negocio: API Corregido para diluyente pesado no puede superar 59.
         if 'api_corregido' in data:
@@ -11351,6 +11549,34 @@ def update_programacion(id):
         # Imprime el error en la consola del servidor para que puedas depurarlo
         print(f"ERROR AL ACTUALIZAR PROGRAMACIÓN: {e}") 
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
+
+
+@login_required
+@permiso_requerido('programacion_cargue')
+@app.route('/api/programacion/normalizar-mayusculas', methods=['POST'])
+def normalizar_programacion_mayusculas():
+    usuarios_autorizados = {
+        'ops@conquerstrading.com',
+        'production@conquerstrading.com',
+        'logistic@conquerstrading.com',
+        'refinery.control@conquerstrading.com',
+        'qualitycontrol@conquerstrading.com'
+    }
+
+    if session.get('rol') != 'admin' and (session.get('email') not in usuarios_autorizados):
+        return jsonify(success=False, message='No tienes permiso para normalizar datos.'), 403
+
+    try:
+        actualizados = _normalizar_mayusculas_programacion_existente(usuario=session.get('nombre'))
+        db.session.commit()
+        return jsonify(
+            success=True,
+            actualizados=actualizados,
+            message=f'Se normalizaron {actualizados} registro(s) en Programación de Cargue.'
+        )
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f'Error normalizando mayúsculas: {str(e)}'), 500
 
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -14193,21 +14419,30 @@ def cargar_clientes():
     
     # 1. Intentar cargar desde la Base de Datos (PostgreSQL/SQLite)
     try:
-        registros_db = Cliente.query.all()
+        registros_db = Cliente.query.order_by(Cliente.id.asc()).all()
         if registros_db:
-            for r in registros_db:
-                clientes_lista.append({
-                    "NOMBRE_CLIENTE": r.nombre,
-                    "DIRECCION": r.direccion,
-                    "CIUDAD_DEPARTAMENTO": r.ciudad_departamento
-                })
-            # AUTO-SYNC: Guardar los clientes de la DB al JSON para mantenerlos sincronizados
-            # Esto resuelve el problema de que un git pull sobrescriba el Clientes.json
             try:
-                guardar_clientes(clientes_lista)
-            except Exception as sync_err:
-                print(f"Advertencia: No se pudo sincronizar Clientes.json desde DB: {sync_err}")
-            return clientes_lista
+                resultado_dep = _depurar_clientes_duplicados_db(registros_db=registros_db)
+                clientes_lista = resultado_dep.get('clientes', [])
+                eliminados = resultado_dep.get('eliminados', 0)
+                if eliminados:
+                    print(f"Depuración de clientes aplicada: {eliminados} duplicado(s) eliminado(s) de la DB.")
+            except Exception as dep_err:
+                print(f"Advertencia: No se pudo depurar clientes duplicados en DB: {dep_err}")
+                clientes_lista = [
+                    _construir_cliente_dict(r.nombre, r.direccion, r.ciudad_departamento)
+                    for r in registros_db
+                ]
+                clientes_lista, _ = _deduplicar_clientes_lista(clientes_lista)
+
+            if clientes_lista:
+                # AUTO-SYNC: Guardar los clientes de la DB al JSON para mantenerlos sincronizados
+                # Esto resuelve el problema de que un git pull sobrescriba el Clientes.json
+                try:
+                    guardar_clientes(clientes_lista)
+                except Exception as sync_err:
+                    print(f"Advertencia: No se pudo sincronizar Clientes.json desde DB: {sync_err}")
+                return clientes_lista
     except Exception as e:
         print(f"Advertencia: No se pudo cargar clientes desde DB: {e}")
 
@@ -14215,7 +14450,15 @@ def cargar_clientes():
     try:
         ruta_clientes = os.path.join(BASE_DIR, 'static', 'Clientes.json')
         with open(ruta_clientes, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            clientes_json = json.load(f)
+
+        clientes_limpios, eliminados_json = _deduplicar_clientes_lista(clientes_json)
+        if eliminados_json:
+            try:
+                guardar_clientes(clientes_limpios)
+            except Exception as sync_err:
+                print(f"Advertencia: No se pudo depurar/sincronizar Clientes.json: {sync_err}")
+        return clientes_limpios
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 
@@ -14224,6 +14467,137 @@ def guardar_clientes(clientes):
     ruta_clientes = os.path.join(BASE_DIR, 'static', 'Clientes.json')
     with open(ruta_clientes, 'w', encoding='utf-8') as f:
         json.dump(clientes, f, ensure_ascii=False, indent=4)
+
+
+def _normalizar_campo_cliente(valor):
+    """Normaliza un campo para persistencia legible (mayúsculas y espacios limpios)."""
+    if valor is None:
+        return ''
+    return re.sub(r'\s+', ' ', str(valor).strip().upper())
+
+
+def _normalizar_texto_cliente(valor):
+    """Normaliza texto para comparar duplicados (sin acentos ni símbolos)."""
+    if valor is None:
+        return ''
+
+    texto = unicodedata.normalize('NFKD', str(valor))
+    texto = ''.join(c for c in texto if not unicodedata.combining(c))
+    texto = texto.upper()
+    texto = re.sub(r'[^A-Z0-9]+', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto
+
+
+def _normalizar_ciudad_cliente(valor):
+    """Extrae y normaliza solo la ciudad para comparar ubicaciones."""
+    texto = _normalizar_campo_cliente(valor)
+    if not texto:
+        return ''
+
+    for separador in (',', '-', '/', '|', ';'):
+        if separador in texto:
+            texto = texto.split(separador, 1)[0].strip()
+            break
+
+    return _normalizar_texto_cliente(texto)
+
+
+def _extraer_campos_cliente(cliente):
+    if not isinstance(cliente, dict):
+        return '', '', ''
+
+    nombre = cliente.get('NOMBRE_CLIENTE') or cliente.get('nombre') or ''
+    direccion = cliente.get('DIRECCION') or cliente.get('direccion') or ''
+    ciudad = (
+        cliente.get('CIUDAD_DEPARTAMENTO')
+        or cliente.get('CIUDAD_Y_DPTO')
+        or cliente.get('ciudad_departamento')
+        or cliente.get('ciudad')
+        or ''
+    )
+    return nombre, direccion, ciudad
+
+
+def _construir_cliente_dict(nombre, direccion, ciudad):
+    return {
+        'NOMBRE_CLIENTE': _normalizar_campo_cliente(nombre),
+        'DIRECCION': _normalizar_campo_cliente(direccion),
+        'CIUDAD_DEPARTAMENTO': _normalizar_campo_cliente(ciudad)
+    }
+
+
+def _firma_cliente(nombre, direccion, ciudad):
+    return {
+        'nombre': _normalizar_texto_cliente(nombre),
+        'direccion': _normalizar_texto_cliente(direccion),
+        'ciudad': _normalizar_ciudad_cliente(ciudad)
+    }
+
+
+def _mismo_cliente_por_ubicacion(firma_a, firma_b):
+    """Considera duplicado cuando coincide la ubicación normalizada (dirección + ciudad)."""
+    if not firma_a or not firma_b:
+        return False
+
+    return (
+        bool(firma_a.get('direccion'))
+        and bool(firma_a.get('ciudad'))
+        and firma_a.get('direccion') == firma_b.get('direccion')
+        and firma_a.get('ciudad') == firma_b.get('ciudad')
+    )
+
+
+def _buscar_cliente_duplicado_en_lista(clientes, nombre, direccion, ciudad, excluir=None):
+    firma_objetivo = _firma_cliente(nombre, direccion, ciudad)
+
+    for cliente in clientes:
+        if excluir is not None and cliente is excluir:
+            continue
+
+        c_nombre, c_direccion, c_ciudad = _extraer_campos_cliente(cliente)
+        firma_actual = _firma_cliente(c_nombre, c_direccion, c_ciudad)
+        if _mismo_cliente_por_ubicacion(firma_objetivo, firma_actual):
+            return cliente
+
+    return None
+
+
+def _deduplicar_clientes_lista(clientes):
+    """Elimina duplicados en memoria por misma ubicación normalizada."""
+    clientes_unicos = []
+    eliminados = 0
+
+    for cliente in clientes or []:
+        nombre, direccion, ciudad = _extraer_campos_cliente(cliente)
+        cliente_limpio = _construir_cliente_dict(nombre, direccion, ciudad)
+
+        if not (
+            cliente_limpio['NOMBRE_CLIENTE']
+            and cliente_limpio['DIRECCION']
+            and cliente_limpio['CIUDAD_DEPARTAMENTO']
+        ):
+            continue
+
+        duplicado = _buscar_cliente_duplicado_en_lista(
+            clientes_unicos,
+            cliente_limpio['NOMBRE_CLIENTE'],
+            cliente_limpio['DIRECCION'],
+            cliente_limpio['CIUDAD_DEPARTAMENTO']
+        )
+
+        if duplicado:
+            eliminados += 1
+            # Si llega uno con nombre más descriptivo, lo conservamos.
+            nombre_dup = duplicado.get('NOMBRE_CLIENTE', '')
+            if len(cliente_limpio['NOMBRE_CLIENTE']) > len(nombre_dup):
+                duplicado['NOMBRE_CLIENTE'] = cliente_limpio['NOMBRE_CLIENTE']
+            continue
+
+        clientes_unicos.append(cliente_limpio)
+
+    clientes_unicos.sort(key=lambda x: x.get('NOMBRE_CLIENTE', ''))
+    return clientes_unicos, eliminados
 
 
 # Modelos SQLAlchemy para Cliente, Conductor y Empresa
@@ -14298,6 +14672,96 @@ class Cliente(db.Model):
     nombre = db.Column(db.String(255), nullable=False)
     direccion = db.Column(db.String(255), nullable=False)
     ciudad_departamento = db.Column(db.String(255), nullable=False)
+
+
+def _buscar_cliente_duplicado_db(nombre, direccion, ciudad, excluir_id=None):
+    """Busca en DB un cliente duplicado por misma ubicación normalizada."""
+    firma_objetivo = _firma_cliente(nombre, direccion, ciudad)
+    registros = Cliente.query.order_by(Cliente.id.asc()).all()
+
+    for registro in registros:
+        if excluir_id is not None and registro.id == excluir_id:
+            continue
+
+        firma_actual = _firma_cliente(registro.nombre, registro.direccion, registro.ciudad_departamento)
+        if _mismo_cliente_por_ubicacion(firma_objetivo, firma_actual):
+            return registro
+
+    return None
+
+
+def _depurar_clientes_duplicados_db(registros_db=None):
+    """Elimina duplicados en DB por dirección+ciudad normalizadas y retorna lista limpia."""
+    if registros_db is None:
+        registros_db = Cliente.query.order_by(Cliente.id.asc()).all()
+
+    registros_unicos = []
+    eliminados = 0
+    normalizados = 0
+
+    try:
+        for registro in registros_db:
+            cliente_limpio = _construir_cliente_dict(
+                registro.nombre,
+                registro.direccion,
+                registro.ciudad_departamento
+            )
+
+            cambios = False
+            if registro.nombre != cliente_limpio['NOMBRE_CLIENTE']:
+                registro.nombre = cliente_limpio['NOMBRE_CLIENTE']
+                cambios = True
+            if registro.direccion != cliente_limpio['DIRECCION']:
+                registro.direccion = cliente_limpio['DIRECCION']
+                cambios = True
+            if registro.ciudad_departamento != cliente_limpio['CIUDAD_DEPARTAMENTO']:
+                registro.ciudad_departamento = cliente_limpio['CIUDAD_DEPARTAMENTO']
+                cambios = True
+
+            if cambios:
+                normalizados += 1
+
+            duplicado = None
+            firma_actual = _firma_cliente(
+                cliente_limpio['NOMBRE_CLIENTE'],
+                cliente_limpio['DIRECCION'],
+                cliente_limpio['CIUDAD_DEPARTAMENTO']
+            )
+            for unico in registros_unicos:
+                firma_unico = _firma_cliente(unico.nombre, unico.direccion, unico.ciudad_departamento)
+                if _mismo_cliente_por_ubicacion(firma_actual, firma_unico):
+                    duplicado = unico
+                    break
+
+            if duplicado:
+                nombre_unico = (duplicado.nombre or '').strip()
+                if len(cliente_limpio['NOMBRE_CLIENTE']) > len(nombre_unico):
+                    duplicado.nombre = cliente_limpio['NOMBRE_CLIENTE']
+                    normalizados += 1
+
+                db.session.delete(registro)
+                eliminados += 1
+                continue
+
+            registros_unicos.append(registro)
+
+        if eliminados or normalizados:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
+
+    clientes_limpios = [
+        _construir_cliente_dict(r.nombre, r.direccion, r.ciudad_departamento)
+        for r in registros_unicos
+    ]
+    clientes_limpios, _ = _deduplicar_clientes_lista(clientes_limpios)
+
+    return {
+        'clientes': clientes_limpios,
+        'eliminados': eliminados,
+        'normalizados': normalizados
+    }
 
 class Conductor(db.Model):
     __tablename__ = 'conductores'
@@ -16119,38 +16583,37 @@ def guardar_cliente():
         flash("Todos los campos son obligatorios.", "danger")
         return redirect(url_for('gestionar_clientes'))
 
+    nuevo_cliente = _construir_cliente_dict(nombre, direccion, ciudad)
+    nombre_guardado = nuevo_cliente['NOMBRE_CLIENTE']
+    direccion_guardada = nuevo_cliente['DIRECCION']
+    ciudad_guardada = nuevo_cliente['CIUDAD_DEPARTAMENTO']
+
     clientes = cargar_clientes()
-    # Verificar si el cliente ya existe en JSON (Nombre + Dirección + Ciudad)
-    # Se busca evitar duplicados exactos o muy similares
-    if any(
-        c.get('NOMBRE_CLIENTE', '').strip().upper() == nombre.upper() and
-        c.get('DIRECCION', '').strip().upper() == direccion.upper() and
-        c.get('CIUDAD_DEPARTAMENTO', '').strip().upper() == ciudad.upper()
-        for c in clientes
-    ):
-        flash(f"El cliente '{nombre}' con esa dirección y ciudad ya existe.", "warning")
+    duplicado_lista = _buscar_cliente_duplicado_en_lista(
+        clientes,
+        nombre_guardado,
+        direccion_guardada,
+        ciudad_guardada
+    )
+    if duplicado_lista:
+        nombre_existente = (duplicado_lista.get('NOMBRE_CLIENTE') or nombre_guardado).strip()
+        flash(
+            f"Ya existe un cliente en esa misma dirección y ciudad ({nombre_existente}).",
+            "warning"
+        )
         return redirect(url_for('gestionar_clientes'))
 
-    nuevo_cliente = {
-        "NOMBRE_CLIENTE": nombre.upper(),
-        "DIRECCION": direccion.upper(),
-        "CIUDAD_DEPARTAMENTO": ciudad.upper()
-    }
     clientes.append(nuevo_cliente)
-    clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
+    clientes, _ = _deduplicar_clientes_lista(clientes)
     guardar_clientes(clientes)
 
     # Guardar también en PostgreSQL
     try:
-        if not Cliente.query.filter(
-            func.upper(Cliente.nombre) == nombre.upper(),
-            func.upper(Cliente.direccion) == direccion.upper(),
-            func.upper(Cliente.ciudad_departamento) == ciudad.upper()
-        ).first():
+        if not _buscar_cliente_duplicado_db(nombre_guardado, direccion_guardada, ciudad_guardada):
             cliente_db = Cliente(
-                nombre=nombre.upper(),
-                direccion=direccion.upper(),
-                ciudad_departamento=ciudad.upper()
+                nombre=nombre_guardado,
+                direccion=direccion_guardada,
+                ciudad_departamento=ciudad_guardada
             )
             db.session.add(cliente_db)
             db.session.commit()
@@ -16159,13 +16622,13 @@ def guardar_cliente():
         flash(f"Error al guardar en la base de datos: {e}", "danger")
         return redirect(url_for('gestionar_clientes'))
 
-    flash(f"Cliente '{nombre}' agregado exitosamente.", "success")
+    flash(f"Cliente '{nombre_guardado}' agregado exitosamente.", "success")
     return redirect(url_for('gestionar_clientes'))
 
 @login_required
 @app.route('/agregar_cliente_ajax', methods=['POST'])
 def agregar_cliente_ajax():
-    data = request.get_json()
+    data = request.get_json() or {}
     nombre = data.get('nombre', '').strip()
     direccion = data.get('direccion', '').strip()
     ciudad = data.get('ciudad', '').strip()
@@ -16173,40 +16636,38 @@ def agregar_cliente_ajax():
     if not nombre or not direccion or not ciudad:
         return jsonify(success=False, message="Todos los campos son obligatorios."), 400
 
-    clientes = cargar_clientes()
-    
-    # Validar duplicados por NOMBRE + DIRECCIÓN + CIUDAD
-    if any(
-        (c.get('NOMBRE_CLIENTE', '').strip().upper() == nombre.upper()) and 
-        (c.get('DIRECCION', '').strip().upper() == direccion.upper()) and
-        (c.get('CIUDAD_DEPARTAMENTO', '').strip().upper() == ciudad.upper())
-        for c in clientes
-    ):
-        return jsonify(success=False, message=f"El cliente '{nombre}' con esa dirección y ciudad ya existe."), 409
+    nuevo_cliente = _construir_cliente_dict(nombre, direccion, ciudad)
+    nombre_guardado = nuevo_cliente['NOMBRE_CLIENTE']
+    direccion_guardada = nuevo_cliente['DIRECCION']
+    ciudad_guardada = nuevo_cliente['CIUDAD_DEPARTAMENTO']
 
-    nuevo_cliente = {
-        "NOMBRE_CLIENTE": nombre.upper(),
-        "DIRECCION": direccion.upper(),
-        "CIUDAD_DEPARTAMENTO": ciudad.upper()
-    }
+    clientes = cargar_clientes()
+    duplicado_lista = _buscar_cliente_duplicado_en_lista(
+        clientes,
+        nombre_guardado,
+        direccion_guardada,
+        ciudad_guardada
+    )
+    if duplicado_lista:
+        nombre_existente = (duplicado_lista.get('NOMBRE_CLIENTE') or nombre_guardado).strip()
+        return jsonify(
+            success=False,
+            message=f"Ya existe un cliente en esa misma dirección y ciudad ({nombre_existente})."
+        ), 409
+
     clientes.append(nuevo_cliente)
-    clientes.sort(key=lambda x: x['NOMBRE_CLIENTE'])
+    clientes, _ = _deduplicar_clientes_lista(clientes)
     guardar_clientes(clientes)
 
     # Guardar también en PostgreSQL
     try:
-        # Verificar si existe EXACTAMENTE ese cliente (nombre + dirección + ciudad)
-        existe_db = Cliente.query.filter(
-            func.upper(Cliente.nombre) == nombre.upper(),
-            func.upper(Cliente.direccion) == direccion.upper(),
-            func.upper(Cliente.ciudad_departamento) == ciudad.upper()
-        ).first()
+        existe_db = _buscar_cliente_duplicado_db(nombre_guardado, direccion_guardada, ciudad_guardada)
 
         if not existe_db:
             cliente_db = Cliente(
-                nombre=nombre.upper(),
-                direccion=direccion.upper(),
-                ciudad_departamento=ciudad.upper()
+                nombre=nombre_guardado,
+                direccion=direccion_guardada,
+                ciudad_departamento=ciudad_guardada
             )
             db.session.add(cliente_db)
             db.session.commit()
@@ -16236,10 +16697,11 @@ def actualizar_cliente_ajax():
 
     original_upper = original_nombre.upper()
     original_dir_upper = original_direccion.upper()
-    
-    nombre_upper = nombre.upper()
-    direccion_upper = direccion.upper()
-    ciudad_upper = ciudad.upper()
+
+    cliente_actualizado = _construir_cliente_dict(nombre, direccion, ciudad)
+    nombre_upper = cliente_actualizado['NOMBRE_CLIENTE']
+    direccion_upper = cliente_actualizado['DIRECCION']
+    ciudad_upper = cliente_actualizado['CIUDAD_DEPARTAMENTO']
 
     clientes = cargar_clientes()
     coincidencia = None
@@ -16263,28 +16725,26 @@ def actualizar_cliente_ajax():
     if not coincidencia:
         return jsonify(success=False, message=f"No se encontró el cliente '{original_nombre}'."), 404
 
-    # Verificar conflictos: Nuevo nombre+direccion ya existe en OTRO registro
-    # "Otro" significa que no es la misma instancia en memoria (pero en JSON no hay ID).
-    # Así que verificamos si existe un registro con (NuevoNombre, NuevaDireccion) 
-    # QUE NO SEA el que estamos editando (coincidencia).
-    
-    ya_existe = False
-    for otro in clientes:
-        if otro is coincidencia:
-            continue
-        if (otro.get('NOMBRE_CLIENTE','').upper() == nombre_upper and 
-            otro.get('DIRECCION','').upper() == direccion_upper):
-            ya_existe = True
-            break
-            
-    if ya_existe:
-        return jsonify(success=False, message=f"Ya existe otro cliente con nombre '{nombre_upper}' y esa dirección."), 409
+    duplicado = _buscar_cliente_duplicado_en_lista(
+        clientes,
+        nombre_upper,
+        direccion_upper,
+        ciudad_upper,
+        excluir=coincidencia
+    )
+    if duplicado:
+        nombre_existente = (duplicado.get('NOMBRE_CLIENTE') or nombre_upper).strip()
+        return jsonify(
+            success=False,
+            message=f"Ya existe un cliente en esa misma dirección y ciudad ({nombre_existente})."
+        ), 409
 
     # Actualizar valores
     coincidencia['NOMBRE_CLIENTE'] = nombre_upper
     coincidencia['DIRECCION'] = direccion_upper
     coincidencia['CIUDAD_DEPARTAMENTO'] = ciudad_upper
-    
+
+    clientes, _ = _deduplicar_clientes_lista(clientes)
     guardar_clientes(clientes)
     
     # Actualizar DB (Intentar buscar por original y actualizar)
@@ -16296,6 +16756,18 @@ def actualizar_cliente_ajax():
             
         cliente_db = q.first()
         if cliente_db:
+            duplicado_db = _buscar_cliente_duplicado_db(
+                nombre_upper,
+                direccion_upper,
+                ciudad_upper,
+                excluir_id=cliente_db.id
+            )
+            if duplicado_db:
+                return jsonify(
+                    success=False,
+                    message='Ya existe en base de datos otro cliente con esa misma dirección y ciudad.'
+                ), 409
+
             cliente_db.nombre = nombre_upper
             cliente_db.direccion = direccion_upper
             cliente_db.ciudad_departamento = ciudad_upper
@@ -16356,6 +16828,35 @@ def eliminar_cliente_ajax():
         app.logger.warning(f"Error eliminando cliente de BD: {e}")
 
     return jsonify(success=True, message=f'Se eliminaron {deleted_count} registro(s) correctamente.')
+
+
+@login_required
+@app.route('/api/clientes/depurar_duplicados', methods=['POST'])
+def depurar_clientes_duplicados_ajax():
+    """Depura duplicados de clientes en DB y sincroniza Clientes.json."""
+    try:
+        resultado = _depurar_clientes_duplicados_db()
+        clientes_limpios = resultado.get('clientes', [])
+        guardar_clientes(clientes_limpios)
+
+        eliminados = resultado.get('eliminados', 0)
+        normalizados = resultado.get('normalizados', 0)
+        total = len(clientes_limpios)
+
+        return jsonify(
+            success=True,
+            message=(
+                f"Depuración finalizada. Eliminados: {eliminados}. "
+                f"Normalizados: {normalizados}. Total final: {total}."
+            ),
+            eliminados=eliminados,
+            normalizados=normalizados,
+            total=total
+        )
+    except Exception as e:
+        db.session.rollback()
+        app.logger.warning(f"Error depurando clientes duplicados: {e}")
+        return jsonify(success=False, message='No se pudo depurar clientes duplicados.'), 500
 
 @login_required
 @permiso_requerido('planilla_precios')
@@ -16588,7 +17089,7 @@ def actualizar_producto_ajax():
 @app.route('/agregar_conductor_ajax', methods=['POST'])
 def agregar_conductor_ajax():
     data = request.get_json()
-    nombre = str(data.get('nombre', '')).upper().strip()
+    nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
     cedula = str(data.get('cedula', '')).strip()
     placa = _normalizar_placa(data.get('placa', ''))
     tanque = _normalizar_placa(data.get('tanque', ''))

@@ -359,6 +359,19 @@
                 background-position: 100px 0;
             }
         }
+
+        tr.has-missing-required td.missing-required-cell {
+            box-shadow: inset 0 0 0 2px rgba(220, 53, 69, 0.55);
+        }
+
+        .missing-required-editor,
+        td.missing-required-cell .editable-input,
+        td.missing-required-cell .editable-select,
+        td.missing-required-cell .cell-editor {
+            background: rgba(220, 53, 69, 0.12) !important;
+            border-color: rgba(220, 53, 69, 0.65) !important;
+            color: #8b1d2c !important;
+        }
     </style>
     <!-- Header Mejorado -->
     <div class="page-header mb-4">
@@ -571,7 +584,7 @@
                             <option value="cliente">Cliente</option>
                             <option value="producto_a_cargar">Producto</option>
                             <option value="nombre_conductor">Conductor</option>
-                            <option value="destino">Destino</option>
+                            <option value="destino">Ciudad</option>
                             <option value="empresa_transportadora">Empresa Transportadora</option>
                             <option value="placa">Placa</option>
                             <option value="tanque">Tanque</option>
@@ -721,7 +734,7 @@
                                     <th style="width: 120px;">Cédula</th>
                                     <th style="width: 120px;">Celular</th>
                                     <th style="width: 70px;">Hora Llegada</th>
-                                    <th style="width: 150px;">Destino</th>
+                                    <th style="width: 150px;">Ciudad</th>
                                     <th style="width: 120px;">Cliente</th>
                                     <th style="width: 100px;">Estado</th>
                                     <th style="width: 90px;" class="text-end">Galones</th>
@@ -942,10 +955,10 @@
                             datos automáticamente.</small>
                     </div>
                     <div class="mb-3">
-                        <label for="nombreNuevoConductor" class="form-label fw-bold">Nombre Completo <span
+                        <label for="nombreNuevoConductor" class="form-label fw-bold">Conductor (Apellido y Nombre) <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="nombreNuevoConductor" required
-                            placeholder="Nombre del conductor">
+                            placeholder="Ej: PEREZ GOMEZ JUAN CARLOS">
                     </div>
                     <div class="row">
                         <div class="col-6 mb-3">
@@ -984,6 +997,7 @@
 <datalist id="datalist-conductores"></datalist>
 <datalist id="datalist-cedulas"></datalist>
 <datalist id="datalist-placas"></datalist>
+<datalist id="datalist-ciudades"></datalist>
 
 {% endblock %}
 {% block scripts %}
@@ -1033,7 +1047,7 @@
                 options: ['Física', 'Digital']
             },
             'cliente': { width: '220px' },
-            'destino': { width: '180px' },
+            'destino': { width: '180px', type: 'datalist', listId: 'datalist-ciudades', placeholder: 'Ciudad...' },
             'hora_llegada_estimada': { width: '100px', type: 'time' },
             'placa': { width: '150px' },
             'tanque': { width: '100px' },
@@ -1051,6 +1065,36 @@
             'fecha_despacho': { width: '140px', type: 'date' },
             'numero_guia': { width: '180px' }
         };
+
+        const DESPACHO_REQUIRED_LABELS = {
+            empresa_transportadora: 'Empresa transportadora',
+            placa: 'Placa',
+            tanque: 'Tanque',
+            nombre_conductor: 'Conductor',
+            cedula_conductor: 'Cedula',
+            producto_a_cargar: 'Producto',
+            cliente: 'Cliente',
+            destino: 'Ciudad destino',
+            tipo_guia: 'Tipo guia',
+            numero_guia: 'Numero guia',
+            galones: 'Galones',
+            fecha_despacho: 'Fecha despacho'
+        };
+        const DESPACHO_REQUIRED_FIELDS = Object.keys(DESPACHO_REQUIRED_LABELS);
+
+        const uppercaseFields = new Set([
+            'destino',
+            'nombre_conductor',
+            'cliente',
+            'producto_a_cargar',
+            'empresa_transportadora',
+            'placa',
+            'tanque',
+            'cedula_conductor',
+            'numero_guia',
+            'precintos'
+        ]);
+        let ciudadesCatalogo = [];
         const reportModal = document.getElementById('reportModal');
 
         // --- INICIALIZAR DRAG-TO-SCROLL Y BOTONES FLOTANTES ---
@@ -1253,13 +1297,15 @@
 
     if (btnGuardarConductor) {
         btnGuardarConductor.addEventListener('click', async function () {
-            const nombre = document.getElementById('nombreNuevoConductor').value.trim();
+            const nombre = normalizarConductorApellidoNombre(document.getElementById('nombreNuevoConductor').value);
             const cedula = document.getElementById('cedulaNuevoConductor').value.trim();
             const placa = document.getElementById('placaNuevoConductor').value.trim();
             const tanque = document.getElementById('placaTanqueConductor').value.trim();
             const empresa = document.getElementById('empresaConductor').value.trim();
             const celular = document.getElementById('celularConductor').value.trim();
             const originalCedula = cedulaOriginalField.value; // Cédula al abrir el modal
+
+            document.getElementById('nombreNuevoConductor').value = nombre;
 
             if (!nombre || !cedula) {
                 showToast('warning', 'Nombre y Cédula son obligatorios');
@@ -1406,17 +1452,20 @@
         try {
             const results = await Promise.all([
                 cargarJson("{{ url_for('static', filename='Producto.json') }}"),
-                cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}")
+                cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}"),
+                cargarJson("{{ url_for('static', filename='ciudades_colombia.json') }}")
             ]);
             productos = results[0] || [];
             empresas = results[1] || [];
+            ciudadesCatalogo = results[2] || [];
         } catch (e) {
-            console.error("Error cargando productos/empresas:", e);
+            console.error("Error cargando catálogos:", e);
         }
 
         // Llenar datalists de la tabla
         actualizarDatalistConductores();
         actualizarDatalistClientes();
+        actualizarDatalistCiudades();
 
         // Llenar dropdowns de los modales de gestión
         actualizarDropdownEmpresas();
@@ -1445,6 +1494,44 @@
             });
             dl.innerHTML = options.join('');
         }
+    }
+
+    function extraerCiudadSolo(valor) {
+        let texto = (valor || '').toString().trim().toUpperCase();
+        if (!texto) return '';
+
+        [',', '-', '/', '|', ';'].forEach(sep => {
+            if (texto.includes(sep)) {
+                texto = texto.split(sep)[0];
+            }
+        });
+
+        texto = texto.replace(/[^A-ZÁÉÍÓÚÜÑ ]+/g, ' ');
+        texto = texto.replace(/\s+/g, ' ').trim();
+        return texto;
+    }
+
+    function actualizarDatalistCiudades() {
+        const dl = document.getElementById('datalist-ciudades');
+        if (!dl) return;
+
+        const ciudades = new Set();
+
+        ciudadesCatalogo.forEach(item => {
+            const nombre = typeof item === 'string' ? item : (item?.nombre || item?.ciudad || '');
+            const ciudad = extraerCiudadSolo(nombre);
+            if (ciudad) ciudades.add(ciudad);
+        });
+
+        clientes.forEach(c => {
+            const ciudad = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
+            if (ciudad) ciudades.add(ciudad);
+        });
+
+        dl.innerHTML = Array.from(ciudades)
+            .sort((a, b) => a.localeCompare(b, 'es'))
+            .map(ciudad => `<option value="${ciudad}"></option>`)
+            .join('');
     }
 
     function actualizarDropdownEmpresas() {
@@ -1697,13 +1784,20 @@
 
         // Función helper para actualizar celda y guardar
         const updateAndSave = (campo, valor) => {
+            let valorNormalizado = valor;
+            if (campo === 'destino') {
+                valorNormalizado = extraerCiudadSolo(valor);
+            } else if (campo === 'nombre_conductor') {
+                valorNormalizado = normalizarConductorApellidoNombre(valor);
+            }
+
             const td = tr.querySelector(`td[data-field="${campo}"]`);
-            if (td && valor) {
+            if (td && valorNormalizado) {
                 const inp = td.querySelector('input');
                 const span = td.querySelector('.cell-editor');
-                if (inp) inp.value = valor;
-                else if (span) span.textContent = valor;
-                else td.textContent = valor;
+                if (inp) inp.value = valorNormalizado;
+                else if (span) span.textContent = valorNormalizado;
+                else td.textContent = valorNormalizado;
 
                 // Guardar cambio
                 autosaveCell(td);
@@ -1869,6 +1963,9 @@
         }
 
         sortedData.forEach((row, index) => {
+            row.destino = extraerCiudadSolo(row.destino || '');
+            row.nombre_conductor = normalizarConductorApellidoNombre(row.nombre_conductor || '');
+
             const despachadoDesdeAttr = row.despachado_bloqueado_desde || '';
             const despachadoBloqueadoAttr = row.despachado_bloqueado ? '1' : '0';
 
@@ -1889,6 +1986,10 @@
             const totalCampos = refineriaCampos.length;
             const refineriaCompleto = camposFaltantes.length === 0;
 
+            const camposObligatoriosFaltantes = Array.isArray(row.campos_obligatorios_faltantes)
+                ? row.campos_obligatorios_faltantes.slice()
+                : obtenerCamposObligatoriosFaltantesDesdeFila(row);
+
             // Crear tooltip con campos faltantes
             let tooltipText = '';
             if (refineriaCompleto) {
@@ -1900,7 +2001,7 @@
                 });
             }
 
-            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" class="align-middle">`;
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" data-missing-required="${camposObligatoriosFaltantes.join(',')}" class="align-middle">`;
 
             // Agregar número de fila con badge discreto de Refinery
             let refineryBadge = '';
@@ -1936,9 +2037,11 @@
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
                 if (config.type === 'datalist' && finalEditable) {
+                    const listId = config.listId || 'productos-lista';
+                    const placeholder = config.placeholder || '';
                     rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
                                     ${lockBadge}
-                                    <input list="productos-lista" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
+                                    <input list="${listId}" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="${placeholder}">
                                 </td>`;
                 } else if (config.type === 'select' && finalEditable) {
                     // Renderizar un SELECT para tipo_guia y otros campos select
@@ -2029,6 +2132,11 @@
 
             rowHtml += `</tr>`;
             tbody.innerHTML += rowHtml;
+
+            const filaRenderizada = tbody.lastElementChild;
+            if (filaRenderizada) {
+                aplicarResaltadoCamposFaltantes(filaRenderizada, camposObligatoriosFaltantes);
+            }
         });
 
         Array.from(tbody.querySelectorAll('tr')).forEach(initializeDespachadoLock);
@@ -2120,7 +2228,8 @@
             'tipo_guia': 'TIPO GUIA',
             'cedula_conductor': 'CÉDULA',
             'celular_conductor': 'CELULAR',
-            'api_corregido': 'API CORR'
+            'api_corregido': 'API CORR',
+            'destino': 'CIUDAD'
         };
         if (abbreviations[colName]) return abbreviations[colName];
         return colName.replace(/_/g, ' ').toUpperCase();
@@ -2165,6 +2274,95 @@
 
         const parsed = Number(normalized);
         return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function normalizarConductorApellidoNombre(rawValue) {
+        let texto = (rawValue || '').toString().trim().toUpperCase();
+        if (!texto) return '';
+
+        if (texto.includes(',')) {
+            const partes = texto.split(',');
+            if (partes.length >= 2) {
+                texto = `${partes[0].trim()} ${partes.slice(1).join(' ').trim()}`;
+            }
+        }
+
+        texto = texto.replace(/\s+/g, ' ').trim();
+
+        const tokens = texto.split(' ').filter(Boolean);
+        const nombresComunes = new Set([
+            'JUAN', 'JOSE', 'LUIS', 'CARLOS', 'JORGE', 'DIEGO', 'MIGUEL', 'ANDRES',
+            'JHON', 'JONATHAN', 'PEDRO', 'DANIEL', 'DAVID', 'RICARDO', 'ROBERTO',
+            'RAFAEL', 'ALFREDO', 'MANUEL', 'ALEXANDER', 'EDWIN', 'EDGAR', 'FERNANDO',
+            'FRANCISCO', 'CESAR', 'OSCAR', 'WILLIAM', 'HECTOR', 'SANTIAGO', 'JULIAN'
+        ]);
+
+        if (tokens.length >= 3) {
+            const primerEsNombre = nombresComunes.has(tokens[0]);
+            const ultimoEsNombre = nombresComunes.has(tokens[tokens.length - 1]);
+            if (primerEsNombre && !ultimoEsNombre) {
+                if (tokens.length >= 4) {
+                    return [...tokens.slice(-2), ...tokens.slice(0, -2)].join(' ');
+                }
+                return [tokens[tokens.length - 1], ...tokens.slice(0, -1)].join(' ');
+            }
+        }
+
+        if (tokens.length === 2 && nombresComunes.has(tokens[0]) && !nombresComunes.has(tokens[1])) {
+            return `${tokens[1]} ${tokens[0]}`;
+        }
+
+        return texto;
+    }
+
+    function obtenerCamposObligatoriosFaltantesDesdeFila(rowData) {
+        if (!rowData || typeof rowData !== 'object') return [];
+
+        return DESPACHO_REQUIRED_FIELDS.filter(field => {
+            const valor = rowData[field];
+            if (field === 'galones') {
+                const n = parseFlexibleNumber(valor);
+                return n === null || n <= 0;
+            }
+            if (valor === null || valor === undefined) return true;
+            return String(valor).trim() === '';
+        });
+    }
+
+    function obtenerCamposObligatoriosFaltantesDesdeDom(row) {
+        if (!row) return [];
+
+        return DESPACHO_REQUIRED_FIELDS.filter(field => {
+            const valor = getRowFieldRawValue(row, field);
+            if (field === 'galones') {
+                const n = parseFlexibleNumber(valor);
+                return n === null || n <= 0;
+            }
+            return !String(valor || '').trim();
+        });
+    }
+
+    function aplicarResaltadoCamposFaltantes(row, missingFields) {
+        if (!row) return;
+        const missingSet = new Set((missingFields || []).map(x => String(x)));
+
+        row.dataset.missingRequired = Array.from(missingSet).join(',');
+        row.classList.toggle('has-missing-required', missingSet.size > 0);
+
+        row.querySelectorAll('td[data-field]').forEach(td => {
+            const field = td.dataset.field;
+            const isMissing = missingSet.has(field);
+            td.classList.toggle('missing-required-cell', isMissing);
+
+            const editor = td.querySelector('.editable-input, .editable-select, .cell-editor');
+            if (editor) {
+                editor.classList.toggle('missing-required-editor', isMissing);
+            }
+        });
+    }
+
+    function etiquetasCamposFaltantes(fields) {
+        return (fields || []).map(field => DESPACHO_REQUIRED_LABELS[field] || field);
     }
 
     function getRowFieldRawValue(row, field) {
@@ -2751,9 +2949,13 @@
     // --- FUNCIÓN MODIFICADA PARA GUARDAR DESDE EL INPUT ---
     function autosaveCell(cell) {
         const row = cell.closest('tr');
+        if (!row) return;
+
         const id = row.dataset.id;
         const field = cell.dataset.field;
         const config = columnsConfig[field];
+        if (!field || !config) return;
+
         let value;
 
         const input = cell.querySelector('input.editable-input');
@@ -2769,6 +2971,33 @@
             value = cell.textContent.trim();
         }
 
+        if (field === 'destino') {
+            value = extraerCiudadSolo(value);
+            if (input) {
+                input.value = value;
+            } else if (span) {
+                span.textContent = value;
+            }
+        }
+
+        if (field === 'nombre_conductor') {
+            value = normalizarConductorApellidoNombre(value);
+            if (input) {
+                input.value = value;
+            } else if (span) {
+                span.textContent = value;
+            }
+        }
+
+        if (uppercaseFields.has(field) && value !== null && value !== undefined) {
+            value = String(value).toUpperCase();
+            if (input) {
+                input.value = value;
+            } else if (span) {
+                span.textContent = value;
+            }
+        }
+
         if (value === '' || value === '-') {
             value = null;
         } else if (config.type === 'date' && value) {
@@ -2776,6 +3005,29 @@
             if (parts.length === 3) value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         } else if (config.type === 'number' && value) {
             value = parseFlexibleNumber(value);
+        }
+
+        if (field === 'estado') {
+            const estadoAnterior = String(row.dataset.estado || 'PROGRAMADO').toUpperCase();
+            const estadoNuevo = String(value || '').toUpperCase();
+
+            if (estadoNuevo === 'DESPACHADO') {
+                const faltantes = obtenerCamposObligatoriosFaltantesDesdeDom(row);
+                if (faltantes.length > 0) {
+                    aplicarResaltadoCamposFaltantes(row, faltantes);
+                    const etiquetas = etiquetasCamposFaltantes(faltantes).join(', ');
+                    showToast('warning', `No puedes pasar a DESPACHADO. Faltan: ${etiquetas}`);
+
+                    if (select) {
+                        select.value = estadoAnterior;
+                    } else if (span) {
+                        span.textContent = estadoAnterior;
+                    } else {
+                        cell.textContent = estadoAnterior;
+                    }
+                    return;
+                }
+            }
         }
 
         const updatedData = { [field]: value };
@@ -2825,9 +3077,16 @@
                         }
                         initializeDespachadoLock(row);
                     }
+
+                    const faltantesActuales = obtenerCamposObligatoriosFaltantesDesdeDom(row);
+                    aplicarResaltadoCamposFaltantes(row, faltantesActuales);
                 } else {
                     statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
                     showToast('danger', `Error en ${field}: ` + (data.message || 'Error'));
+
+                    if (data && Array.isArray(data.missing_fields)) {
+                        aplicarResaltadoCamposFaltantes(row, data.missing_fields);
+                    }
 
                     if (field === 'api_corregido') {
                         if (data && data.es_diluyente_pesado === true) {
@@ -2840,6 +3099,9 @@
                     }
 
                     if (field === 'estado') {
+                        if (select) {
+                            select.value = String(row.dataset.estado || 'PROGRAMADO').toUpperCase();
+                        }
                         fetchAndRender(mostrandoHistorialCompleto);
                     }
                 }

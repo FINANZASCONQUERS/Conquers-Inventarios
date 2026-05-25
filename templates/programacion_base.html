@@ -767,6 +767,41 @@
             return text;
         }
 
+        function productoPermiteCalidad(productoValue) {
+            const normalized = normalizeCatalogValue(productoValue);
+            return normalized.includes('DILUY');
+        }
+
+        async function actualizarEstadoCampoCalidad(tr, persistirLimpieza) {
+            if (!tr) {
+                return;
+            }
+
+            const productoInput = tr.querySelector('input[data-field="producto"]');
+            const calidadSelect = tr.querySelector('select[data-field="calidad"]');
+            if (!productoInput || !calidadSelect) {
+                return;
+            }
+
+            const permite = productoPermiteCalidad(productoInput.value);
+            if (permite) {
+                calidadSelect.disabled = false;
+                calidadSelect.title = '';
+                return;
+            }
+
+            const teniaValor = normalizeCatalogValue(calidadSelect.value) !== '';
+            calidadSelect.value = '';
+            calidadSelect.disabled = true;
+            calidadSelect.title = 'La calidad LIVIANA/PESADA solo aplica para DILUYENTE';
+
+            if (persistirLimpieza && teniaValor && tr.dataset.id) {
+                await saveCell(tr.dataset.id, calidadSelect);
+                calidadSelect.disabled = true;
+                calidadSelect.title = 'La calidad LIVIANA/PESADA solo aplica para DILUYENTE';
+            }
+        }
+
         function uniqueSorted(values) {
             return Array.from(new Set(values.filter(Boolean))).sort(function (a, b) {
                 return a.localeCompare(b, 'es');
@@ -1162,6 +1197,12 @@
                     }
                     input.appendChild(option);
                 });
+
+                if (!productoPermiteCalidad(row.producto)) {
+                    input.value = '';
+                    input.disabled = true;
+                    input.title = 'La calidad LIVIANA/PESADA solo aplica para DILUYENTE';
+                }
             } else if (column.type === 'datalist') {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'base-input-group';
@@ -1184,6 +1225,9 @@
 
                 input.addEventListener('input', function () {
                     toggleCreateButton(input, column.field);
+                    if (column.field === 'producto') {
+                        actualizarEstadoCampoCalidad(input.closest('tr'), false);
+                    }
                 });
 
                 wrapper.appendChild(input);
@@ -1252,6 +1296,7 @@
                     tr.appendChild(createCell(row, column));
                 });
                 tbody.appendChild(tr);
+                actualizarEstadoCampoCalidad(tr, false);
             });
         }
 
@@ -1275,6 +1320,17 @@
         async function saveCell(rowId, input) {
             const field = input.dataset.field;
             let value = input.value;
+
+            const tr = input.closest('tr');
+            if (field === 'calidad') {
+                const productoInput = tr ? tr.querySelector('input[data-field="producto"]') : null;
+                if (!productoPermiteCalidad(productoInput ? productoInput.value : '')) {
+                    value = '';
+                    input.value = '';
+                    input.disabled = true;
+                    input.title = 'La calidad LIVIANA/PESADA solo aplica para DILUYENTE';
+                }
+            }
 
             if (field === 'calidad' || field === 'producto' || field === 'cliente') {
                 value = normalizeCatalogValue(value);
@@ -1328,6 +1384,10 @@
                     toggleCreateButton(input, field);
                 }
 
+                if (field === 'producto') {
+                    await actualizarEstadoCampoCalidad(tr, true);
+                }
+
                 if (field === 'fecha_cargue' || field === 'fecha_cargue_confirmada') {
                     await fetchRows();
                     setStatus('Cambios guardados correctamente', 'success');
@@ -1340,6 +1400,12 @@
                 setStatus(error.message || 'Error guardando cambios.', 'danger');
             } finally {
                 input.disabled = false;
+                if (field === 'calidad') {
+                    const productoInput = tr ? tr.querySelector('input[data-field="producto"]') : null;
+                    if (!productoPermiteCalidad(productoInput ? productoInput.value : '')) {
+                        input.disabled = true;
+                    }
+                }
             }
         }
 
