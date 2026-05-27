@@ -10796,6 +10796,49 @@ def _sincronizar_pedido_desde_programacion(registro_prog, usuario=None):
     return actualizado
 
 
+def _eliminar_pedidos_base_despachados(programacion_ids=None):
+    """Elimina filas de Programación Base ya despachadas en Programación de Cargue.
+
+    Se conserva el registro operativo en Programación de Cargue y se limpia la tabla
+    de Pedidos para evitar acumulación de datos históricos redundantes.
+    """
+    query = ProgramacionBase.query.filter(ProgramacionBase.programacion_cargue_id.isnot(None))
+
+    if programacion_ids is not None:
+        ids_filtrados = []
+        for valor in programacion_ids:
+            try:
+                id_num = int(valor)
+            except (TypeError, ValueError):
+                continue
+            if id_num > 0:
+                ids_filtrados.append(id_num)
+
+        ids_unicos = sorted(set(ids_filtrados))
+        if not ids_unicos:
+            return 0
+        query = query.filter(ProgramacionBase.programacion_cargue_id.in_(ids_unicos))
+
+    pedidos = query.all()
+    if not pedidos:
+        return 0
+
+    ids_prog = sorted({p.programacion_cargue_id for p in pedidos if p.programacion_cargue_id})
+    registros_prog = ProgramacionCargue.query.filter(ProgramacionCargue.id.in_(ids_prog)).all()
+    prog_map = {p.id: p for p in registros_prog}
+
+    eliminados = 0
+    for pedido in pedidos:
+        prog = prog_map.get(pedido.programacion_cargue_id)
+        if not _programacion_cargue_despachada(prog):
+            continue
+
+        db.session.delete(pedido)
+        eliminados += 1
+
+    return eliminados
+
+
 def _reconciliar_pedidos_antiguos(limite=500, usuario=None):
     """Intenta vincular pedidos viejos con programaciones ya cargadas."""
     try:
@@ -10922,6 +10965,14 @@ def handle_programacion_base():
         db.session.add(nuevo)
         db.session.commit()
         return jsonify(success=True, message='Nueva fila creada.', id=nuevo.id)
+
+    # Limpieza defensiva: todo pedido ya despachado se elimina de esta tabla.
+    try:
+        eliminados = _eliminar_pedidos_base_despachados()
+        if eliminados:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     registros = ProgramacionBase.query.order_by(
         ProgramacionBase.fecha_cargue.asc(),
@@ -11632,6 +11683,9 @@ def update_programacion(id):
         # Mantener el pedido vinculado con el dato real de Programación de Cargue.
         _sincronizar_pedido_desde_programacion(registro, usuario=session.get('nombre'))
 
+        # Si ya quedó despachado, retirar el espejo en Pedidos (Programación Base).
+        eliminados_base = _eliminar_pedidos_base_despachados(programacion_ids=[registro.id])
+
         db.session.commit()
 
         if mensaje_api_corregido_invalido:
@@ -11646,7 +11700,8 @@ def update_programacion(id):
         return jsonify(
             success=True,
             message="Registro actualizado correctamente.",
-            conductor_sync=payload_conductor_sync
+            conductor_sync=payload_conductor_sync,
+            pedidos_base_eliminados=eliminados_base
         )
 
     except Exception as e:
