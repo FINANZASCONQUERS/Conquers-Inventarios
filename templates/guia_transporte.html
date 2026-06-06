@@ -1456,6 +1456,19 @@
         <button onclick="window.history.back()" class="btn btn-secondary">
             <i class="bi bi-arrow-left"></i> Regresar
         </button>
+        <!-- Selector de Sede Cartagena / Madrid -->
+        <div id="sede-selector" style="display: inline-flex; align-items: center; gap: 0; margin-right: 12px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.15); border: 2px solid #0d6efd;">
+            <button type="button" id="btn-sede-cartagena" class="btn-sede active"
+                onclick="cambiarSede('cartagena')"
+                style="padding: 10px 18px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; display: flex; align-items: center; gap: 6px;">
+                <i class="bi bi-geo-alt-fill"></i> CARTAGENA
+            </button>
+            <button type="button" id="btn-sede-madrid" class="btn-sede"
+                onclick="cambiarSede('madrid')"
+                style="padding: 10px 18px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.95); color: #555; display: flex; align-items: center; gap: 6px;">
+                <i class="bi bi-geo-alt-fill"></i> MADRID
+            </button>
+        </div>
         <button onclick="validarYImprimir()" class="btn btn-primary">
             <i class="bi bi-printer"></i> Imprimir Guía
         </button>
@@ -1542,7 +1555,7 @@
         <div class="hoja">
             <div class="fila">
                 <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
-                <div class="campo planta-productor sin-borde" data-campo="planta"><input
+                <div class="campo planta-productor sin-borde" data-campo="planta"><input id="plantaProductor"
                         value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
                 <div class="campo factura-remision sin-borde" data-campo="factura"><input id="facturaRemision"
                         placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
@@ -1614,7 +1627,7 @@
                         placeholder="PLACA DEL TANQUE"></div>
             </div>
             <div class="fila">
-                <div class="campo lugar-origen sin-borde" data-campo="origen"><input
+                <div class="campo lugar-origen sin-borde" data-campo="origen"><input id="lugarOrigen"
                         value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
                 <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida"
                         readonly></div>
@@ -2714,7 +2727,10 @@
 
             const fechaInput = document.getElementById('fechaExpEDICION');
             if (fechaInput) {
-                fechaInput.value = `CARTAGENA, ${fechaActual}`;
+                // Determinar sede actual para el prefijo de la fecha
+                const sedeGuardada = localStorage.getItem('sede_guia') || 'cartagena';
+                const nombreSede = sedeGuardada === 'madrid' ? 'MADRID' : 'CARTAGENA';
+                fechaInput.value = `${nombreSede}, ${fechaActual}`;
             }
 
             // Lógica para actualizar la hora de salida automáticamente
@@ -2726,7 +2742,77 @@
 
             // Cargar zoom guardado
             cargarZoomGuardado();
+
+            // Aplicar sede guardada al cargar
+            const sedeInicial = localStorage.getItem('sede_guia') || 'cartagena';
+            aplicarSede(sedeInicial);
         });
+
+        // ═══════════════════════════════════════════════════
+        // SELECTOR DE SEDE: CARTAGENA / MADRID
+        // ═══════════════════════════════════════════════════
+        const SEDES_CONFIG = {
+            cartagena: {
+                nombre: 'CARTAGENA',
+                planta: 'SOCIEDAD PORTUARIA DEL DIQUE',
+                origen: 'SOCIEDAD PORTUARIA DEL DIQUE'
+            },
+            madrid: {
+                nombre: 'MADRID',
+                planta: 'MADRID',
+                origen: 'MADRID'
+            }
+        };
+
+        function cambiarSede(sede) {
+            localStorage.setItem('sede_guia', sede);
+            aplicarSede(sede);
+        }
+
+        function aplicarSede(sede) {
+            const config = SEDES_CONFIG[sede] || SEDES_CONFIG.cartagena;
+
+            // 1. Actualizar campo de fecha con el prefijo de sede
+            const fechaInput = document.getElementById('fechaExpEDICION');
+            if (fechaInput) {
+                const now = new Date();
+                const dOpt = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
+                const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
+                fechaInput.value = `${config.nombre}, ${fechaActual}`;
+            }
+
+            // 2. Actualizar campo Planta Productor (fila superior)
+            const plantaInput = document.getElementById('plantaProductor');
+            if (plantaInput) plantaInput.value = config.planta;
+
+            // 3. Actualizar campo Lugar de Origen (fila inferior)
+            const origenInput = document.getElementById('lugarOrigen');
+            if (origenInput) origenInput.value = config.origen;
+
+            // 4. Actualizar estado visual de los botones de sede
+            const btnCartagena = document.getElementById('btn-sede-cartagena');
+            const btnMadrid = document.getElementById('btn-sede-madrid');
+
+            if (sede === 'madrid') {
+                if (btnMadrid) {
+                    btnMadrid.style.background = 'linear-gradient(135deg, #0d6efd, #0a58ca)';
+                    btnMadrid.style.color = 'white';
+                }
+                if (btnCartagena) {
+                    btnCartagena.style.background = 'rgba(255,255,255,0.95)';
+                    btnCartagena.style.color = '#555';
+                }
+            } else {
+                if (btnCartagena) {
+                    btnCartagena.style.background = 'linear-gradient(135deg, #0d6efd, #0a58ca)';
+                    btnCartagena.style.color = 'white';
+                }
+                if (btnMadrid) {
+                    btnMadrid.style.background = 'rgba(255,255,255,0.95)';
+                    btnMadrid.style.color = '#555';
+                }
+            }
+        }
         function configurarEventosConductores() {
             const conductorInput = document.getElementById('conductorSelect');
             const cedulaInput = document.getElementById('cedulaConductor');
