@@ -2783,7 +2783,14 @@
 
             // 2. Actualizar campo Planta Productor (fila superior)
             const plantaInput = document.getElementById('plantaProductor');
-            if (plantaInput) plantaInput.value = config.planta;
+            if (plantaInput) {
+                plantaInput.value = config.planta;
+                if (sede === 'madrid') {
+                    plantaInput.style.textAlign = 'center';
+                } else {
+                    plantaInput.style.textAlign = 'left';
+                }
+            }
 
             // 3. Actualizar campo Lugar de Origen (fila inferior)
             const origenInput = document.getElementById('lugarOrigen');
