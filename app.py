@@ -460,6 +460,22 @@ def organigrama_rh():
     return render_template('organigrama_rh.html')
 
 
+class EscenarioParametrosLP(db.Model):
+    """Escenario de parametros del Modelo de Optimizacion LP capturado en la pagina.
+
+    `datos_json` guarda el payload completo: {'economics': {...},
+    'sheets': {hoja: {'columns', 'editable', 'rows'}}}. Permite editar los
+    parametros sin depender del archivo Excel maestro (ver modelo_parametros_builder).
+    """
+    __tablename__ = 'escenarios_parametros_lp'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    datos_json = db.Column(db.Text, nullable=False)
+    autor = db.Column(db.String(120), nullable=True)
+    creado = db.Column(db.DateTime, default=datetime.utcnow)
+    actualizado = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class CronogramaActividad(db.Model):
     __tablename__ = 'cronograma_actividades'
     id = db.Column(db.Integer, primary_key=True)
@@ -4875,6 +4891,7 @@ def modelo_optimizacion_ejecutar():
         
         excel_path = EXCEL_DEFAULT_LP
         uploaded_file = request.files.get('archivo_excel')
+        parametros_id = request.form.get('parametros_id')
         premium_payload = request.form.get('premium_overrides_json', '')
         try:
             premium_overrides = _parse_premium_overrides(premium_payload)
@@ -4883,7 +4900,20 @@ def modelo_optimizacion_ejecutar():
         premium_applied = []
 
         temp_excel_path = None
-        if uploaded_file and uploaded_file.filename:
+        if parametros_id:
+            # Escenario capturado en la pagina (BD): se construye el Excel temporal
+            # desde los datos planos, usando el archivo base solo como plantilla.
+            from modelo_parametros_builder import construir_excel_desde_payload
+            escenario = EscenarioParametrosLP.query.get(int(parametros_id))
+            if not escenario:
+                return jsonify(success=False, error='Escenario de parámetros no encontrado.'), 404
+            payload = json.loads(escenario.datos_json)
+            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+            os.makedirs(tmp_dir, exist_ok=True)
+            temp_excel_path = os.path.join(tmp_dir, f"param_db_{uuid4().hex}.xlsx")
+            construir_excel_desde_payload(EXCEL_DEFAULT_LP, payload, temp_excel_path)
+            excel_path = temp_excel_path
+        elif uploaded_file and uploaded_file.filename:
             tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
             os.makedirs(tmp_dir, exist_ok=True)
             temp_excel_path = os.path.join(tmp_dir, f"param_{uuid4().hex}.xlsx")
@@ -4993,6 +5023,152 @@ def modelo_optimizacion_descargar_reporte():
         app.logger.error(f"Error al generar reporte Excel: {e}")
         flash(f'Error al generar el reporte Excel: {str(e)}', 'danger')
         return redirect(url_for('modelo_optimizacion_page'))
+
+
+# ===================== Parametros editables del Modelo LP =====================
+# Permiten capturar/editar los parametros del modelo directamente en la pagina
+# (persistidos en BD) sin depender de editar el archivo Excel maestro.
+
+def _mo_acceso_permitido():
+    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
+    return session.get('rol') == 'admin' or session.get('email') in allowed
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/listar', methods=['GET'])
+def modelo_parametros_listar():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    escenarios = EscenarioParametrosLP.query.order_by(EscenarioParametrosLP.actualizado.desc()).all()
+    return jsonify(success=True, escenarios=[{
+        'id': e.id,
+        'nombre': e.nombre,
+        'autor': e.autor,
+        'actualizado': e.actualizado.strftime('%Y-%m-%d %H:%M') if e.actualizado else None,
+    } for e in escenarios])
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/importar', methods=['POST'])
+def modelo_parametros_importar():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    try:
+        from modelo_parametros_builder import escenario_a_payload
+        from uuid import uuid4
+        import json
+        nombre = (request.form.get('nombre') or 'Escenario importado').strip()
+        excel_path = EXCEL_DEFAULT_LP
+        uploaded = request.files.get('archivo_excel')
+        if uploaded and uploaded.filename:
+            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
+            os.makedirs(tmp_dir, exist_ok=True)
+            temp_path = os.path.join(tmp_dir, f"import_{uuid4().hex}.xlsx")
+            uploaded.save(temp_path)
+            excel_path = temp_path
+        payload = escenario_a_payload(excel_path)
+        esc = EscenarioParametrosLP(
+            nombre=nombre,
+            datos_json=json.dumps(payload, ensure_ascii=False),
+            autor=session.get('email'),
+        )
+        db.session.add(esc)
+        db.session.commit()
+        return jsonify(success=True, id=esc.id, nombre=esc.nombre, payload=payload)
+    except Exception as e:
+        app.logger.error(f"Error al importar parámetros del modelo: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/nuevo', methods=['POST'])
+def modelo_parametros_nuevo():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    try:
+        from modelo_parametros_builder import escenario_vacio
+        import json
+        nombre = (request.form.get('nombre') or 'Escenario nuevo').strip()
+        payload = escenario_vacio(EXCEL_DEFAULT_LP)
+        esc = EscenarioParametrosLP(
+            nombre=nombre,
+            datos_json=json.dumps(payload, ensure_ascii=False),
+            autor=session.get('email'),
+        )
+        db.session.add(esc)
+        db.session.commit()
+        return jsonify(success=True, id=esc.id, nombre=esc.nombre, payload=payload)
+    except Exception as e:
+        app.logger.error(f"Error al crear escenario vacío: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/recalcular', methods=['POST'])
+def modelo_parametros_recalcular():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    try:
+        from modelo_parametros_builder import recalcular_payload
+        data = request.get_json(silent=True) or {}
+        payload = data.get('payload')
+        if not payload or 'sheets' not in payload:
+            return jsonify(success=False, error='Payload inválido.'), 400
+        return jsonify(success=True, payload=recalcular_payload(payload))
+    except Exception as e:
+        app.logger.error(f"Error al recalcular parámetros: {e}")
+        return jsonify(success=False, error=str(e)), 500
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>', methods=['GET'])
+def modelo_parametros_obtener(esc_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    import json
+    esc = EscenarioParametrosLP.query.get(esc_id)
+    if not esc:
+        return jsonify(success=False, error='Escenario no encontrado.'), 404
+    return jsonify(success=True, id=esc.id, nombre=esc.nombre, payload=json.loads(esc.datos_json))
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/guardar', methods=['POST'])
+def modelo_parametros_guardar(esc_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    import json
+    esc = EscenarioParametrosLP.query.get(esc_id)
+    if not esc:
+        return jsonify(success=False, error='Escenario no encontrado.'), 404
+    data = request.get_json(silent=True) or {}
+    payload = data.get('payload')
+    if not payload or 'sheets' not in payload:
+        return jsonify(success=False, error='Payload inválido.'), 400
+    if data.get('nombre'):
+        esc.nombre = str(data['nombre']).strip()
+    esc.datos_json = json.dumps(payload, ensure_ascii=False)
+    db.session.commit()
+    return jsonify(success=True, id=esc.id)
+
+
+@login_required
+@permiso_requerido('modelo_optimizacion')
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/eliminar', methods=['POST'])
+def modelo_parametros_eliminar(esc_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    esc = EscenarioParametrosLP.query.get(esc_id)
+    if esc:
+        db.session.delete(esc)
+        db.session.commit()
+    return jsonify(success=True)
 
 
        
@@ -10899,7 +11075,7 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
     # Si no hay vínculo todavía, primero intentamos enlazar con una fila ya cargada.
     if registro_prog is None:
         registro_existente = _encontrar_programacion_existente_para_pedido(registro_base)
-        if registro_existente is not None:
+        if registro_existente is not None and not _programacion_cargue_despachada(registro_existente):
             registro_prog = registro_existente
             registro_base.programacion_cargue_id = registro_existente.id
 
