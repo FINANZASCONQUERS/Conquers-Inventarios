@@ -1201,6 +1201,522 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
         </div>
     </div>
 
+    <!-- ── Editor de Parámetros (captura directa en la página, sin depender del Excel) ── -->
+    <style>
+        .mo-param-card { background: var(--mo-surface); border: 1px solid var(--mo-border); border-radius: var(--mo-radius); box-shadow: var(--mo-shadow); padding: 1rem 1.25rem; }
+        .mo-param-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+        .mo-param-title { font-family: var(--mo-font-title); font-weight: 700; color: var(--mo-text); display: flex; align-items: center; gap: .45rem; margin-right: .5rem; }
+        .mo-param-status { font-size: .8rem; color: var(--mo-text-muted); margin-left: auto; }
+        .mo-param-status.ok { color: var(--mo-emerald); } .mo-param-status.err { color: var(--mo-rose); }
+        .mo-param-body { margin-top: 1rem; border-top: 1px solid var(--mo-border); padding-top: 1rem; }
+        .mo-param-sheets { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
+        .mo-param-sheet-btn { font-size: .78rem; padding: .3rem .7rem; border-radius: 999px; border: 1px solid var(--mo-border); background: var(--mo-surface-alt); color: var(--mo-text-muted); cursor: pointer; transition: var(--mo-transition); }
+        .mo-param-sheet-btn:hover { background: var(--mo-tab-hover-bg); }
+        .mo-param-sheet-btn.active { background: var(--mo-primary); color: #fff; border-color: var(--mo-primary); }
+        .mo-param-desc { background: var(--mo-primary-glow); border-left: 3px solid var(--mo-primary); padding: .55rem .85rem; border-radius: 8px; font-size: .82rem; color: var(--mo-text); margin-bottom: .6rem; }
+        .mo-param-legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .72rem; color: var(--mo-text-muted); margin-bottom: .6rem; }
+        .mo-param-legend span { display: inline-flex; align-items: center; gap: .35rem; }
+        .mo-legend-chip { width: 13px; height: 13px; border-radius: 3px; display: inline-block; border: 1px solid var(--mo-border); }
+        .mo-legend-chip.input { background: var(--mo-surface); }
+        .mo-legend-chip.dd { background: rgba(99,102,241,.18); border-color: var(--mo-indigo); }
+        .mo-legend-chip.der { background: var(--mo-surface-alt); }
+        .mo-param-grid-actions { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+        .mo-param-table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--mo-border); border-radius: var(--mo-radius-sm); }
+        .mo-param-table-wrap table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+        .mo-param-table-wrap th { position: sticky; top: 0; background: var(--mo-table-header-bg); color: var(--mo-table-header-color); padding: .4rem .5rem; text-align: left; white-space: nowrap; font-weight: 600; z-index: 1; }
+        .mo-param-table-wrap th.derived { font-style: italic; opacity: .7; }
+        .mo-param-table-wrap th.ddh { color: var(--mo-indigo); }
+        .mo-param-table-wrap td { padding: .15rem .3rem; border-top: 1px solid var(--mo-border); }
+        .mo-param-table-wrap input { width: 100%; min-width: 90px; border: 1px solid transparent; background: transparent; color: var(--mo-text); padding: .2rem .35rem; border-radius: 6px; font-size: .8rem; }
+        .mo-param-table-wrap input:focus { border-color: var(--mo-primary); background: var(--mo-surface); outline: none; }
+        .mo-param-table-wrap select { width: 100%; min-width: 130px; border: 1px solid var(--mo-border); background: var(--mo-surface); color: var(--mo-text); padding: .15rem .3rem; border-radius: 6px; font-size: .78rem; }
+        .mo-param-table-wrap td.dd { background: rgba(99,102,241,.06); }
+        .mo-param-table-wrap td.derived { color: var(--mo-text-muted); font-style: italic; white-space: nowrap; background: var(--mo-surface-alt); }
+        .mo-param-row-del { border: none; background: transparent; color: var(--mo-rose); cursor: pointer; padding: 0 .35rem; }
+        .mo-sum-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; margin-bottom: 1rem; }
+        .mo-sum-card { background: var(--mo-surface-alt); border: 1px solid var(--mo-border); border-radius: 12px; padding: .65rem .85rem; }
+        .mo-sum-card .v { font-size: 1.35rem; font-weight: 800; font-family: var(--mo-font-title); color: var(--mo-text); line-height: 1.1; }
+        .mo-sum-card .l { font-size: .72rem; color: var(--mo-text-muted); text-transform: uppercase; letter-spacing: .04em; margin-top: .2rem; }
+        .mo-sum-card .sub { font-size: .72rem; color: var(--mo-text-muted); margin-top: .25rem; }
+        .mo-sum-warn { background: rgba(245,158,11,.12); border-left: 3px solid var(--mo-amber); padding: .5rem .8rem; border-radius: 8px; font-size: .8rem; margin-bottom: .4rem; color: var(--mo-text); }
+        .mo-sum-ok { color: var(--mo-emerald); font-size: .85rem; font-weight: 600; }
+        .mo-sum-h { font-family: var(--mo-font-title); font-weight: 700; font-size: .95rem; margin: .4rem 0 .5rem; color: var(--mo-text); }
+    </style>
+    <div class="mo-param-card mb-4" id="moParamCard">
+        <div class="mo-param-toolbar">
+            <span class="mo-param-title"><i class="bi bi-sliders2"></i> Editor de Parámetros</span>
+            <select class="form-select form-select-sm" id="moParamScenario" style="max-width:280px">
+                <option value="">— Selecciona un escenario —</option>
+            </select>
+            <button class="btn btn-sm btn-outline-primary" id="moParamNewBtn" type="button">
+                <i class="bi bi-file-earmark-plus"></i> Nuevo en blanco
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="moParamImportBtn" type="button">
+                <i class="bi bi-box-arrow-in-down"></i> Importar Excel base
+            </button>
+            <button class="btn btn-sm btn-success" id="moParamSaveBtn" type="button" disabled>
+                <i class="bi bi-save"></i> Guardar
+            </button>
+            <button class="btn btn-sm btn-outline-info" id="moParamRecalcBtn" type="button" disabled title="Recalcular columnas derivadas">
+                <i class="bi bi-arrow-repeat"></i> Recalcular
+            </button>
+            <button class="btn btn-sm btn-primary" id="moParamRunBtn" type="button" disabled>
+                <i class="bi bi-cpu"></i> Ejecutar este escenario
+            </button>
+            <button class="btn btn-sm btn-outline-danger" id="moParamDeleteBtn" type="button" disabled title="Eliminar escenario">
+                <i class="bi bi-trash"></i>
+            </button>
+            <span class="mo-param-status" id="moParamStatus"></span>
+        </div>
+        <div class="mo-param-body d-none" id="moParamBody">
+            <div class="mo-param-sheets" id="moParamSheetNav"></div>
+            <div class="mo-param-desc" id="moParamSheetDesc"></div>
+            <div class="mo-param-legend" id="moParamLegend">
+                <span><i class="mo-legend-chip input"></i> Editable</span>
+                <span><i class="mo-legend-chip dd"></i> Lista desplegable</span>
+                <span><i class="mo-legend-chip der"></i> Calculado automáticamente</span>
+            </div>
+            <div class="mo-param-grid-actions">
+                <span class="text-muted small" id="moParamRowCount"></span>
+                <button class="btn btn-sm btn-outline-success ms-auto" id="moParamAddRow" type="button">
+                    <i class="bi bi-plus-lg"></i> Agregar fila
+                </button>
+            </div>
+            <div class="table-responsive mo-param-table-wrap" id="moParamTableWrap"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const $ = (s) => document.querySelector(s);
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        // Orden lógico de captura (como las pestañas numeradas del Excel)
+        const SHEET_ORDER = ['__resumen__', '__economics__', '1.NODOS', '2.FLUJOS', '3.COMPRAS',
+            '5.CURVA_DESTILACION', '4.RUTAS_TRANSPORTE', '6.VENTAS', '7.COSTOS_REFINACION',
+            '8.LIMITES_CALIDAD', '11.REL_CRUDO_MEZCLA', '9.FLASH_RESTR', '10.CVC', '12.COSTOS_OPERACIONALES'];
+        const SHEET_LABELS = {
+            '__resumen__': 'Resumen', '__economics__': '1·Económicos', '1.NODOS': '2·Nodos', '2.FLUJOS': '3·Flujos',
+            '3.COMPRAS': '4·Compras', '5.CURVA_DESTILACION': '5·Curva Destilación', '4.RUTAS_TRANSPORTE': '6·Rutas',
+            '6.VENTAS': '7·Ventas', '7.COSTOS_REFINACION': '8·Costos Refinación', '8.LIMITES_CALIDAD': '9·Límites Calidad',
+            '11.REL_CRUDO_MEZCLA': '10·Rel. Crudo-Mezcla', '9.FLASH_RESTR': '11·Flash Point', '10.CVC': '12·CVC',
+            '12.COSTOS_OPERACIONALES': '13·Costos Operac.'
+        };
+        const SHEET_DESC = {
+            '__resumen__': 'Vista general del escenario: valores económicos, conteos por hoja y avisos de validación.',
+            '__economics__': 'Parámetros económicos globales. BRENT (USD/bbl) y TRM (COP/USD) alimentan los precios y costos calculados.',
+            '1.NODOS': 'Catálogo base: define todos los puntos del sistema (orígenes, estaciones, blending, refinación, venta). El resto de hojas selecciona nodos de aquí.',
+            '2.FLUJOS': 'Catálogo base: define las corrientes (crudos, productos comprados, mezclas a venta, productos refinados).',
+            '3.COMPRAS': 'Propiedades y disponibilidad de cada compra. El Precio se calcula como BRENT + Spread; SPG, Densidad e Iv50 se derivan del API y la viscosidad.',
+            '5.CURVA_DESTILACION': 'Rendimiento (fracción %) de cada producto refinado por crudo y sus propiedades de calidad.',
+            '4.RUTAS_TRANSPORTE': 'Rutas posibles de cada flujo (origen→destino) y su costo. Si la ruta es CTK, el costo se convierte a USD/bbl con la TRM.',
+            '6.VENTAS': 'Precios de venta (BRENT + ajuste), densidad contractual y límite de volumen por punto de venta.',
+            '7.COSTOS_REFINACION': 'Costo de refinación y capacidad mínima/máxima por planta.',
+            '8.LIMITES_CALIDAD': 'Especificaciones mín/máx de calidad (API, azufre, viscosidad, metales) por mezcla y centro de blending.',
+            '11.REL_CRUDO_MEZCLA': 'Pertenencia: qué flujos pueden componer cada mezcla, en qué centro de blending.',
+            '9.FLASH_RESTR': 'Restricción de punto de inflamación (flash point) mínimo requerido en el destino.',
+            '10.CVC': 'Factor CVC (corrección volumétrica) por flujo, mezcla y destino.',
+            '12.COSTOS_OPERACIONALES': 'Costos operacionales por centro de blending. El total es la suma de los componentes.'
+        };
+        // Columnas con lista desplegable y su fuente (catálogos dinámicos o lista fija)
+        const DROPDOWNS = {
+            '1.NODOS': { 'TIPO DE NODO': '@node_types' },
+            '2.FLUJOS': { 'TIPO DE FLUJO': '@flujo_types' },
+            '3.COMPRAS': { 'CRUDO O PRODUCTO': '@flujos:CRUDO,PRODUCTO COMPRADO', 'ORIGEN': '@nodos:ORIGEN' },
+            '4.RUTAS_TRANSPORTE': { 'FLUJO': '@flujos', 'ORIGEN': '@nodos', 'DESTINO': '@nodos', 'RUTA DE TRANSPORTE': ['CTK', 'OLEO', 'NO'], 'CVC MEZCLA RESULANTE': ['', 'CVC', 'N'], 'Relacion Area de Operacion Costo BLEND IFO?': ['NO', 'SI'] },
+            '5.CURVA_DESTILACION': { 'PRODUCTO': '@flujos:PRODUCTO REFINADO', 'CRUDO ORIGEN': '@flujos:CRUDO,PRODUCTO COMPRADO' },
+            '6.VENTAS': { 'FLUJO': '@flujos', 'PUNTO DE VENTA': '@nodos:PUNTO VENTA', 'VENTA DENSIDAD': ['N', 'DEN'], 'VENTA CVC': ['N', 'CVC'] },
+            '7.COSTOS_REFINACION': { 'PLANTA REFINACION': '@nodos:PLANTA REFINACION' },
+            '8.LIMITES_CALIDAD': { 'MEZCLA': '@mezclas', 'CENTRO DE BLENDING': '@nodos:PUNTO DE BLENDING', 'VENTA DENSIDAD': ['N', 'DEN'] },
+            '9.FLASH_RESTR': { 'FLUJO': '@flujos:CRUDO,PRODUCTO COMPRADO', 'ORIGEN': '@nodos', 'DESTINO': '@nodos:PUNTO DE BLENDING', 'MEZCLA A PERTENECER': '@mezclas', 'RELAX RESTRICION?': ['NO', 'SI'] },
+            '10.CVC': { 'FLUJO': '@flujos', 'MEZCLA A PERTENECER': '@mezclas', 'DESTINO': '@nodos:PUNTO DE BLENDING' },
+            '11.REL_CRUDO_MEZCLA': { 'FLUJO': '@flujos', 'DESTINO': '@nodos:PUNTO DE BLENDING', 'BLEND DENSIDAD': ['N', 'DEN'], 'MEZCLA A PERTENECER': '@mezclas' },
+            '12.COSTOS_OPERACIONALES': { 'PUNTO DE BLENDING': '@nodos:PUNTO DE BLENDING' }
+        };
+        // Columnas que NO se muestran: vacías de pandas (Unnamed) y cajas de leyenda/definición del Excel.
+        const HIDDEN_COLS = {
+            '1.NODOS': ['TIPO DE NODO DEF', 'DEFINICION', 'AUX RELAX CONST FLASH'],
+            '2.FLUJOS': ['TIPOS DE FLUJO DEF', 'DEFINICION']
+        };
+        const normH = (s) => String(s == null ? '' : s).trim().toUpperCase();
+        function isHidden(sheet, col) {
+            if (/^UNNAMED/.test(normH(col))) return true;
+            return (HIDDEN_COLS[sheet] || []).map(normH).includes(normH(col));
+        }
+        const state = { id: null, payload: null, sheet: '__economics__' };
+
+        function setStatus(msg, kind) {
+            const el = $('#moParamStatus');
+            el.textContent = msg || '';
+            el.className = 'mo-param-status ' + (kind || '');
+        }
+        function setEnabled(on) {
+            ['moParamSaveBtn', 'moParamRunBtn', 'moParamDeleteBtn', 'moParamRecalcBtn'].forEach(id => { $('#' + id).disabled = !on; });
+            $('#moParamBody').classList.toggle('d-none', !on);
+        }
+        function parseVal(v) {
+            const t = String(v).trim();
+            if (t === '') return null;
+            if (!isNaN(Number(t)) && /^-?\d*\.?\d+$/.test(t)) return Number(t);
+            return v;
+        }
+
+        // ── Catálogos dinámicos (se construyen de las hojas Nodos/Flujos del propio escenario)
+        function catFrom(sheet, nameCol, typeCol, typeCsv) {
+            const rs = (state.payload.sheets[sheet] && state.payload.sheets[sheet].rows) || [];
+            const types = typeCsv ? new Set(typeCsv.split(',').map(s => s.trim().toUpperCase())) : null;
+            const out = [];
+            rs.forEach(r => {
+                if (types && !types.has(String(r[typeCol] == null ? '' : r[typeCol]).trim().toUpperCase())) return;
+                const v = r[nameCol];
+                if (v != null && String(v).trim() !== '') out.push(String(v));
+            });
+            return [...new Set(out)];
+        }
+        function resolveOptions(spec) {
+            if (Array.isArray(spec)) return spec.slice();
+            if (typeof spec === 'string' && spec[0] === '@') {
+                const parts = spec.slice(1).split(':'); const tok = parts[0], arg = parts[1];
+                if (tok === 'nodos') return catFrom('1.NODOS', 'NOMBRE DEL NODO', 'TIPO DE NODO', arg);
+                if (tok === 'flujos') return catFrom('2.FLUJOS', 'FLUJO', 'TIPO DE FLUJO', arg);
+                if (tok === 'mezclas') return catFrom('2.FLUJOS', 'FLUJO', 'TIPO DE FLUJO', 'MEZCLA A VENTA');
+                if (tok === 'node_types') return ['ORIGEN', 'ESTACION', 'PUNTO DE BLENDING', 'PLANTA REFINACION', 'PUNTO VENTA'];
+                if (tok === 'flujo_types') return ['CRUDO', 'PRODUCTO COMPRADO', 'PRODUCTO REFINADO', 'MEZCLA A VENTA'];
+            }
+            return [];
+        }
+
+        async function refreshList(selId) {
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/listar');
+                const d = await r.json();
+                const sel = $('#moParamScenario');
+                sel.innerHTML = '<option value="">— Selecciona un escenario —</option>';
+                (d.escenarios || []).forEach(e => {
+                    const o = document.createElement('option');
+                    o.value = e.id; o.textContent = `${e.nombre} · ${e.actualizado || ''}`;
+                    sel.appendChild(o);
+                });
+                if (selId) sel.value = selId;
+            } catch (e) { /* noop */ }
+        }
+
+        function buildSheetNav() {
+            const nav = $('#moParamSheetNav');
+            nav.innerHTML = '';
+            const present = SHEET_ORDER.filter(n => n === '__resumen__' || n === '__economics__' || state.payload.sheets[n]);
+            present.forEach((name) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mo-param-sheet-btn' + (name === state.sheet ? ' active' : '');
+                b.textContent = SHEET_LABELS[name] || name;
+                b.dataset.sheet = name;
+                b.addEventListener('click', () => { state.sheet = name; buildSheetNav(); renderGrid(); });
+                nav.appendChild(b);
+            });
+        }
+
+        function renderGrid() {
+            const wrap = $('#moParamTableWrap');
+            const isReal = (state.sheet !== '__resumen__' && state.sheet !== '__economics__');
+            $('#moParamSheetDesc').innerHTML = '<i class="bi bi-info-circle me-1"></i>' + (SHEET_DESC[state.sheet] || '');
+            $('#moParamLegend').style.display = isReal ? '' : 'none';
+            $('#moParamAddRow').style.display = isReal ? '' : 'none';
+            const rc = $('#moParamRowCount');
+            if (state.sheet === '__resumen__') { rc.textContent = ''; renderSummary(wrap); return; }
+            if (state.sheet === '__economics__') { rc.textContent = ''; renderEcon(wrap); return; }
+            renderSheet(wrap, rc);
+        }
+
+        function renderEcon(wrap) {
+            const econ = state.payload.economics || {};
+            let html = '<table><thead><tr><th>Parámetro</th><th>Valor</th></tr></thead><tbody>';
+            Object.keys(econ).forEach(k => {
+                html += `<tr><td>${esc(k)}</td><td><input data-econ="${esc(k)}" value="${esc(econ[k])}"></td></tr>`;
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('input[data-econ]').forEach(inp => {
+                inp.addEventListener('input', () => {
+                    state.payload.economics[inp.dataset.econ] = parseVal(inp.value);
+                    scheduleRecalc();
+                });
+            });
+        }
+
+        // ── Recálculo EN VIVO de columnas derivadas (autoritativo: misma lógica del solver) ──
+        let _recalcTimer = null, _recalcSeq = 0;
+        function scheduleRecalc() {
+            if (!state.id || !state.payload) return;
+            const st = $('#moParamStatus');
+            if (st && !st.textContent) { st.textContent = 'Calculando…'; st.className = 'mo-param-status'; }
+            clearTimeout(_recalcTimer);
+            _recalcTimer = setTimeout(doLiveRecalc, 450);
+        }
+        async function doLiveRecalc() {
+            const seq = ++_recalcSeq;
+            const sheetAtRequest = state.sheet;
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/recalcular', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: state.payload })
+                });
+                const d = await r.json();
+                if (!d.success) {
+                    setStatus(d.error || 'Error al recalcular', 'err');
+                    console.error("Error del servidor al recalcular:", d.error);
+                    return;
+                }
+                if (seq !== _recalcSeq) return; // ignora respuestas obsoletas
+                state.payload = d.payload;
+                if (state.sheet === sheetAtRequest) {
+                    if (state.sheet === '__resumen__') {
+                        renderSummary($('#moParamTableWrap'));
+                    } else if (state.sheet !== '__economics__') {
+                        updateDerivedCells();
+                    }
+                }
+                setStatus('Calculado ✓', 'ok');
+            } catch (e) {
+                console.error("Error en recálculo en vivo:", e);
+                setStatus('Error al calcular', 'err');
+            }
+        }
+        function updateDerivedCells() {
+            const sh = state.payload.sheets[state.sheet];
+            if (!sh) return;
+            document.querySelectorAll('#moParamTableWrap td.derived[data-der-r]').forEach(td => {
+                const ri = +td.dataset.derR, c = decodeURIComponent(td.dataset.derC);
+                const v = (sh.rows[ri] != null) ? sh.rows[ri][c] : '';
+                td.textContent = (v == null || v === '') ? '—' : v;
+            });
+        }
+
+        function renderSheet(wrap, rc) {
+            const sh = state.payload.sheets[state.sheet];
+            const editable = new Set(sh.editable);
+            const dd = DROPDOWNS[state.sheet] || {};
+            const cols = sh.columns.filter(c => !isHidden(state.sheet, c));
+            rc.textContent = sh.rows.length + ' fila(s)';
+            let html = '<table><thead><tr><th style="width:34px"></th>';
+            cols.forEach(c => {
+                const isDer = !editable.has(c); const isDd = !!dd[c];
+                html += `<th class="${isDer ? 'derived' : (isDd ? 'ddh' : '')}" title="${isDer ? 'Calculado automáticamente' : (isDd ? 'Lista desplegable' : 'Editable')}">${esc(c)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            sh.rows.forEach((row, ri) => {
+                html += `<tr><td><button class="mo-param-row-del" data-del="${ri}" title="Eliminar fila"><i class="bi bi-x-lg"></i></button></td>`;
+                cols.forEach(c => {
+                    const val = row[c] == null ? '' : row[c];
+                    if (!editable.has(c)) { html += `<td class="derived" data-der-r="${ri}" data-der-c="${encodeURIComponent(c)}">${val === '' ? '—' : esc(val)}</td>`; return; }
+                    if (dd[c]) {
+                        const set = [...new Set(resolveOptions(dd[c]).map(String))];
+                        const cur = String(val);
+                        if (cur !== '' && !set.includes(cur)) set.unshift(cur);
+                        let s = `<td class="dd"><select data-r="${ri}" data-c="${encodeURIComponent(c)}"><option value=""></option>`;
+                        set.forEach(o => { s += `<option ${o === cur ? 'selected' : ''}>${esc(o)}</option>`; });
+                        html += s + '</select></td>';
+                    } else {
+                        html += `<td><input data-r="${ri}" data-c="${encodeURIComponent(c)}" value="${esc(val)}"></td>`;
+                    }
+                });
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('input[data-r]').forEach(inp => inp.addEventListener('input', () => {
+                state.payload.sheets[state.sheet].rows[+inp.dataset.r][decodeURIComponent(inp.dataset.c)] = parseVal(inp.value);
+                scheduleRecalc();
+            }));
+            wrap.querySelectorAll('select[data-r]').forEach(sel => sel.addEventListener('change', () => {
+                state.payload.sheets[state.sheet].rows[+sel.dataset.r][decodeURIComponent(sel.dataset.c)] = sel.value === '' ? null : sel.value;
+                scheduleRecalc();
+            }));
+            wrap.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => {
+                state.payload.sheets[state.sheet].rows.splice(+btn.dataset.del, 1);
+                renderGrid();
+                scheduleRecalc();
+            }));
+        }
+
+        function renderSummary(wrap) {
+            const P = state.payload;
+            const rows = (s) => (P.sheets[s] && P.sheets[s].rows) || [];
+            const cnt = (s) => rows(s).length;
+            const econ = P.economics || {};
+            function byType(sheet, col) {
+                const m = {}; rows(sheet).forEach(r => { const k = String(r[col] == null ? '' : r[col]).trim() || '(vacío)'; m[k] = (m[k] || 0) + 1; }); return m;
+            }
+            const subt = (m) => Object.keys(m).sort().map(k => `${esc(k)}: ${m[k]}`).join(' · ') || '—';
+            let html = '<div class="mo-sum-h"><i class="bi bi-cash-coin"></i> Económicos</div><div class="mo-sum-grid">';
+            Object.keys(econ).forEach(k => { html += `<div class="mo-sum-card"><div class="v">${esc(econ[k] == null ? '—' : econ[k])}</div><div class="l">${esc(k)}</div></div>`; });
+            html += '</div><div class="mo-sum-h"><i class="bi bi-list-columns-reverse"></i> Conteo de datos</div><div class="mo-sum-grid">';
+            const cards = [
+                ['Nodos', cnt('1.NODOS'), subt(byType('1.NODOS', 'TIPO DE NODO'))],
+                ['Flujos', cnt('2.FLUJOS'), subt(byType('2.FLUJOS', 'TIPO DE FLUJO'))],
+                ['Compras', cnt('3.COMPRAS'), ''],
+                ['Rutas', cnt('4.RUTAS_TRANSPORTE'), ''],
+                ['Curva destilación', cnt('5.CURVA_DESTILACION'), ''],
+                ['Ventas', cnt('6.VENTAS'), ''],
+                ['Plantas refinación', cnt('7.COSTOS_REFINACION'), ''],
+                ['Límites calidad', cnt('8.LIMITES_CALIDAD'), ''],
+                ['Rel. crudo-mezcla', cnt('11.REL_CRUDO_MEZCLA'), ''],
+                ['Flash point', cnt('9.FLASH_RESTR'), ''],
+                ['CVC', cnt('10.CVC'), ''],
+                ['Costos operac.', cnt('12.COSTOS_OPERACIONALES'), '']
+            ];
+            cards.forEach(c => { html += `<div class="mo-sum-card"><div class="v">${c[1]}</div><div class="l">${esc(c[0])}</div>${c[2] ? `<div class="sub">${c[2]}</div>` : ''}</div>`; });
+            html += '</div><div class="mo-sum-h"><i class="bi bi-shield-check"></i> Validaciones</div>';
+            const warns = validateScenario();
+            if (!warns.length) html += '<div class="mo-sum-ok"><i class="bi bi-check-circle"></i> Sin avisos: la estructura luce coherente.</div>';
+            else warns.forEach(w => { html += `<div class="mo-sum-warn"><i class="bi bi-exclamation-triangle me-1"></i>${esc(w)}</div>`; });
+            wrap.innerHTML = html;
+        }
+
+        function validateScenario() {
+            const P = state.payload, out = [];
+            const rows = (s) => (P.sheets[s] && P.sheets[s].rows) || [];
+            const setOf = (sheet, col) => new Set(rows(sheet).map(r => String(r[col] == null ? '' : r[col]).trim()).filter(x => x));
+            const nodeNames = setOf('1.NODOS', 'NOMBRE DEL NODO');
+            const flujoNames = setOf('2.FLUJOS', 'FLUJO');
+            if (!nodeNames.size) out.push('No hay nodos definidos (hoja Nodos). Defínelos primero para poder seleccionar orígenes/destinos.');
+            if (!flujoNames.size) out.push('No hay flujos definidos (hoja Flujos).');
+            const seen = {}, dups = [];
+            rows('3.COMPRAS').forEach(r => {
+                const f = String(r['CRUDO O PRODUCTO'] == null ? '' : r['CRUDO O PRODUCTO']).trim();
+                const o = String(r['ORIGEN'] == null ? '' : r['ORIGEN']).trim();
+                if (!f && !o) return;
+                const k = f + ' / ' + o;
+                if (seen[k]) dups.push(k); seen[k] = 1;
+            });
+            if (dups.length) out.push('Compras con clave duplicada (Crudo/Producto + Origen): ' + [...new Set(dups)].slice(0, 5).join('; '));
+            let rfFlujo = 0, rfNodo = 0;
+            rows('4.RUTAS_TRANSPORTE').forEach(r => {
+                const f = String(r['FLUJO'] == null ? '' : r['FLUJO']).trim();
+                if (f && flujoNames.size && !flujoNames.has(f)) rfFlujo++;
+                ['ORIGEN', 'DESTINO'].forEach(col => { const n = String(r[col] == null ? '' : r[col]).trim(); if (n && nodeNames.size && !nodeNames.has(n)) rfNodo++; });
+            });
+            if (rfFlujo) out.push(rfFlujo + ' ruta(s) referencian un FLUJO que no existe en la hoja Flujos.');
+            if (rfNodo) out.push(rfNodo + ' referencia(s) de origen/destino en Rutas no existen en la hoja Nodos.');
+            return out;
+        }
+
+        function loadPayload(id, nombre, payload, startSheet) {
+            state.id = id; state.payload = payload; state.sheet = startSheet || '__economics__';
+            setEnabled(true);
+            buildSheetNav();
+            renderGrid();
+            setStatus(`Escenario "${nombre}" cargado.`, 'ok');
+        }
+
+        // Nuevo escenario en blanco (misma estructura, sin filas)
+        $('#moParamNewBtn').addEventListener('click', async () => {
+            const nombre = ($('#moEscenario').value || 'Escenario nuevo').trim();
+            setStatus('Creando…');
+            const fd = new FormData(); fd.append('nombre', nombre);
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/nuevo', { method: 'POST', body: fd });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al crear');
+                await refreshList(d.id);
+                loadPayload(d.id, d.nombre, d.payload, '1.NODOS');
+                setStatus('Escenario en blanco creado. Empieza por Nodos y Flujos.', 'ok');
+            } catch (e) { setStatus(e.message, 'err'); }
+        });
+
+        // Importar Excel base (usa el archivo subido en la zona de carga si existe, si no el base)
+        $('#moParamImportBtn').addEventListener('click', async () => {
+            const nombre = ($('#moEscenario').value || 'Escenario importado').trim();
+            setStatus('Importando…');
+            const fd = new FormData();
+            fd.append('nombre', nombre);
+            const fileInput = $('#moFileInput');
+            if (fileInput && fileInput.files[0]) fd.append('archivo_excel', fileInput.files[0]);
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/importar', { method: 'POST', body: fd });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al importar');
+                await refreshList(d.id);
+                loadPayload(d.id, d.nombre, d.payload, '__resumen__');
+            } catch (e) { setStatus(e.message, 'err'); }
+        });
+
+        $('#moParamScenario').addEventListener('change', async (e) => {
+            const id = e.target.value;
+            if (!id) { setEnabled(false); state.id = null; setStatus(''); return; }
+            setStatus('Cargando…');
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/' + id);
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'No encontrado');
+                loadPayload(d.id, d.nombre, d.payload, '__resumen__');
+            } catch (err) { setStatus(err.message, 'err'); }
+        });
+
+        async function saveScenario() {
+            if (!state.id) return false;
+            setStatus('Guardando…');
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/' + state.id + '/guardar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: state.payload })
+                });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al guardar');
+                setStatus('Guardado ✓', 'ok');
+                return true;
+            } catch (e) { setStatus(e.message, 'err'); return false; }
+        }
+        $('#moParamSaveBtn').addEventListener('click', saveScenario);
+
+        // Recalcular columnas derivadas (autoritativo: misma lógica del solver)
+        $('#moParamRecalcBtn').addEventListener('click', async () => {
+            if (!state.id || !state.payload) return;
+            setStatus('Recalculando…');
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/recalcular', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: state.payload })
+                });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al recalcular');
+                state.payload = d.payload;
+                renderGrid();
+                setStatus('Columnas derivadas recalculadas ✓', 'ok');
+            } catch (e) { setStatus(e.message, 'err'); }
+        });
+
+        $('#moParamAddRow').addEventListener('click', () => {
+            if (state.sheet === '__resumen__' || state.sheet === '__economics__') return;
+            const sh = state.payload.sheets[state.sheet];
+            const empty = {}; sh.columns.forEach(c => { empty[c] = null; });
+            sh.rows.push(empty);
+            renderGrid();
+            $('#moParamTableWrap').scrollTop = $('#moParamTableWrap').scrollHeight;
+        });
+
+        $('#moParamDeleteBtn').addEventListener('click', async () => {
+            if (!state.id || !confirm('¿Eliminar este escenario de parámetros?')) return;
+            await fetch('/modelo-optimizacion/parametros/' + state.id + '/eliminar', { method: 'POST' });
+            state.id = null; setEnabled(false); setStatus('Escenario eliminado.', 'ok');
+            await refreshList();
+            $('#moParamScenario').value = '';
+        });
+
+        // Ejecutar este escenario: guarda y dispara el flujo de ejecución existente
+        $('#moParamRunBtn').addEventListener('click', async () => {
+            if (!state.id) return;
+            const ok = await saveScenario();
+            if (ok === false) return;
+            window.__moRunWithParamId = state.id;
+            $('#moRunBtn').click();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => { refreshList(); });
+        refreshList();
+    })();
+    </script>
+
     <!-- ── Warning Banner (For Infeasible/Non-Optimal results with visible tables) ── -->
     <div id="moWarningBannerSection" class="alert alert-warning mb-4 d-none">
         <div class="d-flex gap-3 align-items-start">
@@ -1759,7 +2275,13 @@ $('#moRunBtn').addEventListener('click', async () => {
     overlay.classList.remove('d-none');
 
     const formData = new FormData();
-    if (fileInput.files[0]) formData.append('archivo_excel', fileInput.files[0]);
+    // Si se dispara desde el Editor de Parámetros, ejecuta ese escenario (BD) en vez del archivo.
+    if (window.__moRunWithParamId) {
+        formData.append('parametros_id', window.__moRunWithParamId);
+        window.__moRunWithParamId = null;
+    } else if (fileInput.files[0]) {
+        formData.append('archivo_excel', fileInput.files[0]);
+    }
     const premiumPayload = collectPremiumOverridesPayload();
     if (premiumPayload.length) {
         formData.append('premium_overrides_json', JSON.stringify(premiumPayload));

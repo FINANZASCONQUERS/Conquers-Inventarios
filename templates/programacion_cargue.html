@@ -2149,7 +2149,13 @@
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
                 // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
-                const refineriaBlocked = (row.refineria_bloqueado || (row.estado || '').toUpperCase() === 'DESPACHADO') && userEmail === 'refinery.control@conquerstrading.com' && ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
+                // Si el usuario es refinería y pasaron 30 min, bloquear todos sus campos excepto el estado. Si está DESPACHADO, bloquear todo.
+                const esColRefineriaConTiempo = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
+                const esColEstado = col === 'estado';
+                const refineriaBlocked = userEmail === 'refinery.control@conquerstrading.com' && (
+                    (row.estado || '').toUpperCase() === 'DESPACHADO' && (esColRefineriaConTiempo || esColEstado) ||
+                    row.refineria_bloqueado && esColRefineriaConTiempo
+                );
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
                 if (config.type === 'datalist' && finalEditable) {

@@ -12084,15 +12084,13 @@ def update_programacion(id):
             if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO'):
                 return jsonify(success=False, message="Bloqueado: El usuario de refinería solo puede establecer el estado como PROGRAMADO o CARGANDO."), 403
 
-        # Bloqueo nuevo: si TODOS los campos de refinería estuvieron completos y pasaron >30 min, refinería ya no puede editar
-        campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
+        # Bloqueo de 30 minutos: solo aplica para los campos de datos de refinería, EXCLUYENDO el estado
+        campos_refineria_bloqueables = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
         ahora = datetime.utcnow()
         if registro.refineria_completado_en and (ahora - registro.refineria_completado_en) > timedelta(minutes=30):
-            # Si quien intenta editar es refinería y el campo pertenece a su lista, bloquear
             if session.get('email') == 'refinery.control@conquerstrading.com':
-                # Si intenta cambiar cualquier campo que sea suyo
-                if any(campo in campos_refineria for campo in data.keys()):
-                    return jsonify(success=False, message="Bloqueado: Han pasado más de 30 minutos desde que refinería completó todos sus campos."), 403
+                if any(campo in campos_refineria_bloqueables for campo in data.keys()):
+                    return jsonify(success=False, message="Bloqueado: Han pasado más de 30 minutos desde que se completaron los campos de refinería. Solo puedes editar el estado."), 403
 
         # --- INICIO DE LA CORRECCIÓN ---
         campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
@@ -12179,6 +12177,7 @@ def update_programacion(id):
         registro.ultimo_editor = session.get('nombre')
 
         # Evaluar completitud de refinería después de aplicar cambios
+        campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
         def valor_lleno(v):
             return v not in (None, '')
         try:

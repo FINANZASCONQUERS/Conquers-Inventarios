@@ -1,0 +1,548 @@
+- Seccion 1: todas celdas no vacias A1:W60 (HOJA|CELDA|TIPO|VALOR)
+General |F1|str|Economicos
+General |F2|str|Brent
+General |G2|int|70
+General |F3|str|TRM
+General |G3|int|4100
+General |F4|str|VLSFO 
+General |G4|int|10
+General |F5|str|HSFO
+General |G5|int|7
+General |F6|str|MGO
+General |G6|int|20
+General |F7|str|NAFTA 
+General |G7|int|5
+General |F8|str|GASOIL
+General |G8|int|25
+General |F9|str|FUELOIL
+General |G9|int|7
+General |A11|str|ESCENARIO
+General |B11|str|COMPRAS
+General |D11|str|VOLUMEN
+General |M11|str|INGRESOS
+General |S11|str|COSTOS
+General |W11|str|UTILIDAD
+General |B12|str|CRUDO 
+General |C12|str|VOLUMEN COMPRADO
+General |D12|str|TOTAL
+General |E12|str|A REFINAR
+General |F12|str|A MEZCLA
+General |G12|str|VLSFO
+General |H12|str|HSFO
+General |I12|str|MGO
+General |J12|str|NAFTA
+General |K12|str|GASOIL
+General |L12|str|FUEILOIL
+General |M12|str|VLSFO
+General |N12|str|HSFO
+General |O12|str|MGO
+General |P12|str|NAFTA
+General |Q12|str|GASOIL
+General |R12|str|FUEOIL
+General |S12|str|OPERACIÓN
+General |T12|str|REFINACION
+General |U12|str|PRODUCTO
+General |V12|str|TRANSPORTE
+General |A13|int|1
+General |B13|str|CARRIZALES
+General |C13|int|600
+General |D13|str|=SUM(C13:C20)
+General |E13|str|=J13+K13+L13
+General |F13|str|=D13-E13
+General |G13|str|=F13+L13
+General |H13|int|0
+General |I13|int|0
+General |J13|int|369
+General |K13|int|908
+General |L13|int|1042
+General |M13|int|177187
+General |N13|int|0
+General |O13|int|0
+General |P13|int|27688
+General |Q13|int|86328
+General |R13|int|0
+General |S13|int|4965
+General |T13|int|9280
+General |U13|int|241961
+General |V13|int|28638
+General |W13|str|=SUM(M13:R20)-SUM(S13:V20)
+General |B14|str|COMBUSTOLEO
+General |C14|int|194
+General |B15|str|DOROTEA
+General |C15|int|250
+General |B16|str|F06
+General |C16|int|240
+General |B17|str|INDICO
+General |C17|int|1200
+General |B18|str|TAPIR
+General |C18|int|750
+General |B19|str|TULIPAN
+General |C19|int|120
+General |B20|str|TURPIAL
+General |C20|int|100
+General |A22|str|ESCENARIO
+General |B22|str|COMPRAS
+General |D22|str|VOLUMEN
+General |M22|str|INGRESOS
+General |S22|str|COSTOS
+General |W22|str|UTILIDAD
+General |B23|str|CRUDO 
+General |C23|str|VOLUMEN COMPRADO
+General |D23|str|TOTAL
+General |E23|str|A REFINAR
+General |F23|str|A MEZCLA
+General |G23|str|VLSFO
+General |H23|str|HSFO
+General |I23|str|MGO
+General |J23|str|NAFTA
+General |K23|str|GASOIL
+General |L23|str|FUEILOIL
+General |M23|str|VLSFO
+General |N23|str|HSFO
+General |O23|str|MGO
+General |P23|str|NAFTA
+General |Q23|str|GASOIL
+General |R23|str|FUEOIL
+General |S23|str|OPERACIÓN
+General |T23|str|REFINACION
+General |U23|str|PRODUCTO
+General |V23|str|TRANSPORTE
+General |A24|int|2
+General |B24|str|COMBUSTOLEO
+General |C24|int|130
+General |D24|str|=SUM(C24:C30)
+General |E24|str|=J24+K24+L24
+General |F24|str|=D24-E24
+General |G24|str|=F24+L24
+General |H24|int|0
+General |I24|int|0
+General |J24|int|369
+General |K24|int|909
+General |L24|int|1042
+General |M24|int|121825
+General |N24|int|0
+General |O24|int|0
+General |P24|int|27688
+General |Q24|int|86328
+General |R24|int|0
+General |S24|int|2976
+General |T24|int|9280
+General |U24|int|190784
+General |V24|int|28638
+General |W24|str|=SUM(M24:R30)-SUM(S24:V30)
+General |B25|str|DOROTEA
+General |C25|int|250
+General |B26|str|F06
+General |C26|int|240
+General |B27|str|INDICO
+General |C27|int|1200
+General |B28|str|TAPIR
+General |C28|int|750
+General |B29|str|TULIPAN
+General |C29|int|120
+General |B30|str|TURPIAL
+General |C30|int|100
+Volumenes|D8|str|ESCENARIO
+Volumenes|E8|str|COMPRAS
+Volumenes|G8|str|VOLUMEN
+Volumenes|E9|str|CRUDO 
+Volumenes|F9|str|VOLUMEN COMPRADO
+Volumenes|G9|str|TOTAL
+Volumenes|H9|str|A REFINAR
+Volumenes|I9|str|A MEZCLA
+Volumenes|J9|str|VLSFO
+Volumenes|K9|str|HSFO
+Volumenes|L9|str|MGO
+Volumenes|M9|str|NAFTA
+Volumenes|N9|str|GASOIL
+Volumenes|O9|str|FUEILOIL
+Volumenes|D10|int|1
+Volumenes|E10|str|CARRIZALES
+Volumenes|F10|int|600
+Volumenes|G10|str|=SUM(J10:O10)
+Volumenes|H10|str|=SUM(M10:O10)
+Volumenes|I10|int|600
+Volumenes|J10|int|600
+Volumenes|K10|int|0
+Volumenes|L10|int|0
+Volumenes|M10|int|0
+Volumenes|N10|int|0
+Volumenes|O10|int|0
+Volumenes|E11|str|COMBUSTOLEO
+Volumenes|F11|str|194
+
+Volumenes|G11|str|=SUM(J11:O11)
+Volumenes|H11|int|0
+Volumenes|I11|int|194
+Volumenes|J11|int|194
+Volumenes|K11|int|0
+Volumenes|L11|int|0
+Volumenes|M11|int|0
+Volumenes|N11|int|0
+Volumenes|O11|int|0
+Volumenes|E12|str|DOROTEA
+Volumenes|F12|int|250
+Volumenes|G12|str|=SUM(J12:N12)
+Volumenes|H12|int|250
+Volumenes|I12|int|0
+Volumenes|J12|int|88
+Volumenes|K12|int|0
+Volumenes|L12|int|0
+Volumenes|M12|int|37
+Volumenes|N12|int|125
+Volumenes|O12|int|88
+Volumenes|E13|str|F06
+Volumenes|F13|int|240
+Volumenes|G13|str|=SUM(J13:O13)
+Volumenes|H13|str|=SUM(M13:O13)
+Volumenes|I13|str|=SUM(J13:L13)
+Volumenes|J13|int|240
+Volumenes|K13|int|0
+Volumenes|L13|int|0
+Volumenes|M13|int|0
+Volumenes|N13|int|0
+Volumenes|O13|int|0
+Volumenes|E14|str|INDICO
+Volumenes|F14|int|1200
+Volumenes|G14|str|=SUM(J14:N14)
+Volumenes|H14|str|=SUM(M14:O14)
+Volumenes|I14|int|0
+Volumenes|J14|int|434
+Volumenes|K14|int|0
+Volumenes|L14|int|0
+Volumenes|M14|int|239
+Volumenes|N14|int|527
+Volumenes|O14|int|434
+Volumenes|E15|str|TAPIR
+Volumenes|F15|int|750
+Volumenes|G15|str|=SUM(J15:N15)
+Volumenes|H15|int|750
+Volumenes|I15|int|0
+Volumenes|J15|int|450
+Volumenes|K15|int|0
+Volumenes|L15|int|0
+Volumenes|M15|int|75
+Volumenes|N15|int|225
+Volumenes|O15|int|450
+Volumenes|E16|str|TULIPAN
+Volumenes|F16|int|120
+Volumenes|G16|int|120
+Volumenes|H16|str|=SUM(M16:O16)
+Volumenes|I16|int|0
+Volumenes|J16|int|71
+Volumenes|K16|int|0
+Volumenes|L16|int|0
+Volumenes|M16|int|18
+Volumenes|N16|int|31
+Volumenes|O16|int|71
+Volumenes|E17|str|TURPIAL
+Volumenes|F17|int|100
+Volumenes|G17|int|100
+Volumenes|H17|int|0
+Volumenes|I17|str|=SUM(J17:L17)
+Volumenes|J17|int|100
+Volumenes|K17|int|0
+Volumenes|L17|int|0
+Volumenes|M17|int|0
+Volumenes|N17|int|0
+Volumenes|O17|int|0
+Volumenes|D19|str|ESCENARIO
+Volumenes|E19|str|COMPRAS
+Volumenes|G19|str|VOLUMEN
+Volumenes|E20|str|CRUDO 
+Volumenes|F20|str|VOLUMEN COMPRADO
+Volumenes|G20|str|TOTAL
+Volumenes|H20|str|A REFINAR
+Volumenes|I20|str|A MEZCLA
+Volumenes|J20|str|VLSFO
+Volumenes|K20|str|HSFO
+Volumenes|L20|str|MGO
+Volumenes|M20|str|NAFTA
+Volumenes|N20|str|GASOIL
+Volumenes|O20|str|FUEILOIL
+Volumenes|D21|int|2
+Volumenes|E21|str|COMBUSTOLEO
+Volumenes|F21|int|130
+Volumenes|G21|str|=SUM(J21:O21)
+Volumenes|H21|str|=SUM(M21:O21)
+Volumenes|I21|str|=SUM(J21:L21)
+Volumenes|J21|int|130
+Volumenes|K21|int|0
+Volumenes|L21|int|0
+Volumenes|M21|int|0
+Volumenes|N21|int|0
+Volumenes|O21|int|0
+Volumenes|E22|str|DOROTEA
+Volumenes|F22|int|250
+Volumenes|G22|int|250
+Volumenes|H22|str|=SUM(M22:O22)
+Volumenes|I22|int|0
+Volumenes|J22|int|88
+Volumenes|M22|int|37
+Volumenes|N22|int|125
+Volumenes|O22|str|=F22-SUM(M22:N22)
+Volumenes|E23|str|F06
+Volumenes|F23|int|240
+Volumenes|G23|str|=SUM(J23:N23)
+Volumenes|H23|str|=SUM(M23:O23)
+Volumenes|I23|str|=SUM(J23:L23)
+Volumenes|J23|int|240
+Volumenes|M23|int|0
+Volumenes|N23|int|0
+Volumenes|O23|int|0
+Volumenes|E24|str|INDICO
+Volumenes|F24|int|1200
+Volumenes|G24|str|=SUM(J24:N24)
+Volumenes|H24|str|=SUM(M24:O24)
+Volumenes|I24|int|0
+Volumenes|J24|int|434
+Volumenes|K24|int|0
+Volumenes|L24|int|0
+Volumenes|M24|int|239
+Volumenes|N24|int|527
+Volumenes|O24|int|434
+Volumenes|E25|str|TAPIR
+Volumenes|F25|int|750
+Volumenes|G25|str|=SUM(J25:N25)
+Volumenes|H25|str|=SUM(M25:O25)
+Volumenes|I25|int|0
+Volumenes|J25|int|450
+Volumenes|K25|int|0
+Volumenes|L25|int|0
+Volumenes|M25|int|75
+Volumenes|N25|int|225
+Volumenes|O25|str|=F25-SUM(M25:N25)
+Volumenes|E26|str|TULIPAN
+Volumenes|F26|int|120
+Volumenes|G26|str|=SUM(J26:N26)
+Volumenes|H26|str|=SUM(M26:O26)
+Volumenes|I26|int|0
+Volumenes|J26|int|71
+Volumenes|M26|int|18
+Volumenes|N26|int|31
+Volumenes|O26|int|71
+Volumenes|E27|str|TURPIAL
+Volumenes|F27|int|100
+Volumenes|G27|str|=SUM(J27:O27)
+Volumenes|H27|str|=SUM(M27:O27)
+Volumenes|I27|str|=SUM(J27:L27)
+Volumenes|J27|int|100
+Volumenes|K27|int|0
+Volumenes|L27|int|0
+Volumenes|M27|int|0
+Volumenes|N27|int|0
+Volumenes|O27|int|0
+
+- Seccion 2: solo NUM sin formula en A1:W60
+General |G2|NUM|70
+General |G3|NUM|4100
+General |G4|NUM|10
+General |G5|NUM|7
+General |G6|NUM|20
+General |G7|NUM|5
+General |G8|NUM|25
+General |G9|NUM|7
+General |A13|NUM|1
+General |C13|NUM|600
+General |H13|NUM|0
+General |I13|NUM|0
+General |J13|NUM|369
+General |K13|NUM|908
+General |L13|NUM|1042
+General |M13|NUM|177187
+General |N13|NUM|0
+General |O13|NUM|0
+General |P13|NUM|27688
+General |Q13|NUM|86328
+General |R13|NUM|0
+General |S13|NUM|4965
+General |T13|NUM|9280
+General |U13|NUM|241961
+General |V13|NUM|28638
+General |C14|NUM|194
+General |C15|NUM|250
+General |C16|NUM|240
+General |C17|NUM|1200
+General |C18|NUM|750
+General |C19|NUM|120
+General |C20|NUM|100
+General |A24|NUM|2
+General |C24|NUM|130
+General |H24|NUM|0
+General |I24|NUM|0
+General |J24|NUM|369
+General |K24|NUM|909
+General |L24|NUM|1042
+General |M24|NUM|121825
+General |N24|NUM|0
+General |O24|NUM|0
+General |P24|NUM|27688
+General |Q24|NUM|86328
+General |R24|NUM|0
+General |S24|NUM|2976
+General |T24|NUM|9280
+General |U24|NUM|190784
+General |V24|NUM|28638
+General |C25|NUM|250
+General |C26|NUM|240
+General |C27|NUM|1200
+General |C28|NUM|750
+General |C29|NUM|120
+General |C30|NUM|100
+Volumenes|D10|NUM|1
+Volumenes|F10|NUM|600
+Volumenes|I10|NUM|600
+Volumenes|J10|NUM|600
+Volumenes|K10|NUM|0
+Volumenes|L10|NUM|0
+Volumenes|M10|NUM|0
+Volumenes|N10|NUM|0
+Volumenes|O10|NUM|0
+Volumenes|H11|NUM|0
+Volumenes|I11|NUM|194
+Volumenes|J11|NUM|194
+Volumenes|K11|NUM|0
+Volumenes|L11|NUM|0
+Volumenes|M11|NUM|0
+Volumenes|N11|NUM|0
+Volumenes|O11|NUM|0
+Volumenes|F12|NUM|250
+Volumenes|H12|NUM|250
+Volumenes|I12|NUM|0
+Volumenes|J12|NUM|88
+Volumenes|K12|NUM|0
+Volumenes|L12|NUM|0
+Volumenes|M12|NUM|37
+Volumenes|N12|NUM|125
+Volumenes|O12|NUM|88
+Volumenes|F13|NUM|240
+Volumenes|J13|NUM|240
+Volumenes|K13|NUM|0
+Volumenes|L13|NUM|0
+Volumenes|M13|NUM|0
+Volumenes|N13|NUM|0
+Volumenes|O13|NUM|0
+Volumenes|F14|NUM|1200
+Volumenes|I14|NUM|0
+Volumenes|J14|NUM|434
+Volumenes|K14|NUM|0
+Volumenes|L14|NUM|0
+Volumenes|M14|NUM|239
+Volumenes|N14|NUM|527
+Volumenes|O14|NUM|434
+Volumenes|F15|NUM|750
+Volumenes|H15|NUM|750
+Volumenes|I15|NUM|0
+Volumenes|J15|NUM|450
+Volumenes|K15|NUM|0
+Volumenes|L15|NUM|0
+Volumenes|M15|NUM|75
+Volumenes|N15|NUM|225
+Volumenes|O15|NUM|450
+Volumenes|F16|NUM|120
+Volumenes|G16|NUM|120
+Volumenes|I16|NUM|0
+Volumenes|J16|NUM|71
+Volumenes|K16|NUM|0
+Volumenes|L16|NUM|0
+Volumenes|M16|NUM|18
+Volumenes|N16|NUM|31
+Volumenes|O16|NUM|71
+Volumenes|F17|NUM|100
+Volumenes|G17|NUM|100
+Volumenes|H17|NUM|0
+Volumenes|J17|NUM|100
+Volumenes|K17|NUM|0
+Volumenes|L17|NUM|0
+Volumenes|M17|NUM|0
+Volumenes|N17|NUM|0
+Volumenes|O17|NUM|0
+Volumenes|D21|NUM|2
+Volumenes|F21|NUM|130
+Volumenes|J21|NUM|130
+Volumenes|K21|NUM|0
+Volumenes|L21|NUM|0
+Volumenes|M21|NUM|0
+Volumenes|N21|NUM|0
+Volumenes|O21|NUM|0
+Volumenes|F22|NUM|250
+Volumenes|G22|NUM|250
+Volumenes|I22|NUM|0
+Volumenes|J22|NUM|88
+Volumenes|M22|NUM|37
+Volumenes|N22|NUM|125
+Volumenes|F23|NUM|240
+Volumenes|J23|NUM|240
+Volumenes|M23|NUM|0
+Volumenes|N23|NUM|0
+Volumenes|O23|NUM|0
+Volumenes|F24|NUM|1200
+Volumenes|I24|NUM|0
+Volumenes|J24|NUM|434
+Volumenes|K24|NUM|0
+Volumenes|L24|NUM|0
+Volumenes|M24|NUM|239
+Volumenes|N24|NUM|527
+Volumenes|O24|NUM|434
+Volumenes|F25|NUM|750
+Volumenes|I25|NUM|0
+Volumenes|J25|NUM|450
+Volumenes|K25|NUM|0
+Volumenes|L25|NUM|0
+Volumenes|M25|NUM|75
+Volumenes|N25|NUM|225
+Volumenes|F26|NUM|120
+Volumenes|I26|NUM|0
+Volumenes|J26|NUM|71
+Volumenes|M26|NUM|18
+Volumenes|N26|NUM|31
+Volumenes|O26|NUM|71
+Volumenes|F27|NUM|100
+Volumenes|J27|NUM|100
+Volumenes|K27|NUM|0
+Volumenes|L27|NUM|0
+Volumenes|M27|NUM|0
+Volumenes|N27|NUM|0
+Volumenes|O27|NUM|0
+
+- Seccion 3: solo FORMULA en A1:W60
+General |D13|FORMULA|=SUM(C13:C20)
+General |E13|FORMULA|=J13+K13+L13
+General |F13|FORMULA|=D13-E13
+General |G13|FORMULA|=F13+L13
+General |W13|FORMULA|=SUM(M13:R20)-SUM(S13:V20)
+General |D24|FORMULA|=SUM(C24:C30)
+General |E24|FORMULA|=J24+K24+L24
+General |F24|FORMULA|=D24-E24
+General |G24|FORMULA|=F24+L24
+General |W24|FORMULA|=SUM(M24:R30)-SUM(S24:V30)
+Volumenes|G10|FORMULA|=SUM(J10:O10)
+Volumenes|H10|FORMULA|=SUM(M10:O10)
+Volumenes|G11|FORMULA|=SUM(J11:O11)
+Volumenes|G12|FORMULA|=SUM(J12:N12)
+Volumenes|G13|FORMULA|=SUM(J13:O13)
+Volumenes|H13|FORMULA|=SUM(M13:O13)
+Volumenes|I13|FORMULA|=SUM(J13:L13)
+Volumenes|G14|FORMULA|=SUM(J14:N14)
+Volumenes|H14|FORMULA|=SUM(M14:O14)
+Volumenes|G15|FORMULA|=SUM(J15:N15)
+Volumenes|H16|FORMULA|=SUM(M16:O16)
+Volumenes|I17|FORMULA|=SUM(J17:L17)
+Volumenes|G21|FORMULA|=SUM(J21:O21)
+Volumenes|H21|FORMULA|=SUM(M21:O21)
+Volumenes|I21|FORMULA|=SUM(J21:L21)
+Volumenes|H22|FORMULA|=SUM(M22:O22)
+Volumenes|O22|FORMULA|=F22-SUM(M22:N22)
+Volumenes|G23|FORMULA|=SUM(J23:N23)
+Volumenes|H23|FORMULA|=SUM(M23:O23)
+Volumenes|I23|FORMULA|=SUM(J23:L23)
+Volumenes|G24|FORMULA|=SUM(J24:N24)
+Volumenes|H24|FORMULA|=SUM(M24:O24)
+Volumenes|G25|FORMULA|=SUM(J25:N25)
+Volumenes|H25|FORMULA|=SUM(M25:O25)
+Volumenes|O25|FORMULA|=F25-SUM(M25:N25)
+Volumenes|G26|FORMULA|=SUM(J26:N26)
+Volumenes|H26|FORMULA|=SUM(M26:O26)
+Volumenes|G27|FORMULA|=SUM(J27:O27)
+Volumenes|H27|FORMULA|=SUM(M27:O27)
+Volumenes|I27|FORMULA|=SUM(J27:L27)
