@@ -21,7 +21,21 @@ import uuid
 import re
 from flask import g
 from flask import Response
-from weasyprint import HTML, CSS
+try:
+    from weasyprint import HTML, CSS
+except Exception as e:
+    import logging
+    logging.warning("WeasyPrint no se pudo importar. La generación de PDFs fallará: %s", e)
+    CSS = None
+    class HTML:
+        def __init__(self, *args, **kwargs):
+            pass
+        def write_pdf(self, *args, **kwargs):
+            raise RuntimeError(
+                "La generación de PDFs no está disponible porque WeasyPrint no pudo cargarse en este sistema. "
+                "Para solucionarlo en Windows, por favor instale GTK3-Runtime: "
+                "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases"
+            )
 import math
 from sqlalchemy import or_
 from flask_migrate import Migrate
@@ -738,6 +752,23 @@ class RegistroCalidad(db.Model):
 
     def __repr__(self):
         return f'<RegistroCalidad ID: {self.id}, Fecha: {self.fecha}>'
+
+class AnalisisLaboratorio(db.Model):
+    __tablename__ = 'analisis_laboratorio'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+
+    fecha = db.Column(db.String(50))
+    producto = db.Column(db.String(100))
+    laboratorio = db.Column(db.String(150))
+    analisis_realizados = db.Column(db.Text)
+    comentarios = db.Column(db.Text)
+    documento_pdf = db.Column(db.Text)
+
+    def __repr__(self):
+        return f'<AnalisisLaboratorio ID: {self.id}, Fecha: {self.fecha}>'
 
 class RegistroZisa(db.Model):
     __tablename__ = 'registros_zisa'
@@ -2243,14 +2274,14 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "siza_solicitante", "reportes"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "analisis_laboratorio", "siza_solicitante", "reportes"] 
     },
     # Ricardo (Editor): Solo acceso a Barcaza BITA.
     "quality.manager@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ricardo Congo",
         "rol": "editor",
-        "area": ["barcaza_bita"]
+        "area": ["barcaza_bita", "analisis_laboratorio"]
     },
     # Omar (Viewer): Rol limitado para ver reportes.
     "omar.morales@conquerstrading.com": {
@@ -3843,6 +3874,305 @@ def eliminar_registro_calidad(id):
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error: {str(e)}"), 500
+
+# ==========================================
+# --- RUTAS ANÁLISIS DE LABORATORIO ---
+# ==========================================
+
+def cargar_productos_laboratorio():
+    """Carga ProductosLaboratorio.json desde la carpeta static. Crea el archivo con valores por defecto si no existe."""
+    ruta = os.path.join(BASE_DIR, 'static', 'ProductosLaboratorio.json')
+    try:
+        if os.path.exists(ruta):
+            with open(ruta, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error cargando productos de laboratorio: {e}")
+    
+    # Valores por defecto
+    productos_default = ['MGO', 'FO4', 'FO6', 'VLSFO', 'HSFO', 'DILUYENTE', 'CRUDO']
+    try:
+        os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        with open(ruta, 'w', encoding='utf-8') as f:
+            json.dump(productos_default, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"Error creando ProductosLaboratorio.json: {e}")
+    return productos_default
+
+def guardar_productos_laboratorio(productos):
+    """Guarda la lista de productos de laboratorio en static/ProductosLaboratorio.json."""
+    ruta = os.path.join(BASE_DIR, 'static', 'ProductosLaboratorio.json')
+    try:
+        with open(ruta, 'w', encoding='utf-8') as f:
+            json.dump(productos, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"Error guardando productos de laboratorio: {e}")
+
+@app.route('/api/analisis-laboratorio/productos', methods=['GET', 'POST'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def api_productos_laboratorio():
+    if request.method == 'GET':
+        productos = cargar_productos_laboratorio()
+        return jsonify(productos)
+    elif request.method == 'POST':
+        data = request.get_json() or {}
+        nuevo_prod = (data.get('producto') or '').strip().upper()
+        if not nuevo_prod:
+            return jsonify(success=False, message="El nombre del producto no puede estar vacío."), 400
+        
+        productos = cargar_productos_laboratorio()
+        if nuevo_prod not in productos:
+            productos.append(nuevo_prod)
+            guardar_productos_laboratorio(productos)
+            return jsonify(success=True, message=f"Producto {nuevo_prod} agregado exitosamente.", productos=productos)
+        return jsonify(success=True, message=f"El producto {nuevo_prod} ya existe.", productos=productos)
+
+@app.route('/analisis-laboratorio')
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def analisis_laboratorio():
+    """Muestra la planilla de análisis de laboratorio."""
+    return render_template('analisis_laboratorio.html', 
+                           rol_usuario=session.get('rol'), 
+                           email_usuario=session.get('email'),
+                           nombre=session.get('nombre'))
+
+@app.route('/api/analisis-laboratorio', methods=['GET'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def get_analisis_laboratorio_data():
+    """Retorna registros de Análisis de Laboratorio paginados y filtrados."""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)
+    show_all = request.args.get('all', '0') == '1'
+
+    query = db.session.query(AnalisisLaboratorio)
+
+    # Filtros server-side
+    filterable_text_cols = {
+        'fecha': AnalisisLaboratorio.fecha,
+        'producto': AnalisisLaboratorio.producto,
+        'laboratorio': AnalisisLaboratorio.laboratorio,
+        'analisis_realizados': AnalisisLaboratorio.analisis_realizados,
+        'comentarios': AnalisisLaboratorio.comentarios,
+    }
+    for col_name, col_attr in filterable_text_cols.items():
+        val = request.args.get(f'f_{col_name}', '').strip()
+        if val:
+            query = query.filter(col_attr.ilike(f'%{val}%'))
+
+    query = query.order_by(AnalisisLaboratorio.timestamp.desc())
+
+    def serialize(r):
+        return {
+            "id": r.id,
+            "fecha": r.fecha or '',
+            "producto": r.producto or '',
+            "laboratorio": r.laboratorio or '',
+            "analisis_realizados": r.analisis_realizados or '',
+            "comentarios": r.comentarios or '',
+            "documento_pdf": r.documento_pdf or ''
+        }
+
+    if show_all:
+        todos = query.all()
+        datos = [serialize(r) for r in todos]
+        return jsonify({"data": datos, "total": len(datos), "page": 1, "per_page": len(datos), "pages": 1})
+
+    total = query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, pages))
+    registros = query.offset((page - 1) * per_page).limit(per_page).all()
+    datos = [serialize(r) for r in registros]
+
+    return jsonify({"data": datos, "total": total, "page": page, "per_page": per_page, "pages": pages})
+
+@app.route('/api/analisis-laboratorio', methods=['POST'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def crear_registro_analisis():
+    """Crea un nuevo registro vacío de Análisis de Laboratorio."""
+    try:
+        nuevo = AnalisisLaboratorio(
+            fecha=None,
+            producto=None,
+            laboratorio=None,
+            analisis_realizados=None,
+            comentarios=None,
+            documento_pdf=None,
+            usuario=session.get("nombre", "No identificado"),
+            timestamp=datetime.utcnow()
+        )
+        db.session.add(nuevo)
+        db.session.commit()
+        return jsonify(success=True, message="Registro creado exitosamente.", id=nuevo.id)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@app.route('/api/analisis-laboratorio/<int:id>', methods=['PUT'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def actualizar_registro_analisis(id):
+    """Actualiza un campo específico de un registro de Análisis de Laboratorio."""
+    try:
+        registro = AnalisisLaboratorio.query.get_or_404(id)
+        datos = request.get_json()
+        
+        # Actualizar solo los campos que vienen en el request
+        if 'fecha' in datos:
+            registro.fecha = datos.get('fecha')
+        if 'producto' in datos:
+            prod_val = (datos.get('producto') or '').strip().upper()
+            registro.producto = prod_val if prod_val else None
+            if prod_val:
+                productos_lab = cargar_productos_laboratorio()
+                if prod_val not in productos_lab:
+                    productos_lab.append(prod_val)
+                    guardar_productos_laboratorio(productos_lab)
+        if 'laboratorio' in datos:
+            registro.laboratorio = datos.get('laboratorio')
+        if 'analisis_realizados' in datos:
+            registro.analisis_realizados = datos.get('analisis_realizados')
+        if 'comentarios' in datos:
+            registro.comentarios = datos.get('comentarios')
+        
+        registro.usuario = session.get("nombre", "No identificado")
+        registro.timestamp = datetime.utcnow()
+        
+        db.session.commit()
+        return jsonify(success=True, message="Registro actualizado exitosamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error: {str(e)}"), 500
+
+@app.route('/api/analisis-laboratorio/<int:id>', methods=['DELETE'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def eliminar_registro_analisis(id):
+    """Elimina un registro de Análisis de Laboratorio y su PDF asociado del disco."""
+    try:
+        registro = AnalisisLaboratorio.query.get_or_404(id)
+        # Eliminar archivo si existe
+        if registro.documento_pdf:
+            rel_path = _normalize_guia_relative_path(registro.documento_pdf)
+            abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path) if rel_path else None
+            try:
+                if abs_path and os.path.exists(abs_path):
+                    os.remove(abs_path)
+            except Exception:
+                pass
+        
+        db.session.delete(registro)
+        db.session.commit()
+        return jsonify(success=True, message="Registro eliminado correctamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error: {str(e)}"), 500
+
+@app.route('/api/analisis-laboratorio/<int:id>/pdf', methods=['GET'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def get_analisis_pdf(id):
+    """Devuelve la información para visualizar el PDF de Análisis de Laboratorio."""
+    try:
+        registro = AnalisisLaboratorio.query.get_or_404(id)
+        if not registro.documento_pdf:
+            return jsonify(success=False, message='Este registro no tiene archivo PDF asociado'), 404
+
+        rel_path = _normalize_guia_relative_path(registro.documento_pdf)
+        abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path) if rel_path else None
+        if not abs_path or not os.path.exists(abs_path):
+            return jsonify(success=False, message='Archivo PDF no encontrado en el servidor'), 404
+        
+        url = url_for('serve_guia', filename=rel_path)
+        mime, _ = mimetypes.guess_type(abs_path)
+        return jsonify(success=True, url=url, mime=mime or 'application/pdf', imagen=url)
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@app.route('/api/analisis-laboratorio/<int:id>/upload_pdf', methods=['POST'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def upload_analisis_pdf(id):
+    """Sube un archivo PDF de análisis y actualiza la base de datos."""
+    try:
+        registro = AnalisisLaboratorio.query.get_or_404(id)
+        if 'pdf' not in request.files:
+            return jsonify(success=False, message='No se recibió ningún archivo PDF'), 400
+        
+        archivo = request.files['pdf']
+        if not archivo or archivo.filename == '':
+            return jsonify(success=False, message='Archivo sin nombre'), 400
+
+        # Validar extensión
+        ext = archivo.filename.rsplit('.', 1)[1].lower() if '.' in archivo.filename else ''
+        if ext != 'pdf':
+            return jsonify(success=False, message='Solo se permiten archivos en formato PDF'), 400
+
+        # Nombre seguro y único
+        base = secure_filename(os.path.splitext(archivo.filename)[0])[:40] or 'analisis'
+        unique = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+        fname = f"{base}_{unique}.{ext}"
+
+        # Guardar en directorio de guías bajo subcarpeta analisis
+        folder = os.path.join(current_app.config['GUIDES_DIR'], 'analisis', str(id))
+        os.makedirs(folder, exist_ok=True)
+        abs_path = os.path.join(folder, fname)
+        archivo.save(abs_path)
+
+        # Eliminar anterior si existía
+        if registro.documento_pdf:
+            old_rel = _normalize_guia_relative_path(registro.documento_pdf)
+            old_abs = os.path.join(current_app.config['GUIDES_DIR'], old_rel) if old_rel else None
+            try:
+                if old_abs and os.path.exists(old_abs):
+                    os.remove(old_abs)
+            except Exception:
+                pass
+
+        # Guardar ruta relativa
+        rel_path = _normalize_guia_relative_path(f"analisis/{id}/{fname}")
+        registro.documento_pdf = rel_path
+        registro.usuario = session.get("nombre", "No identificado")
+        registro.timestamp = datetime.utcnow()
+        db.session.commit()
+
+        url = url_for('serve_guia', filename=rel_path)
+        mime, _ = mimetypes.guess_type(abs_path)
+        return jsonify(success=True, url=url, mime=mime or 'application/pdf')
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@app.route('/api/analisis-laboratorio/<int:id>/pdf', methods=['DELETE'])
+@login_required
+@permiso_requerido('analisis_laboratorio')
+def delete_analisis_pdf(id):
+    """Elimina el archivo PDF asociado al análisis."""
+    try:
+        registro = AnalisisLaboratorio.query.get_or_404(id)
+        if not registro.documento_pdf:
+            return jsonify(success=True, message='No hay archivo PDF para eliminar')
+        
+        rel_path = _normalize_guia_relative_path(registro.documento_pdf)
+        abs_path = os.path.join(current_app.config['GUIDES_DIR'], rel_path) if rel_path else None
+        try:
+            if abs_path and os.path.exists(abs_path):
+                os.remove(abs_path)
+        except Exception:
+            pass
+        
+        registro.documento_pdf = None
+        registro.usuario = session.get("nombre", "No identificado")
+        registro.timestamp = datetime.utcnow()
+        db.session.commit()
+        return jsonify(success=True, message='Archivo PDF eliminado correctamente')
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
 
 @login_required
 @app.route('/api/add-origen', methods=['POST'])
@@ -11746,6 +12076,13 @@ def update_programacion(id):
         mensaje_api_corregido_invalido = None
         payload_conductor_sync = None
         campos_tocados = set()
+
+        # Bloqueo: si el registro ya está DESPACHADO o si refinería intenta seleccionar un estado no permitido
+        if session.get('email') == 'refinery.control@conquerstrading.com':
+            if registro.estado == 'DESPACHADO':
+                return jsonify(success=False, message="Bloqueado: El registro ya se encuentra en estado DESPACHADO y no puede ser modificado por refinería."), 403
+            if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO'):
+                return jsonify(success=False, message="Bloqueado: El usuario de refinería solo puede establecer el estado como PROGRAMADO o CARGANDO."), 403
 
         # Bloqueo nuevo: si TODOS los campos de refinería estuvieron completos y pasaron >30 min, refinería ya no puede editar
         campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']

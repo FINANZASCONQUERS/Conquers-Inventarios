@@ -1027,7 +1027,7 @@
             'logistic@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'oci@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'amariagallo@conquerstrading.com': ['destino', 'cliente'],
-            'refinery.control@conquerstrading.com': ['galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             // Ignacio ahora con todos los campos como Samantha/logistic
             'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
@@ -2149,7 +2149,7 @@
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
                 // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
-                const refineriaBlocked = row.refineria_bloqueado && userEmail === 'refinery.control@conquerstrading.com' && ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
+                const refineriaBlocked = (row.refineria_bloqueado || (row.estado || '').toUpperCase() === 'DESPACHADO') && userEmail === 'refinery.control@conquerstrading.com' && ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
                 if (config.type === 'datalist' && finalEditable) {
@@ -2161,7 +2161,10 @@
                                 </td>`;
                 } else if (config.type === 'select' && finalEditable) {
                     // Renderizar un SELECT para tipo_guia y otros campos select
-                    const options = config.options || [];
+                    let options = config.options || [];
+                    if (col === 'estado' && userEmail === 'refinery.control@conquerstrading.com') {
+                        options = ['PROGRAMADO', 'CARGANDO'];
+                    }
                     let selectHtml = `<select class="form-select form-select-sm border-0 bg-transparent editable-select" data-col="${col}">`;
                     selectHtml += `<option value="">Seleccionar...</option>`;
                     options.forEach(opt => {
@@ -2207,6 +2210,16 @@
                                         <button class="btn btn-outline-success btn-xs btn-add-new-item" style="display:none; z-index: 5;" type="button" title="Agregar Nuevo"><i class="fas fa-plus"></i></button>
                                         <button class="btn btn-outline-warning btn-xs btn-edit-item" style="display:none; z-index: 5;" type="button" title="Editar Conductor"><i class="fas fa-edit"></i></button>
                                     </div>
+                                </td>`;
+                } else if (config.type === 'date' && finalEditable) {
+                    rowHtml += `<td data-field="${col}" data-type="date" class="position-relative">
+                                    ${lockBadge}
+                                    <input type="date" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
+                                </td>`;
+                } else if (config.type === 'time' && finalEditable) {
+                    rowHtml += `<td data-field="${col}" data-type="time" class="position-relative">
+                                    ${lockBadge}
+                                    <input type="time" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
                                 </td>`;
                 } else {
                     if (finalEditable) {
@@ -2625,7 +2638,7 @@
 
     // Guardar automáticamente cuando cambia un select (tipo_guia, estado, etc.)
     tbody.addEventListener('change', function (e) {
-        if (e.target.classList.contains('editable-select')) {
+        if (e.target.classList.contains('editable-select') || e.target.classList.contains('editable-input')) {
             const td = e.target.closest('td[data-field]');
             autosaveCell(td);
         }
@@ -3041,7 +3054,11 @@
             const config = columnsConfig['estado'];
             const select = document.createElement('select');
             select.className = 'form-select form-select-sm shadow-sm';
-            config.options.forEach(opt => {
+            let opts = config.options || [];
+            if (userEmail === 'refinery.control@conquerstrading.com') {
+                opts = ['PROGRAMADO', 'CARGANDO'];
+            }
+            opts.forEach(opt => {
                 const option = document.createElement('option');
                 option.value = opt;
                 option.textContent = opt;

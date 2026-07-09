@@ -1,0 +1,1053 @@
+{% extends "base.html" %}
+{% block title %}Análisis de Laboratorio | Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Tema Verde Bosque Profesional para Análisis de Laboratorio */
+    :root {
+        --lab-primary: #0f5132;
+        --lab-primary-dark: #083420;
+        --lab-primary-light: #d1e7dd;
+        --lab-accent: #198754;
+        --lab-border: #bcd0c7;
+    }
+
+    .analisis-laboratorio-page {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f8f9fa;
+    }
+
+    .icon-box.bg-gradient-lab {
+        background: linear-gradient(135deg, var(--lab-primary) 0%, var(--lab-accent) 100%);
+        color: white;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 10px rgba(15, 81, 50, 0.2);
+    }
+
+    .page-title {
+        color: var(--lab-primary);
+        font-weight: 700;
+        font-size: 1.75rem;
+    }
+
+    .page-subtitle {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+
+    /* Card moderna y estilizada */
+    .card-modern {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        background-color: white;
+        overflow: hidden;
+    }
+
+    .card-header-modern {
+        background-color: white;
+        border-bottom: 1px solid #f1f3f5;
+        padding: 1.25rem 1.5rem;
+    }
+
+    /* Botones premium */
+    .btn-modern {
+        border-radius: 8px;
+        padding: 0.5rem 1.25rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-outline-lab {
+        color: var(--lab-primary);
+        border: 2px solid var(--lab-primary);
+        background-color: transparent;
+    }
+
+    .btn-outline-lab:hover {
+        background-color: var(--lab-primary);
+        color: white;
+        transform: translateY(-1px);
+    }
+
+    .btn-lab-primary {
+        background: linear-gradient(135deg, var(--lab-primary) 0%, var(--lab-accent) 100%);
+        color: white;
+        border: none;
+    }
+
+    .btn-lab-primary:hover {
+        background: linear-gradient(135deg, var(--lab-primary-dark) 0%, var(--lab-primary) 100%);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(15, 81, 50, 0.2);
+    }
+
+    /* Tabla con Scroll Responsivo y Cursors */
+    .table-responsive-modern {
+        width: 100%;
+        overflow-x: auto;
+        position: relative;
+        border-radius: 0 0 16px 16px;
+    }
+
+    .table-modern {
+        margin-bottom: 0;
+        font-size: 0.875rem;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Cabecera de la tabla - Verde oscuro */
+    .thead-modern th {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(135deg, var(--lab-primary) 0%, var(--lab-primary-dark) 100%);
+        color: white;
+        z-index: 10;
+        font-size: 0.75rem;
+        padding: 1.1rem 0.875rem;
+        text-align: center;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.8px;
+        border: none;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Fila de Filtros */
+    #filter-row {
+        position: sticky;
+        top: 53px;
+        z-index: 9;
+        background: white;
+    }
+
+    #filter-row th {
+        padding: 0.625rem;
+        background: #f8f9fc;
+        border-bottom: 3px solid var(--lab-primary);
+    }
+
+    .filter-input {
+        width: 100%;
+        border: 2px solid #e0e3e8;
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.75rem;
+        transition: all 0.15s ease;
+        background-color: white;
+    }
+
+    .filter-input:focus {
+        border-color: var(--lab-primary);
+        box-shadow: 0 0 0 0.15rem rgba(15, 81, 50, 0.15);
+        outline: none;
+    }
+
+    /* Celdas del Body */
+    .tbody-modern tr {
+        transition: background-color 0.15s ease;
+        border-bottom: 1px solid #f1f3f5;
+    }
+
+    .tbody-modern tr:hover {
+        background-color: rgba(209, 231, 221, 0.25);
+    }
+
+    .tbody-modern td {
+        padding: 0.875rem;
+        vertical-align: middle;
+        border: none;
+        color: #495057;
+    }
+
+    /* Estilo de Celdas Editables */
+    .editable-cell {
+        cursor: pointer;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .editable-cell:hover {
+        background-color: rgba(15, 81, 50, 0.05);
+    }
+
+    .cell-editor {
+        display: block;
+        width: 100%;
+        min-height: 24px;
+        padding: 4px;
+        border-radius: 4px;
+        outline: none;
+        white-space: pre-wrap;
+    }
+
+    .cell-editor:focus {
+        background-color: white;
+        box-shadow: 0 0 0 2px var(--lab-primary);
+        min-width: 120px;
+    }
+
+    .editable-input {
+        border: 1px solid #e0e3e8;
+        border-radius: 4px;
+        padding: 4px 8px;
+        font-size: 0.875rem;
+        width: 100%;
+    }
+
+    .editable-input:focus {
+        border-color: var(--lab-primary);
+        box-shadow: 0 0 0 2px rgba(15, 81, 50, 0.2);
+        outline: none;
+    }
+
+    /* Sticky columns */
+    .sticky-col {
+        position: sticky;
+        right: 0;
+        background-color: white;
+        z-index: 5;
+        box-shadow: -4px 0 8px rgba(0,0,0,0.03);
+    }
+
+    tr:hover .sticky-col {
+        background-color: #f8f9fa;
+    }
+
+    .thead-modern .sticky-col {
+        background: linear-gradient(135deg, var(--lab-primary-dark) 0%, #062315 100%);
+        z-index: 11;
+        box-shadow: -4px 3px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Indicador de guardado */
+    .save-indicator {
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Paginación */
+    .pagination-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.5rem;
+        background-color: white;
+        border-top: 1px solid #f1f3f5;
+        border-radius: 0 0 16px 16px;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-info {
+        font-size: 0.825rem;
+        color: #6c757d;
+    }
+
+    .pagination-nav {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .pagination-nav button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .pagination-size {
+        display: flex;
+        align-items: center;
+    }
+
+    .pagination-size select {
+        width: auto;
+        padding: 0.25rem 1.5rem 0.25rem 0.5rem;
+    }
+
+    /* Visores y Modales */
+    .modal-content {
+        border-radius: 16px;
+    }
+
+    .modal-header {
+        border-radius: 16px 16px 0 0;
+    }
+</style>
+{% endblock %}
+
+{% block container_class %}container-fluid p-0{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-2 px-3 analisis-laboratorio-page" style="max-width: 100%;">
+    <!-- Header -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-3 mb-lg-0">
+                <div class="page-title-box">
+                    <div class="d-flex align-items-center">
+                        <div class="icon-box bg-gradient-lab">
+                            <i class="fas fa-flask"></i>
+                        </div>
+                        <div class="ms-3">
+                            <h2 class="page-title mb-0">ANÁLISIS DE LABORATORIO</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="card card-modern">
+        <div class="card-header-modern">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-success border border-success px-3 py-2 rounded-pill me-2">
+                            <i class="fas fa-database me-1"></i>Análisis Registrados
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end mt-3 mt-md-0">
+                    <div class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-2">
+                            <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
+                        </span>
+                        <button id="btn-add-row" class="btn btn-sm btn-modern btn-lab-primary" type="button"
+                            title="Agregar nuevo análisis de laboratorio">
+                            <i class="fas fa-plus me-1"></i>Agregar
+                        </button>
+                        <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-lab"
+                            type="button">
+                            <i class="fas fa-history me-1"></i>Ver historial completo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive-modern">
+                <table class="table table-modern align-middle mb-0">
+                    <thead class="thead-modern">
+                    </thead>
+                    <tbody id="laboratorio-table-body" class="tbody-modern">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Input File Oculto para Subir PDF -->
+<input type="file" id="hidden-pdf-input" accept="application/pdf" style="display: none;">
+<datalist id="datalist-productos-lab"></datalist>
+
+<!-- Modal Visualizador de PDF -->
+<div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="pdfModalLabel">
+                    <i class="fas fa-file-pdf me-2"></i>Documento de Análisis de Laboratorio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="pdf-viewer-container" style="background-color: #f1f3f5; min-height: 400px; display: flex; align-items: center; justify-content: center;">
+                    <!-- Se carga dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="btn-download-pdf" href="#" class="btn btn-sm btn-primary rounded-2 px-3" target="_blank">
+                    <i class="fas fa-download me-1"></i> Descargar Archivo
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-2 px-3" data-bs-dismiss="modal">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- VARIABLES Y CONFIGURACIÓN ---
+        const userEmail = "{{ email_usuario }}";
+        const userRol = "{{ rol_usuario }}";
+        const userName = "{{ nombre }}";
+        const tbody = document.getElementById('laboratorio-table-body');
+        const thead = document.querySelector('table thead');
+        const btnAddRow = document.getElementById('btn-add-row');
+        const toggleHistorialBtn = document.getElementById('toggle-historial-btn');
+        const hiddenPdfInput = document.getElementById('hidden-pdf-input');
+        
+        let mostrandoHistorialCompleto = false;
+        let currentPage = 1;
+        let perPage = 50;
+        let totalRecords = 0;
+        let totalPages = 1;
+        let currentFilters = {};
+        let filterDebounceTimer = null;
+
+        // Permisos de edición (admin y editores autorizados)
+        const emailsAutorizados = [
+            'qualitycontrol@conquerstrading.com', 
+            'quality.manager@conquerstrading.com'
+        ];
+        const isAdmin = userRol === 'admin';
+        const isEditorAutorizado = emailsAutorizados.includes(userEmail.toLowerCase());
+        const canEdit = isAdmin || isEditorAutorizado;
+
+        const columnsConfig = {
+            'fecha': { width: '130px', type: 'date' },
+            'producto': { width: '160px', type: 'datalist', options: [] },
+            'laboratorio': { width: '200px', type: 'text' },
+            'analisis_realizados': { width: '320px', type: 'textarea' },
+            'comentarios': { width: '320px', type: 'textarea' },
+            'documento_pdf': { width: '180px', type: 'custom' }
+        };
+
+        const allColumns = ['fecha', 'producto', 'laboratorio', 'analisis_realizados', 'comentarios', 'documento_pdf'];
+
+        // --- FUNCIONES DE RENDERIZADO ---
+
+        function buildApiUrl(page, filters, historialCompleto) {
+            const params = new URLSearchParams();
+            if (historialCompleto) {
+                params.set('all', '1');
+            } else {
+                params.set('page', page);
+                params.set('per_page', perPage);
+            }
+            // Filtros de búsqueda
+            for (const [col, val] of Object.entries(filters)) {
+                if (val) params.set(`f_${col}`, val);
+            }
+            return `/api/analisis-laboratorio?${params.toString()}`;
+        }
+
+        function fetchAndRender(historialCompleto) {
+            if (historialCompleto === undefined) historialCompleto = mostrandoHistorialCompleto;
+            const url = buildApiUrl(currentPage, currentFilters, historialCompleto);
+
+            tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="text-center py-4"><span class="spinner-border spinner-border-sm text-success me-2"></span>Cargando datos de laboratorio...</td></tr>`;
+
+            fetch(url)
+                .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
+                .then(response => {
+                    const data = response.data || response;
+                    totalRecords = response.total || data.length;
+                    totalPages = response.pages || 1;
+                    currentPage = response.page || 1;
+                    renderTable(data);
+                    renderPaginationControls();
+                })
+                .catch(error => {
+                    console.error('Error al cargar datos:', error);
+                    thead.innerHTML = '';
+                    tbody.innerHTML = `<tr><td colspan="100%" class="text-center text-danger py-3"><i class="fas fa-exclamation-triangle me-2"></i>Error al cargar la información. Intente de nuevo.</td></tr>`;
+                });
+        }
+
+        function renderTable(data) {
+            renderHeader();
+            renderBody(data);
+        }
+
+        function renderHeader() {
+            let headerHtml = '<tr class="align-middle">';
+            let filterHtml = '<tr id="filter-row" class="align-middle">';
+            
+            allColumns.forEach(col => {
+                const config = columnsConfig[col];
+                headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
+                const currentVal = currentFilters[col] || '';
+                
+                if (col === 'documento_pdf') {
+                    filterHtml += `<th></th>`;
+                } else {
+                    filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..." value="${currentVal}"></th>`;
+                }
+            });
+            
+            headerHtml += '<th style="width: 140px; min-width: 140px;" class="text-center sticky-col">Acciones</th></tr>';
+            filterHtml += '<th class="sticky-col"></th></tr>';
+            thead.innerHTML = headerHtml + filterHtml;
+
+            // Filtro dinámico con debounce
+            thead.querySelector('#filter-row').addEventListener('input', function (e) {
+                if (filterDebounceTimer) clearTimeout(filterDebounceTimer);
+                filterDebounceTimer = setTimeout(() => {
+                    collectFilters();
+                    currentPage = 1;
+                    fetchAndRender();
+                }, 350);
+            });
+        }
+
+        function collectFilters() {
+            const inputs = thead.querySelectorAll('.filter-input');
+            currentFilters = {};
+            inputs.forEach(input => {
+                const val = input.value.trim();
+                if (val) currentFilters[input.dataset.filterCol] = val;
+            });
+        }
+
+        function renderBody(data) {
+            while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+
+            if (data.length === 0) {
+                const emptyRow = document.createElement('tr');
+                const emptyCell = document.createElement('td');
+                emptyCell.colSpan = allColumns.length + 1;
+                emptyCell.className = 'text-center py-4 text-muted';
+                emptyCell.innerHTML = '<i class="far fa-folder-open me-2 fs-5"></i>No hay registros en la base de datos.';
+                emptyRow.appendChild(emptyCell);
+                tbody.appendChild(emptyRow);
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.dataset.id = row.id;
+                tr.className = 'align-middle';
+
+                allColumns.forEach(col => {
+                    const config = columnsConfig[col];
+                    const value = row[col] || '';
+                    const td = document.createElement('td');
+                    td.style.minWidth = config.width;
+
+                    if (col === 'documento_pdf') {
+                        td.className = 'text-center';
+                        if (value) {
+                            td.innerHTML = `
+                                <div class="btn-group btn-group-sm border border-primary border-opacity-25 rounded-2 overflow-hidden shadow-xs">
+                                    <button class="btn btn-outline-primary btn-xs btn-view-pdf" title="Ver archivo PDF" data-id="${row.id}" style="padding: 0.25rem 0.5rem;">
+                                        <i class="fas fa-eye"></i> Ver PDF
+                                    </button>
+                                    ${canEdit ? `
+                                    <button class="btn btn-outline-danger btn-xs btn-delete-pdf" title="Eliminar archivo" data-id="${row.id}" style="padding: 0.25rem 0.4rem;">
+                                        <i class="fas fa-times text-danger"></i>
+                                    </button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        } else {
+                            if (canEdit) {
+                                td.innerHTML = `
+                                    <button class="btn btn-sm btn-outline-success btn-xs btn-upload-pdf-trigger w-100" title="Subir documento PDF" data-id="${row.id}" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">
+                                        <i class="fas fa-cloud-upload-alt me-1"></i>Subir PDF
+                                    </button>
+                                `;
+                            } else {
+                                td.innerHTML = `<span class="text-muted small">Sin documento</span>`;
+                            }
+                        }
+                    } else if (config.type === 'datalist' && canEdit) {
+                        td.dataset.field = col;
+                        td.dataset.type = 'datalist';
+                        td.className = 'position-relative';
+                        const input = document.createElement('input');
+                        input.setAttribute('list', 'datalist-productos-lab');
+                        input.className = 'form-control form-control-sm border-0 bg-transparent editable-input';
+                        input.value = value;
+                        input.placeholder = 'Producto...';
+                        td.appendChild(input);
+                    } else if (config.type === 'date' && canEdit) {
+                        td.dataset.field = col;
+                        td.dataset.type = 'date';
+                        td.className = 'editable-cell';
+                        const input = document.createElement('input');
+                        input.type = 'date';
+                        input.className = 'form-control form-control-sm border-0 bg-transparent editable-input';
+                        input.value = value;
+                        td.appendChild(input);
+                    } else if (canEdit) {
+                        // Celdas normales editables (text / textarea)
+                        td.dataset.field = col;
+                        td.dataset.type = config.type || 'text';
+                        td.className = 'editable-cell';
+                        const span = document.createElement('span');
+                        span.className = 'cell-editor';
+                        span.contentEditable = 'true';
+                        span.textContent = formatCellValue(value, config);
+                        td.appendChild(span);
+                    } else {
+                        // No editable para viewers
+                        td.textContent = formatCellValue(value, config);
+                    }
+
+                    tr.appendChild(td);
+                });
+
+                // Columna de acciones (Eliminar fila)
+                const actionTd = document.createElement('td');
+                actionTd.className = 'text-center save-status-cell sticky-col';
+                actionTd.dataset.id = row.id;
+                actionTd.style.minWidth = '140px';
+                
+                let actionsInner = `
+                    <div class="action-buttons-container d-flex justify-content-center align-items-center">
+                        <span class="save-indicator me-3" style="width: 16px; height: 16px; display: inline-block;"></span>
+                        <div class="btn-group btn-group-sm" role="group">
+                `;
+                if (canEdit) {
+                    actionsInner += `
+                        <button class="btn btn-outline-danger btn-xs btn-delete-row" title="Eliminar registro completo" style="padding: 0.2rem 0.5rem;">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    `;
+                } else {
+                    actionsInner += `<span class="text-muted small">-</span>`;
+                }
+                actionsInner += `</div></div>`;
+                actionTd.innerHTML = actionsInner;
+                tr.appendChild(actionTd);
+
+                fragment.appendChild(tr);
+            });
+
+            tbody.appendChild(fragment);
+        }
+
+        // --- PAGINACIÓN ---
+        function renderPaginationControls() {
+            let paginationContainer = document.getElementById('pagination-controls');
+            if (!paginationContainer) {
+                paginationContainer = document.createElement('div');
+                paginationContainer.id = 'pagination-controls';
+                paginationContainer.className = 'pagination-bar';
+                const tableContainer = document.querySelector('.table-responsive-modern');
+                tableContainer.parentNode.insertBefore(paginationContainer, tableContainer.nextSibling);
+            }
+
+            if (mostrandoHistorialCompleto) {
+                paginationContainer.innerHTML = `
+                <div class="pagination-info">
+                    <span class="badge bg-secondary"><i class="fas fa-list me-1"></i>Mostrando historial completo: <strong>${totalRecords}</strong> registros</span>
+                </div>`;
+                return;
+            }
+
+            const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * perPage + 1;
+            const endRecord = Math.min(currentPage * perPage, totalRecords);
+
+            let pageButtons = '';
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+            
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            if (startPage > 1) {
+                pageButtons += `<button class="btn btn-sm btn-outline-secondary page-btn" data-page="1">1</button>`;
+                if (startPage > 2) pageButtons += `<span class="pagination-ellipsis px-1 text-muted">...</span>`;
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const activeClass = i === currentPage ? 'btn-success active text-white' : 'btn-outline-secondary';
+                pageButtons += `<button class="btn btn-sm ${activeClass} page-btn" data-page="${i}">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) pageButtons += `<span class="pagination-ellipsis px-1 text-muted">...</span>`;
+                pageButtons += `<button class="btn btn-sm btn-outline-secondary page-btn" data-page="${totalPages}">${totalPages}</button>`;
+            }
+
+            paginationContainer.innerHTML = `
+            <div class="pagination-info">
+                <i class="fas fa-database me-1 text-muted"></i>
+                <span>${startRecord}–${endRecord} de <strong>${totalRecords}</strong></span>
+            </div>
+            <div class="pagination-nav">
+                <button class="btn btn-sm btn-outline-success page-btn" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                ${pageButtons}
+                <button class="btn btn-sm btn-outline-success page-btn" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="pagination-size">
+                <label class="me-1 text-muted small">Filas:</label>
+                <select id="page-size-select" class="form-select form-select-sm">
+                    <option value="25" ${perPage === 25 ? 'selected' : ''}>25</option>
+                    <option value="50" ${perPage === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${perPage === 100 ? 'selected' : ''}>100</option>
+                </select>
+            </div>`;
+
+            // Evento cambio de página
+            paginationContainer.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const targetPage = parseInt(this.dataset.page);
+                    if (targetPage >= 1 && targetPage <= totalPages && targetPage !== currentPage) {
+                        currentPage = targetPage;
+                        fetchAndRender();
+                        document.querySelector('.table-responsive-modern').scrollTop = 0;
+                    }
+                });
+            });
+
+            // Evento tamaño de página
+            const pageSizeSelect = document.getElementById('page-size-select');
+            if (pageSizeSelect) {
+                pageSizeSelect.addEventListener('change', function () {
+                    perPage = parseInt(this.value);
+                    currentPage = 1;
+                    fetchAndRender();
+                });
+            }
+        }
+
+        // --- UTILERIAS ---
+
+        function formatColumnName(colName) {
+            const abbreviations = {
+                'fecha': 'FECHA',
+                'producto': 'PRODUCTO',
+                'laboratorio': 'LABORATORIO',
+                'analisis_realizados': 'ANÁLISIS REALIZADOS',
+                'comentarios': 'COMENTARIOS',
+                'documento_pdf': 'DOCUMENTO PDF'
+            };
+            return abbreviations[colName] || colName.replace(/_/g, ' ').toUpperCase();
+        }
+
+        function formatCellValue(value, config) {
+            if (value === null || value === undefined || value === '') return '-';
+            if (config.type === 'date') {
+                try {
+                    return new Date(value + 'T00:00:00').toLocaleDateString('es-CO', { timeZone: 'UTC' });
+                } catch (e) { return value; }
+            }
+            return value;
+        }
+
+        function showToast(type, message) {
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+            const toast = document.createElement('div');
+            toast.className = `toast show align-items-center text-white bg-${type} border-0`;
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="${type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>`;
+            toastContainer.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '1100';
+            document.body.appendChild(container);
+            return container;
+        }
+
+        // --- MANEJADORES DE ACCIONES ---
+
+        // Agregar fila
+        btnAddRow.addEventListener('click', function () {
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Cargando...';
+            
+            fetch("/api/analisis-laboratorio", { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Nueva fila de análisis agregada');
+                        currentPage = 1;
+                        fetchAndRender(mostrandoHistorialCompleto);
+                    } else {
+                        showToast('danger', 'Error al crear fila: ' + data.message);
+                    }
+                })
+                .catch(() => showToast('danger', 'Error de conexión'))
+                .finally(() => {
+                    this.disabled = false;
+                    this.innerHTML = `<i class="fas fa-plus me-1"></i>Agregar`;
+                });
+        });
+
+        // Alternar Historial completo
+        toggleHistorialBtn.addEventListener('click', function () {
+            mostrandoHistorialCompleto = !mostrandoHistorialCompleto;
+            currentPage = 1;
+            fetchAndRender(mostrandoHistorialCompleto);
+            if (mostrandoHistorialCompleto) {
+                this.innerHTML = `<i class="fas fa-calendar-alt me-1"></i>Ver paginado`;
+                this.classList.remove('btn-outline-lab');
+                this.classList.add('btn-outline-secondary');
+            } else {
+                this.innerHTML = `<i class="fas fa-history me-1"></i>Ver historial completo`;
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-outline-lab');
+            }
+        });
+
+        let productosLab = [];
+
+        function cargarProductosLab(callback) {
+            fetch('/api/analisis-laboratorio/productos')
+                .then(res => res.json())
+                .then(data => {
+                    productosLab = data;
+                    columnsConfig.producto.options = data;
+                    const dl = document.getElementById('datalist-productos-lab');
+                    if (dl) {
+                        dl.innerHTML = '';
+                        data.forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p;
+                            dl.appendChild(opt);
+                        });
+                    }
+                    if (callback) callback();
+                })
+                .catch(err => {
+                    console.error('Error al cargar productos de laboratorio:', err);
+                    if (callback) callback();
+                });
+        }
+
+        // Autoguardado al perder foco en celdas o cambiar select
+        tbody.addEventListener('blur', function (e) {
+            if (e.target.classList.contains('cell-editor') || e.target.classList.contains('editable-input')) {
+                const td = e.target.closest('td[data-field]');
+                autosaveCell(td);
+            }
+        }, true);
+
+        tbody.addEventListener('change', function (e) {
+            if (e.target.classList.contains('editable-input')) {
+                const td = e.target.closest('td[data-field]');
+                autosaveCell(td);
+            }
+        });
+
+        // Guardar al presionar Enter
+        tbody.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                if (e.target.classList.contains('cell-editor') || e.target.classList.contains('editable-input')) {
+                    e.preventDefault();
+                    e.target.blur();
+                }
+            }
+        });
+
+        function autosaveCell(cell) {
+            const row = cell.closest('tr');
+            const id = row.dataset.id;
+            const field = cell.dataset.field;
+            const config = columnsConfig[field];
+            let value;
+
+            const input = cell.querySelector('.editable-input');
+            const span = cell.querySelector('.cell-editor');
+            
+            if (input) {
+                value = input.value.trim();
+            } else if (span) {
+                value = span.textContent.trim();
+            } else {
+                value = cell.textContent.trim();
+            }
+
+            let processedValue = value === '-' || value === '' ? null : value;
+
+            const statusIndicator = row.querySelector('.save-indicator');
+            statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-success" role="status"></span>';
+
+            fetch(`/api/analisis-laboratorio/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [field]: processedValue })
+            })
+                .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                    if (ok) {
+                        statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                        if (span) {
+                            span.textContent = formatCellValue(processedValue, config);
+                        }
+                        if (field === 'producto') {
+                            cargarProductosLab();
+                        }
+                    } else {
+                        statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                        showToast('danger', `Error en ${formatColumnName(field)}: ` + (data.message || 'Error'));
+                    }
+                })
+                .catch(() => {
+                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i>';
+                    showToast('danger', 'Error de conexión al guardar celda');
+                })
+                .finally(() => {
+                    setTimeout(() => { statusIndicator.innerHTML = ''; }, 3000);
+                });
+        }
+
+        // Acciones sobre las filas (Ver PDF, Borrar PDF, Subir PDF, Eliminar fila)
+        tbody.addEventListener('click', function (e) {
+            // Eliminar registro de laboratorio completo
+            const btnDeleteRow = e.target.closest('.btn-delete-row');
+            if (btnDeleteRow) {
+                const row = btnDeleteRow.closest('tr');
+                const id = row.dataset.id;
+                if (confirm('¿Estás seguro de que deseas eliminar este registro de análisis por completo? Esta acción es irreversible.')) {
+                    fetch(`/api/analisis-laboratorio/${id}`, { method: 'DELETE' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('success', 'Registro eliminado correctamente');
+                                fetchAndRender(mostrandoHistorialCompleto);
+                            } else {
+                                showToast('danger', 'Error al eliminar registro: ' + (data.message || ''));
+                            }
+                        })
+                        .catch(() => showToast('danger', 'Error de conexión'));
+                }
+            }
+
+            // Activar selector de archivos para PDF
+            const btnUploadPdfTrigger = e.target.closest('.btn-upload-pdf-trigger');
+            if (btnUploadPdfTrigger) {
+                const id = btnUploadPdfTrigger.dataset.id;
+                hiddenPdfInput.dataset.registroId = id;
+                hiddenPdfInput.click();
+            }
+
+            // Eliminar PDF
+            const btnDeletePdf = e.target.closest('.btn-delete-pdf');
+            if (btnDeletePdf) {
+                const id = btnDeletePdf.dataset.id;
+                if (confirm('¿Estás seguro de que deseas eliminar el archivo PDF de este análisis?')) {
+                    fetch(`/api/analisis-laboratorio/${id}/pdf`, { method: 'DELETE' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                showToast('success', 'Documento PDF eliminado');
+                                fetchAndRender(mostrandoHistorialCompleto);
+                            } else {
+                                showToast('danger', 'Error al eliminar PDF: ' + (data.message || ''));
+                            }
+                        })
+                        .catch(() => showToast('danger', 'Error de conexión'));
+                }
+            }
+
+            // Visualizar PDF
+            const btnViewPdf = e.target.closest('.btn-view-pdf');
+            if (btnViewPdf) {
+                const id = btnViewPdf.dataset.id;
+                fetch(`/api/analisis-laboratorio/${id}/pdf`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const viewer = document.getElementById('pdf-viewer-container');
+                            const downloadBtn = document.getElementById('btn-download-pdf');
+                            
+                            viewer.innerHTML = '';
+                            downloadBtn.href = data.url;
+                            downloadBtn.download = `analisis_laboratorio_${id}.pdf`;
+
+                            const embed = document.createElement('embed');
+                            embed.type = 'application/pdf';
+                            embed.src = data.url + '#toolbar=1&navpanes=0&scrollbar=1';
+                            embed.style.width = '100%';
+                            embed.style.height = '70vh';
+                            embed.style.border = '0';
+                            
+                            viewer.appendChild(embed);
+
+                            const pdfModal = new bootstrap.Modal(document.getElementById('pdfModal'));
+                            pdfModal.show();
+                        } else {
+                            showToast('danger', 'No se pudo cargar el PDF: ' + (data.message || ''));
+                        }
+                    })
+                    .catch(() => showToast('danger', 'Error al cargar el PDF'));
+            }
+        });
+
+        // Event Listener para Input File (Subida de PDF)
+        hiddenPdfInput.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const id = this.dataset.registroId;
+            if (!id) {
+                showToast('danger', 'Error al identificar el registro');
+                return;
+            }
+
+            // Validar formato
+            if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                showToast('danger', 'Solo se permiten archivos en formato PDF.');
+                this.value = '';
+                return;
+            }
+
+            // Validar tamaño (máximo 10MB para PDFs de análisis)
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('danger', 'El archivo supera el límite permitido de 10MB.');
+                this.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('pdf', file);
+
+            showToast('info', 'Subiendo archivo PDF de análisis...');
+
+            fetch(`/api/analisis-laboratorio/${id}/upload_pdf`, {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Documento PDF cargado exitosamente');
+                        fetchAndRender(mostrandoHistorialCompleto);
+                    } else {
+                        showToast('danger', 'Error al cargar PDF: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error de conexión al cargar el archivo'))
+                .finally(() => {
+                    this.value = '';
+                });
+        });
+
+        // --- INICIALIZAR ---
+        cargarProductosLab(() => {
+            fetchAndRender();
+        });
+    });
+</script>
+{% endblock %}

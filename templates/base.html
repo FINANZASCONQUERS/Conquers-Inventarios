@@ -227,6 +227,9 @@ defecto seguros. #}
                     {% if 'control_calidad' in session.get('area', []) %}{% set _ =
                     user_planillas.append(('control_calidad', 'Reporte Análisis de Calidad', 'clipboard-check')) %}{%
                     endif %}
+                    {% if 'analisis_laboratorio' in session.get('area', []) %}{% set _ =
+                    user_planillas.append(('analisis_laboratorio', 'Análisis de Laboratorio', 'flask')) %}{%
+                    endif %}
                     {% if 'inventario_epp' in session.get('area', []) %}{% set _ =
                     user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
                     {% endif %}
@@ -309,7 +312,7 @@ defecto seguros. #}
 
                             <!-- 🏭 PRODUCCIÓN -->
                             {% if 'planta' in session.get('area', []) or 'simulador_rendimiento' in session.get('area',
-                            []) or 'control_calidad' in session.get('area', []) or 'programacion_base' in
+                            []) or 'control_calidad' in session.get('area', []) or 'analisis_laboratorio' in session.get('area', []) or 'programacion_base' in
                             session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i
@@ -329,6 +332,10 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'control_calidad' %}active{% endif %}"
                                     href="{{ url_for('control_calidad') }}"><i
                                         class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
+                            {% endif %}
+                            {% if 'analisis_laboratorio' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'analisis_laboratorio' %}active{% endif %}"
+                                    href="{{ url_for('analisis_laboratorio') }}"><span class="me-2">🧪</span>Análisis de Laboratorio</a></li>
                             {% endif %}
                             {% if 'programacion_base' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'programacion_base' %}active{% endif %}"
@@ -522,6 +529,7 @@ defecto seguros. #}
                                         class="bi bi-droplet-fill me-2 text-primary"></i>Simulador Rendimiento</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('control_calidad') }}"><i
                                         class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('analisis_laboratorio') }}"><span class="me-2">🧪</span>Análisis de Laboratorio</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('programacion_base') }}"><i
                                         class="bi bi-table me-2 text-success"></i>Pedidos</a>
                             </li>
