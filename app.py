@@ -12081,8 +12081,8 @@ def update_programacion(id):
         if session.get('email') == 'refinery.control@conquerstrading.com':
             if registro.estado == 'DESPACHADO':
                 return jsonify(success=False, message="Bloqueado: El registro ya se encuentra en estado DESPACHADO y no puede ser modificado por refinería."), 403
-            if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO'):
-                return jsonify(success=False, message="Bloqueado: El usuario de refinería solo puede establecer el estado como PROGRAMADO o CARGANDO."), 403
+            if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO', 'CARGADO'):
+                return jsonify(success=False, message="Bloqueado: El usuario de refinería solo puede establecer el estado como PROGRAMADO, CARGANDO o CARGADO."), 403
 
         # Bloqueo de 30 minutos: solo aplica para los campos de datos de refinería, EXCLUYENDO el estado
         campos_refineria_bloqueables = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
@@ -13641,7 +13641,7 @@ def upload_programacion_excel():
             # Normalizar estado
             if datos.get('estado'):
                 est = str(datos['estado']).strip().upper()
-                if est not in ('PROGRAMADO','CARGANDO','DESPACHADO'):
+                if est not in ('PROGRAMADO','CARGANDO','CARGADO','DESPACHADO'):
                     est = 'PROGRAMADO'
                 datos['estado'] = est
             registro = ProgramacionCargue(**{k:v for k,v in datos.items() if k in campos_modelo})

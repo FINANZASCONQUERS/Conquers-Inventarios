@@ -676,6 +676,7 @@
                                     <option value="">Todos</option>
                                     <option value="PROGRAMADO">Programado</option>
                                     <option value="CARGANDO">Cargando</option>
+                                    <option value="CARGADO">Cargado</option>
                                     <option value="DESPACHADO">Despachado</option>
                                 </select>
                             </div>
@@ -1038,7 +1039,7 @@
             'producto_a_cargar': {
                 width: '160px',
                 type: 'datalist',
-                options: ['FUEL OIL 4', 'FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO'],
+                options: ['FUEL OIL 4', 'FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO', 'FUEL OIL - COMBUSTOLEO'],
                 normalize: true  // Activar normalización automática
             },
             'tipo_guia': {
@@ -1055,7 +1056,7 @@
             'nombre_conductor': { width: '350px' },
             'cedula_conductor': { width: '160px' },
             'celular_conductor': { width: '140px' },
-            'estado': { width: '150px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'DESPACHADO'] },
+            'estado': { width: '150px', type: 'select', options: ['PROGRAMADO', 'CARGANDO', 'CARGADO', 'DESPACHADO'] },
             'galones': { width: '120px', type: 'number' },
             'barriles': { width: '120px', type: 'number', readonly: true },
             'temperatura': { width: '120px', type: 'number' },
@@ -2062,8 +2063,8 @@
     function renderBody(data) {
         Array.from(despachadoLockTimers.keys()).forEach(cancelDespachadoTimer);
         tbody.innerHTML = '';
-        // Ordenar por estado: PROGRAMADO (blanco) arriba, CARGANDO (amarillo) segundo, DESPACHADO (verde) último
-        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'DESPACHADO': 2 };
+        // Ordenar por estado: PROGRAMADO (blanco) arriba, CARGANDO (amarillo) segundo, CARGADO (naranja) tercero, DESPACHADO (verde) último
+        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'CARGADO': 2, 'DESPACHADO': 3 };
         const sortedData = data.slice().map((r, i) => ({ _origIndex: i, _row: r })).sort((a, b) => {
             const ea = (a._row.estado || 'PROGRAMADO').toUpperCase();
             const eb = (b._row.estado || 'PROGRAMADO').toUpperCase();
@@ -2169,7 +2170,7 @@
                     // Renderizar un SELECT para tipo_guia y otros campos select
                     let options = config.options || [];
                     if (col === 'estado' && userEmail === 'refinery.control@conquerstrading.com') {
-                        options = ['PROGRAMADO', 'CARGANDO'];
+                        options = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
                     }
                     let selectHtml = `<select class="form-select form-select-sm border-0 bg-transparent editable-select" data-col="${col}">`;
                     selectHtml += `<option value="">Seleccionar...</option>`;
@@ -3062,7 +3063,7 @@
             select.className = 'form-select form-select-sm shadow-sm';
             let opts = config.options || [];
             if (userEmail === 'refinery.control@conquerstrading.com') {
-                opts = ['PROGRAMADO', 'CARGANDO'];
+                opts = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
             }
             opts.forEach(opt => {
                 const option = document.createElement('option');
@@ -3420,6 +3421,16 @@
             if (stickyCol) {
                 stickyCol.style.background = '#fffaeb';
             }
+        } else if (estado === 'CARGADO') {
+            cells.forEach(cell => {
+                cell.style.background = '#fff3e0';
+                if (cell !== stickyCol) {
+                    cell.style.borderLeft = '4px solid #fd7e14';
+                }
+            });
+            if (stickyCol) {
+                stickyCol.style.background = '#fff8f0';
+            }
         } else if (estado === 'DESPACHADO') {
             cells.forEach(cell => {
                 cell.style.background = '#e8f5e9';
@@ -3445,6 +3456,7 @@
 
         // Mostrar toast de confirmación
         const estadoTexto = estado === 'CARGANDO' ? 'En Cargue' :
+            estado === 'CARGADO' ? 'Cargado' :
             estado === 'DESPACHADO' ? 'Despachado' : 'Programado';
         showToast('success', `Estado actualizado a: ${estadoTexto}`);
     }
@@ -3481,7 +3493,7 @@
     function sortTableRows() {
         const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
         if (rows.length === 0) return;
-        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'DESPACHADO': 2 };
+        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'CARGADO': 2, 'DESPACHADO': 3 };
         rows.sort((a, b) => {
             const ea = (a.dataset.estado || 'PROGRAMADO').toUpperCase();
             const eb = (b.dataset.estado || 'PROGRAMADO').toUpperCase();
@@ -3732,9 +3744,11 @@
             pageData.forEach((row, index) => {
                 const globalIndex = start + index + 1;
                 const estadoClass = row.estado === 'DESPACHADO' ? 'bg-success-subtle' :
-                    row.estado === 'CARGANDO' ? 'bg-warning-subtle' : '';
+                    row.estado === 'CARGANDO' ? 'bg-warning-subtle' :
+                    row.estado === 'CARGADO' ? 'bg-orange-subtle' : '';
                 const estadoBadge = row.estado === 'DESPACHADO' ? 'success' :
-                    row.estado === 'CARGANDO' ? 'warning' : 'secondary';
+                    row.estado === 'CARGANDO' ? 'warning' :
+                    row.estado === 'CARGADO' ? 'orange' : 'secondary';
 
                 const tr = document.createElement('tr');
                 tr.className = estadoClass;
@@ -5113,9 +5127,23 @@
         border-left: 4px solid #ffc107;
     }
 
+    .tbody-modern tr[data-estado="CARGADO"] td {
+        background: #fff3e0 !important;
+        border-left: 4px solid #fd7e14;
+    }
+
     .tbody-modern tr[data-estado="DESPACHADO"] td {
         background: #e8f5e9 !important;
         border-left: 4px solid #0B8552;
+    }
+
+    .bg-orange {
+        background-color: #fd7e14 !important;
+        color: white !important;
+    }
+
+    .bg-orange-subtle {
+        background-color: #ffe0b2 !important;
     }
 
     /* ========================================
@@ -5363,6 +5391,10 @@
 
     .tbody-modern tr[data-estado="CARGANDO"] .sticky-col {
         background: #fffaeb !important;
+    }
+
+    .tbody-modern tr[data-estado="CARGADO"] .sticky-col {
+        background: #fff8f0 !important;
     }
 
     .tbody-modern tr[data-estado="DESPACHADO"] .sticky-col {

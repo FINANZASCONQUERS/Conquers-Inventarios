@@ -382,6 +382,12 @@
             border-color: #b7dfe7;
         }
 
+        .estado-pill.cargado {
+            background: #ffe8cc;
+            color: #a64f00;
+            border-color: #ffd8b3;
+        }
+
         .estado-pill.despachado {
             background: #d1e7dd;
             color: #0f5132;
@@ -961,6 +967,9 @@
             const current = safeValue(estado).toUpperCase();
             if (current === 'DESPACHADO') {
                 return 'despachado';
+            }
+            if (current === 'CARGADO') {
+                return 'cargado';
             }
             if (current === 'PROGRAMADO' || current === 'CARGANDO') {
                 return 'programado';
