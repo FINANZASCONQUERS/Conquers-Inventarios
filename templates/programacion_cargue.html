@@ -2845,8 +2845,11 @@
                 const field = cell.dataset.field;
                 let value;
                 const input = cell.querySelector('input.editable-input');
+                const select = cell.querySelector('select.editable-select');
                 if (input) {
                     value = input.value.trim();
+                } else if (select) {
+                    value = select.value;
                 } else {
                     value = cell.textContent.trim();
                 }
