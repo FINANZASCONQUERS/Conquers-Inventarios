@@ -1226,6 +1226,133 @@
         let conductores = {{ lista_conductores | default ([]) | tojson | safe
     }};
     let contextoModalConductor = { rowId: null };
+    let contextoModalCliente = { rowId: null };
+
+    // --- Nuevo: Guardar/Actualizar Cliente ---
+    const btnGuardarCliente = document.getElementById('btnGuardarCliente');
+    const modalClienteEl = document.getElementById('modalAgregarCliente');
+
+    if (modalClienteEl) {
+        modalClienteEl.addEventListener('hidden.bs.modal', () => {
+            contextoModalCliente.rowId = null;
+        });
+    }
+
+    async function sincronizarFilaProgramacionDesdeCliente(clienteData) {
+        const rowId = contextoModalCliente.rowId;
+        if (!rowId) return;
+
+        const row = tbody.querySelector(`tr[data-id="${rowId}"]`);
+        if (!row) return;
+
+        const nombreCliente = clienteData.NOMBRE_CLIENTE || clienteData.nombre || '';
+        const ciudadDepto = clienteData.CIUDAD_DEPARTAMENTO || clienteData.ciudad || '';
+        const ciudadSolo = extraerCiudadSolo(ciudadDepto);
+
+        const payload = {
+            cliente: nombreCliente || null,
+            destino: ciudadSolo || null
+        };
+
+        const statusIndicator = row.querySelector('.save-indicator');
+        if (statusIndicator) {
+            statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
+        }
+
+        try {
+            const resp = await fetch(`/api/programacion/${rowId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await resp.json();
+
+            if (resp.ok && result.success) {
+                setRowFieldEditorValue(row, 'cliente', nombreCliente);
+                if (ciudadSolo) {
+                    setRowFieldEditorValue(row, 'destino', ciudadSolo);
+                }
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+                }
+            } else {
+                const msg = result?.message || 'No se pudo actualizar la fila de programación.';
+                showToast('warning', `Cliente guardado, pero la fila no se actualizó: ${msg}`);
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                }
+            }
+        } catch (err) {
+            showToast('warning', 'Cliente guardado, pero hubo error actualizando la fila actual.');
+            if (statusIndicator) {
+                statusIndicator.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+            }
+        }
+    }
+
+    if (btnGuardarCliente) {
+        btnGuardarCliente.addEventListener('click', async function () {
+            const nombreInput = document.getElementById('nombreNuevoCliente');
+            const direccionInput = document.getElementById('direccionNuevoCliente');
+            const ciudadInput = document.getElementById('ciudadNuevoCliente');
+
+            const nombre = (nombreInput?.value || '').trim();
+            const direccion = (direccionInput?.value || '').trim();
+            const ciudad = (ciudadInput?.value || '').trim();
+
+            if (!nombre || !direccion || !ciudad) {
+                showToast('warning', 'Todos los campos son obligatorios (Nombre, Dirección y Ciudad)');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+
+            try {
+                const response = await fetch('/agregar_cliente_ajax', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, direccion, ciudad })
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    const nuevoCliente = result.nuevo_cliente || {
+                        NOMBRE_CLIENTE: nombre,
+                        DIRECCION: direccion,
+                        CIUDAD_DEPARTAMENTO: ciudad
+                    };
+
+                    const idx = clientes.findIndex(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === (nuevoCliente.NOMBRE_CLIENTE || '').toUpperCase());
+                    if (idx >= 0) {
+                        clientes[idx] = nuevoCliente;
+                    } else {
+                        clientes.push(nuevoCliente);
+                    }
+
+                    actualizarDatalistClientes();
+                    actualizarDatalistCiudades();
+
+                    await sincronizarFilaProgramacionDesdeCliente(nuevoCliente);
+
+                    const modalEl = document.getElementById('modalAgregarCliente');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalInstance.hide();
+
+                    showToast('success', `Cliente '${nuevoCliente.NOMBRE_CLIENTE}' guardado con éxito.`);
+                } else {
+                    showToast('danger', result.message || 'No se pudo guardar el cliente.');
+                }
+            } catch (error) {
+                console.error('[CLIENTE] Error guardando cliente:', error);
+                showToast('danger', 'Error de comunicación con el servidor al guardar el cliente.');
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Guardar Cliente';
+            }
+        });
+    }
 
     // --- Nuevo: Guardar/Actualizar Conductor (SISTEMA COMPLETO) ---
     const btnGuardarConductor = document.getElementById('btnGuardarConductor');
@@ -1525,7 +1652,22 @@
         });
     }
 
-    // --- FUNCIÓN: Refrescar conductores desde el servidor ---
+    // --- FUNCIÓN: Refrescar clientes desde el servidor ---
+    async function refrescarClientesDesdeServidor() {
+        try {
+            const resp = await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now());
+            if (resp.ok) {
+                const data = await resp.json();
+                if (Array.isArray(data)) {
+                    clientes = data;
+                    actualizarDatalistClientes();
+                    actualizarDatalistCiudades();
+                }
+            }
+        } catch (err) {
+            console.error('[SYNC] Error refrescando clientes:', err);
+        }
+    }
     async function refrescarConductoresDesdeServidor() {
         try {
             const resp = await fetch('/api/conductores');
@@ -1653,7 +1795,9 @@
 
     // Llamada inicial
     cargarDatos();
+    refrescarClientesDesdeServidor();
     setInterval(refrescarConductoresDesdeServidor, 60000);
+    setInterval(refrescarClientesDesdeServidor, 60000);
 
     // --- NUEVO: Filtrado Dinámico para Rendimiento (Typeahead) ---
     tbody.addEventListener('input', function (e) {
@@ -1792,12 +1936,12 @@
         if (btnAdd) {
             // Lógica existente para Agregar Nuevo
             if (field === 'cliente') {
-                contextoModalConductor.rowId = null;
+                contextoModalCliente.rowId = rowContext ? rowContext.dataset.id : null;
                 const modalEl = document.getElementById('modalAgregarCliente');
                 const form = document.getElementById('formAgregarCliente');
                 form.reset();
                 document.getElementById('nombreNuevoCliente').value = val;
-                const modal = new bootstrap.Modal(modalEl);
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 modal.show();
             } else {
                 // ABRIR MODAL EN MODO CREAR CONDUCTOR
