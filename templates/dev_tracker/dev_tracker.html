@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}DevTracker | Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dev_tracker.css') }}?v=1.0">
+{% endblock %}
+
+{% block container_class %}container-fluid px-3 px-lg-4 py-3{% endblock %}
+
+{% block page_header %}
+<div class="dt-header mb-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1 fw-bold"><i class="bi bi-kanban-fill text-primary me-2"></i>DevTracker</h1>
+            <p class="text-muted mb-0 small">Tickets de desarrollo, compromisos de fecha, errores y despliegues.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-secondary" id="btnPlantilla" type="button">
+                <i class="bi bi-list-check me-1"></i>Plantilla
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                    <i class="bi bi-download me-1"></i>Exportar
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="/api/dev-tracker/export?formato=csv">
+                            <i class="bi bi-file-earmark-spreadsheet me-2 text-success"></i>CSV (Excel)</a></li>
+                    <li><a class="dropdown-item" href="/api/dev-tracker/export?formato=json">
+                            <i class="bi bi-filetype-json me-2 text-warning"></i>JSON (respaldo)</a></li>
+                </ul>
+            </div>
+            <button class="btn btn-primary" id="btnNuevoTicket" type="button">
+                <i class="bi bi-plus-circle me-1"></i>Registro directo
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dt-app">
+
+    <!-- Métricas -->
+    <div class="row g-2 g-lg-3 mb-3" id="panelMetricas">
+        <div class="col-6 col-lg">
+            <div class="dt-metrica" data-tono="neutro">
+                <span class="dt-metrica-valor" id="mTotalActivos">–</span>
+                <span class="dt-metrica-label">Activos</span>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="dt-metrica" data-tono="info">
+                <span class="dt-metrica-valor" id="mEnPruebas">–</span>
+                <span class="dt-metrica-label">En pruebas</span>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="dt-metrica" data-tono="peligro">
+                <span class="dt-metrica-valor" id="mRetrasados">–</span>
+                <span class="dt-metrica-label">Retrasados</span>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="dt-metrica" data-tono="alerta">
+                <span class="dt-metrica-valor" id="mBugs">–</span>
+                <span class="dt-metrica-label">Errores abiertos</span>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="dt-metrica" data-tono="exito">
+                <span class="dt-metrica-valor" id="mCumplimiento">–</span>
+                <span class="dt-metrica-label">Entregas a tiempo</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navegación -->
+    <ul class="nav nav-pills dt-tabs mb-3" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" data-vista="tablero" type="button">
+                <i class="bi bi-kanban me-1"></i>Tablero
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" data-vista="lista" type="button">
+                <i class="bi bi-list-ul me-1"></i>Lista
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link position-relative" data-vista="bandeja" type="button">
+                <i class="bi bi-inbox me-1"></i>Bandeja
+                <span class="badge rounded-pill bg-danger d-none" id="badgeBandeja">0</span>
+            </button>
+        </li>
+    </ul>
+
+    <!-- Filtros -->
+    <div class="dt-filtros card border-0 shadow-sm mb-3" id="barraFiltros">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-12 col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-transparent"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-control" id="fBusqueda"
+                            placeholder="Buscar por título, descripción, código o solicitante...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" id="fPrioridad">
+                        <option value="">Toda prioridad</option>
+                        {% for p in prioridades %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" id="fPlazo">
+                        <option value="">Todo plazo</option>
+                        <option value="retrasado">Retrasados</option>
+                        <option value="por_vencer">Próximos a vencer</option>
+                        <option value="a_tiempo">A tiempo</option>
+                        <option value="sin_fecha">Sin fecha</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <select class="form-select form-select-sm" id="fOrigen">
+                        <option value="">Todo origen</option>
+                        <option value="portal">Del portal</option>
+                        <option value="directo">Registro directo</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" id="fHistorico">
+                        <label class="form-check-label small" for="fHistorico">Ver histórico</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista tablero -->
+    <div id="vistaTablero">
+        <div class="dt-kanban">
+            {% for estado, etiqueta in estados_tablero %}
+            <section class="dt-columna" data-estado="{{ estado }}">
+                <header class="dt-columna-head">
+                    <span class="dt-columna-titulo">{{ etiqueta }}</span>
+                    <span class="badge rounded-pill dt-contador" data-contador="{{ estado }}">0</span>
+                </header>
+                {% if estado == 'En Produccion' %}
+                <p class="dt-columna-nota">Últimos {{ dias_ventana_produccion }} días</p>
+                {% endif %}
+                <div class="dt-columna-body" data-drop="{{ estado }}"></div>
+            </section>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Vista lista -->
+    <div id="vistaLista" class="d-none">
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 dt-tabla">
+                    <thead>
+                        <tr>
+                            <th data-orden="estado" role="button">Código</th>
+                            <th>Título</th>
+                            <th class="d-none d-lg-table-cell">Solicitante</th>
+                            <th data-orden="prioridad" role="button">Prioridad</th>
+                            <th data-orden="estado" role="button">Estado</th>
+                            <th data-orden="fecha_comprometida" role="button">Compromiso</th>
+                            <th>Plazo</th>
+                            <th class="text-center">Errores</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoLista"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista bandeja -->
+    <div id="vistaBandeja" class="d-none">
+        <h6 class="text-muted mb-2 d-none" id="tituloFallas">
+            <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+            Fallas reportadas sobre lo entregado — falta clasificarlas
+        </h6>
+        <div id="listaFallas" class="mb-4"></div>
+
+        <div id="listaBandeja"></div>
+        <h6 class="text-muted mt-4 mb-2 d-none" id="tituloEsperando">
+            <i class="bi bi-hourglass-split me-1"></i>Esperando al solicitante
+        </h6>
+        <div id="listaEsperando"></div>
+    </div>
+</div>
+
+<!-- Modal detalle de ticket -->
+<div class="modal fade" id="modalTicket" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ticketTitulo">Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="ticketCuerpo"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal registro directo -->
+<div class="modal fade" id="modalNuevo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle text-primary me-2"></i>Registro directo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formNuevo">
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Para lo que te piden por WhatsApp, correo o llamada. Entra directo al tablero,
+                        sin pasar por la bandeja.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="nTitulo">Título <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nTitulo" maxlength="200" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="nDescripcion">Descripción</label>
+                        <textarea class="form-control" id="nDescripcion" rows="4"></textarea>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="nSolicitante">Quién lo pidió</label>
+                            <input type="text" class="form-control" id="nSolicitante"
+                                placeholder="Nombre de la persona o área">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="nPrioridad">Prioridad</label>
+                            <select class="form-select" id="nPrioridad">
+                                {% for p in prioridades %}
+                                <option value="{{ p }}" {% if p=='Media' %}selected{% endif %}>{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold" for="nFecha">Me comprometo a</label>
+                            <input type="date" class="form-control" id="nFecha">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>Crear ticket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal triage -->
+<div class="modal fade" id="modalTriage" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="triageTitulo">Revisar solicitud</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="triageCuerpo"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.DT_CONFIG = {
+        prioridades: {{ prioridades| tojson }},
+    severidades: {{ severidades| tojson }},
+    etapas: {{ etapas| tojson }},
+    estados: {{ estados_tablero| tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/dev_tracker.js') }}?v=1.0"></script>
+{% endblock %}

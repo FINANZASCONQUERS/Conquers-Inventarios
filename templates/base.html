@@ -633,7 +633,25 @@ defecto seguros. #}
                             <i class="bi bi-file-earmark-zip me-1"></i> Consolidar Facturas
                         </a>
                     </li>
+                    <!-- DevTracker: portal de solicitudes para todos; tablero solo para desarrollo -->
+                    {% set devtracker_admins = ['numbers@conquerstrading.com'] %}
+                    {% if session.get('email', '').lower() in devtracker_admins %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'dev_tracker_bp.espacio_dev' %}active{% endif %}"
+                            href="{{ url_for('dev_tracker_bp.espacio_dev') }}" title="Tickets de desarrollo">
+                            <i class="bi bi-kanban-fill me-1"></i> DevTracker
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'dev_tracker_bp.portal_solicitudes' %}active{% endif %}"
+                            href="{{ url_for('dev_tracker_bp.portal_solicitudes') }}"
+                            title="Pedir un desarrollo o mejora del sistema">
+                            <i class="bi bi-lightbulb me-1"></i> Solicitar Desarrollo
+                        </a>
+                    </li>
                     {% endif %}
+
                     <li class="nav-item">
                         <a class="nav-link" href="javascript:history.back()" title="Volver a la página anterior">
                             <i class="bi bi-arrow-left-circle me-1"></i> Regresar

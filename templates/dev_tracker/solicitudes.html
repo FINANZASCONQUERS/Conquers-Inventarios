@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitar Desarrollo | Conquers Trading{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dev_tracker.css') }}?v=1.0">
+{% endblock %}
+
+{% block page_header %}
+<div class="dt-header mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+            <h1 class="h3 mb-1 fw-bold"><i class="bi bi-lightbulb text-warning me-2"></i>Solicitar Desarrollo</h1>
+            <p class="text-muted mb-0">
+                Pide una mejora o un desarrollo nuevo del sistema y consulta en qué va lo que ya pediste.
+            </p>
+        </div>
+        <button class="btn btn-primary btn-lg" type="button" data-bs-toggle="modal" data-bs-target="#modalRadicar">
+            <i class="bi bi-plus-circle me-2"></i>Nueva solicitud
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dt-portal">
+
+    <div class="alert alert-info d-flex align-items-start gap-2 border-0 shadow-sm">
+        <i class="bi bi-info-circle-fill fs-5"></i>
+        <div class="small">
+            Indica <strong>qué tan urgente</strong> lo necesitas y <strong>para cuándo</strong> te serviría.
+            La fecha de entrega la confirma el desarrollador cuando revisa la solicitud: ahí verás aquí
+            el compromiso real.
+        </div>
+    </div>
+
+    <div id="misSolicitudes" class="row g-3 mt-1">
+        <div class="col-12 text-center text-muted py-5" id="cargandoSolicitudes">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 mb-0 small">Cargando tus solicitudes...</p>
+        </div>
+    </div>
+
+    <div class="dt-vacio text-center py-5 d-none" id="sinSolicitudes">
+        <i class="bi bi-inbox display-4 text-muted opacity-50"></i>
+        <p class="mt-3 mb-1 fw-semibold">Todavía no has pedido nada</p>
+        <p class="text-muted small mb-3">Cuando radiques un requerimiento aparecerá aquí con su avance.</p>
+        <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalRadicar">
+            <i class="bi bi-plus-circle me-2"></i>Radicar el primero
+        </button>
+    </div>
+</div>
+
+<!-- Modal: radicar / reenviar -->
+<div class="modal fade" id="modalRadicar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloModalRadicar">
+                    <i class="bi bi-lightbulb text-warning me-2"></i>Nueva solicitud de desarrollo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formRadicar">
+                <div class="modal-body">
+                    <input type="hidden" id="reRadicarId" value="">
+
+                    <div class="alert alert-warning d-none small" id="avisoDevolucion"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="titulo">¿Qué necesitas? <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="titulo" maxlength="200" required
+                            placeholder="Ej: Agregar columna de placa al reporte de tránsito">
+                        <div class="form-text">Una frase corta. El detalle va abajo.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="descripcion">Explícalo con detalle</label>
+                        <textarea class="form-control" id="descripcion" rows="5"
+                            placeholder="¿Qué haces hoy?, ¿qué te gustaría que hiciera el sistema?, ¿cada cuánto lo usas? Entre más claro, menos preguntas después."></textarea>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="urgencia">¿Qué tan urgente es?</label>
+                            <select class="form-select" id="urgencia">
+                                <option value="">Sin definir</option>
+                                {% for p in prioridades %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="fechaDeseada">¿Para cuándo te serviría?</label>
+                            <input type="date" class="form-control" id="fechaDeseada">
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border mt-3 mb-0 small text-muted">
+                        <i class="bi bi-person-check me-1"></i>
+                        Se radica a nombre de <strong>{{ usuario.nombre or usuario.email }}</strong>.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnEnviarSolicitud">
+                        <i class="bi bi-send me-2"></i>Radicar solicitud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: reportar falla / pedir ajuste sobre algo ya entregado -->
+<div class="modal fade" id="modalPosventa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="posventaTitulo">Sobre lo entregado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formPosventa">
+                <div class="modal-body">
+                    <input type="hidden" id="posventaId" value="">
+                    <input type="hidden" id="posventaTipo" value="">
+
+                    <div class="alert border-0 small" id="posventaAyuda"></div>
+
+                    <div class="mb-3" id="grupoPosventaTitulo">
+                        <label class="form-label fw-semibold" for="posventaCampoTitulo">
+                            ¿Qué ajuste necesitas? <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="posventaCampoTitulo" maxlength="200"
+                            placeholder="Ej: Que el reporte también se pueda exportar a Excel">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="posventaDescripcion" id="posventaLabelDesc">
+                            Detalle
+                        </label>
+                        <textarea class="form-control" id="posventaDescripcion" rows="5"></textarea>
+                    </div>
+
+                    <div class="row g-3" id="grupoPosventaUrgencia">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="posventaUrgencia">¿Qué tan urgente es?</label>
+                            <select class="form-select" id="posventaUrgencia">
+                                <option value="">Sin definir</option>
+                                {% for p in prioridades %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="posventaFecha">¿Para cuándo te serviría?</label>
+                            <input type="date" class="form-control" id="posventaFecha">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnEnviarPosventa">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: detalle -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="detalleTitulo">Detalle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="detalleCuerpo"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dev_tracker_portal.js') }}?v=1.0"></script>
+{% endblock %}

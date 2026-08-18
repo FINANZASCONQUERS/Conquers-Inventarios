@@ -19788,6 +19788,15 @@ def api_cronograma_reorder(empresa):
 from pricing.routes import pricing_bp
 app.register_blueprint(pricing_bp)
 
+# --- Blueprint DevTracker (tickets de desarrollo) ---
+# Lista blanca por correo, no por rol: en este sistema rol='admin' significa
+# "ve todo el inventario" (lo tienen 3 personas), no "es el desarrollador".
+app.config['DEVTRACKER_ADMIN_EMAILS'] = ['numbers@conquerstrading.com']
+
+import dev_tracker.models  # noqa: F401  (registra las tablas en el metadata)
+from dev_tracker.routes import dev_tracker_bp
+app.register_blueprint(dev_tracker_bp)
+
 from pricing.models import HistorialCombustibles
 # Asegurar que todas las tablas existan (incluyendo la nueva MovimientoDian)
 with app.app_context():
@@ -19817,6 +19826,14 @@ with app.app_context():
         db.session.execute(text("ALTER TABLE registros_transito ADD COLUMN transportadora VARCHAR(100)"))
         db.session.commit()
     except:
+        db.session.rollback()
+
+    # Plantilla inicial de puntos de revisión del DevTracker (idempotente:
+    # solo siembra si la tabla está vacía, no pisa lo que el usuario edite).
+    try:
+        from dev_tracker.models import sembrar_checklist_por_defecto
+        sembrar_checklist_por_defecto()
+    except Exception:
         db.session.rollback()
 
 @app.route('/api/transito/webhook_n8n', methods=['POST'])
