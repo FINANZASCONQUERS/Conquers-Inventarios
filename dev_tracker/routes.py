@@ -42,6 +42,14 @@ from dev_tracker.models import (
     PRIORIDADES,
     SEVERIDADES,
     SEVERIDAD_SIN_CLASIFICAR,
+    EVENTO_ACEPTADA,
+    EVENTO_A_PRODUCCION,
+    EVENTO_A_PRUEBAS,
+    EVENTO_DEVUELTA,
+    EVENTO_FALLA_PRODUCCION,
+    EVENTO_RECHAZADA,
+    DevEmailPref,
+    correos_activos_para,
     DevChecklistTemplate,
     DevTicket,
     DevTicketBug,
@@ -52,6 +60,7 @@ from dev_tracker.models import (
     sembrar_checklist_por_defecto,
     siguiente_code,
 )
+from dev_tracker.notificaciones import encolar
 from dev_tracker.tiempo import (
     DIAS_VENTANA_PRODUCCION,
     ahora_utc,
@@ -445,6 +454,30 @@ def api_re_radicar(ticket_id):
     return jsonify(success=True, solicitud=_ticket_publico(ticket))
 
 
+@dev_tracker_bp.route('/api/solicitudes/preferencias-correo', methods=['GET', 'POST'])
+@login_requerido
+def api_preferencias_correo():
+    """Interruptor de avisos por correo. Cada quien controla solo el suyo."""
+    email = session.get('email', '')
+
+    if request.method == 'GET':
+        return jsonify(success=True, activo=correos_activos_para(email))
+
+    datos = request.get_json(silent=True) or {}
+    activo = bool(datos.get('activo'))
+
+    pref = db.session.get(DevEmailPref, email)
+    if pref is None:
+        pref = DevEmailPref(email=email, activo=activo)
+        db.session.add(pref)
+    else:
+        pref.activo = activo
+    pref.actualizado_en = ahora_utc()
+    db.session.commit()
+
+    return jsonify(success=True, activo=activo)
+
+
 def _mi_ticket_o_error(ticket_id):
     """Carga un ticket verificando que sea del usuario en sesión."""
     ticket = db.session.get(DevTicket, ticket_id)
@@ -496,6 +529,13 @@ def api_reportar_falla(ticket_id):
     )
     db.session.add(bug)
     ticket.actualizado_en = ahora_utc()
+    db.session.flush()
+
+    # Una falla sobre algo que YA está en producción no puede esperar al resumen
+    # de mañana. Las de pruebas sí: ahí el desarrollo todavía no lo usa nadie.
+    if ticket.estado == ESTADO_EN_PRODUCCION:
+        for admin in _correos_autorizados():
+            encolar(EVENTO_FALLA_PRODUCCION, ticket, admin, bug=bug)
     db.session.commit()
 
     return jsonify(success=True, solicitud=_ticket_publico(ticket)), 201
@@ -695,6 +735,16 @@ def api_resolver_triage(ticket_id):
     ))
     _registrar_transicion(ticket, estado_previo, ticket.estado)
     ticket.actualizado_en = ahora
+
+    # El aviso al solicitante se ENCOLA, no se envía aquí: la petición nunca
+    # espera al servidor de correo y hay 10 minutos para deshacer.
+    encolar(
+        {'aceptar': EVENTO_ACEPTADA,
+         'devolver': EVENTO_DEVUELTA,
+         'rechazar': EVENTO_RECHAZADA}[accion],
+        ticket,
+        ticket.solicitante_email,
+    )
     db.session.commit()
 
     return jsonify(success=True, ticket=_ticket_dev(ticket, completo=True))
@@ -1015,6 +1065,14 @@ def api_actualizar_ticket(ticket_id):
             ticket.fecha_solicitud = ahora
         if nuevo_estado in ESTADOS_TABLERO and not ticket.checklist:
             copiar_checklist_de_plantilla(ticket)
+
+        # Solo dos etapas le importan a quien pidió: cuando necesitas que lo
+        # valide, y cuando ya lo puede usar. "En Desarrollo" no le sirve de nada
+        # y por eso no manda correo.
+        if nuevo_estado == ESTADO_EN_PRODUCCION:
+            encolar(EVENTO_A_PRODUCCION, ticket, ticket.solicitante_email)
+        elif nuevo_estado == ESTADO_EN_PRUEBAS and datos.get('solicitar_validacion'):
+            encolar(EVENTO_A_PRUEBAS, ticket, ticket.solicitante_email)
 
     ticket.actualizado_en = ahora
     db.session.commit()

@@ -428,3 +428,89 @@ def copiar_checklist_de_plantilla(ticket):
             verificado=False,
             es_personalizado=False,
         ))
+
+
+# ===========================================================================
+# Notificaciones por correo
+# ===========================================================================
+# Regla del modulo: un correo sale solo si le da a la persona informacion que
+# no tiene, que cambia lo que va a hacer, y que no provoco ella misma.
+#
+# Los correos NO se envian durante la peticion web: se escriben en esta cola y
+# un trabajo del scheduler los manda despues. Eso da tres cosas gratis: la
+# pantalla nunca se queda esperando al servidor de correo, un fallo de SMTP no
+# rompe el guardado del ticket, y el retraso permite CANCELAR un aviso si el
+# ticket volvio atras antes de que saliera.
+
+EVENTO_ACEPTADA = 'triage_aceptada'
+EVENTO_DEVUELTA = 'triage_devuelta'
+EVENTO_RECHAZADA = 'triage_rechazada'
+EVENTO_A_PRUEBAS = 'estado_pruebas_validar'
+EVENTO_A_PRODUCCION = 'estado_produccion'
+EVENTO_FALLA_PRODUCCION = 'falla_produccion'
+
+# Minutos de gracia antes de enviar. Si el ticket se mueve de nuevo dentro de
+# esta ventana, el aviso se cancela solo.
+RETRASO_MINUTOS = {
+    EVENTO_ACEPTADA: 10,
+    EVENTO_DEVUELTA: 10,
+    EVENTO_RECHAZADA: 10,
+    EVENTO_A_PRUEBAS: 10,
+    EVENTO_A_PRODUCCION: 10,
+    # Las fallas en produccion se agrupan: si llegan varias seguidas, sale un
+    # solo correo con todas.
+    EVENTO_FALLA_PRODUCCION: 15,
+}
+
+CORREO_PENDIENTE = 'pendiente'
+CORREO_ENVIANDO = 'enviando'
+CORREO_ENVIADO = 'enviado'
+CORREO_CANCELADO = 'cancelado'
+CORREO_FALLIDO = 'fallido'
+
+
+class DevEmailOutbox(db.Model):
+    """Cola de correos por salir. Tambien es el registro anti-duplicados."""
+
+    __tablename__ = 'dev_email_outbox'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('dev_tickets.id'), nullable=True, index=True)
+    bug_id = db.Column(db.Integer, db.ForeignKey('dev_ticket_bugs.id'), nullable=True)
+    evento = db.Column(db.String(40), nullable=False, index=True)
+    destinatario = db.Column(db.String(150), nullable=False, index=True)
+    programado_para = db.Column(db.DateTime, nullable=False, index=True)
+    estado = db.Column(db.String(12), nullable=False, default=CORREO_PENDIENTE, index=True)
+    intentos = db.Column(db.Integer, nullable=False, default=0)
+    ultimo_error = db.Column(db.Text, nullable=True)
+    creado_en = db.Column(db.DateTime, nullable=False, default=ahora_utc)
+    enviado_en = db.Column(db.DateTime, nullable=True)
+
+    ticket = db.relationship('DevTicket', foreign_keys=[ticket_id])
+    bug = db.relationship('DevTicketBug', foreign_keys=[bug_id])
+
+    def __repr__(self):
+        return f'<DevEmailOutbox {self.evento} -> {self.destinatario} [{self.estado}]>'
+
+
+class DevEmailPref(db.Model):
+    """
+    Interruptor de correos por persona.
+
+    Ausencia de fila = activo. Asi nadie queda sin avisos por no haber entrado
+    nunca a configurar nada.
+    """
+
+    __tablename__ = 'dev_email_prefs'
+
+    email = db.Column(db.String(150), primary_key=True)
+    activo = db.Column(db.Boolean, nullable=False, default=True)
+    actualizado_en = db.Column(db.DateTime, nullable=False, default=ahora_utc, onupdate=ahora_utc)
+
+
+def correos_activos_para(email):
+    """True si esa persona quiere recibir avisos. Por defecto si."""
+    if not email:
+        return False
+    pref = db.session.get(DevEmailPref, email)
+    return True if pref is None else bool(pref.activo)

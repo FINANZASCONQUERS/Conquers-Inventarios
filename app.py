@@ -462,7 +462,6 @@ def send_reminders():
 
 # Inicializar el scheduler después de la configuración de la app
 scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
-scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
 scheduler.start()
 
 @app.route('/organigrama_rh')
@@ -2293,12 +2292,12 @@ USUARIOS = {
         "rol": "editor",
         "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "analisis_laboratorio", "siza_solicitante", "reportes"] 
     },
-    # Ricardo (Editor): Solo acceso a Barcaza BITA.
+    # Ricardo (Editor): Acceso a Barcaza BITA, Análisis Laboratorio, Control Calidad y Reportes (Visual de Planta).
     "quality.manager@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ricardo Congo",
         "rol": "editor",
-        "area": ["barcaza_bita", "analisis_laboratorio"]
+        "area": ["barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
     },
     # Omar (Viewer): Rol limitado para ver reportes.
     "omar.morales@conquerstrading.com": {
@@ -7755,22 +7754,23 @@ def dashboard_reportes():
     modulos_usuario = []
 
     # 1. Operaciones de Planta / Producción
-    if is_admin or 'planta' in user_areas:
+    if is_admin or 'planta' in user_areas or 'reportes' in user_areas:
+        solo_reporte = ('planta' not in user_areas and not is_admin)
         modulos_usuario.append({
             'id': 'planta',
             'categoria': 'Producción',
-            'titulo': 'Operaciones de Planta',
-            'descripcion': 'Gestión de tanques, mediciones diarias de inventario y reporte operativo de producción.',
+            'titulo': 'Reporte de Planta' if solo_reporte else 'Operaciones de Planta',
+            'descripcion': 'Visualización y reporte operativo de tanques y producción.' if solo_reporte else 'Gestión de tanques, mediciones diarias de inventario y reporte operativo de producción.',
             'icono': 'bi-buildings-fill',
             'color': 'danger',
             'bg_gradient': 'linear-gradient(135deg, #FFE8D1 0%, #FFD4A3 100%)',
             'color_hex': '#EA580C',
             'badge': 'Producción',
-            'url_principal': url_for('planta'),
-            'nombre_btn': 'Planilla Planta',
+            'url_principal': url_for('reporte_planta') if solo_reporte else url_for('planta'),
+            'nombre_btn': 'Ver Reporte' if solo_reporte else 'Planilla Planta',
             'sub_links': [
                 {'nombre': 'Reporte Planta', 'url': url_for('reporte_planta'), 'icono': 'bi-file-earmark-bar-graph'}
-            ]
+            ] if not solo_reporte else []
         })
 
     # 2. Programación de Despachos
@@ -19871,10 +19871,17 @@ app.register_blueprint(pricing_bp)
 # Lista blanca por correo, no por rol: en este sistema rol='admin' significa
 # "ve todo el inventario" (lo tienen 3 personas), no "es el desarrollador".
 app.config['DEVTRACKER_ADMIN_EMAILS'] = ['numbers@conquerstrading.com']
+# Hora (Bogotá) del único resumen diario. Si no hay novedades, no se envía.
+app.config['DEVTRACKER_HORA_RESUMEN'] = os.environ.get('DEVTRACKER_HORA_RESUMEN', '07:30')
 
 import dev_tracker.models  # noqa: F401  (registra las tablas en el metadata)
 from dev_tracker.routes import dev_tracker_bp
 app.register_blueprint(dev_tracker_bp)
+
+# Correos: la cola se vacía cada 2 minutos y el resumen sale una vez al día.
+# Nada de esto ocurre dentro de una petición web.
+from dev_tracker.notificaciones import registrar_trabajos as _devtracker_jobs
+_devtracker_jobs(app, scheduler)
 
 # --- Blueprint Facturación de Despachos ---
 import facturacion.models  # noqa: F401

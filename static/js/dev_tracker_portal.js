@@ -375,5 +375,34 @@
             });
     });
 
+    // --- interruptor de correos -------------------------------------------
+    var switchCorreos = document.getElementById('switchCorreos');
+    if (switchCorreos) {
+        fetch('/api/solicitudes/preferencias-correo', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { switchCorreos.checked = !!(d && d.activo); })
+            .catch(function () { });
+
+        switchCorreos.addEventListener('change', function () {
+            fetch('/api/solicitudes/preferencias-correo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify({ activo: switchCorreos.checked })
+            }).then(function () {
+                Swal.fire({
+                    icon: 'success',
+                    title: switchCorreos.checked ? 'Avisos activados' : 'Avisos desactivados',
+                    text: switchCorreos.checked
+                        ? 'Te llegará correo cuando acepten tu solicitud y cuando quede entregada.'
+                        : 'No te llegarán más correos. Puedes seguir consultando el avance aquí.',
+                    timer: 2600,
+                    showConfirmButton: false
+                });
+            });
+        });
+    }
+
     cargar();
 })();

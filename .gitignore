@@ -35,6 +35,6 @@ upload_modelo_temp.xlsx
 .vscode/
 .idea/
 
-# --- Archivos de prueba (no subir) ---
-test_*.py
-*_test.py
+# --- Archivos de prueba temporales en la raiz o scratch (no subir) ---
+/test_*.py
+/scratch/

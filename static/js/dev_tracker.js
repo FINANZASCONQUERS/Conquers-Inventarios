@@ -165,10 +165,30 @@
         });
     }
 
-    function cambiarEstado(id, nuevoEstado, confirmado) {
+    function cambiarEstado(id, nuevoEstado, confirmado, validacion) {
+        // Al mover a Pruebas se pregunta si necesitas que el solicitante lo
+        // valide. Solo entonces le llega correo: avisar sin pedirle nada es ruido.
+        if (nuevoEstado === 'En Pruebas' && validacion === undefined) {
+            Swal.fire({
+                icon: 'question',
+                title: 'Pasa a Pruebas',
+                text: '¿Necesitas que el solicitante lo valide? Si dices que sí, le llega un correo pidiéndoselo.',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, avísale',
+                cancelButtonText: 'No, yo lo pruebo'
+            }).then(function (r) {
+                cambiarEstado(id, nuevoEstado, confirmado, !!r.isConfirmed);
+            });
+            return;
+        }
+
         api('/api/dev-tracker/tickets/' + id, {
             method: 'PUT',
-            body: JSON.stringify({ estado: nuevoEstado, confirmar: !!confirmado })
+            body: JSON.stringify({
+                estado: nuevoEstado,
+                confirmar: !!confirmado,
+                solicitar_validacion: !!validacion
+            })
         }).then(function (res) {
             // 409 con advertencias = falta confirmación explícita (FR-021, FR-025, FR-011)
             if (res.status === 409 && res.d && res.d.requiere_confirmacion) {
@@ -183,7 +203,7 @@
                     cancelButtonText: 'Cancelar',
                     confirmButtonColor: '#dc3545'
                 }).then(function (r) {
-                    if (r.isConfirmed) cambiarEstado(id, nuevoEstado, true);
+                    if (r.isConfirmed) cambiarEstado(id, nuevoEstado, true, validacion);
                     else recargar();
                 });
                 return;
