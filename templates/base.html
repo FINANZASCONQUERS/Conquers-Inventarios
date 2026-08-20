@@ -181,63 +181,25 @@ defecto seguros. #}
 
                     <!-- Botón de acceso rápido a planillas (solo para usuarios no admin o todos, pero menú completo solo en admin) -->
                     {% set user_planillas = [] %}
-                    {% if 'zisa_inventory' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('inventario_zisa', 'Inventario SIZA', 'box-seam')) %}{% endif %}
-                    {% if 'barcaza_orion' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('barcaza_orion', 'Planilla Orion', 'water')) %}{% endif %}
-                    {% if 'barcaza_bita' in session.get('area', []) %}{% set _ = user_planillas.append(('barcaza_bita',
-                    'Planilla BITA', 'tsunami')) %}{% endif %}
-                    {% if 'planta' in session.get('area', []) %}{% set _ = user_planillas.append(('planta', 'Planilla
-                    Planta', 'buildings-fill')) %}{% endif %}
-                    {% if 'transito' in session.get('area', []) %}{% set _ = user_planillas.append(('transito',
-                    'Planilla Tránsito', 'cone-striped')) %}{% endif %}
-                    {% if 'guia_transporte' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
-                    {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'droplet-fill')) %}{% endif
-                    %}
-                    {% if 'planilla_precios' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
-                    {% if 'flujo_efectivo' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('flujo_efectivo', 'Flujo de Efectivo', 'cash-coin')) %}{% endif %}
-                    {% set allowed_trasiegos = [
-                    'production@conquerstrading.com',
-                    'ignacio@conquerstrading.com',
-                    'refinery.control@conquerstrading.com',
-                    'qualitycontrol@conquerstrading.com',
-                    'quality.manager@conquerstrading.com'
-                    ] %}
-                    {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
-                    {% if 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in
-                    allowed_trasiegos or session.get('rol') == 'admin' %}
-                    {% set _ = user_planillas.append(('trasiegos_page', 'Trasiegos TK→Barcaza', 'arrow-left-right')) %}
+                    {% if 'planta' in session.get('area', []) %}{% set _ = user_planillas.append(('planta', 'Planilla Planta', 'buildings-fill')) %}{% endif %}
+                    {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
+                    {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'droplet-fill')) %}{% endif %}
+                    {% if 'planilla_precios' in session.get('area', []) %}{% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
+                    {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
+                    {% set _ = user_planillas.append(('facturacion_bp.facturacion_despachos', 'Facturación de Despachos', 'receipt')) %}
                     {% endif %}
+                    {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'] %}
                     {% if 'programacion_cargue' in session.get('area', []) %}
-                    {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Despachos',
-                    'calendar-check')) %}
+                    {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Despachos', 'calendar-check')) %}
                     {% endif %}
                     {% if 'programacion_base' in session.get('area', []) %}
-                    {% set _ = user_planillas.append(('programacion_base', 'Pedidos',
-                    'table')) %}
+                    {% set _ = user_planillas.append(('programacion_base', 'Pedidos', 'table')) %}
                     {% endif %}
                     {% if 'control_remolcadores' in session.get('area', []) %}
-                    {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores',
-                    'life-preserver')) %}
+                    {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores', 'life-preserver')) %}
                     {% endif %}
-                    {% if 'control_calidad' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('control_calidad', 'Reporte Análisis de Calidad', 'clipboard-check')) %}{%
-                    endif %}
-                    {% if 'analisis_laboratorio' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('analisis_laboratorio', 'Análisis de Laboratorio', 'flask')) %}{%
-                    endif %}
-                    {% if 'inventario_epp' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('inventario_epp_home', 'Inventario EPP', 'hard-hat')) %}
-                    {% endif %}
-                    {% if 'modelo_optimizacion' in session.get('area', []) %}{% set _ =
-                    user_planillas.append(('modelo_optimizacion_page', 'Modelo Optimización', 'cpu')) %}{% endif %}
-                    {% if 'siza_solicitante' in session.get('area', []) or 'siza_gestor' in session.get('area', []) %}{%
-                    set _ = user_planillas.append(('dashboard_siza', 'Control Cupo SIZA', 'shield-check')) %}{% endif %}
-                    {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
+                    {% if 'control_calidad' in session.get('area', []) %}{% set _ = user_planillas.append(('control_calidad', 'Reporte Análisis de Calidad', 'clipboard-check')) %}{% endif %}
+                    {% if 'analisis_laboratorio' in session.get('area', []) %}{% set _ = user_planillas.append(('analisis_laboratorio', 'Análisis de Laboratorio', 'flask')) %}{% endif %}
                     {% if session.get('email', '').lower() in panel_allowed %}
                     {% set _ = user_planillas.append(('panel_enturnamiento', 'Panel de Enturnamiento', 'list-check')) %}
                     {% endif %}
@@ -252,64 +214,6 @@ defecto seguros. #}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-scrollable shadow-lg"
                             aria-labelledby="planillasDropdown" style="min-width: 280px;">
-                            <!-- 📦 INVENTARIOS -->
-                            {% if 'zisa_inventory' in session.get('area', []) or 'siza_solicitante' in
-                            session.get('area', []) or 'siza_gestor' in session.get('area', []) or 'inventario_epp' in
-                            session.get('area', []) %}
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i
-                                        class="bi bi-box-seam-fill me-2"></i>Inventarios</h6>
-                            </li>
-                            {% if 'zisa_inventory' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'inventario_zisa' %}active{% endif %}"
-                                    href="{{ url_for('inventario_zisa') }}"><i
-                                        class="bi bi-box-seam me-2 text-info"></i>Inventario SIZA</a></li>
-                            {% endif %}
-                            {% if 'inventario_epp' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'inventario_epp_home' %}active{% endif %}"
-                                    href="{{ url_for('inventario_epp_home') }}"><i
-                                        class="bi bi-hard-hat me-2 text-success"></i>Inventario EPP</a></li>
-                            {% endif %}
-                            {% if 'siza_solicitante' in session.get('area', []) or 'siza_gestor' in session.get('area',
-                            []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'dashboard_siza' %}active{% endif %}"
-                                    href="{{ url_for('dashboard_siza') }}"><i
-                                        class="bi bi-shield-check me-2 text-warning"></i>Control Cupo SIZA</a></li>
-                            {% endif %}
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            {% endif %}
-
-                            <!-- 🚢 BARCAZAS -->
-                            {% if 'barcaza_orion' in session.get('area', []) or 'barcaza_bita' in session.get('area',
-                            []) or 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in
-                            allowed_trasiegos %}
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i class="bi bi-water me-2"></i>Barcazas</h6>
-                            </li>
-                            {% if 'barcaza_orion' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'barcaza_orion' %}active{% endif %}"
-                                    href="{{ url_for('barcaza_orion') }}"><i
-                                        class="bi bi-water me-2 text-primary"></i>Planilla Orion</a></li>
-                            {% endif %}
-                            {% if 'barcaza_bita' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'barcaza_bita' %}active{% endif %}"
-                                    href="{{ url_for('barcaza_bita') }}"><i
-                                        class="bi bi-tsunami me-2 text-info"></i>Planilla BITA</a></li>
-                            {% endif %}
-                            {% if 'trasiegos_page' in session.get('area', []) or session.get('email', '').lower() in
-                            allowed_trasiegos %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'trasiegos_page' %}active{% endif %}"
-                                    href="{{ url_for('trasiegos_page') }}"><i
-                                        class="bi bi-arrow-left-right me-2 text-secondary"></i>Trasiegos TK→Barcaza</a>
-                            </li>
-                            {% endif %}
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            {% endif %}
-
                             <!-- 🏭 PRODUCCIÓN -->
                             {% if 'planta' in session.get('area', []) or 'simulador_rendimiento' in session.get('area',
                             []) or 'control_calidad' in session.get('area', []) or 'analisis_laboratorio' in session.get('area', []) or 'programacion_base' in
@@ -349,17 +253,12 @@ defecto seguros. #}
                             {% endif %}
 
                             <!-- 🚛 LOGÍSTICA -->
-                            {% if 'transito' in session.get('area', []) or 'guia_transporte' in session.get('area', [])
+                            {% if 'guia_transporte' in session.get('area', [])
                             or 'programacion_cargue' in session.get('area', []) or session.get('email', '').lower()
                             in panel_allowed %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-truck me-2"></i>Logística</h6>
                             </li>
-                            {% if 'transito' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'transito' %}active{% endif %}"
-                                    href="{{ url_for('transito') }}"><i
-                                        class="bi bi-cone-striped me-2 text-warning"></i>Planilla Tránsito</a></li>
-                            {% endif %}
                             {% if 'guia_transporte' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'guia_transporte' %}active{% endif %}"
                                     href="{{ url_for('guia_transporte') }}"><i
@@ -395,13 +294,17 @@ defecto seguros. #}
                             </li>
                             {% endif %}
 
-                            <!-- 💰 FINANZAS -->
-                            {% if 'planilla_precios' in session.get('area', []) or 'flujo_efectivo' in
-                            session.get('area', []) %}
+                            <!-- 💰 FINANZAS Y FACTURACIÓN -->
+                            {% if 'planilla_precios' in session.get('area', []) or 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-cash-stack me-2"></i>Finanzas
                                 </h6>
                             </li>
+                            {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'facturacion_bp.facturacion_despachos' %}active{% endif %}"
+                                    href="{{ url_for('facturacion_bp.facturacion_despachos') }}"><i
+                                        class="bi bi-receipt me-2 text-primary"></i>Facturación de Despachos</a></li>
+                            {% endif %}
                             {% if 'planilla_precios' in session.get('area', []) %}
                             <li>
                                 <a class="dropdown-item d-flex justify-content-between align-items-center"
@@ -426,24 +329,6 @@ defecto seguros. #}
                                 </div>
                             </li>
                             {% endif %}
-                            {% if 'flujo_efectivo' in session.get('area', []) %}
-                            <li><a class="dropdown-item {% if request.endpoint == 'flujo_efectivo' %}active{% endif %}"
-                                    href="{{ url_for('flujo_efectivo') }}"><i
-                                        class="bi bi-cash-coin me-2 text-warning"></i>Flujo de Efectivo</a></li>
-                            {% endif %}
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            {% endif %}
-
-                            <!-- 🔧 OPTIMIZACIÓN -->
-                            {% if 'modelo_optimizacion' in session.get('area', []) %}
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i class="bi bi-cpu me-2"></i>Optimización</h6>
-                            </li>
-                            <li><a class="dropdown-item {% if request.endpoint == 'modelo_optimizacion_page' %}active{% endif %}"
-                                    href="{{ url_for('modelo_optimizacion_page') }}"><i
-                                        class="bi bi-cpu me-2 text-info"></i>Modelo Optimización</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -453,11 +338,11 @@ defecto seguros. #}
                             {% if 'reportes' in session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i
-                                        class="bi bi-bar-chart-fill me-2"></i>Reportes</h6>
+                                        class="bi bi-speedometer2 me-2"></i>Panel</h6>
                             </li>
                             <li><a class="dropdown-item {% if request.endpoint == 'dashboard_reportes' %}active{% endif %}"
                                     href="{{ url_for('dashboard_reportes') }}"><i
-                                        class="bi bi-bar-chart-fill me-2 text-primary"></i>Dashboard Reportes</a></li>
+                                        class="bi bi-speedometer2 me-2 text-primary"></i>Panel de Control</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
@@ -486,38 +371,6 @@ defecto seguros. #}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-scrollable shadow-lg"
                             aria-labelledby="adminDropdown" style="min-width: 280px;">
-                            <!-- 📦 INVENTARIOS -->
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i
-                                        class="bi bi-box-seam-fill me-2"></i>Inventarios</h6>
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('inventario_zisa') }}"><i
-                                        class="bi bi-box-seam me-2 text-info"></i>Inventario SIZA</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('inventario_epp') }}"><i
-                                        class="bi bi-shield-fill-check me-2 text-success"></i>Inventario EPP</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('dashboard_siza') }}"><i
-                                        class="bi bi-shield-check me-2 text-warning"></i>Control Cupo SIZA</a></li>
-
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-
-                            <!-- 🚢 BARCAZAS -->
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i class="bi bi-water me-2"></i>Barcazas</h6>
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('barcaza_orion') }}"><i
-                                        class="bi bi-water me-2 text-primary"></i>Planilla Orion</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('barcaza_bita') }}"><i
-                                        class="bi bi-tsunami me-2 text-info"></i>Planilla BITA</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('trasiegos_page') }}"><i
-                                        class="bi bi-arrow-left-right me-2 text-secondary"></i>Trasiegos TK→Barcaza</a>
-                            </li>
-
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-
                             <!-- 🏭 PRODUCCIÓN -->
                             <li>
                                 <h6 class="dropdown-header text-primary"><i
@@ -542,8 +395,6 @@ defecto seguros. #}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-truck me-2"></i>Logística</h6>
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('transito') }}"><i
-                                        class="bi bi-cone-striped me-2 text-warning"></i>Planilla Tránsito</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('guia_transporte') }}"><i
                                         class="bi bi-truck me-2 text-success"></i>Generar Guía</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i
@@ -595,10 +446,8 @@ defecto seguros. #}
                                     </ul>
                                 </div>
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('flujo_efectivo') }}"><i
-                                        class="bi bi-cash-coin me-2 text-warning"></i>Flujo de Efectivo</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('modelo_optimizacion_page') }}"><i
-                                        class="bi bi-cpu me-2 text-info"></i>Modelo Optimización</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('facturacion_bp.facturacion_despachos') }}"><i
+                                        class="bi bi-receipt me-2 text-primary"></i>Facturación de Despachos</a></li>
 
                             <li>
                                 <hr class="dropdown-divider">
@@ -612,17 +461,7 @@ defecto seguros. #}
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('organigrama_rh') }}"><i
                                         class="bi bi-diagram-3-fill me-2 text-primary"></i>Organigrama RH</a></li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
                             {% endif %}
-
-                            <!-- 🔧 UTILIDADES -->
-                            <li>
-                                <h6 class="dropdown-header text-primary"><i class="bi bi-tools me-2"></i>Utilidades</h6>
-                            </li>
-                            <li><a class="dropdown-item" href="{{ url_for('aforos_page') }}"><i
-                                        class="bi bi-list-columns me-2 text-secondary"></i>Tablas de Aforo</a></li>
                         </ul>
                     </li>
                     {% endif %}

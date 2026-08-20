@@ -881,6 +881,11 @@ class ProgramacionCargue(db.Model):
     # Imagen de la guía (base64)
     imagen_guia = db.Column(db.Text, nullable=True)
 
+    # Campos de Facturación
+    fecha_factura = db.Column(db.Date, nullable=True)
+    mes_facturado = db.Column(db.String(20), nullable=True)
+    codigo_transporte = db.Column(db.String(100), nullable=True)
+
     # Auditoría
     ultimo_editor = db.Column(db.String(100))
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1056,6 +1061,13 @@ def _ensure_tipo_guia_column():
                 print("[INIT] No se pudo añadir columna tipo_guia:", e)
 
 _ensure_tipo_guia_column()
+
+# Asegurar columnas de Facturación en programacion_cargue y tablas de importación
+try:
+    from facturacion.models import _ensure_facturacion_schema
+    _ensure_facturacion_schema(app)
+except Exception as e:
+    print("[INIT] Error inicializando esquema de Facturación:", e)
 
 # Asegurar que las tablas de SIZA tengan todas sus columnas
 def _ensure_siza_schema():
@@ -2242,8 +2254,13 @@ def login_required(f):
     return decorated_function
 
 @app.before_request
-def log_request():
-    print(f"??  {request.method} {request.path}")
+def sync_user_session():
+    if 'email' in session:
+        user_info = USUARIOS.get(session['email'].lower())
+        if user_info:
+            session['rol'] = user_info['rol']
+            session['area'] = user_info['area']
+            session['nombre'] = user_info['nombre']
 
 USUARIOS = {
 
@@ -2255,14 +2272,14 @@ USUARIOS = {
         "area": [] 
     },
 
-    # Carlos (Admin): Tiene acceso a todo.
+    # Carlos (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
-        "rol": "admin",
-        "area": [] # El admin no necesita áreas específicas, su rol le da acceso a todo.
+        "rol": "editor",
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
     },
-    # Brandon (Admin): Acceso total, igual que Carlos.
+    # Brandon (Admin): Acceso total.
     "logistics.inventory@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Brandon Niño",
@@ -2302,7 +2319,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue"] 
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
     },
     
     # Ignacio (Editor): Solo acceso a Planta y Rendimientos
@@ -2312,19 +2329,19 @@ USUARIOS = {
         "rol": "editor",
         "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base"] 
     },
-    # Juliana (Editor): Tiene acceso a Tránsito, Generar Guía y SIZA Solicitante.
+    # Juliana (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
     },
-    # Samantha (Editor): Tiene acceso a Generar Guía y SIZA Solicitante.
+    # Samantha (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["guia_transporte", "programacion_cargue", "siza_solicitante", "programacion_base"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
     },
 
     "comex@conquerstrading.com": {
@@ -2339,14 +2356,6 @@ USUARIOS = {
         "nombre": "Shirli Diaz",
         "rol": "editor",
         "area": ["programacion_cargue", "siza_solicitante", "siza_gestor"] 
-    },
-
-    # SIZA - Solicitantes (solo pueden ver y solicitar pedidos)
-    "carlos.baron@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Carlos Baron",
-        "rol": "editor",
-        "area": ["siza_solicitante", "programacion_base"]
     },
 
     "juandiego.cuadros@conquerstrading.com": {
@@ -2374,7 +2383,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),       
         "nombre": "Kelly Suarez",
         "rol": "editor",
-        "area": ["contabilidad"] 
+        "area": ["contabilidad", "facturacion"] 
     },
         "amariagallo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -2414,14 +2423,14 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Kevin Marin",
         "rol": "editor",
-        "area": ["Contabilidad"]
+        "area": ["contabilidad", "facturacion"]
     },
 
     "accounting@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Jaime Rodriguez",
         "rol": "viewer",
-        "area": ["Contabilidad"] 
+        "area": ["contabilidad", "facturacion"] 
     },
 
 
@@ -7737,200 +7746,262 @@ def guardar_registro_barcaza():
 @login_required
 @app.route('/dashboard_reportes')
 def dashboard_reportes():
-    # El permiso de acceso no necesita cambios
-    user_areas = session.get('area', [])
-    if session.get('rol') != 'admin' and len(user_areas) == 1 and user_areas[0] == 'guia_transporte':
-        return redirect(url_for('home_logistica'))
+    user_email = session.get('email', '').lower()
+    user_info = USUARIOS.get(user_email, {})
+    is_admin = (user_info.get('rol') == 'admin') if user_info else (session.get('rol') == 'admin')
+    user_areas = user_info.get('area', session.get('area', [])) if user_info else session.get('area', [])
 
-    # --- Resumen para PLANTA ---
-    planta_summary = {'datos': [], 'info_completa': 'Sin Registros'}
-    try:
-        registros_planta = db.session.query(RegistroPlanta).all()
-        # Filtramos para asegurarnos de que solo usamos registros con fecha
-        registros_validos = [r for r in registros_planta if r.timestamp]
-        if registros_validos:
-            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
-            planta_summary['datos'] = registros_validos
-            planta_summary['info_completa'] = formatear_info_actualizacion(
-            ultimo_registro.timestamp, ultimo_registro.usuario
-            )
-    except Exception as e:
-        print(f"Error al cargar resumen de Planta: {e}")
+    # Lista dinámica de módulos autorizados y activos para el usuario
+    modulos_usuario = []
 
-    # --- Resumen para BARCAZA ORION ---
-    orion_summary = {'datos': [], 'info_completa': 'Sin Registros'}
-    try:
-        registros_orion = db.session.query(RegistroBarcazaOrion).all()
-        registros_validos = [r for r in registros_orion if r.timestamp]
-        if registros_validos:
-            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
-            orion_summary['datos'] = registros_validos
-            orion_summary['info_completa'] = formatear_info_actualizacion(
-                ultimo_registro.timestamp, ultimo_registro.usuario
-            )
-    except Exception as e:
-        print(f"Error al cargar resumen de Orion: {e}")
-
-    # --- Resumen para BARCAZA BITA ---
-    bita_summary = {'datos': [], 'info_completa': 'Sin Registros'}
-    try:
-        registros_bita = db.session.query(RegistroBarcazaBita).all()
-        registros_validos = [r for r in registros_bita if r.timestamp]
-        if registros_validos:
-            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
-            bita_summary['datos'] = registros_validos
-            bita_summary['info_completa'] = formatear_info_actualizacion(
-                ultimo_registro.timestamp, ultimo_registro.usuario
-            )
-    except Exception as e:
-        print(f"Error al cargar resumen de BITA: {e}")
-
-    # --- Resumen para TRÁNSITO ---
-    transito_summary = {'datos': [], 'refineria_count': 0, 'edms_count': 0, 'otros_count': 0, 'info_completa': 'Sin Registros'}
-    try:
-        registros_transito = db.session.query(RegistroTransito).all()
-        registros_validos = [r for r in registros_transito if r.timestamp]
-        if registros_validos:
-            ultimo_registro = max(registros_validos, key=lambda r: r.timestamp)
-            transito_summary['datos'] = registros_validos
-            transito_summary['info_completa'] = formatear_info_actualizacion(
-                ultimo_registro.timestamp, ultimo_registro.usuario
-            )
-            transito_summary['refineria_count'] = sum(1 for r in registros_validos if r.tipo_transito == 'refineria')
-            transito_summary['edms_count'] = sum(1 for r in registros_validos if r.tipo_transito == 'general')
-            
-    except Exception as e:
-        print(f"Error al cargar resumen de Tránsito: {e}")
-
-    # --- Construcción de ALERTAS ÚTILES ---
-    alerts = []  # Cada alerta: {severity, category, message, icon}
-
-    def add_alert(severity, category, message):
-        icon_map = {
-            'danger': 'exclamation-octagon-fill',
-            'warning': 'exclamation-triangle-fill',
-            'info': 'info-circle-fill',
-            'success': 'check-circle-fill'
-        }
-        alerts.append({
-            'severity': severity,
-            'category': category,
-            'message': message,
-            'icon': icon_map.get(severity, 'info-circle')
+    # 1. Operaciones de Planta / Producción
+    if is_admin or 'planta' in user_areas:
+        modulos_usuario.append({
+            'id': 'planta',
+            'categoria': 'Producción',
+            'titulo': 'Operaciones de Planta',
+            'descripcion': 'Gestión de tanques, mediciones diarias de inventario y reporte operativo de producción.',
+            'icono': 'bi-buildings-fill',
+            'color': 'danger',
+            'bg_gradient': 'linear-gradient(135deg, #FFE8D1 0%, #FFD4A3 100%)',
+            'color_hex': '#EA580C',
+            'badge': 'Producción',
+            'url_principal': url_for('planta'),
+            'nombre_btn': 'Planilla Planta',
+            'sub_links': [
+                {'nombre': 'Reporte Planta', 'url': url_for('reporte_planta'), 'icono': 'bi-file-earmark-bar-graph'}
+            ]
         })
 
-    now_utc = datetime.utcnow()
+    # 2. Programación de Despachos
+    if is_admin or 'programacion_cargue' in user_areas:
+        modulos_usuario.append({
+            'id': 'programacion_cargue',
+            'categoria': 'Logística',
+            'titulo': 'Programación de Despachos',
+            'descripcion': 'Planificación de cargues, asignación de cisternas, turnos de despacho y seguimiento.',
+            'icono': 'bi-calendar-check-fill',
+            'color': 'primary',
+            'bg_gradient': 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)',
+            'color_hex': '#0284C7',
+            'badge': 'Logística',
+            'url_principal': url_for('programacion_cargue'),
+            'nombre_btn': 'Ver Programación',
+            'sub_links': []
+        })
 
-    # Helper para obtener último por clave (tk) de una lista de registros con timestamp
-    def latest_by(records, attr):
-        latest = {}
-        for r in records:
-            key = getattr(r, attr, None)
-            if key is None:
-                continue
-            cur = latest.get(key)
-            if not cur or r.timestamp > cur.timestamp:
-                latest[key] = r
-        return list(latest.values())
+    # 3. Generar Guía de Transporte
+    if is_admin or 'guia_transporte' in user_areas:
+        modulos_usuario.append({
+            'id': 'guia_transporte',
+            'categoria': 'Logística',
+            'titulo': 'Generar Guía de Transporte',
+            'descripcion': 'Generación y control de guías oficiales de transporte terrestre para despachos.',
+            'icono': 'bi-truck',
+            'color': 'success',
+            'bg_gradient': 'linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)',
+            'color_hex': '#16A34A',
+            'badge': 'Transporte',
+            'url_principal': url_for('guia_transporte'),
+            'nombre_btn': 'Generar Guía',
+            'sub_links': []
+        })
 
-    # Planta: niveles bajos / altos y desactualización
-    try:
-        if planta_summary['datos']:
-            latest_tanques = latest_by(planta_summary['datos'], 'tk')
-            low, high = [], []
-            for r in latest_tanques:
-                if r.max_cap and r.bls_60 is not None:
-                    try:
-                        pct = (float(r.bls_60) / float(r.max_cap)) * 100 if r.max_cap else None
-                    except Exception:
-                        pct = None
-                    if pct is not None:
-                        if pct < 15:
-                            low.append((r.tk, pct))
-                        elif pct > 90:
-                            high.append((r.tk, pct))
-            if low:
-                detalle = ', '.join(f"{tk}:{pct:.1f}%" for tk, pct in low[:4])
-                add_alert('warning', 'PLANTA', f'Tanques con nivel bajo (<15%): {detalle}' + (' ...' if len(low) > 4 else ''))
-            if high:
-                detalle = ', '.join(f"{tk}:{pct:.1f}%" for tk, pct in high[:4])
-                add_alert('info', 'PLANTA', f'Tanques con nivel alto (>90%): {detalle}' + (' ...' if len(high) > 4 else ''))
-            # Staleness (último update > 24h)
-            ultimo = max(planta_summary['datos'], key=lambda r: r.timestamp)
-            if (now_utc - ultimo.timestamp).total_seconds() > 24*3600:
-                add_alert('danger', 'PLANTA', 'Inventario sin actualización en las últimas 24 horas.')
-        else:
-            add_alert('info', 'PLANTA', 'Sin registros de inventario disponibles.')
-    except Exception:
-        add_alert('warning', 'PLANTA', 'Error evaluando niveles de planta.')
+    # 4. Facturación de Despachos
+    if is_admin or 'facturacion' in user_areas or 'contabilidad' in user_areas:
+        modulos_usuario.append({
+            'id': 'facturacion',
+            'categoria': 'Contabilidad & Facturación',
+            'titulo': 'Facturación de Despachos',
+            'descripcion': 'Gestión de facturación operativa, conciliación de viajes y control de despachos facturados.',
+            'icono': 'bi-receipt-cutoff',
+            'color': 'purple',
+            'bg_gradient': 'linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%)',
+            'color_hex': '#7C3AED',
+            'badge': 'Facturación',
+            'url_principal': url_for('facturacion_bp.facturacion_despachos'),
+            'nombre_btn': 'Facturación Despachos',
+            'sub_links': []
+        })
 
-    # Barcaza Orion / BITA: evaluar porcentaje total consolidado y staleness (>36h)
-    for summary, categoria in [
-        (orion_summary, 'ORION'),
-        (bita_summary, 'BITA')
-    ]:
-        try:
-            if summary['datos']:
-                latest_tanques = latest_by(summary['datos'], 'tk')
-                total_cap = 0.0
-                total_bls = 0.0
-                for r in latest_tanques:
-                    try:
-                        cap = float(r.max_cap) if r.max_cap is not None else 0
-                        bls = float(r.bls_60) if r.bls_60 is not None else 0
-                    except Exception:
-                        cap, bls = 0, 0
-                    total_cap += cap
-                    total_bls += bls
-                pct_total = (total_bls / total_cap * 100) if total_cap > 0 else None
-                if pct_total is not None:
-                    if pct_total < 10:
-                        add_alert('danger', categoria, f'Nivel crítico {pct_total:.1f}% (<10%).')
-                    elif pct_total < 15:
-                        add_alert('warning', categoria, f'Nivel consolidado bajo {pct_total:.1f}% (<15%).')
-                    elif pct_total > 90:
-                        add_alert('info', categoria, f'Nivel alto {pct_total:.1f}% (>90%).')
-                ultimo = max(summary['datos'], key=lambda r: r.timestamp)
-                if (now_utc - ultimo.timestamp).total_seconds() > 36*3600:
-                    add_alert('danger', categoria, 'Sin actualización en las últimas 36 horas.')
-            else:
-                add_alert('info', categoria, 'Sin registros cargados.')
-        except Exception:
-            add_alert('warning', categoria, 'Error evaluando niveles consolidados.')
+    # 5. Pedidos (Programación Base)
+    if is_admin or 'programacion_base' in user_areas:
+        modulos_usuario.append({
+            'id': 'programacion_base',
+            'categoria': 'Comercial',
+            'titulo': 'Gestión de Pedidos',
+            'descripcion': 'Registro base de pedidos de clientes, contratos, volúmenes y especificaciones.',
+            'icono': 'bi-table',
+            'color': 'success',
+            'bg_gradient': 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)',
+            'color_hex': '#059669',
+            'badge': 'Pedidos',
+            'url_principal': url_for('programacion_base'),
+            'nombre_btn': 'Ver Pedidos',
+            'sub_links': []
+        })
 
-    # Tránsito: registros incompletos últimas 24h y volumen de actividad
-    try:
-        if transito_summary['datos']:
-            recientes = [r for r in transito_summary['datos'] if (now_utc - r.timestamp).total_seconds() <= 24*3600]
-            if recientes:
-                incompletos = [r for r in recientes if r.api is None or r.bsw is None or r.nsv is None]
-                if incompletos:
-                    add_alert('warning', 'TRANSITO', f'Registros incompletos últimas 24h: {len(incompletos)} (API/BSW/NSV faltantes).')
-                # Actividad baja: menos de 3 registros 24h
-                if len(recientes) < 3:
-                    add_alert('info', 'TRANSITO', 'Baja actividad en las últimas 24 horas.')
-            else:
-                add_alert('info', 'TRANSITO', 'Sin movimientos registrados en las últimas 24 horas.')
-            ultimo = max(transito_summary['datos'], key=lambda r: r.timestamp)
-            if (now_utc - ultimo.timestamp).total_seconds() > 48*3600:
-                add_alert('danger', 'TRANSITO', 'Sin actualización en más de 48 horas.')
-        else:
-            add_alert('info', 'TRANSITO', 'Sin registros de tránsito disponibles.')
-    except Exception:
-        add_alert('warning', 'TRANSITO', 'Error evaluando registros de tránsito.')
+    # 6. Panel de Enturnamiento
+    panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com']
+    if is_admin or user_email in panel_allowed:
+        modulos_usuario.append({
+            'id': 'panel_enturnamiento',
+            'categoria': 'Logística',
+            'titulo': 'Panel de Enturnamiento',
+            'descripcion': 'Control en vivo de turnos de conductores, orden de llegada e ingreso a báscula.',
+            'icono': 'bi-list-check',
+            'color': 'info',
+            'bg_gradient': 'linear-gradient(135deg, #CFFAFE 0%, #A5F3FC 100%)',
+            'color_hex': '#0891B2',
+            'badge': 'Turnos',
+            'url_principal': url_for('panel_enturnamiento'),
+            'nombre_btn': 'Panel Enturnamiento',
+            'sub_links': []
+        })
 
-    # Ordenar alertas por severidad importancia
-    severity_rank = {'danger': 0, 'warning': 1, 'info': 2, 'success': 3}
-    alerts.sort(key=lambda a: severity_rank.get(a['severity'], 99))
+    # 7. Control Remolcadores
+    if is_admin or 'control_remolcadores' in user_areas:
+        modulos_usuario.append({
+            'id': 'control_remolcadores',
+            'categoria': 'Operaciones Fluviales',
+            'titulo': 'Control Remolcadores',
+            'descripcion': 'Seguimiento de operaciones fluviales, maniobras de remolcador y bitácora.',
+            'icono': 'bi-life-preserver',
+            'color': 'danger',
+            'bg_gradient': 'linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%)',
+            'color_hex': '#DC2626',
+            'badge': 'Fluvial',
+            'url_principal': url_for('control_remolcadores_page'),
+            'nombre_btn': 'Control Remolcadores',
+            'sub_links': []
+        })
 
-    # --- Renderizar la plantilla ---
+    # 8. Control de Calidad
+    if is_admin or 'control_calidad' in user_areas:
+        modulos_usuario.append({
+            'id': 'control_calidad',
+            'categoria': 'Calidad',
+            'titulo': 'Control de Calidad',
+            'descripcion': 'Certificados de calidad, registro de parámetros y cumplimiento de especificaciones.',
+            'icono': 'bi-clipboard-check-fill',
+            'color': 'teal',
+            'bg_gradient': 'linear-gradient(135deg, #CCFBF1 0%, #99F6E4 100%)',
+            'color_hex': '#0D9488',
+            'badge': 'Calidad',
+            'url_principal': url_for('control_calidad'),
+            'nombre_btn': 'Control Calidad',
+            'sub_links': []
+        })
+
+    # 9. Análisis de Laboratorio
+    if is_admin or 'analisis_laboratorio' in user_areas:
+        modulos_usuario.append({
+            'id': 'analisis_laboratorio',
+            'categoria': 'Laboratorio',
+            'titulo': 'Análisis de Laboratorio',
+            'descripcion': 'Registro de ensayos físico-químicos de crudo y derivados en laboratorio.',
+            'icono': 'bi-flask-fill',
+            'color': 'indigo',
+            'bg_gradient': 'linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%)',
+            'color_hex': '#4F46E5',
+            'badge': 'Ensayos',
+            'url_principal': url_for('analisis_laboratorio'),
+            'nombre_btn': 'Ver Análisis',
+            'sub_links': []
+        })
+
+    # 10. Simulador Rendimiento
+    if is_admin or 'simulador_rendimiento' in user_areas:
+        modulos_usuario.append({
+            'id': 'simulador_rendimiento',
+            'categoria': 'Producción',
+            'titulo': 'Simulador Rendimiento',
+            'descripcion': 'Simulación de rendimientos volumétricos y balance teórico de refinación.',
+            'icono': 'bi-droplet-half',
+            'color': 'primary',
+            'bg_gradient': 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)',
+            'color_hex': '#2563EB',
+            'badge': 'Simulación',
+            'url_principal': url_for('simulador_rendimiento'),
+            'nombre_btn': 'Simulador',
+            'sub_links': []
+        })
+
+    # 11. Planilla Precios
+    if is_admin or 'planilla_precios' in user_areas:
+        modulos_usuario.append({
+            'id': 'planilla_precios',
+            'categoria': 'Finanzas',
+            'titulo': 'Planilla de Precios',
+            'descripcion': 'Tarifarios y fórmulas de precios para F04 Premium y Gasoil Premium.',
+            'icono': 'bi-currency-exchange',
+            'color': 'success',
+            'bg_gradient': 'linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%)',
+            'color_hex': '#059669',
+            'badge': 'Precios',
+            'url_principal': url_for('pricing_bp.index'),
+            'nombre_btn': 'Precios F04',
+            'sub_links': [
+                {'nombre': 'Gasoil Premium', 'url': url_for('pricing_bp.gasoil_index'), 'icono': 'bi-droplet-fill'}
+            ]
+        })
+
+    # 12. Gestión de Compras
+    if is_admin or user_email == 'amariagallo@conquerstrading.com':
+        modulos_usuario.append({
+            'id': 'gestion_compras',
+            'categoria': 'Compras',
+            'titulo': 'Gestión de Compras',
+            'descripcion': 'Control de requisiciones, órdenes de compra y suministros operativos.',
+            'icono': 'bi-cart-check-fill',
+            'color': 'success',
+            'bg_gradient': 'linear-gradient(135deg, #DCFCE7 0%, #BBF7D0 100%)',
+            'color_hex': '#16A34A',
+            'badge': 'Compras',
+            'url_principal': url_for('gestion_compras'),
+            'nombre_btn': 'Gestión Compras',
+            'sub_links': []
+        })
+
+    # 13. Recursos Humanos (Organigrama)
+    if is_admin or user_email == 'human.resource@conquerstrading.com':
+        modulos_usuario.append({
+            'id': 'organigrama_rh',
+            'categoria': 'Recursos Humanos',
+            'titulo': 'Organigrama RH',
+            'descripcion': 'Estructura organizacional y perfiles de cargo de la empresa.',
+            'icono': 'bi-diagram-3-fill',
+            'color': 'indigo',
+            'bg_gradient': 'linear-gradient(135deg, #EDE9FE 0%, #DDD6FE 100%)',
+            'color_hex': '#6366F1',
+            'badge': 'Personal',
+            'url_principal': url_for('organigrama_rh'),
+            'nombre_btn': 'Organigrama RH',
+            'sub_links': []
+        })
+
+    # 14. Consolidar Facturas
+    if is_admin or user_email == 'accountingzf@conquerstrading.com':
+        modulos_usuario.append({
+            'id': 'consolidar_facturas',
+            'categoria': 'Contabilidad',
+            'titulo': 'Consolidar Facturas',
+            'descripcion': 'Descarga y empaquetado de facturas y soportes contables.',
+            'icono': 'bi-file-earmark-zip-fill',
+            'color': 'info',
+            'bg_gradient': 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)',
+            'color_hex': '#0284C7',
+            'badge': 'Contabilidad',
+            'url_principal': url_for('consolidar_facturas'),
+            'nombre_btn': 'Consolidar',
+            'sub_links': []
+        })
+
     return render_template("dashboard_reportes.html",
-                           nombre=session.get("nombre"),
-                           planta_summary=planta_summary,
-                           orion_summary=orion_summary,
-                           bita_summary=bita_summary,
-                           transito_summary=transito_summary,
-                           alerts=alerts)
+                           nombre=session.get("nombre", "Usuario"),
+                           email=user_email,
+                           rol=session.get("rol", "Usuario"),
+                           modulos_usuario=modulos_usuario)
 
 @login_required                        
 @app.route('/guardar-datos-planta', methods=['POST'])
@@ -12058,7 +12129,8 @@ def update_programacion(id):
         'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho'],
+        'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
@@ -12231,6 +12303,8 @@ def normalizar_programacion_mayusculas():
         'ops@conquerstrading.com',
         'production@conquerstrading.com',
         'logistic@conquerstrading.com',
+        'carlos.baron@conquerstrading.com',
+        'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com',
         'qualitycontrol@conquerstrading.com'
     }
@@ -12535,7 +12609,9 @@ def delete_programacion(id):
     usuarios_autorizados = {
         'ops@conquerstrading.com',
         'production@conquerstrading.com',
-        'logistic@conquerstrading.com'
+        'logistic@conquerstrading.com',
+        'carlos.baron@conquerstrading.com',
+        'oci@conquerstrading.com'
     }
     if session.get('email') not in usuarios_autorizados and session.get('rol') != 'admin':
         return jsonify(success=False, message='No tienes permiso para eliminar registros.'), 403
@@ -12697,6 +12773,7 @@ def buscar_reemplazar_programacion():
         'logistic@conquerstrading.com',
         'production@conquerstrading.com',
         'oci@conquerstrading.com',
+        'carlos.baron@conquerstrading.com',
         'amariagallo@conquerstrading.com'
     ]
     if session.get('rol') != 'admin' and session.get('email') not in usuarios_permitidos:
@@ -15460,7 +15537,7 @@ class Producto(db.Model):
     @login_required
     @app.route('/panel_enturnamiento')
     def panel_enturnamiento():
-        allowed_panel_emails = {'logistic@conquerstrading.com', 'ops@conquerstrading.com'}
+        allowed_panel_emails = {'logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'}
         email_actual = (session.get('email') or '').lower()
         if session.get('rol') != 'admin' and email_actual not in allowed_panel_emails:
             flash('Acceso restringido solo para el área de logística.', 'danger')
@@ -17889,6 +17966,8 @@ def depurar_conductores_ajax():
         'ops@conquerstrading.com',
         'logistic@conquerstrading.com',
         'production@conquerstrading.com',
+        'carlos.baron@conquerstrading.com',
+        'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com'
     }
 
@@ -19796,6 +19875,11 @@ app.config['DEVTRACKER_ADMIN_EMAILS'] = ['numbers@conquerstrading.com']
 import dev_tracker.models  # noqa: F401  (registra las tablas en el metadata)
 from dev_tracker.routes import dev_tracker_bp
 app.register_blueprint(dev_tracker_bp)
+
+# --- Blueprint Facturación de Despachos ---
+import facturacion.models  # noqa: F401
+from facturacion.routes import facturacion_bp
+app.register_blueprint(facturacion_bp)
 
 from pricing.models import HistorialCombustibles
 # Asegurar que todas las tablas existan (incluyendo la nueva MovimientoDian)

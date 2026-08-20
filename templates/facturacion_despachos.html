@@ -1,0 +1,1195 @@
+{% extends "base.html" %}
+{% block title %}Facturación de Despachos{% endblock %}
+{% block container_class %}container-fluid px-3 py-3{% endblock %}
+
+{% block content %}
+<div class="facturacion-page">
+    <style>
+        :root {
+            --fac-primary: #0b8552;
+            --fac-primary-dark: #086b42;
+            --fac-bg-soft: #f8f9fc;
+            --fac-border: #e3e6f0;
+        }
+
+        .facturacion-page {
+            min-height: calc(100vh - 120px);
+        }
+
+        .header-card {
+            background: white;
+            border-radius: 0.85rem;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            border-left: 5px solid var(--fac-primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .icon-badge {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, #0b8552 0%, #0e9d62 100%);
+            box-shadow: 0 4px 12px rgba(11, 133, 82, 0.25);
+        }
+
+        .kpi-card {
+            border: none;
+            border-radius: 0.75rem;
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            border-top: 3px solid transparent;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+        }
+
+        .kpi-card.kpi-total { border-top-color: #4e73df; }
+        .kpi-card.kpi-facturados { border-top-color: #1cc88a; }
+        .kpi-card.kpi-pendientes { border-top-color: #f6c23e; }
+        .kpi-card.kpi-galones { border-top-color: #36b9cc; }
+
+        .table-facturacion th {
+            font-size: 0.78rem !important;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background-color: #f1f5f9 !important;
+            color: #334155;
+            padding: 10px 8px !important;
+            white-space: nowrap;
+            vertical-align: middle;
+            border-bottom: 2px solid #cbd5e1;
+        }
+
+        .table-facturacion td {
+            font-size: 0.84rem !important;
+            padding: 6px 8px !important;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        /* Celdas de Facturación Editables - Alto contraste y visibilidad */
+        .editable-cell-input {
+            width: 100%;
+            border: 1px solid #cbd5e1 !important;
+            background: #ffffff !important;
+            color: #0f172a !important; /* Negro/Pizarra de alto contraste */
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .editable-cell-input:hover {
+            border-color: #0b8552 !important;
+            background: #ffffff !important;
+            box-shadow: 0 2px 5px rgba(11, 133, 82, 0.15);
+        }
+
+        .editable-cell-input:focus {
+            background: #ffffff !important;
+            border-color: #0b8552 !important;
+            color: #000000 !important;
+            box-shadow: 0 0 0 3px rgba(11, 133, 82, 0.2) !important;
+            outline: none;
+        }
+
+        .editable-cell-input::placeholder {
+            color: #94a3b8 !important;
+            font-weight: 500;
+            opacity: 1;
+        }
+
+        .field-factura {
+            color: #047857 !important; /* Verde esmeralda oscuro */
+            font-weight: 700 !important;
+            border-color: #86efac !important;
+            background: #f0fdf4 !important;
+        }
+
+        .field-factura:focus {
+            background: #ffffff !important;
+            border-color: #0b8552 !important;
+        }
+
+        .field-fecha-fac {
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            background: #ffffff !important;
+        }
+
+        .field-mes-fac {
+            color: #0f172a !important;
+            font-weight: 700 !important;
+            font-family: 'Courier New', monospace;
+            background: #f8fafc !important;
+            letter-spacing: 0.5px;
+        }
+
+        .field-codigo-trans {
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            background: #ffffff !important;
+        }
+
+        /* Estilo del picker de fecha nativo en Chromium, Firefox y Edge */
+        input[type="date"] {
+            color: #0f172a !important;
+            font-weight: 600 !important;
+        }
+        input[type="date"]::-webkit-datetime-edit,
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="date"]::-webkit-datetime-edit-month-field,
+        input[type="date"]::-webkit-datetime-edit-day-field,
+        input[type="date"]::-webkit-datetime-edit-year-field {
+            color: #0f172a !important;
+            font-weight: 600 !important;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.85;
+            filter: invert(30%) sepia(80%) saturate(600%) hue-rotate(110deg);
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .guia-badge {
+            font-family: 'Courier New', monospace;
+            font-size: 0.88rem;
+            font-weight: 700;
+            background: #e8f4f8;
+            color: #1b6d85;
+            padding: 3px 7px;
+            border-radius: 4px;
+            border: 1px solid #bce8f1;
+        }
+
+        .placa-badge {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.92rem !important;
+            font-weight: 800 !important;
+            background-color: #fef08a !important; /* Amarillo placa vehicular */
+            color: #0f172a !important;            /* Letras negras de alto contraste */
+            padding: 3px 8px;
+            border-radius: 5px;
+            border: 1.5px solid #eab308 !important; /* Borde amarillo nítido */
+            letter-spacing: 1px;
+            display: inline-block;
+            text-transform: uppercase;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+
+        .badge-facturado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            font-weight: 600;
+            border: 1px solid #badbcc;
+        }
+
+        .badge-pendiente {
+            background-color: #fff3cd;
+            color: #664d03;
+            font-weight: 600;
+            border: 1px solid #ffecb5;
+        }
+
+        .save-indicator {
+            display: inline-block;
+            width: 16px;
+            text-align: center;
+        }
+
+        .drag-drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .drag-drop-zone:hover, .drag-drop-zone.dragover {
+            border-color: var(--fac-primary);
+            background: rgba(11, 133, 82, 0.04);
+        }
+    </style>
+
+    <!-- Header Principal -->
+    <div class="header-card">
+        <div class="row align-items-center">
+            <div class="col-md-6 mb-3 mb-md-0">
+                <div class="d-flex align-items-center">
+                    <div class="icon-badge">
+                        <i class="bi bi-receipt"></i>
+                    </div>
+                    <div class="ms-3">
+                        <h4 class="fw-bold mb-0 text-dark">Facturación de Despachos</h4>
+                        <small class="text-muted">Control, registro de facturas y cruce por Número de Guía (2026)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+                    <button class="btn btn-outline-success btn-sm shadow-sm px-3" id="btn-exportar-excel">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Exportar Excel
+                    </button>
+                    {% if puede_importar %}
+                    <button class="btn btn-primary btn-sm shadow-sm px-3" data-bs-toggle="modal" data-bs-target="#modalImportarExcel">
+                        <i class="bi bi-cloud-arrow-up me-1"></i> Importar Excel (.xlsx)
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas KPI Principales: Vehículos, Barriles, Galones, Pendientes -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card kpi-total p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-bold">TOTAL VEHÍCULOS</span>
+                        <h4 class="fw-bold mb-0 text-dark" id="kpi-total-vehiculos">0</h4>
+                    </div>
+                    <div class="text-primary fs-3 opacity-75">
+                        <i class="bi bi-truck"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card kpi-facturados p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-bold">TOTAL BARRILES (BBL)</span>
+                        <h4 class="fw-bold mb-0" id="kpi-total-barriles" style="color: #d97706 !important;">0,00 BBL</h4>
+                    </div>
+                    <div class="fs-3 opacity-75" style="color: #d97706;">
+                        <i class="bi bi-fuel-pump"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card kpi-galones p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-bold">TOTAL GALONES (GAL)</span>
+                        <h4 class="fw-bold mb-0 text-info" id="kpi-total-galones">0,00 gal</h4>
+                    </div>
+                    <div class="text-info fs-3 opacity-75">
+                        <i class="bi bi-droplet-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card kpi-card kpi-pendientes p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="text-muted small fw-bold">PENDIENTES</span>
+                        <h4 class="fw-bold mb-0 text-warning" id="kpi-pendientes">0</h4>
+                    </div>
+                    <div class="text-warning fs-3 opacity-75">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Búsqueda y Selector Dinámico de Mes -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white text-primary fw-semibold"><i class="bi bi-calendar3 me-1"></i> Mes:</span>
+                        <select id="select-filtro-mes" class="form-select fw-semibold" style="cursor: pointer;">
+                            <option value="" selected>Todos los Meses</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="filtro-q" class="form-control border-start-0 ps-0" placeholder="Buscar por Guía, Factura, Cliente, Placa, Producto, Destino, Transportadora...">
+                    </div>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="btn-group btn-group-sm w-100" role="group" id="btn-group-estado">
+                        <button type="button" class="btn btn-outline-secondary active" data-estado="TODOS">
+                            <i class="bi bi-grid-fill me-1"></i> Todos
+                        </button>
+                        <button type="button" class="btn btn-outline-warning" data-estado="PENDIENTE">
+                            <i class="bi bi-hourglass-split me-1"></i> Pendientes
+                        </button>
+                        <button type="button" class="btn btn-outline-success" data-estado="FACTURADO">
+                            <i class="bi bi-check-circle me-1"></i> Facturados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 640px;">
+                <table class="table table-hover table-bordered table-facturacion align-middle mb-0">
+                    <thead class="sticky-top">
+                        <tr>
+                            <th style="width: 40px;" class="text-center">#</th>
+                            <th style="width: 100px;">Estado</th>
+                            <th style="width: 150px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">N° Factura</th>
+                            <th style="width: 140px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">Fecha Factura</th>
+                            <th style="width: 120px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">Mes Facturado</th>
+                            <th style="width: 150px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">Cód. Transporte</th>
+                            <th style="width: 140px;">N° Guía</th>
+                            <th style="width: 120px;">Fecha Despacho</th>
+                            <th style="width: 180px;">Cliente</th>
+                            <th style="width: 140px;">Ciudad</th>
+                            <th style="width: 150px;">Producto</th>
+                            <th style="width: 100px;" class="text-end">Galones</th>
+                            <th style="width: 90px;" class="text-end">Barriles</th>
+                            <th style="width: 90px;" class="text-end">API Corregida</th>
+                            <th style="width: 100px;">Placa</th>
+                            <th style="width: 160px;">Transportadora</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-despachos-body">
+                        <tr>
+                            <td colspan="16" class="text-center py-5 text-muted">
+                                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                                Cargando despachos...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Paginador -->
+        <div class="card-footer bg-white border-top p-2 d-flex justify-content-between align-items-center flex-wrap">
+            <div class="small text-muted fw-semibold" id="info-paginacion">
+                Mostrando 0 de 0 registros
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <select id="select-per-page" class="form-select form-select-sm" style="width: auto;">
+                    <option value="25">25 filas</option>
+                    <option value="50" selected>50 filas</option>
+                    <option value="100">100 filas</option>
+                    <option value="200">200 filas</option>
+                </select>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" id="btn-pag-ant" disabled><i class="bi bi-chevron-left"></i> Anterior</button>
+                    <button class="btn btn-outline-secondary" id="btn-pag-sig" disabled>Siguiente <i class="bi bi-chevron-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if puede_importar %}
+<!-- Modal de Importación en Dos Fases -->
+<div class="modal fade" id="modalImportarExcel" tabindex="-1" aria-labelledby="modalImportarLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white py-3">
+                <h5 class="modal-title" id="modalImportarLabel">
+                    <i class="bi bi-file-earmark-excel me-2"></i>Importar y Cruzar Facturación por N° de Guía
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Paso 1: Subida de Archivo -->
+                <div id="paso-1-upload">
+                    <div class="alert alert-info border-0 shadow-sm small mb-3">
+                        <i class="bi bi-info-circle me-1 fs-6"></i>
+                        Este importador lee automáticamente el Excel de facturación, normaliza números de guía con o sin dígito de verificación (DV), y permite filtrar por tipo de guía.
+                        Primero te mostrará una previsualización de los cruces antes de aplicar cambios.
+                    </div>
+
+                    <!-- Selector de Tipo de Guía / Hoja -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-dark mb-1">
+                            <i class="bi bi-layers text-primary me-1"></i>¿Qué tipo de guías deseas cruzar en este archivo?
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="card p-2.5 h-100 border shadow-none modo-import-card border-primary bg-light" for="opt-modo-todas" style="cursor: pointer;">
+                                    <div class="form-check m-0">
+                                        <input class="form-check-input" type="radio" name="modo_importacion" id="opt-modo-todas" value="TODAS" checked>
+                                        <label class="form-check-label small fw-bold text-dark ms-1 cursor-pointer" for="opt-modo-todas">
+                                            <i class="bi bi-collection text-primary me-1"></i> Ambas Hojas
+                                        </label>
+                                    </div>
+                                    <div class="text-muted ps-4" style="font-size: 0.74rem;">001.FT.OP.ZF (Físicas + Digitales)</div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="card p-2.5 h-100 border shadow-none modo-import-card" for="opt-modo-fisicas" style="cursor: pointer;">
+                                    <div class="form-check m-0">
+                                        <input class="form-check-input" type="radio" name="modo_importacion" id="opt-modo-fisicas" value="FISICAS">
+                                        <label class="form-check-label small fw-bold text-dark ms-1 cursor-pointer" for="opt-modo-fisicas">
+                                            <i class="bi bi-file-earmark-text text-warning me-1"></i> 001.FT.OP.ZF - FISICAS
+                                        </label>
+                                    </div>
+                                    <div class="text-muted ps-4" style="font-size: 0.74rem;">Cruza únicamente guías físicas de cargue</div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="card p-2.5 h-100 border shadow-none modo-import-card" for="opt-modo-digitales" style="cursor: pointer;">
+                                    <div class="form-check m-0">
+                                        <input class="form-check-input" type="radio" name="modo_importacion" id="opt-modo-digitales" value="DIGITALES">
+                                        <label class="form-check-label small fw-bold text-dark ms-1 cursor-pointer" for="opt-modo-digitales">
+                                            <i class="bi bi-laptop text-info me-1"></i> 001.FT.OP.ZF - DIGITALES
+                                        </label>
+                                    </div>
+                                    <div class="text-muted ps-4" style="font-size: 0.74rem;">Cruza únicamente guías digitales de cargue</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form id="form-upload-excel">
+                        <div class="drag-drop-zone mb-3" id="drop-zone">
+                            <i class="bi bi-cloud-arrow-up fs-1 text-primary mb-2 d-block"></i>
+                            <h6 class="fw-bold mb-1">Arrastra tu archivo Excel aquí o haz clic para seleccionarlo</h6>
+                            <p class="text-muted small mb-0">Formatos soportados: .xlsx (Excel 2026)</p>
+                            <input type="file" id="input-archivo-excel" name="archivo_excel" accept=".xlsx, .xls" style="display: none;">
+                        </div>
+                        <div id="archivo-seleccionado-info" class="alert alert-light border d-flex justify-content-between align-items-center mb-3" style="display: none;">
+                            <span class="small fw-semibold text-dark"><i class="bi bi-file-earmark-check text-success me-2"></i><span id="nombre-archivo-txt"></span></span>
+                            <button type="button" class="btn btn-sm text-danger p-0" id="btn-remover-archivo"><i class="bi bi-trash"></i></button>
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary btn-sm px-4" id="btn-iniciar-dry-run" disabled>
+                                <i class="bi bi-search me-1"></i> Previsualizar Cruces
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Spinner de Carga -->
+                <div id="import-spinner" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <h6 class="fw-bold" id="import-spinner-text">Analizando y cruzando datos del archivo Excel...</h6>
+                    <p class="text-muted small">Esto puede tardar unos segundos dependiendo del tamaño del archivo.</p>
+                </div>
+
+                <!-- Paso 2: Previsualización de Resultados (Dry-Run) -->
+                <div id="paso-2-preview" style="display: none;">
+                    <div class="alert alert-light border d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+                        <div class="small">
+                            <i class="bi bi-file-earmark-spreadsheet text-success me-1"></i>
+                            <strong>Hojas analizadas:</strong> <span id="preview-hojas-procesadas" class="badge bg-white text-dark border"></span>
+                        </div>
+                        <div class="small text-muted">
+                            Total filas leídas: <strong id="preview-total-filas" class="text-dark">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-3">
+                            <div class="p-2 border rounded text-center bg-light preview-kpi-card cursor-pointer" data-filter="EXACTO" style="cursor: pointer;" title="Clic para filtrar solo cruces exactos">
+                                <span class="small text-muted d-block">Cruces Exactos</span>
+                                <h5 class="fw-bold text-success mb-0" id="res-exactos">0</h5>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded text-center bg-light preview-kpi-card cursor-pointer" data-filter="SOBRESCRITURA" style="cursor: pointer;" title="Clic para filtrar sobrescrituras">
+                                <span class="small text-muted d-block">Sobrescrituras</span>
+                                <h5 class="fw-bold text-warning mb-0" id="res-sobrescrituras">0</h5>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded text-center bg-light preview-kpi-card cursor-pointer" data-filter="NO_ENCONTRADO" style="cursor: pointer;" title="Clic para filtrar guías no encontradas">
+                                <span class="small text-muted d-block">No Encontrados</span>
+                                <h5 class="fw-bold text-danger mb-0" id="res-no-encontrados">0</h5>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="p-2 border rounded text-center bg-light preview-kpi-card cursor-pointer" data-filter="AMBIGUO" style="cursor: pointer;" title="Clic para filtrar guías ambiguas">
+                                <span class="small text-muted d-block">Guías Ambiguas</span>
+                                <h5 class="fw-bold text-secondary mb-0" id="res-ambiguos">0</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Barra de Filtros y Búsqueda del Modal -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div class="btn-group btn-group-sm" role="group" id="btn-group-preview-filter">
+                            <button type="button" class="btn btn-outline-secondary active" data-filter="TODOS">
+                                Todos (<span id="count-filtro-todos">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" data-filter="NO_ENCONTRADO">
+                                ❌ No Encontrados (<span id="count-filtro-no-encontrados">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-success" data-filter="EXACTO">
+                                ✅ Cruces Exactos (<span id="count-filtro-exactos">0</span>)
+                            </button>
+                            <button type="button" class="btn btn-outline-warning text-dark" data-filter="SOBRESCRITURA">
+                                ⚠️ Sobrescrituras (<span id="count-filtro-sobrescrituras">0</span>)
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm" style="width: 210px;">
+                                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                <input type="text" id="input-buscar-preview" class="form-control" placeholder="Buscar guía o factura...">
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm shadow-sm" id="btn-descargar-no-encontradas">
+                                <i class="bi bi-file-earmark-excel me-1"></i> Descargar No Encontradas (.xlsx)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="check-aplicar-sobrescrituras" checked>
+                        <label class="form-check-label small fw-semibold" for="check-aplicar-sobrescrituras">
+                            Aplicar actualizaciones en registros que ya tenían una factura previa registrada
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="fw-bold small mb-0"><i class="bi bi-list-check me-1"></i>Registros del archivo (<span id="preview-mostrando-txt">0</span>):</h6>
+                    </div>
+
+                    <div class="table-responsive border rounded mb-3" style="max-height: 320px;">
+                        <table class="table table-sm table-striped align-middle mb-0" style="font-size: 0.8rem;">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Hoja</th>
+                                    <th>Fila</th>
+                                    <th>N° Guía</th>
+                                    <th>N° Factura</th>
+                                    <th>Fecha Factura</th>
+                                    <th>Mes</th>
+                                    <th>Cód. Transporte</th>
+                                    <th>Estado Cruce</th>
+                                    <th>Detalle</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-preview-items"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-volver-paso-1">
+                            <i class="bi bi-arrow-left me-1"></i> Subir otro archivo
+                        </button>
+                        <div>
+                            <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-success btn-sm px-4" id="btn-confirmar-importacion">
+                                <i class="bi bi-check-circle me-1"></i> Confirmar y Aplicar Cambios
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const puedeEditar = {{ 'true' if puede_editar else 'false' }};
+    let currentPage = 1;
+    let currentPerPage = 50;
+    let currentEstado = 'TODOS';
+    let currentOrden = 'desc';
+    let currentBatchUUID = null;
+    let searchDebounceTimer = null;
+
+    const tbody = document.getElementById('tabla-despachos-body');
+    const inputQ = document.getElementById('filtro-q');
+    const selectFiltroMes = document.getElementById('select-filtro-mes');
+    const btnPagAnt = document.getElementById('btn-pag-ant');
+    const btnPagSig = document.getElementById('btn-pag-sig');
+    const selectPerPage = document.getElementById('select-per-page');
+    const infoPaginacion = document.getElementById('info-paginacion');
+    const btnGroupEstado = document.getElementById('btn-group-estado');
+
+    // Cargar despachos por mes seleccionado
+    async function cargarDespachos(page = 1) {
+        currentPage = page;
+        tbody.innerHTML = `<tr><td colspan="16" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando registros...</td></tr>`;
+
+        const params = new URLSearchParams({
+            page: currentPage,
+            per_page: currentPerPage,
+            estado_facturacion: currentEstado
+        });
+
+        if (selectFiltroMes && selectFiltroMes.value) params.append('mes', selectFiltroMes.value);
+        if (inputQ && inputQ.value.trim()) params.append('q', inputQ.value.trim());
+
+        try {
+            const res = await fetch(`/api/facturacion/despachos?${params.toString()}`);
+            const result = await res.json();
+
+            if (!result.success) {
+                tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-4">Error cargando despachos: ${result.message || 'Error desconocido'}</td></tr>`;
+                return;
+            }
+
+            function formatNumeroCol(num, decimals = 2) {
+                if (num === null || num === undefined || isNaN(num)) return decimals > 0 ? '0,00' : '0';
+                return Number(num).toLocaleString('es-CO', {
+                    minimumFractionDigits: decimals,
+                    maximumFractionDigits: decimals
+                });
+            }
+
+            // Actualizar Opciones del Selector de Meses Dinámico (solo meses con datos reales)
+            if (result.meses_disponibles && selectFiltroMes) {
+                const mesActual = selectFiltroMes.value || '';
+                const keyCount = result.meses_disponibles.map(m => m.codigo).join('|');
+                
+                if (selectFiltroMes.dataset.lastKey !== keyCount) {
+                    let optionsHtml = `<option value="" ${(!mesActual || mesActual === 'TODOS') ? 'selected' : ''}>Todos los Meses</option>`;
+                    result.meses_disponibles.forEach(m => {
+                        const sel = (m.codigo === mesActual) ? 'selected' : '';
+                        optionsHtml += `<option value="${m.codigo}" ${sel}>${m.nombre}</option>`;
+                    });
+                    selectFiltroMes.innerHTML = optionsHtml;
+                    selectFiltroMes.dataset.lastKey = keyCount;
+                    selectFiltroMes.value = mesActual;
+                }
+            }
+
+            // Actualizar Tarjetas KPI Principales: Vehículos, Barriles, Galones, Pendientes
+            if (result.kpis) {
+                const elVeh = document.getElementById('kpi-total-vehiculos');
+                const elBbl = document.getElementById('kpi-total-barriles');
+                const elGal = document.getElementById('kpi-total-galones');
+                const elPen = document.getElementById('kpi-pendientes');
+
+                if (elVeh) elVeh.textContent = (result.kpis.total_vehiculos || 0).toLocaleString();
+                if (elBbl) elBbl.textContent = formatNumeroCol(result.kpis.barriles_totales, 2) + ' BBL';
+                if (elGal) elGal.textContent = formatNumeroCol(result.kpis.galones_totales, 2) + ' gal';
+                if (elPen) elPen.textContent = (result.kpis.pendientes || 0).toLocaleString();
+            }
+
+            // Renderizar filas
+            if (!result.data || result.data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i>No se encontraron despachos con los filtros seleccionados.</td></tr>`;
+                infoPaginacion.textContent = 'Mostrando 0 de 0 registros';
+                btnPagAnt.disabled = true;
+                btnPagSig.disabled = true;
+                return;
+            }
+
+            const disabledAttr = puedeEditar ? '' : 'disabled readonly style="background:#f8fafc !important; cursor:default; border-color:#e2e8f0 !important;"';
+
+            let html = '';
+            result.data.forEach((r, idx) => {
+                const filaIndex = ((result.page - 1) * result.per_page) + idx + 1;
+                const isFacturado = r.estado_facturacion === 'FACTURADO';
+                const badgeClass = isFacturado ? 'badge-facturado' : 'badge-pendiente';
+
+                html += `
+                <tr data-id="${r.id}">
+                    <td class="text-center text-muted small">${filaIndex}</td>
+                    <td>
+                        <span class="badge ${badgeClass} status-badge">${r.estado_facturacion}</span>
+                        ${puedeEditar ? `<span class="save-indicator ms-1" id="save-ind-${r.id}"></span>` : ''}
+                    </td>
+                    <td style="background-color: #f6fdf7;">
+                        <input type="text" class="editable-cell-input field-factura" 
+                               value="${r.factura || ''}" placeholder="${puedeEditar ? 'N° Factura' : '-'}" data-field="factura" data-id="${r.id}" ${disabledAttr}>
+                    </td>
+                    <td style="background-color: #f6fdf7;">
+                        <input type="date" class="editable-cell-input field-fecha-fac" 
+                               value="${r.fecha_factura || ''}" data-field="fecha_factura" data-id="${r.id}" ${disabledAttr}>
+                    </td>
+                    <td style="background-color: #f6fdf7;">
+                        <input type="text" class="editable-cell-input field-mes-fac text-uppercase fw-bold" 
+                               value="${r.mes_facturado || ''}" placeholder="${puedeEditar ? 'Mes (ej. AGOSTO)' : '-'}" data-field="mes_facturado" data-id="${r.id}" ${disabledAttr}>
+                    </td>
+                    <td style="background-color: #f6fdf7;">
+                        <input type="text" class="editable-cell-input field-codigo-trans" 
+                               value="${r.codigo_transporte || ''}" placeholder="${puedeEditar ? 'Cód. Transporte' : '-'}" data-field="codigo_transporte" data-id="${r.id}" ${disabledAttr}>
+                    </td>
+                    <td>
+                        <span class="guia-badge">${r.numero_guia || 'S/N'}</span>
+                    </td>
+                    <td class="fw-semibold">${r.fecha_despacho || '-'}</td>
+                    <td class="fw-semibold text-dark">${r.cliente || '-'}</td>
+                    <td>${r.ciudad || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${r.producto || '-'}</span></td>
+                    <td class="text-end font-monospace">${r.galones ? Number(r.galones).toLocaleString() : '-'}</td>
+                    <td class="text-end font-monospace">${r.barriles ? Number(r.barriles).toLocaleString() : '-'}</td>
+                    <td class="text-end font-monospace">${r.api_corregido ? Number(r.api_corregido).toFixed(1) : '-'}</td>
+                    <td><span class="placa-badge">${r.placa || '-'}</span></td>
+                    <td class="small text-muted">${r.empresa_transportadora || '-'}</td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = html;
+
+            // Actualizar controles de paginación
+            const startReg = ((result.page - 1) * result.per_page) + 1;
+            const endReg = Math.min(result.page * result.per_page, result.total);
+            infoPaginacion.textContent = `Mostrando ${startReg} - ${endReg} de ${result.total} registros (Página ${result.page} de ${result.pages})`;
+            btnPagAnt.disabled = (result.page <= 1);
+            btnPagSig.disabled = (result.page >= result.pages);
+
+            // Registrar listeners para edición inline únicamente si tiene permisos de edición
+            if (puedeEditar) {
+                registrarEventosInline();
+            }
+
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-4">Error de comunicación con el servidor.</td></tr>`;
+        }
+    }
+
+    // Edición Inline con autoguardado al desenfocar o presionar Enter
+    function registrarEventosInline() {
+        const inputs = tbody.querySelectorAll('.editable-cell-input');
+        inputs.forEach(input => {
+            let originalValue = input.value;
+
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    this.blur();
+                }
+            });
+
+            input.addEventListener('change', async function() {
+                const field = this.getAttribute('data-field');
+                const id = this.getAttribute('data-id');
+                const newValue = this.value;
+
+                const row = tbody.querySelector(`tr[data-id="${id}"]`);
+
+                // Precalcular mes facturado inmediatamente en el cliente al seleccionar fecha
+                if (field === 'fecha_factura' && row && newValue) {
+                    const mesInput = row.querySelector('.field-mes-fac');
+                    if (mesInput && (!mesInput.value || mesInput.value.trim() === '')) {
+                        mesInput.value = newValue.substring(0, 7); // YYYY-MM
+                    }
+                }
+
+                const indicator = document.getElementById(`save-ind-${id}`);
+                if (indicator) indicator.innerHTML = `<span class="spinner-border spinner-border-sm text-primary" style="width: 12px; height: 12px;"></span>`;
+
+                try {
+                    const payload = {};
+                    payload[field] = newValue;
+
+                    const res = await fetch(`/api/facturacion/despachos/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const data = await res.json();
+                    if (res.ok && data.success) {
+                        if (indicator) indicator.innerHTML = `<i class="bi bi-check-circle-fill text-success" style="font-size: 13px;"></i>`;
+                        setTimeout(() => { if (indicator) indicator.innerHTML = ''; }, 2000);
+
+                        // Actualizar badge de estado y campos derivados en la fila
+                        if (row && data.registro) {
+                            const badge = row.querySelector('.status-badge');
+                            if (badge) {
+                                badge.textContent = data.registro.estado_facturacion;
+                                badge.className = `badge ${data.registro.estado_facturacion === 'FACTURADO' ? 'badge-facturado' : 'badge-pendiente'} status-badge`;
+                            }
+                            if (data.registro.mes_facturado) {
+                                const mesInput = row.querySelector('.field-mes-fac');
+                                if (mesInput) mesInput.value = data.registro.mes_facturado;
+                            }
+                            if (data.registro.fecha_factura) {
+                                const fechaInput = row.querySelector('.field-fecha-fac');
+                                if (fechaInput) fechaInput.value = data.registro.fecha_factura;
+                            }
+                        }
+                    } else {
+                        if (indicator) indicator.innerHTML = `<i class="bi bi-x-circle-fill text-danger" style="font-size: 13px;"></i>`;
+                        alert(data.message || 'Error actualizando registro.');
+                        this.value = originalValue;
+                    }
+                } catch (err) {
+                    if (indicator) indicator.innerHTML = `<i class="bi bi-x-circle-fill text-danger" style="font-size: 13px;"></i>`;
+                    this.value = originalValue;
+                }
+            });
+        });
+    }
+
+    // Filtro de búsqueda con debounce
+    if (inputQ) {
+        inputQ.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(() => cargarDespachos(1), 350);
+        });
+    }
+
+    if (btnGroupEstado) {
+        btnGroupEstado.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                btnGroupEstado.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentEstado = this.getAttribute('data-estado');
+                cargarDespachos(1);
+            });
+        });
+    }
+
+    if (selectPerPage) {
+        selectPerPage.addEventListener('change', function() {
+            currentPerPage = parseInt(this.value);
+            cargarDespachos(1);
+        });
+    }
+
+    if (btnPagAnt) {
+        btnPagAnt.addEventListener('click', () => {
+            if (currentPage > 1) cargarDespachos(currentPage - 1);
+        });
+    }
+
+    if (btnPagSig) {
+        btnPagSig.addEventListener('click', () => {
+            cargarDespachos(currentPage + 1);
+        });
+    }
+
+    // Selector Dinámico de Mes
+    if (selectFiltroMes) {
+        selectFiltroMes.addEventListener('change', () => {
+            cargarDespachos(1);
+        });
+    }
+
+    // Exportar Excel
+    const btnExportar = document.getElementById('btn-exportar-excel');
+    if (btnExportar) {
+        btnExportar.addEventListener('click', () => {
+            const params = new URLSearchParams({
+                estado_facturacion: currentEstado
+            });
+            if (selectFiltroMes && selectFiltroMes.value) params.append('mes', selectFiltroMes.value);
+            if (inputQ && inputQ.value.trim()) params.append('q', inputQ.value.trim());
+
+            window.location.href = `/api/facturacion/exportar?${params.toString()}`;
+        });
+    }
+
+    // --- Modal Importación Excel (Flujo 2 Fases) ---
+    const dropZone = document.getElementById('drop-zone');
+    const inputArchivo = document.getElementById('input-archivo-excel');
+    const btnIniciarDryRun = document.getElementById('btn-iniciar-dry-run');
+    const archivoInfo = document.getElementById('archivo-seleccionado-info');
+    const nombreArchivoTxt = document.getElementById('nombre-archivo-txt');
+    const btnRemoverArchivo = document.getElementById('btn-remover-archivo');
+
+    const paso1 = document.getElementById('paso-1-upload');
+    const paso2 = document.getElementById('paso-2-preview');
+    const spinner = document.getElementById('import-spinner');
+    const spinnerText = document.getElementById('import-spinner-text');
+
+    if (dropZone && inputArchivo) {
+        dropZone.addEventListener('click', () => inputArchivo.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                inputArchivo.files = e.dataTransfer.files;
+                actualizarSeleccionArchivo();
+            }
+        });
+
+        inputArchivo.addEventListener('change', actualizarSeleccionArchivo);
+    }
+
+    function actualizarSeleccionArchivo() {
+        if (inputArchivo && inputArchivo.files.length) {
+            const f = inputArchivo.files[0];
+            nombreArchivoTxt.textContent = `${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+            archivoInfo.style.display = 'flex';
+            dropZone.style.display = 'none';
+            btnIniciarDryRun.disabled = false;
+        } else if (archivoInfo && dropZone && btnIniciarDryRun) {
+            archivoInfo.style.display = 'none';
+            dropZone.style.display = 'block';
+            btnIniciarDryRun.disabled = true;
+        }
+    }
+
+    // Estilos interactivos para selección de modo de importación
+    const radioModos = document.querySelectorAll('input[name="modo_importacion"]');
+    radioModos.forEach(r => {
+        r.addEventListener('change', function() {
+            document.querySelectorAll('.modo-import-card').forEach(c => {
+                c.classList.remove('border-primary', 'bg-light');
+            });
+            const card = this.closest('.modo-import-card');
+            if (card) card.classList.add('border-primary', 'bg-light');
+        });
+    });
+
+    if (btnRemoverArchivo) {
+        btnRemoverArchivo.addEventListener('click', () => {
+            if (inputArchivo) inputArchivo.value = '';
+            actualizarSeleccionArchivo();
+        });
+    }
+
+    let previewItems = [];
+    let currentPreviewFilter = 'TODOS';
+
+    function renderPreviewItems() {
+        const tbodyItems = document.getElementById('tabla-preview-items');
+        const busq = (document.getElementById('input-buscar-preview')?.value || '').trim().toUpperCase();
+        
+        let filtrados = previewItems.filter(it => {
+            if (currentPreviewFilter !== 'TODOS' && it.tipo_cruce !== currentPreviewFilter) {
+                return false;
+            }
+            if (busq) {
+                const textoCompleto = `${it.numero_guia || ''} ${it.factura_nueva || ''} ${it.hoja || ''} ${it.codigo_transporte_nuevo || ''} ${it.observacion || ''}`.toUpperCase();
+                if (!textoCompleto.includes(busq)) return false;
+            }
+            return true;
+        });
+
+        const spanMostrando = document.getElementById('preview-mostrando-txt');
+        if (spanMostrando) {
+            spanMostrando.textContent = `Mostrando ${filtrados.length} de ${previewItems.length}`;
+        }
+
+        if (filtrados.length > 0) {
+            let itemsHtml = '';
+            filtrados.forEach(it => {
+                let badgeColor = 'bg-success';
+                if (it.tipo_cruce === 'SOBRESCRITURA') badgeColor = 'bg-warning text-dark';
+                else if (it.tipo_cruce === 'NO_ENCONTRADO') badgeColor = 'bg-danger';
+                else if (it.tipo_cruce === 'AMBIGUO') badgeColor = 'bg-secondary';
+
+                itemsHtml += `
+                <tr>
+                    <td>${it.hoja || '-'}</td>
+                    <td>${it.fila_excel || '-'}</td>
+                    <td class="font-monospace fw-bold text-dark">${it.numero_guia || '-'}</td>
+                    <td class="text-success fw-bold">${it.factura_nueva || '<span class="text-muted fst-italic">Sin Factura</span>'}</td>
+                    <td>${it.fecha_factura_nueva || '-'}</td>
+                    <td class="font-monospace">${it.mes_facturado_nuevo || '-'}</td>
+                    <td class="font-monospace">${it.codigo_transporte_nuevo || '-'}</td>
+                    <td><span class="badge ${badgeColor}">${it.tipo_cruce}</span></td>
+                    <td class="small text-muted">${it.observacion || ''}</td>
+                </tr>`;
+            });
+            tbodyItems.innerHTML = itemsHtml;
+        } else {
+            tbodyItems.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i>No hay registros que coincidan con el filtro seleccionado.</td></tr>`;
+        }
+    }
+
+    // Configurar listeners de filtros del modal
+    const btnGroupPreviewFilter = document.getElementById('btn-group-preview-filter');
+    if (btnGroupPreviewFilter) {
+        btnGroupPreviewFilter.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                btnGroupPreviewFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentPreviewFilter = this.getAttribute('data-filter');
+                renderPreviewItems();
+            });
+        });
+    }
+
+    // Clic en tarjetas KPI del modal para filtrar rápidamente
+    document.querySelectorAll('.preview-kpi-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            if (btnGroupPreviewFilter) {
+                btnGroupPreviewFilter.querySelectorAll('button').forEach(b => {
+                    b.classList.toggle('active', b.getAttribute('data-filter') === filter);
+                });
+            }
+            currentPreviewFilter = filter;
+            renderPreviewItems();
+        });
+    });
+
+    const inputBuscarPreview = document.getElementById('input-buscar-preview');
+    if (inputBuscarPreview) {
+        inputBuscarPreview.addEventListener('input', renderPreviewItems);
+    }
+
+    const btnDescargarNoEncontradas = document.getElementById('btn-descargar-no-encontradas');
+    if (btnDescargarNoEncontradas) {
+        btnDescargarNoEncontradas.addEventListener('click', function() {
+            if (!currentBatchUUID) return;
+            window.location.href = `/api/facturacion/importar/exportar-no-encontrados/${currentBatchUUID}`;
+        });
+    }
+
+    // Fase 1: Iniciar Dry-Run
+    if (btnIniciarDryRun) {
+        btnIniciarDryRun.addEventListener('click', async () => {
+            if (!inputArchivo || !inputArchivo.files.length) return;
+
+            paso1.style.display = 'none';
+            spinner.style.display = 'block';
+            spinnerText.textContent = 'Analizando y cruzando datos del archivo Excel...';
+
+            const modoSeleccionado = document.querySelector('input[name="modo_importacion"]:checked')?.value || 'TODAS';
+
+            const formData = new FormData();
+            formData.append('archivo_excel', inputArchivo.files[0]);
+            formData.append('modo_importacion', modoSeleccionado);
+
+            try {
+                const res = await fetch('/api/facturacion/importar/dry-run', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                spinner.style.display = 'none';
+
+                if (res.ok && data.success) {
+                    currentBatchUUID = data.batch.batch_uuid;
+
+                    // Mostrar hojas analizadas y total
+                    const hojasProc = (data.hojas_procesadas && data.hojas_procesadas.length) 
+                        ? data.hojas_procesadas.join(', ') 
+                        : (data.hojas_disponibles ? data.hojas_disponibles.join(', ') : 'Todas');
+                    
+                    document.getElementById('preview-hojas-procesadas').textContent = hojasProc;
+                    document.getElementById('preview-total-filas').textContent = data.resumen.total_filas || 0;
+
+                    // Mostrar resumen en tarjetas KPI
+                    document.getElementById('res-exactos').textContent = data.resumen.cruces_exactos || 0;
+                    document.getElementById('res-sobrescrituras').textContent = data.resumen.sobrescrituras || 0;
+                    document.getElementById('res-no-encontrados').textContent = data.resumen.no_encontrados || 0;
+                    document.getElementById('res-ambiguos').textContent = data.resumen.ambiguos || 0;
+
+                    // Actualizar contadores en botones de filtro
+                    document.getElementById('count-filtro-todos').textContent = data.resumen.total_filas || 0;
+                    document.getElementById('count-filtro-no-encontrados').textContent = data.resumen.no_encontrados || 0;
+                    document.getElementById('count-filtro-exactos').textContent = data.resumen.cruces_exactos || 0;
+                    document.getElementById('count-filtro-sobrescrituras').textContent = data.resumen.sobrescrituras || 0;
+
+                    // Guardar items y renderizar
+                    previewItems = data.items || [];
+                    currentPreviewFilter = 'TODOS';
+                    if (btnGroupPreviewFilter) {
+                        btnGroupPreviewFilter.querySelectorAll('button').forEach(b => {
+                            b.classList.toggle('active', b.getAttribute('data-filter') === 'TODOS');
+                        });
+                    }
+                    if (inputBuscarPreview) inputBuscarPreview.value = '';
+                    renderPreviewItems();
+
+                    paso2.style.display = 'block';
+
+                } else {
+                    alert(data.message || 'Error procesando el archivo Excel.');
+                    paso1.style.display = 'block';
+                }
+            } catch (err) {
+                spinner.style.display = 'none';
+                paso1.style.display = 'block';
+                alert('Error al conectar con el servidor para analizar el archivo.');
+            }
+        });
+    }
+
+    const btnVolverPaso1 = document.getElementById('btn-volver-paso-1');
+    if (btnVolverPaso1) {
+        btnVolverPaso1.addEventListener('click', () => {
+            paso2.style.display = 'none';
+            paso1.style.display = 'block';
+        });
+    }
+
+    // Fase 2: Confirmar Importación
+    const btnConfirmar = document.getElementById('btn-confirmar-importacion');
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', async () => {
+            if (!currentBatchUUID) return;
+
+            const aplicarSobrescrituras = document.getElementById('check-aplicar-sobrescrituras').checked;
+
+            paso2.style.display = 'none';
+            spinner.style.display = 'block';
+            spinnerText.textContent = 'Aplicando cambios en la base de datos...';
+
+            try {
+                const res = await fetch('/api/facturacion/importar/confirmar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        batch_uuid: currentBatchUUID,
+                        aplicar_sobrescrituras: aplicarSobrescrituras
+                    })
+                });
+
+                const data = await res.json();
+                spinner.style.display = 'none';
+
+                if (res.ok && data.success) {
+                    // Cerrar modal
+                    const modalEl = document.getElementById('modalImportarExcel');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalInstance.hide();
+
+                    // Resetear estado del modal
+                    if (inputArchivo) inputArchivo.value = '';
+                    actualizarSeleccionArchivo();
+                    paso2.style.display = 'none';
+                    paso1.style.display = 'block';
+                    currentBatchUUID = null;
+
+                    alert(data.message || 'Importación completada con éxito.');
+                    cargarDespachos(1);
+                } else {
+                    alert(data.message || 'Error al confirmar la importación.');
+                    paso2.style.display = 'block';
+                }
+            } catch (err) {
+                spinner.style.display = 'none';
+                paso2.style.display = 'block';
+                alert('Error al conectar con el servidor para aplicar los cambios.');
+            }
+        });
+    }
+
+    // Carga inicial
+    cargarDespachos(1);
+});
+</script>
+{% endblock %}
