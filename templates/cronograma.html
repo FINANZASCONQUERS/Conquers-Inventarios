@@ -743,6 +743,56 @@
     .btn-edit:hover {
         color: var(--teal);
     }
+
+    /* Dark Mode Adaptations */
+    html.dark-mode #chart-export {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    html.dark-mode .empresa-tabs {
+        background: rgba(255, 255, 255, 0.08);
+    }
+    html.dark-mode .empresa-tab {
+        color: var(--text-secondary);
+    }
+    html.dark-mode .empresa-tab.active {
+        background: var(--bg-surface-elevated);
+        color: var(--text-primary);
+    }
+    html.dark-mode .stats-strip {
+        background: var(--bg-surface);
+        border-color: var(--border-color);
+    }
+    html.dark-mode .stat-item {
+        border-color: var(--border-color);
+    }
+    html.dark-mode .stat-total .stat-num {
+        color: var(--text-primary);
+    }
+    html.dark-mode .row-card {
+        background: var(--bg-surface);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+    html.dark-mode .row-card.status-done {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.4);
+    }
+    html.dark-mode .row-card.status-pending {
+        background: rgba(245, 158, 11, 0.12);
+        border-color: rgba(245, 158, 11, 0.4);
+    }
+    html.dark-mode .row-card.status-late {
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.4);
+    }
+    html.dark-mode #filter-name,
+    html.dark-mode #filter-status {
+        background-color: var(--input-bg) !important;
+        color: var(--input-text) !important;
+        border-color: var(--border-color) !important;
+    }
 </style>
 {% endblock %}
 

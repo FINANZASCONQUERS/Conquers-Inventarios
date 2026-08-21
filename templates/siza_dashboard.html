@@ -13,27 +13,26 @@
     }
 
     body {
-        background: linear-gradient(135deg, #f5f7fa 0%, #e8eef3 100%);
+        background-color: var(--bg-body);
+        color: var(--text-primary);
         min-height: 100vh;
     }
 
     /* Header Principal */
     .dashboard-header {
-        background: white;
+        background: var(--bg-surface);
         border-radius: 20px;
         padding: 2rem;
         margin-bottom: 2rem;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--border-color);
         border-left: 6px solid #667eea;
     }
 
     .dashboard-title {
         font-size: 2rem;
         font-weight: 800;
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--text-primary);
         margin: 0;
         display: flex;
         align-items: center;
@@ -41,7 +40,7 @@
     }
 
     .dashboard-subtitle {
-        color: #64748b;
+        color: var(--text-muted);
         font-size: 0.95rem;
         margin-top: 0.5rem;
         font-weight: 500;
@@ -49,14 +48,15 @@
 
     /* Tarjetas de Resumen Global */
     .summary-card {
-        background: white;
+        background: var(--bg-surface);
         border-radius: 16px;
         padding: 1.5rem;
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
         transition: all 0.3s ease;
-        border: 2px solid transparent;
+        border: 1px solid var(--border-color);
         position: relative;
         overflow: hidden;
+        color: var(--text-primary);
     }
 
     .summary-card::before {
@@ -90,7 +90,7 @@
         text-transform: uppercase;
         letter-spacing: 1px;
         font-weight: 700;
-        color: #94a3b8;
+        color: var(--text-muted);
         margin-bottom: 0.5rem;
     }
 
@@ -102,63 +102,52 @@
     }
 
     .summary-value.success {
-        background: var(--success-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--success-color);
     }
 
     .summary-value.warning {
-        background: var(--warning-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--warning-color);
     }
 
     .summary-value.primary {
-        background: var(--primary-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--primary-color);
     }
 
     .summary-value.danger {
-        background: var(--danger-gradient);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
+        color: var(--danger-color);
     }
 
     .summary-meta {
         font-size: 0.85rem;
-        color: #64748b;
+        color: var(--text-muted);
         font-weight: 600;
         margin-top: 0.5rem;
     }
 
     /* Tarjetas de Productos - Diseño Mejorado */
     .product-card {
-        background: white;
+        background: var(--bg-surface);
         border-radius: 20px;
         padding: 0;
         margin-bottom: 1.5rem;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         transition: all 0.3s ease;
-        border: 2px solid transparent;
+        border: 1px solid var(--border-color);
         overflow: hidden;
         position: relative;
+        color: var(--text-primary);
     }
 
     .product-card:hover {
         transform: translateY(-5px);
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-        border-color: #e2e8f0;
+        border-color: var(--border-strong);
     }
 
     .product-header {
         padding: 1.5rem 1.5rem 1rem 1.5rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-bottom: 3px solid #e2e8f0;
+        background: var(--bg-surface-subtle);
+        border-bottom: 1px solid var(--border-color);
         display: flex;
         justify-content: space-between;
         align-items: center;

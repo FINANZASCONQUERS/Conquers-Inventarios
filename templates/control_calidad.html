@@ -771,7 +771,7 @@
 
     /* Contenedor Principal */
     .control-calidad-page {
-        background: linear-gradient(180deg, #f4f6f9 0%, #ffffff 100%);
+        background-color: var(--bg-body);
         min-height: 100vh;
         padding-bottom: 2rem;
     }
@@ -780,7 +780,7 @@
    HEADER DE PÁGINA - DISEÑO LIMPIO Y CLARO
    ======================================== */
     .page-header {
-        background: white;
+        background: var(--bg-surface);
         border-radius: 1rem;
         padding: 1.75rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -812,14 +812,14 @@
     .page-title {
         font-size: 1.625rem;
         font-weight: 700;
-        color: var(--dark-color);
+        color: var(--text-primary);
         line-height: 1.3;
         margin-bottom: 0.25rem;
     }
 
     .page-subtitle {
         font-size: 0.875rem;
-        color: #6c757d;
+        color: var(--text-muted);
         font-weight: 400;
         margin: 0;
     }
@@ -855,28 +855,37 @@
     }
 
     .btn-modern.btn-primary {
-        background: var(--primary-color);
-        border-color: var(--primary-color);
+        background: var(--primary-gradient);
+        border: none;
         color: white;
     }
 
     .btn-modern.btn-primary:hover {
-        background: var(--primary-dark);
-        border-color: var(--primary-dark);
+        background: var(--secondary-gradient);
         box-shadow: var(--shadow-green);
     }
 
     .btn-modern.btn-outline-primary {
-        background: white;
+        background: transparent;
         border-color: var(--primary-color);
         color: var(--primary-color);
     }
 
     .btn-modern.btn-outline-primary:hover {
         background: var(--primary-color);
-        border-color: var(--primary-color);
         color: white;
-        box-shadow: var(--shadow-green);
+    }
+
+    .btn-modern.btn-success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        color: white;
+    }
+
+    .btn-modern.btn-danger {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        border: none;
+        color: white;
     }
 
     .btn-modern.btn-outline-success {
@@ -892,7 +901,7 @@
     }
 
     .btn-modern.btn-outline-danger {
-        background: white;
+        background: transparent;
         border-color: var(--danger-color);
         color: var(--danger-color);
     }
@@ -915,9 +924,9 @@
     }
 
     .btn-modern.btn-outline-secondary {
-        background: white;
-        border-color: #6c757d;
-        color: #6c757d;
+        background: var(--bg-surface);
+        border-color: var(--border-color);
+        color: var(--text-secondary);
     }
 
     .btn-modern.btn-outline-secondary:hover {
@@ -934,11 +943,11 @@
         border-radius: 1rem;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         overflow: hidden;
-        background: white;
+        background: var(--bg-surface);
     }
 
     .card-header-modern {
-        background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+        background: var(--bg-surface-subtle);
         border-bottom: 3px solid var(--primary-color);
         padding: 1.25rem 1.5rem;
     }
@@ -958,7 +967,7 @@
     .card-title-modern {
         font-size: 1.125rem;
         font-weight: 700;
-        color: var(--dark-color);
+        color: var(--text-primary);
         margin: 0;
     }
 
@@ -985,6 +994,7 @@
         overflow-y: auto;
         overflow-x: auto;
         border-radius: 0 0 1rem 1rem;
+        background-color: var(--table-bg);
     }
 
     /* Scrollbar personalizada con color corporativo */
@@ -994,14 +1004,14 @@
     }
 
     .table-responsive-modern::-webkit-scrollbar-track {
-        background: #f1f3f5;
+        background: var(--bg-surface-subtle);
         border-radius: 10px;
     }
 
     .table-responsive-modern::-webkit-scrollbar-thumb {
         background: var(--primary-color);
         border-radius: 10px;
-        border: 2px solid #f1f3f5;
+        border: 2px solid var(--bg-surface-subtle);
     }
 
     .table-responsive-modern::-webkit-scrollbar-thumb:hover {
@@ -1011,6 +1021,7 @@
     .table-modern {
         margin-bottom: 0;
         font-size: 0.875rem;
+        background-color: var(--table-bg);
     }
 
     /* Header de Tabla - Diseño Profesional */
@@ -1035,52 +1046,53 @@
         position: sticky;
         top: 53px;
         z-index: 9;
-        background: white;
+        background: var(--table-filter-bg);
     }
 
     #filter-row th {
         padding: 0.625rem;
-        background: #f8f9fc;
+        background: var(--table-filter-bg);
         border-bottom: 3px solid var(--primary-color);
     }
 
     .filter-input {
         width: 100%;
-        border: 2px solid #e0e3e8;
+        border: 1.5px solid var(--border-color);
         border-radius: 0.5rem;
         padding: 0.5rem 0.875rem;
         font-size: 0.8125rem;
         transition: all 0.2s ease;
-        background: white;
+        background: var(--input-bg);
+        color: var(--input-text);
     }
 
     .filter-input:focus {
         border-color: var(--primary-color);
         box-shadow: 0 0 0 0.25rem rgba(11, 133, 82, 0.15);
         outline: none;
-        background: #fafbfc;
+        background: var(--bg-surface);
     }
 
     .filter-input::placeholder {
-        color: #9ca3af;
+        color: var(--input-placeholder);
         font-style: italic;
     }
 
     /* Body de Tabla - Diseño Limpio (transitions removed for performance) */
     .tbody-modern tr {
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .tbody-modern tr:hover {
-        background-color: #f8f9fc !important;
+        background-color: var(--bg-surface-subtle) !important;
     }
 
     .tbody-modern td {
         padding: 0;
         vertical-align: middle;
-        background-color: white;
+        background-color: var(--table-bg);
         font-size: 0.875rem;
-        color: #495057;
+        color: var(--table-text);
     }
 
     /* ========================================
@@ -1094,10 +1106,12 @@
         border: none;
         transition: all 0.2s ease;
         font-size: 0.875rem;
+        color: var(--text-primary) !important;
     }
 
     .editable-input:focus {
-        background: rgba(11, 133, 82, 0.08) !important;
+        background: rgba(11, 133, 82, 0.12) !important;
+        color: var(--text-primary) !important;
         outline: none;
     }
 

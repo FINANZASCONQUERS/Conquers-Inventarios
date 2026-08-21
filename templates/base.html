@@ -18,8 +18,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <!-- Pre-cargar tema sin parpadeo -->
+    <script>
+        (function() {
+            var storedTheme = localStorage.getItem('app-theme');
+            if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        })();
+    </script>
     <!-- Tema Profesional Centralizado -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/professional-theme.css') }}?v=1.1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/professional-theme.css') }}?v=2.0">
     <style>
         /* Mejoras del menú dropdown */
         .dropdown-menu-scrollable {
@@ -189,7 +200,7 @@ defecto seguros. #}
                     {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('facturacion_bp.facturacion_despachos', 'Facturación de Despachos', 'receipt')) %}
                     {% endif %}
-                    {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'] %}
+                    {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.assistant@conquerstrading.com'] %}
                     {% if 'programacion_cargue' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Despachos', 'calendar-check')) %}
                     {% endif %}
@@ -519,12 +530,13 @@ defecto seguros. #}
                                         class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
                         </ul>
                     </li>
-                    <!-- Toggle Modo Oscuro -->
-                    <li class="nav-item ms-2">
+                    <!-- Toggle Modo Oscuro / Claro Moderno -->
+                    <li class="nav-item ms-2 d-flex align-items-center">
                         <button id="themeToggle" type="button"
-                            class="btn btn-sm btn-outline-secondary rounded-circle theme-toggle"
-                            aria-label="Cambiar tema" data-bs-toggle="tooltip" data-bs-title="Modo claro / oscuro">
-                            <i class="bi bi-moon-stars-fill"></i>
+                            class="theme-toggle-btn"
+                            aria-label="Cambiar tema claro/oscuro" title="Cambiar tema">
+                            <i class="bi bi-moon-stars-fill theme-icon-moon"></i>
+                            <i class="bi bi-sun-fill theme-icon-sun"></i>
                         </button>
                     </li>
                     {% else %}
@@ -600,21 +612,19 @@ defecto seguros. #}
             if (window.scrollY > 30) navbar.classList.add('scrolled'); else navbar.classList.remove('scrolled');
         });
 
-        // Tema (light/dark) persistente
+        // Tema (light/dark) persistente y robusto
         function applyStoredTheme() {
             const stored = localStorage.getItem('app-theme');
             const isDark = stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
             document.documentElement.classList.toggle('dark-mode', isDark);
-            const icon = document.querySelector('#themeToggle i');
-            if (icon) icon.className = isDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+            document.documentElement.setAttribute('data-bs-theme', isDark ? 'dark' : 'light');
         }
         function toggleTheme() {
             const root = document.documentElement;
             const nowDark = !root.classList.contains('dark-mode');
             root.classList.toggle('dark-mode', nowDark);
+            root.setAttribute('data-bs-theme', nowDark ? 'dark' : 'light');
             localStorage.setItem('app-theme', nowDark ? 'dark' : 'light');
-            const icon = document.querySelector('#themeToggle i');
-            if (icon) icon.className = nowDark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
         }
 
         // Inicializar tooltips y tema

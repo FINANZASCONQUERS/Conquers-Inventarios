@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for
+from flask import Blueprint, render_template, request, flash, redirect, url_for, session, jsonify
 from datetime import date, datetime, timedelta
 import pandas as pd
 import yfinance as yf
@@ -8,6 +8,19 @@ import io
 
 # Definicion del Blueprint
 pricing_bp = Blueprint('pricing_bp', __name__, template_folder='templates')
+
+@pricing_bp.before_request
+def check_pricing_security():
+    if 'email' not in session:
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify(success=False, error="AUTH_REQUIRED", message="Sesión requerida."), 401
+        flash("Por favor inicie sesión para acceder a Precios.", "warning")
+        return redirect(url_for('login', next=request.url))
+    if session.get('rol') != 'admin' and 'planilla_precios' not in session.get('area', []):
+        if request.path.startswith('/api/') or request.is_json:
+            return jsonify(success=False, error="FORBIDDEN", message="No tienes permisos para acceder a este módulo."), 403
+        flash("Acceso denegado: No tienes permisos para acceder a Planilla de Precios.", "danger")
+        return redirect(url_for('home'))
 
 @pricing_bp.route('/pricing', methods=['GET'])
 def index():

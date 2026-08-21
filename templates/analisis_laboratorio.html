@@ -14,7 +14,7 @@
 
     .analisis-laboratorio-page {
         font-family: 'Poppins', sans-serif;
-        background-color: #f8f9fa;
+        background-color: var(--bg-body);
     }
 
     .icon-box.bg-gradient-lab {
@@ -31,13 +31,13 @@
     }
 
     .page-title {
-        color: var(--lab-primary);
+        color: var(--text-primary);
         font-weight: 700;
         font-size: 1.75rem;
     }
 
     .page-subtitle {
-        color: #6c757d;
+        color: var(--text-muted);
         font-size: 0.9rem;
     }
 
@@ -46,13 +46,13 @@
         border: none;
         border-radius: 16px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        background-color: white;
+        background-color: var(--bg-surface);
         overflow: hidden;
     }
 
     .card-header-modern {
-        background-color: white;
-        border-bottom: 1px solid #f1f3f5;
+        background-color: var(--bg-surface-subtle);
+        border-bottom: 1px solid var(--border-color);
         padding: 1.25rem 1.5rem;
     }
 
@@ -66,13 +66,13 @@
     }
 
     .btn-outline-lab {
-        color: var(--lab-primary);
-        border: 2px solid var(--lab-primary);
+        color: var(--primary-color);
+        border: 2px solid var(--primary-color);
         background-color: transparent;
     }
 
     .btn-outline-lab:hover {
-        background-color: var(--lab-primary);
+        background-color: var(--primary-color);
         color: white;
         transform: translateY(-1px);
     }
@@ -96,6 +96,7 @@
         overflow-x: auto;
         position: relative;
         border-radius: 0 0 16px 16px;
+        background-color: var(--table-bg);
     }
 
     .table-modern {
@@ -103,6 +104,7 @@
         font-size: 0.875rem;
         width: 100%;
         border-collapse: collapse;
+        background-color: var(--table-bg);
     }
 
     /* Cabecera de la tabla - Verde oscuro */
@@ -127,46 +129,49 @@
         position: sticky;
         top: 53px;
         z-index: 9;
-        background: white;
+        background: var(--table-filter-bg);
     }
 
     #filter-row th {
         padding: 0.625rem;
-        background: #f8f9fc;
-        border-bottom: 3px solid var(--lab-primary);
+        background: var(--table-filter-bg);
+        border-bottom: 3px solid var(--primary-color);
     }
 
     .filter-input {
         width: 100%;
-        border: 2px solid #e0e3e8;
+        border: 1.5px solid var(--border-color);
         border-radius: 0.5rem;
         padding: 0.5rem 0.875rem;
         font-size: 0.75rem;
         transition: all 0.15s ease;
-        background-color: white;
+        background-color: var(--input-bg);
+        color: var(--input-text);
     }
 
     .filter-input:focus {
-        border-color: var(--lab-primary);
+        border-color: var(--primary-color);
         box-shadow: 0 0 0 0.15rem rgba(15, 81, 50, 0.15);
         outline: none;
+        background-color: var(--bg-surface);
     }
 
     /* Celdas del Body */
     .tbody-modern tr {
         transition: background-color 0.15s ease;
-        border-bottom: 1px solid #f1f3f5;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .tbody-modern tr:hover {
-        background-color: rgba(209, 231, 221, 0.25);
+        background-color: var(--bg-surface-subtle);
     }
 
     .tbody-modern td {
         padding: 0.875rem;
         vertical-align: middle;
         border: none;
-        color: #495057;
+        color: var(--table-text);
+        background-color: var(--table-bg);
     }
 
     /* Estilo de Celdas Editables */
@@ -177,7 +182,7 @@
     }
 
     .editable-cell:hover {
-        background-color: rgba(15, 81, 50, 0.05);
+        background-color: rgba(15, 81, 50, 0.08);
     }
 
     .cell-editor {
@@ -188,39 +193,44 @@
         border-radius: 4px;
         outline: none;
         white-space: pre-wrap;
+        color: var(--text-primary);
     }
 
     .cell-editor:focus {
-        background-color: white;
-        box-shadow: 0 0 0 2px var(--lab-primary);
+        background-color: var(--bg-surface-elevated);
+        box-shadow: 0 0 0 2px var(--primary-color);
         min-width: 120px;
     }
 
     .editable-input {
-        border: 1px solid #e0e3e8;
+        border: 1px solid var(--border-color);
         border-radius: 4px;
         padding: 4px 8px;
         font-size: 0.875rem;
         width: 100%;
+        background-color: var(--input-bg);
+        color: var(--input-text);
     }
 
     .editable-input:focus {
-        border-color: var(--lab-primary);
+        border-color: var(--primary-color);
         box-shadow: 0 0 0 2px rgba(15, 81, 50, 0.2);
         outline: none;
+        background-color: var(--bg-surface-elevated);
     }
 
     /* Sticky columns */
     .sticky-col {
         position: sticky;
         right: 0;
-        background-color: white;
+        background-color: var(--table-sticky-number-bg);
+        color: var(--text-primary);
         z-index: 5;
         box-shadow: -4px 0 8px rgba(0,0,0,0.03);
     }
 
     tr:hover .sticky-col {
-        background-color: #f8f9fa;
+        background-color: var(--bg-surface-elevated);
     }
 
     .thead-modern .sticky-col {
@@ -243,8 +253,8 @@
         align-items: center;
         justify-content: space-between;
         padding: 1rem 1.5rem;
-        background-color: white;
-        border-top: 1px solid #f1f3f5;
+        background-color: var(--bg-surface-subtle);
+        border-top: 1px solid var(--border-color);
         border-radius: 0 0 16px 16px;
         flex-wrap: wrap;
         gap: 1rem;
@@ -252,7 +262,7 @@
 
     .pagination-info {
         font-size: 0.825rem;
-        color: #6c757d;
+        color: var(--text-muted);
     }
 
     .pagination-nav {

@@ -1213,12 +1213,12 @@
 
 .page-title {
     font-weight: 700;
-    color: var(--dark-color);
+    color: var(--text-primary);
     font-size: 1.75rem;
 }
 
 .page-subtitle {
-    color: #6c757d;
+    color: var(--text-muted);
     font-size: 0.9rem;
 }
 
@@ -1229,6 +1229,7 @@
     box-shadow: var(--shadow-sm);
     transition: all 0.3s ease;
     overflow: hidden;
+    background-color: var(--bg-surface);
 }
 
 .card-modern:hover {
@@ -1236,14 +1237,14 @@
 }
 
 .card-header-modern {
-    background: var(--light-bg);
+    background: var(--bg-surface-subtle);
     border-bottom: 1px solid var(--border-color);
     padding: 1rem 1.5rem;
 }
 
 .card-title-modern {
     font-weight: 600;
-    color: var(--dark-color);
+    color: var(--text-primary);
     margin-bottom: 0;
 }
 
@@ -2603,6 +2604,45 @@
         width: 100%;
         justify-content: center;
     }
+}
+
+/* Dark Mode Overrides para Panel de Enturnamiento */
+html.dark-mode .status-summary-card,
+html.dark-mode .quick-filters-card {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+}
+
+html.dark-mode .status-chip {
+    background: var(--bg-surface-subtle) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+html.dark-mode .status-chip .status-value {
+    color: var(--text-primary) !important;
+}
+
+html.dark-mode .status-chip .status-label {
+    color: var(--text-muted) !important;
+}
+
+html.dark-mode .tbody-modern tr:hover {
+    background-color: var(--table-hover) !important;
+}
+
+html.dark-mode .card-modern {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+}
+
+html.dark-mode .card-header-modern {
+    background-color: var(--bg-surface-subtle) !important;
+    border-color: var(--border-color) !important;
+}
+
+html.dark-mode .chat-card {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
 }
 </style>
 {% endblock %}

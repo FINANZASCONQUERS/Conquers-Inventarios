@@ -103,11 +103,35 @@ EXCEL_DEFAULT_LP = r"C:\Users\Juan Diego Ayala\OneDrive - conquerstrading\Docume
 # TEMPORALMENTE DESHABILITADO por error de spacy
 # from bot_whatsapp import bot_bp
 
-# Utilidad simple de permiso admin
+# --- Decoradores de Seguridad y Permisos ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'email' not in session:
+            if request.path.startswith('/api/') or request.is_json or \
+               request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+               (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'):
+                return jsonify(success=False, error="AUTH_REQUIRED", message="Sesión expirada o no autenticado. Por favor inicie sesión.", error_code="SESSION_EXPIRED"), 401
+            flash('Por favor inicie sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        if 'email' not in session:
+            if request.path.startswith('/api/') or request.is_json or \
+               request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+               (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'):
+                return jsonify(success=False, error="AUTH_REQUIRED", message="Sesión requerida."), 401
+            flash('Por favor inicie sesión para acceder a esta página.', 'warning')
+            return redirect(url_for('login', next=request.url))
         if session.get('rol') != 'admin':
+            if request.path.startswith('/api/') or request.is_json or \
+               request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+               (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'):
+                return jsonify(success=False, error="FORBIDDEN", message="Permiso denegado: solo administradores."), 403
             flash('Solo administradores pueden acceder a esta sección.', 'danger')
             return redirect(url_for('home'))
         return f(*args, **kwargs)
@@ -416,7 +440,10 @@ def procesar_analisis_remolcadores(registros):
     }
 
 app = Flask(__name__)
-app.secret_key = 'clave_secreta_para_produccion_cambiar'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'clave_secreta_para_produccion_cambiar_conquers_2025')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=12)
 
 import os
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:Sara_121128@localhost:5432/inventario_dev')
@@ -432,6 +459,321 @@ os.makedirs(app.config['GUIDES_DIR'], exist_ok=True)
 from extensions import db
 db.init_app(app) # <--- Iniciamos la BD definida en extensions.py
 migrate = Migrate(app, db)
+
+# --- USUARIOS DEL SISTEMA Y CONTROL DE ACCESO ---
+USUARIOS = {
+    "numbers@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Ayala",
+        "rol": "admin",
+        "area": [] 
+    },
+    "oci@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Carlos Barón",
+        "rol": "editor",
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+    },
+    "logistics.inventory@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Brandon Niño",
+        "rol": "admin",
+        "area": []
+    },
+    "qualitycontrol@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Cuadros",
+        "rol": "editor",
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "analisis_laboratorio", "siza_solicitante", "reportes"] 
+    },
+    "quality.manager@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Ricardo Congo",
+        "rol": "editor",
+        "area": ["barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
+    },
+    "omar.morales@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Omar Morales",
+        "rol": "viewer",
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base"]
+    },
+    "david.restrepo@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "David Restrepo",
+        "rol": "viewer",
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
+    },
+    "finance@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "German Galvis",
+        "rol": "viewer",
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+    },
+    "production@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Ignacio Quimbayo",
+        "rol": "editor",
+        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base"] 
+    },
+    "ops@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juliana Torres",
+        "rol": "editor",
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+    },
+    "logistic@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025*"),
+        "nombre": "Samantha Roa",
+        "rol": "editor",
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+    },
+    "logistics.assistant@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Asistente Logístico",
+        "rol": "editor",
+        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento"]
+    },
+    "comex@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Daniela Cuadrado",
+        "rol": "editor",
+        "area": ["zisa_inventory", "programacion_cargue", "siza_solicitante", "siza_gestor"] 
+    },
+    "comexzf@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Shirli Diaz",
+        "rol": "editor",
+        "area": ["programacion_cargue", "siza_solicitante", "siza_gestor"] 
+    },
+    "juandiego.cuadros@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Juan Diego Cuadros",
+        "rol": "editor",
+        "area": ["siza_solicitante"]
+    },
+    "brando@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Brando",
+        "rol": "editor",
+        "area": ["siza_solicitante", "programacion_base"]
+    },
+    "felipe.delavega@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),     
+        "nombre": "Felipe De La Vega",
+        "rol": "editor",
+        "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion", "siza_solicitante", "planilla_precios"] 
+    },
+    "accountingzf@conquerstrading.com": { 
+        "password": generate_password_hash("Conquers2025"),       
+        "nombre": "Kelly Suarez",
+        "rol": "editor",
+        "area": ["contabilidad", "facturacion"] 
+    },
+    "amariagallo@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Ana Maria Gallo",
+        "rol": "logistica_destino",
+        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base"]
+    },
+    "refinery.control@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Control Refineria",
+        "rol": "refineria",
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base"] 
+    },
+    "opensea@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"), 
+        "nombre": "Opensea", 
+        "rol": "operador_remolcador", 
+        "area": ["control_remolcadores"]
+    },
+    "safety@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Sebastian Blanco",
+        "rol": "editor",
+        "area": ["inventario_epp"]
+    },
+    "human.resource@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Laura Gil",
+        "rol": "viewer",
+        "area": ["organigrama_rh"]
+    },
+    "billcwt@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Kevin Marin",
+        "rol": "editor",
+        "area": ["contabilidad", "facturacion"]
+    },
+    "accounting@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Jaime Rodriguez",
+        "rol": "viewer",
+        "area": ["contabilidad", "facturacion"] 
+    }
+}
+
+# --- LISTA DE RUTAS PÚBLICAS ---
+PUBLIC_ENDPOINTS = {
+    'login',
+    'static',
+    'chrome_devtools_probe',
+}
+
+PUBLIC_PATHS = (
+    '/login',
+    '/static/',
+    '/favicon.ico',
+    '/.well-known/',
+    '/dev-tracker/health',
+    '/api/transito/webhook_n8n',
+)
+
+# --- MAPEO DE RUTAS A MÓDULOS / ÁREAS (RBAC) ---
+MODULE_ROUTE_MAP = [
+    (r'^/control_calidad', ['control_calidad']),
+    (r'^/api/control_calidad', ['control_calidad']),
+    (r'^/analisis-laboratorio', ['analisis_laboratorio']),
+    (r'^/api/analisis-laboratorio', ['analisis_laboratorio']),
+    (r'^/programacion-cargue', ['programacion_cargue']),
+    (r'^/api/programacion-base', ['programacion_base']),
+    (r'^/api/programacion_base', ['programacion_base']),
+    (r'^/api/programacion', ['programacion_cargue']),
+    (r'^/actualizar_programacion', ['programacion_cargue']),
+    (r'^/eliminar_programacion', ['programacion_cargue']),
+    (r'^/agregar_programacion', ['programacion_cargue']),
+    (r'^/api/vcf_api6a', ['programacion_cargue', 'planta', 'guia_transporte', 'panel_enturnamiento']),
+    (r'^/api/cliente', ['programacion_cargue', 'guia_transporte']),
+    (r'^/api/conductor', ['programacion_cargue', 'guia_transporte', 'panel_enturnamiento']),
+    (r'^/api/empresa', ['programacion_cargue', 'guia_transporte']),
+    (r'^/panel-enturnamiento', ['panel_enturnamiento']),
+    (r'^/panel_enturnamiento', ['panel_enturnamiento']),
+    (r'^/api/panel-enturnamiento', ['panel_enturnamiento']),
+    (r'^/api/enturnamiento', ['panel_enturnamiento']),
+    (r'^/guia_transporte', ['guia_transporte']),
+    (r'^/guardar-guia', ['guia_transporte']),
+    (r'^/eliminar-guia', ['guia_transporte']),
+    (r'^/obtener-siguiente-numero-guia', ['guia_transporte']),
+    (r'^/facturacion', ['facturacion', 'contabilidad']),
+    (r'^/api/facturacion', ['facturacion', 'contabilidad']),
+    (r'^/flujo-efectivo', ['flujo_efectivo']),
+    (r'^/flujo_efectivo', ['flujo_efectivo']),
+    (r'^/api/flujo_efectivo', ['flujo_efectivo']),
+    (r'^/api/procesar_flujo_efectivo', ['flujo_efectivo']),
+    (r'^/api/upload-flujo', ['flujo_efectivo']),
+    (r'^/cronograma', ['cronograma', 'reportes', 'contabilidad']),
+    (r'^/api/cronograma', ['cronograma', 'reportes', 'contabilidad']),
+    (r'^/siza', ['siza_solicitante', 'siza_aprobador', 'siza', 'siza_gestor', 'zisa_inventory']),
+    (r'^/inicio-siza', ['siza_solicitante', 'siza_aprobador', 'siza', 'siza_gestor', 'zisa_inventory']),
+    (r'^/api/siza', ['siza_solicitante', 'siza_aprobador', 'siza', 'siza_gestor', 'zisa_inventory']),
+    (r'^/simulador-rendimiento', ['simulador_rendimiento']),
+    (r'^/api/simulador_rendimiento', ['simulador_rendimiento']),
+    (r'^/pricing', ['planilla_precios']),
+    (r'^/planilla-precios', ['planilla_precios']),
+    (r'^/api/pricing', ['planilla_precios']),
+    (r'^/gasoil-premium', ['planilla_precios']),
+    (r'^/modelo-optimizacion', ['modelo_optimizacion']),
+    (r'^/transito', ['transito']),
+    (r'^/guardar-config-transito', ['transito']),
+    (r'^/guardar-registro-transito', ['transito']),
+    (r'^/eliminar-registro-transito', ['transito']),
+    (r'^/subir_excel_transito', ['transito']),
+    (r'^/api/transito', ['transito']),
+    (r'^/control_remolcadores', ['control_remolcadores']),
+    (r'^/api/registros_remolcadores', ['control_remolcadores']),
+    (r'^/barcaza_orion', ['barcaza_orion']),
+    (r'^/api/barcaza_orion', ['barcaza_orion']),
+    (r'^/barcaza_bita', ['barcaza_bita']),
+    (r'^/api/barcaza_bita', ['barcaza_bita']),
+    (r'^/reporte_planta', ['reportes', 'planta']),
+    (r'^/reportes', ['reportes']),
+    (r'^/dashboard_reportes', ['reportes']),
+    (r'^/dashboard-reportes', ['reportes']),
+    (r'^/reporte_grafico_despachos', ['reportes']),
+    (r'^/reporte_barcaza', ['reportes']),
+    (r'^/programacion-base', ['programacion_base']),
+    (r'^/pedidos', ['programacion_base']),
+    (r'^/api/programacion_base', ['programacion_base']),
+    (r'^/aforos', ['planta', 'aforos']),
+    (r'^/api/aforos', ['planta', 'aforos']),
+    (r'^/trasiegos', ['planta', 'trasiegos']),
+    (r'^/api/trasiegos', ['planta', 'trasiegos']),
+    (r'^/reporte_trasiegos', ['planta', 'trasiegos']),
+    (r'^/guardar_trasiegos_masivo', ['planta', 'trasiegos']),
+    (r'^/planta', ['planta']),
+    (r'^/reporte_variaciones_tanques', ['planta']),
+    (r'^/api/tanques', ['planta']),
+    (r'^/guardar-datos-planta', ['planta']),
+    (r'^/agregar-producto', ['planta', 'control_calidad', 'analisis_laboratorio']),
+    (r'^/historial_registros', ['planta']),
+    (r'^/inventario_epp', ['inventario_epp']),
+    (r'^/api/inventario_epp', ['inventario_epp']),
+]
+
+def _es_peticion_api():
+    return (
+        request.path.startswith('/api/') or
+        request.is_json or
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+        request.headers.get('Accept') == 'application/json' or
+        (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json')
+    )
+
+@app.before_request
+def global_security_guard():
+    path = request.path
+
+    # 1. Rutas públicas permitidas sin autenticación
+    if request.endpoint in PUBLIC_ENDPOINTS or any(path.startswith(p) for p in PUBLIC_PATHS):
+        return None
+
+    # 2. Verificar Autenticación (Login)
+    if 'email' not in session:
+        if _es_peticion_api():
+            return jsonify(
+                success=False,
+                error="AUTH_REQUIRED",
+                message="Sesión no iniciada o expirada. Por favor inicie sesión para continuar."
+            ), 401
+        
+        flash("Por favor inicie sesión para acceder al sistema.", "warning")
+        return redirect(url_for('login', next=request.url))
+
+    # 3. Sincronizar datos de usuario
+    email = session['email'].lower()
+    user_info = USUARIOS.get(email)
+    if not user_info:
+        session.clear()
+        if _es_peticion_api():
+            return jsonify(success=False, error="INVALID_USER", message="Usuario no válido."), 401
+        flash("Usuario no reconocido. Sesión cerrada.", "danger")
+        return redirect(url_for('login'))
+
+    session['rol'] = user_info.get('rol', 'viewer')
+    session['area'] = user_info.get('area', [])
+    session['nombre'] = user_info.get('nombre', email)
+
+    # 4. Los administradores tienen acceso total a todos los módulos
+    if session.get('rol') == 'admin':
+        return None
+
+    # 5. Control de Acceso por Módulo/Área (RBAC) para usuarios no administradores
+    user_areas = session.get('area', [])
+    for pattern, allowed_areas in MODULE_ROUTE_MAP:
+        if re.search(pattern, path):
+            if not any(area in user_areas for area in allowed_areas):
+                if _es_peticion_api():
+                    return jsonify(
+                        success=False,
+                        error="FORBIDDEN",
+                        message="Acceso denegado: No tienes permisos para acceder a este recurso o módulo."
+                    ), 403
+                
+                flash("Acceso denegado: No tienes permisos para acceder al módulo solicitado.", "danger")
+                return redirect(url_for('home'))
+
+    return None
 
 scheduler = BackgroundScheduler()
 
@@ -465,6 +807,7 @@ scheduler.add_job(func=send_reminders, trigger="interval", hours=5)
 scheduler.start()
 
 @app.route('/organigrama_rh')
+@login_required
 def organigrama_rh():
     # Only allow specific user
     if session.get('email') != 'human.resource@conquerstrading.com':
@@ -2227,6 +2570,7 @@ def _expand_preview_rows(datos, max_rows=200):
             cm_min = decs[0]
             cm_max = decs[-1] + 9
             out = []
+            # (USUARIOS y global_security_guard inicializados al inicio de app.py)
             for cm in range(cm_min, cm_max + 1):
                 b = _interp_bbl(datos, cm, 0)
                 out.append({'cm': int(cm), 'mm': 0, 'bbl': float(b)})
@@ -2237,203 +2581,8 @@ def _expand_preview_rows(datos, max_rows=200):
         pass
     return []
 
-# Decorador para verificar login (mejorado para AJAX)
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'email' not in session:
-            # Si la petición espera JSON (como fetch), devuelve un error JSON y un código 401
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
-               (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'):
-                return jsonify(success=False, message="Sesión expirada o no autenticado. Por favor, inicie sesión de nuevo.", error_code="SESSION_EXPIRED"), 401
-            
-            flash('Por favor inicie sesión para acceder a esta página.', 'warning')
-            return redirect(url_for('login', next=request.url))
-        return f(*args, **kwargs)
-    return decorated_function
+# (USUARIOS y autenticación inicializados al inicio de app.py)
 
-@app.before_request
-def sync_user_session():
-    if 'email' in session:
-        user_info = USUARIOS.get(session['email'].lower())
-        if user_info:
-            session['rol'] = user_info['rol']
-            session['area'] = user_info['area']
-            session['nombre'] = user_info['nombre']
-
-USUARIOS = {
-
-    # Juan Diego  (Admin): Tiene acceso a todo.
-    "numbers@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Juan Diego Ayala",
-        "rol": "admin",
-        "area": [] 
-    },
-
-    # Carlos (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
-    "oci@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Carlos Barón",
-        "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
-    },
-    # Brandon (Admin): Acceso total.
-    "logistics.inventory@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Brandon Niño",
-        "rol": "admin",
-        "area": []
-    },
-    # Juan Diego (Editor): Solo acceso a Barcaza Orion.
-    "qualitycontrol@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Juan Diego Cuadros",
-        "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "analisis_laboratorio", "siza_solicitante", "reportes"] 
-    },
-    # Ricardo (Editor): Acceso a Barcaza BITA, Análisis Laboratorio, Control Calidad y Reportes (Visual de Planta).
-    "quality.manager@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Ricardo Congo",
-        "rol": "editor",
-        "area": ["barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
-    },
-    # Omar (Viewer): Rol limitado para ver reportes.
-    "omar.morales@conquerstrading.com": {
-    "password": generate_password_hash("Conquers2025"),
-    "nombre": "Omar Morales",
-    "rol": "viewer",
-    "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base"]
-},
-
-    "david.restrepo@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "David Restrepo",
-        "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
-    },
-
-    "finance@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "German Galvis",
-        "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
-    },
-    
-    # Ignacio (Editor): Solo acceso a Planta y Rendimientos
-    "production@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Ignacio Quimbayo",
-        "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base"] 
-    },
-    # Juliana (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
-    "ops@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Juliana Torres",
-        "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
-    },
-    # Samantha (Editor): Tiene acceso a Planta, Tránsito, Generar Guía, Control Remolcadores, Programación Cargue, Facturación, Pedidos y SIZA.
-    "logistic@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025*"),
-        "nombre": "Samantha Roa",
-        "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
-    },
-
-    "comex@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),     
-        "nombre": "Daniela Cuadrado",
-        "rol": "editor",
-        "area": ["zisa_inventory", "programacion_cargue", "siza_solicitante", "siza_gestor"] 
-    },
-
-    "comexzf@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),     
-        "nombre": "Shirli Diaz",
-        "rol": "editor",
-        "area": ["programacion_cargue", "siza_solicitante", "siza_gestor"] 
-    },
-
-    "juandiego.cuadros@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Juan Diego Cuadros",
-        "rol": "editor",
-        "area": ["siza_solicitante"]
-    },
-
-    "brando@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Brando",
-        "rol": "editor",
-        "area": ["siza_solicitante", "programacion_base"]
-    },
-
-    "felipe.delavega@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),     
-        "nombre": "Felipe De La Vega",
-        "rol": "editor",
-    "area": ["simulador_rendimiento", "flujo_efectivo", "modelo_optimizacion", "siza_solicitante", "planilla_precios"] 
-    },
-
-        "accountingzf@conquerstrading.com": { 
-        "password": generate_password_hash("Conquers2025"),       
-        "nombre": "Kelly Suarez",
-        "rol": "editor",
-        "area": ["contabilidad", "facturacion"] 
-    },
-        "amariagallo@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), 
-        "nombre": "Ana Maria Gallo",
-        "rol": "logistica_destino",
-        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base"]
-    },
-
-        "refinery.control@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), 
-        "nombre": "Control Refineria",
-        "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base"] 
-    },
-        "opensea@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"), 
-        "nombre": "Opensea", 
-        "rol": "operador_remolcador", 
-        "area": ["control_remolcadores"]
-    },
-
-    "safety@conquerstrading.com": {
-    "password": generate_password_hash("Conquers2025"),
-    "nombre": "Sebastian Blanco",
-    "rol": "editor",
-    "area": ["inventario_epp"]
-    },
-
-    "human.resource@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Laura Gil",
-        "rol": "viewer",
-        "area": ["organigrama_rh"]
-    },
-
-    "billcwt@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Kevin Marin",
-        "rol": "editor",
-        "area": ["contabilidad", "facturacion"]
-    },
-
-    "accounting@conquerstrading.com": {
-        "password": generate_password_hash("Conquers2025"),
-        "nombre": "Jaime Rodriguez",
-        "rol": "viewer",
-        "area": ["contabilidad", "facturacion"] 
-    },
-
-
-}
    
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
@@ -2664,23 +2813,28 @@ def permiso_requerido(area_requerida):
                 return f(*args, **kwargs)
             
             # 3. Si no cumple ninguna condición, denegar acceso
+            if request.path.startswith('/api/') or request.is_json or \
+               request.headers.get('X-Requested-With') == 'XMLHttpRequest' or \
+               (request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'):
+                return jsonify(success=False, error="FORBIDDEN", message=f"Acceso denegado: Se requieren permisos para el área '{area_requerida}'."), 403
+
             flash("No tienes los permisos necesarios para acceder a esta página.", "danger")
             return redirect(url_for('home'))
         return decorated_function
     return decorator
 
 # ---------------- Gestión de Aforos (Admin) -----------------
+@app.route('/aforos')
 @login_required
 @admin_required
-@app.route('/aforos')
 def aforos_page():
     tablas = db.session.query(AforoTabla).order_by(AforoTabla.tipo.asc(), AforoTabla.nombre.asc()).all()
     # Cargar una lista mínima para mostrar en tabla (sin los datos)
     return render_template('aforos.html', nombre=session.get('nombre'), tablas=tablas)
 
+@app.route('/api/aforos/get')
 @login_required
 @admin_required
-@app.route('/api/aforos/get')
 def aforos_get():
     try:
         tid = request.args.get('id')
@@ -2712,9 +2866,9 @@ def aforos_get():
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/aforos/download')
 @login_required
 @admin_required
-@app.route('/api/aforos/download')
 def aforos_download():
     try:
         tid = request.args.get('id')
@@ -2745,9 +2899,9 @@ def aforos_download():
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/aforos/upload', methods=['POST'])
 @login_required
 @admin_required
-@app.route('/api/aforos/upload', methods=['POST'])
 def aforos_upload():
     if 'archivo_excel' not in request.files:
         return jsonify(success=False, message='Archivo no recibido'), 400
@@ -2901,8 +3055,8 @@ def aforos_upload():
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/aforos/list')
+@login_required
 def aforos_list():
     # acceso general para poder consultarlo desde Trasiegos
     tipo = (request.args.get('tipo') or '').upper() or None
@@ -2921,8 +3075,8 @@ def aforos_list():
         })
     return jsonify(success=True, tablas=res)
 
-@login_required
 @app.route('/api/aforos/calcular')
+@login_required
 def aforos_calcular():
     try:
         nombre = (request.args.get('nombre') or '').upper()
@@ -2960,9 +3114,9 @@ def aforos_calcular():
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/aforos/delete', methods=['POST'])
 @login_required
 @admin_required
-@app.route('/api/aforos/delete', methods=['POST'])
 def aforos_delete():
     try:
         payload = request.get_json(silent=True) or {}
@@ -2999,8 +3153,8 @@ def aforos_delete():
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/tanques/save', methods=['POST'])
+@login_required
 def tanques_save():
     try:
         data = request.get_json()
@@ -3054,8 +3208,8 @@ def tanques_save():
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/tanques/delete', methods=['POST'])
+@login_required
 def tanques_delete():
     try:
         data = request.get_json()
@@ -3148,8 +3302,8 @@ def _to_int(value):
     except Exception:
         return None
 
-@login_required
 @app.route('/trasiegos', methods=['GET', 'POST'])
+@login_required
 def trasiegos_page():
     nombre_usr = session.get('nombre', '')
     ALLOWED_TK = { 'Ignacio Quimbayo', 'Control Refineria' }
@@ -3332,8 +3486,8 @@ def trasiegos_page():
     trasiegos = q.order_by(TrasiegoTKBarcaza.fecha.desc(), TrasiegoTKBarcaza.id.desc()).all()
     return render_template('trasiegos.html', nombre=session.get('nombre'), trasiegos=trasiegos, desde=desde or '', hasta=hasta or '', allowed_tk=can_tk, allowed_bar=can_bar)
 
-@login_required
 @app.route('/guardar_trasiegos_masivo', methods=['POST'])
+@login_required
 def guardar_trasiegos_masivo():
     def to_float(v):
         if v is None:
@@ -3447,16 +3601,16 @@ def _build_opciones_trasiegos():
     aforosBAR = [r.nombre for r in db.session.query(AforoTabla).filter(AforoTabla.tipo == 'BARCAZA').order_by(AforoTabla.nombre.asc()).all()]
     return { 'tks': tks, 'barcazas': barcazas, 'aforosTK': aforosTK, 'aforosBAR': aforosBAR }
 
-@login_required
 @app.route('/api/trasiegos/opciones')
+@login_required
 def api_trasiegos_opciones():
     try:
         return jsonify(success=True, **_build_opciones_trasiegos())
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/trasiegos/verificar_fecha')
+@login_required
 def api_trasiegos_verificar_fecha():
     try:
         tk = (request.args.get('tk') or '').upper().strip()
@@ -3474,8 +3628,8 @@ def api_trasiegos_verificar_fecha():
         return jsonify(success=False, message=str(e)), 500
 
 # Endpoint para buscar VCF en la tabla API6A
-@login_required
 @app.route('/api/vcf_api6a')
+@login_required
 def api_vcf_api6a():
     try:
         api = request.args.get('api', type=float)
@@ -3507,8 +3661,8 @@ def api_vcf_api6a():
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/trasiegos/eliminar/<int:id>', methods=['POST'])
+@login_required
 def eliminar_trasiego(id):
     try:
         reg = TrasiegoTKBarcaza.query.get_or_404(id)
@@ -3520,8 +3674,8 @@ def eliminar_trasiego(id):
         flash(f'No se pudo eliminar: {e}','danger')
     return redirect(url_for('trasiegos_page'))
 
-@login_required
 @app.route('/reporte_trasiegos')
+@login_required
 def reporte_trasiegos():
     # Reporte tipo tabla como la imagen, por fecha
     fecha_str = request.args.get('fecha')
@@ -3582,9 +3736,9 @@ def reporte_trasiegos():
                            datos_bar=datos_bar,
                            diferencia_total=diferencia_total)
 
+@app.route('/transito')
 @login_required
 @permiso_requerido('transito')
-@app.route('/transito')
 def transito():
     # Iniciamos la consulta base
     query = db.session.query(RegistroTransito)
@@ -3625,8 +3779,8 @@ def transito():
                            transito_config=cargar_transito_config(),
                            filtros=filtros)
   
-@login_required
 @app.route('/control_calidad')
+@login_required
 def control_calidad():
     # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
@@ -3679,8 +3833,8 @@ def control_calidad():
                            email_usuario=session.get('email'),
                            rol_usuario=session.get('rol'))
   
-@login_required
 @app.route('/api/control_calidad', methods=['GET'])
+@login_required
 def get_control_calidad_data():
     # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
@@ -3767,8 +3921,8 @@ def get_control_calidad_data():
 
     return jsonify({"data": datos, "total": total, "page": page, "per_page": per_page, "pages": pages})
 
-@login_required
 @app.route('/api/control_calidad', methods=['POST'])
+@login_required
 def crear_registro_calidad():
     """Crear un nuevo registro vacío de control de calidad"""
     # Solo permitir acceso a usuarios específicos y admin
@@ -3803,8 +3957,8 @@ def crear_registro_calidad():
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
-@login_required
 @app.route('/api/control_calidad/<int:id>', methods=['PUT'])
+@login_required
 def actualizar_registro_calidad(id):
     """Actualizar un campo específico de un registro de control de calidad"""
     # Solo permitir acceso a usuarios específicos y admin
@@ -3864,8 +4018,8 @@ def actualizar_registro_calidad(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error: {str(e)}"), 500
 
-@login_required
 @app.route('/api/control_calidad/<int:id>', methods=['DELETE'])
+@login_required
 def eliminar_registro_calidad(id):
     # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
@@ -4182,8 +4336,8 @@ def delete_analisis_pdf(id):
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/add-origen', methods=['POST'])
+@login_required
 def agregar_origen():
     data = request.get_json()
     origen_nombre = data.get('origen_nombre', '').strip().upper()
@@ -4216,8 +4370,8 @@ def agregar_origen():
         print(f"Error al agregar origen: {e}")
         return jsonify(success=False, message="Error interno del servidor"), 500
     
-@login_required
 @app.route('/api/add-producto', methods=['POST'])
+@login_required
 def agregar_producto_transito():
     data = request.get_json()
     origen_nombre = data.get('origen_nombre', '').strip().upper()
@@ -4281,9 +4435,9 @@ def logout():
     flash('Sesión cerrada', 'info')
     return redirect(url_for('login'))
 
+@app.route('/planta')
 @login_required
 @permiso_requerido('planta')
-@app.route('/planta')
 def planta():
     # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy.
     fecha_str = request.args.get('fecha')
@@ -4407,9 +4561,9 @@ def planta():
                            fechas_con_registro=fechas_con_registro,
                            tanques_conf=tanques_conf) # Pasamos config para el modal
 
+@app.route('/reporte_variaciones_tanques')
 @login_required
 @permiso_requerido('planta')
-@app.route('/reporte_variaciones_tanques')
 def reporte_variaciones_tanques():
     try:
         end_str = request.args.get('hasta')
@@ -4511,8 +4665,8 @@ def reporte_variaciones_tanques():
                    series_por_tanque={},
                    today_iso=date.today().isoformat(),
                    fechas_con_registro=[])
-@login_required
 @app.route('/reporte_planta')
+@login_required
 def reporte_planta():
     # 1. La lógica del filtro de fecha no cambia
     fecha_str = request.args.get('fecha')
@@ -4628,9 +4782,9 @@ def reporte_planta():
                            fechas_con_registro=fechas_con_registro)
 
 
+@app.route('/guardar-config-transito', methods=['POST'])
 @login_required
 @permiso_requerido('transito')
-@app.route('/guardar-config-transito', methods=['POST'])
 def guardar_config_transito():
     try:
         nueva_config = request.get_json()
@@ -4646,9 +4800,9 @@ def guardar_config_transito():
         print(f"Error al guardar transito_config.json: {e}")
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
 
+@app.route('/guardar-registro-transito-<tipo_transito>', methods=['POST'])
 @login_required
 @permiso_requerido('transito')
-@app.route('/guardar-registro-transito-<tipo_transito>', methods=['POST'])
 def guardar_transito(tipo_transito):
     datos_recibidos = request.get_json()
     if not isinstance(datos_recibidos, list):
@@ -4714,9 +4868,9 @@ def guardar_transito(tipo_transito):
         app.logger.error(f"Error al guardar tránsito: {e}")
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
+@app.route('/api/transito/eliminar-todo/<string:tipo_transito>', methods=['DELETE'])
 @login_required
 @permiso_requerido('transito')
-@app.route('/api/transito/eliminar-todo/<string:tipo_transito>', methods=['DELETE'])
 def eliminar_todo_transito(tipo_transito):
     """
     Elimina TODOS los registros de un tipo de tránsito específico ('general' o 'refineria').
@@ -4739,9 +4893,9 @@ def eliminar_todo_transito(tipo_transito):
         app.logger.error(f"Error en eliminación masiva de tránsito '{tipo_transito}': {e}")
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500    
     
+@app.route('/eliminar-registro-transito/<int:id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('transito')
-@app.route('/eliminar-registro-transito/<int:id>', methods=['DELETE'])
 def eliminar_registro_transito(id):
     """
     Elimina un único registro de la tabla de tránsito por su ID.
@@ -4765,9 +4919,9 @@ def eliminar_registro_transito(id):
         app.logger.error(f"Error al eliminar registro de tránsito ID {id}: {e}")
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500    
     
+@app.route('/subir_excel_transito', methods=['POST'])
 @login_required
 @permiso_requerido('transito') # <--- LÍNEA CORREGIDA
-@app.route('/subir_excel_transito', methods=['POST'])
 def subir_excel_transito():
     """
     Procesa un archivo Excel subido para cargar datos en la planilla de tránsito.
@@ -4860,9 +5014,9 @@ def subir_excel_transito():
         return jsonify({'success': False, 'message': f"Error interno del servidor: {str(e)}"}), 500
 
     
+@app.route('/api/registros_remolcadores/<int:id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/registros_remolcadores/<int:id>', methods=['DELETE'])
 def eliminar_evento_remolcador(id):
     """Elimina un único evento de la maniobra."""
     
@@ -5185,9 +5339,9 @@ def _apply_premium_overrides_to_excel(excel_path: str, premium_overrides: list, 
     return out_path, applied
 
 
+@app.route('/modelo-optimizacion', methods=['GET'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion', methods=['GET'])
 def modelo_optimizacion_page():
     allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
     if session.get('rol') != 'admin' and session.get('email') not in allowed:
@@ -5214,9 +5368,9 @@ def modelo_optimizacion_page():
                            cached_result_id=result_id)
 
 
+@app.route('/modelo-optimizacion/ejecutar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/ejecutar', methods=['POST'])
 def modelo_optimizacion_ejecutar():
     allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
     if session.get('rol') != 'admin' and session.get('email') not in allowed:
@@ -5315,9 +5469,9 @@ def modelo_optimizacion_ejecutar():
         app.logger.error(f"Error al ejecutar modelo: {e}")
         return jsonify(success=False, error=str(e)), 500
 
+@app.route('/modelo-optimizacion/descargar-informe', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/descargar-informe', methods=['POST'])
 def modelo_optimizacion_descargar_reporte():
     allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
     if session.get('rol') != 'admin' and session.get('email') not in allowed:
@@ -5372,9 +5526,9 @@ def _mo_acceso_permitido():
     return session.get('rol') == 'admin' or session.get('email') in allowed
 
 
+@app.route('/modelo-optimizacion/parametros/listar', methods=['GET'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/listar', methods=['GET'])
 def modelo_parametros_listar():
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5387,9 +5541,9 @@ def modelo_parametros_listar():
     } for e in escenarios])
 
 
+@app.route('/modelo-optimizacion/parametros/importar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/importar', methods=['POST'])
 def modelo_parametros_importar():
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5420,9 +5574,9 @@ def modelo_parametros_importar():
         return jsonify(success=False, error=str(e)), 500
 
 
+@app.route('/modelo-optimizacion/parametros/nuevo', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/nuevo', methods=['POST'])
 def modelo_parametros_nuevo():
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5444,9 +5598,9 @@ def modelo_parametros_nuevo():
         return jsonify(success=False, error=str(e)), 500
 
 
+@app.route('/modelo-optimizacion/parametros/recalcular', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/recalcular', methods=['POST'])
 def modelo_parametros_recalcular():
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5462,9 +5616,9 @@ def modelo_parametros_recalcular():
         return jsonify(success=False, error=str(e)), 500
 
 
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>', methods=['GET'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/<int:esc_id>', methods=['GET'])
 def modelo_parametros_obtener(esc_id):
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5475,9 +5629,9 @@ def modelo_parametros_obtener(esc_id):
     return jsonify(success=True, id=esc.id, nombre=esc.nombre, payload=json.loads(esc.datos_json))
 
 
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/guardar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/<int:esc_id>/guardar', methods=['POST'])
 def modelo_parametros_guardar(esc_id):
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5496,9 +5650,9 @@ def modelo_parametros_guardar(esc_id):
     return jsonify(success=True, id=esc.id)
 
 
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/eliminar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
-@app.route('/modelo-optimizacion/parametros/<int:esc_id>/eliminar', methods=['POST'])
 def modelo_parametros_eliminar(esc_id):
     if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
@@ -5510,8 +5664,8 @@ def modelo_parametros_eliminar(esc_id):
 
 
        
-@login_required
 @app.route('/agregar-producto', methods=['POST'])
+@login_required
 def agregar_producto():
     data = request.get_json()
     nuevo_producto = data.get("producto")
@@ -5534,8 +5688,8 @@ def agregar_producto():
     except Exception as e:
         return jsonify(success=False, message=str(e))
     
-@login_required       
 @app.route('/historial_registros') 
+@login_required       
 def historial_registros():        
     registros = []
     carpeta = "registros"
@@ -5557,9 +5711,9 @@ def historial_registros():
     # Asegúrate que el nombre del template sigue siendo el correcto si quieres reutilizarlo
     return render_template("reporte_general.html", registros=registros, nombre=session.get("nombre"))
 
+@app.route('/reporte_transito')
 @login_required
 @permiso_requerido('transito')
-@app.route('/reporte_transito')
 def reporte_transito():
     app.logger.info("Accediendo a /reporte_transito desde la base de datos")
     datos_consolidados = {}
@@ -5637,9 +5791,9 @@ def reporte_transito():
                            camiones_mapa=camiones_para_mapa,
                            nombre=session.get("nombre"),
                            fecha_actualizacion_info=fecha_actualizacion_info)
+@app.route('/barcaza_orion')
 @login_required
 @permiso_requerido('barcaza_orion')
-@app.route('/barcaza_orion')
 def barcaza_orion():
     print("\n--- INICIANDO RUTA /barcaza_orion ---")
     
@@ -5744,9 +5898,9 @@ def sync_orion_tanks():
         db.session.rollback()
         print(f"Ocurrió un error durante la sincronización: {e}")
 
+@app.route('/barcaza_bita')
 @login_required
 @permiso_requerido('barcaza_bita')
-@app.route('/barcaza_bita')
 def barcaza_bita():
     # 1. Lógica del filtro de fecha
     fecha_str = request.args.get('fecha')
@@ -5797,9 +5951,9 @@ def barcaza_bita():
                            today_iso=date.today().isoformat(),
                            fecha_display=fecha_display) 
 
+@app.route('/guia_transporte')
 @login_required
 @permiso_requerido('guia_transporte') 
-@app.route('/guia_transporte')
 def guia_transporte():
     """
     Muestra la guía de transporte. Si recibe datos en la URL, los pasa a la plantilla
@@ -5834,9 +5988,9 @@ def guia_transporte():
         datos_guia=datos_guia
     )
 
+@app.route('/dashboard-siza')
 @login_required
 @permiso_requerido("siza_solicitante")  # Permite ver a solicitantes y gestores
-@app.route('/dashboard-siza')
 def dashboard_siza():
     """Dashboard de control de cupo SIZA multi-producto."""
     try:
@@ -6098,9 +6252,9 @@ def dashboard_siza():
         flash(f'Error al cargar dashboard: {str(e)}', 'danger')
         return redirect(url_for('home'))
 
+@app.route('/siza/historial')
 @login_required
 @permiso_requerido("siza_solicitante")  # Todos pueden ver historial
-@app.route('/siza/historial')
 def historial_siza():
     """Renderiza la página de historial completo de SIZA."""
     try:
@@ -6115,9 +6269,9 @@ def historial_siza():
         flash(f'Error al cargar historial: {str(e)}', 'danger')
         return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/actualizar-inventario', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden actualizar inventario
-@app.route('/siza/actualizar-inventario', methods=['POST'])
 def actualizar_inventario_siza():
     """Actualiza el inventario de un producto SIZA específico."""
     try:
@@ -6161,9 +6315,9 @@ def actualizar_inventario_siza():
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/recargar-producto', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden recargar
-@app.route('/siza/recargar-producto', methods=['POST'])
 def recargar_producto_siza():
     """Registra una recarga de inventario para un producto."""
     try:
@@ -6429,9 +6583,9 @@ def editar_recarga_siza(recarga_id):
 
 
 
+@app.route('/siza/registrar-consumo', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden consumir
-@app.route('/siza/registrar-consumo', methods=['POST'])
 def registrar_consumo_siza():
     """Registra un consumo/despacho de inventario para un producto."""
     try:
@@ -6485,10 +6639,10 @@ def registrar_consumo_siza():
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/editar-consumo/<int:consumo_id>', methods=['POST'])
 @login_required
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden editar consumos
-@app.route('/siza/editar-consumo/<int:consumo_id>', methods=['POST'])
 def editar_consumo_siza(consumo_id):
     """Edita un consumo existente."""
     try:
@@ -6536,9 +6690,9 @@ def editar_consumo_siza(consumo_id):
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/eliminar-movimiento/<tipo>/<int:movimiento_id>', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden eliminar movimientos
-@app.route('/siza/eliminar-movimiento/<tipo>/<int:movimiento_id>', methods=['POST'])
 def eliminar_movimiento_siza(tipo, movimiento_id):
     """Elimina una recarga o consumo."""
     try:
@@ -6580,8 +6734,8 @@ def eliminar_movimiento_siza(tipo, movimiento_id):
     
     return redirect(url_for('dashboard_siza'))
 
-@login_required
 @app.route('/siza/actualizar-volumen-dian', methods=['POST'])
+@login_required
 def actualizar_volumen_dian():
     """Actualiza el volumen pendiente de aprobación DIAN. Solo accesible por Daniela y Shirley."""
     try:
@@ -6704,8 +6858,8 @@ def actualizar_volumen_dian():
     
     return redirect(url_for('dashboard_siza'))
 
-@login_required
 @app.route('/siza/eliminar-historial-dian/<int:id>', methods=['POST'])
+@login_required
 def eliminar_historial_dian_siza(id):
     """Elimina un registro de historial de aprobación y revierte el volumen."""
     try:
@@ -6912,16 +7066,16 @@ def siza_reset_fabrica():
 
 
 
+@app.route('/siza/actualizar-cupo-web', methods=['POST'])
 @login_required
 @permiso_requerido("cupo_siza")
-@app.route('/siza/actualizar-cupo-web', methods=['POST'])
 def actualizar_cupo_web():
     """DEPRECADO: Mantenido por compatibilidad. Usar actualizar_inventario_siza."""
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/registrar-pedido', methods=['POST'])
 @login_required
 @permiso_requerido("siza_solicitante")  # Solicitantes pueden crear pedidos
-@app.route('/siza/registrar-pedido', methods=['POST'])
 def registrar_pedido():
     """Registra un nuevo pedido SIZA para un producto específico con validación inteligente."""
     try:
@@ -7002,9 +7156,9 @@ def registrar_pedido():
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/editar-pedido/<int:pedido_id>', methods=['POST'])
 @login_required
 @permiso_requerido("siza_solicitante")  # Solicitantes pueden editar sus propios pedidos
-@app.route('/siza/editar-pedido/<int:pedido_id>', methods=['POST'])
 def editar_pedido_siza(pedido_id):
     """Edita un pedido SIZA existente (estado, volumen, observación)."""
     # Verificar permisos: gestores pueden editar todo, solicitantes solo sus pedidos
@@ -7072,9 +7226,9 @@ def editar_pedido_siza(pedido_id):
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/consumir-pedidos', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden consumir
-@app.route('/siza/consumir-pedidos', methods=['POST'])
 def consumir_pedidos_siza():
     """Consume automáticamente los pedidos pendientes de un producto."""
     try:
@@ -7158,9 +7312,9 @@ def consumir_pedidos_siza():
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/gestionar-pedido/<int:pedido_id>', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")  # Solo gestores pueden aprobar/rechazar
-@app.route('/siza/gestionar-pedido/<int:pedido_id>', methods=['POST'])
 def gestionar_pedido(pedido_id):
     """Aprueba o rechaza un pedido SIZA."""
     try:
@@ -7282,9 +7436,9 @@ def enviar_notificacion_despacho(pedido, producto_nombre, volumen_real):
     except Exception as e:
         print(f"? Error al enviar correo de despacho: {str(e)}")
 
+@app.route('/siza/despachar-pedido/<int:pedido_id>', methods=['POST'])
 @login_required
 @permiso_requerido("siza_gestor")
-@app.route('/siza/despachar-pedido/<int:pedido_id>', methods=['POST'])
 def despachar_pedido_siza(pedido_id):
     """Registra el despacho (consumo real) de un pedido aprobado."""
     try:
@@ -7357,9 +7511,9 @@ def despachar_pedido_siza(pedido_id):
     
     return redirect(url_for('dashboard_siza'))
 
+@app.route('/siza/historial-movimientos')
 @login_required
 @permiso_requerido("siza_solicitante")  # Todos pueden ver historial
-@app.route('/siza/historial-movimientos')
 def historial_movimientos_siza():
     """Obtiene el historial completo de movimientos (recargas y consumos)."""
     try:
@@ -7433,9 +7587,9 @@ def historial_movimientos_siza():
             'error': str(e)
         }), 500
 
+@app.route('/siza/historial-pedidos')
 @login_required
 @permiso_requerido("siza_solicitante")  # Todos pueden ver historial de pedidos
-@app.route('/siza/historial-pedidos')
 def historial_pedidos_siza():
     """Obtiene el historial completo de pedidos con filtros."""
     try:
@@ -7489,14 +7643,14 @@ def historial_pedidos_siza():
             'error': str(e)
         }), 500
 
-@login_required
 @app.route('/inicio-siza')
+@login_required
 def home_siza():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
-@login_required
 @app.route('/reporte_barcaza')
+@login_required
 def reporte_barcaza():
     # 1. Lógica del filtro de fecha (idéntica a la que ya usamos)
     fecha_str = request.args.get('fecha')
@@ -7570,8 +7724,8 @@ def reporte_barcaza():
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
                            today_iso=date.today().isoformat())
 
-@login_required
 @app.route('/reporte_barcaza_bita')
+@login_required
 def reporte_barcaza_bita():
     # La lógica de consulta es idéntica a la de la planilla
     fecha_str = request.args.get('fecha')
@@ -7619,9 +7773,9 @@ def reporte_barcaza_bita():
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
                            today_iso=date.today().isoformat())
 
+@app.route('/guardar-registro-bita', methods=['POST'])
 @login_required
 @permiso_requerido('barcaza_bita')
-@app.route('/guardar-registro-bita', methods=['POST'])
 def guardar_registro_bita():
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
@@ -7679,9 +7833,9 @@ def guardar_registro_bita():
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
+@app.route('/guardar_registro_barcaza', methods=['POST'])
 @login_required
 @permiso_requerido('barcaza_orion')
-@app.route('/guardar_registro_barcaza', methods=['POST'])
 def guardar_registro_barcaza():
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
@@ -7742,8 +7896,8 @@ def guardar_registro_barcaza():
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
-@login_required
 @app.route('/dashboard_reportes')
+@login_required
 def dashboard_reportes():
     user_email = session.get('email', '').lower()
     user_info = USUARIOS.get(user_email, {})
@@ -8003,8 +8157,8 @@ def dashboard_reportes():
                            rol=session.get("rol", "Usuario"),
                            modulos_usuario=modulos_usuario)
 
-@login_required                        
 @app.route('/guardar-datos-planta', methods=['POST'])
+@login_required                        
 def guardar_datos_planta():
     if not request.is_json:
         return jsonify(success=False, message="Formato no válido"), 400
@@ -8024,9 +8178,9 @@ def guardar_datos_planta():
 
     return jsonify(success=False, message="Tanque o campo no encontrado"), 404
 
+@app.route('/guardar-registro-planta', methods=['POST'])
 @login_required
 @permiso_requerido('planta')
-@app.route('/guardar-registro-planta', methods=['POST'])
 def guardar_registro_planta():
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
@@ -8084,9 +8238,9 @@ def guardar_registro_planta():
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
     
+@app.route('/inventario-zisa')
 @login_required
 @permiso_requerido('zisa_inventory')    
-@app.route('/inventario-zisa')
 def inventario_zisa():
     # 1. Definimos la variable global 'g.current_time' para que la plantilla la pueda usar
     # Usamos la zona horaria de Bogotá que ya tienes configurada en otras partes
@@ -8114,9 +8268,9 @@ def inventario_zisa():
                            total_zisa=total_zisa,       # <-- Variable añadida
                            total_fbcol=total_fbcol,     # <-- Variable añadida
                            nombre=session.get("nombre"))
+@app.route('/cargar-inventario-zisa', methods=['POST'])
 @login_required
 @permiso_requerido('zisa_inventory')
-@app.route('/cargar-inventario-zisa', methods=['POST'])
 def cargar_inventario_zisa():
     if 'archivo_excel' not in request.files:
         flash('No se seleccionó ningún archivo.', 'warning')
@@ -8214,9 +8368,9 @@ def cargar_inventario_zisa():
     
     return redirect(url_for('inventario_zisa'))
 
+@app.route('/consumir-inventario', methods=['GET', 'POST'])
 @login_required
 @permiso_requerido('zisa_inventory')
-@app.route('/consumir-inventario', methods=['GET', 'POST'])
 def consumir_inventario():
     if request.method == 'POST':
         try:
@@ -8319,9 +8473,9 @@ def consumir_inventario():
                                total_consumido_fbcol=total_consumido_fbcol,
                                ultimos_consumos=ultimos_consumos)
 
+@app.route('/reporte-consumo')
 @login_required
 @permiso_requerido('zisa_inventory')    
-@app.route('/reporte-consumo')
 def reporte_consumo():
     # 1. Obtener los filtros desde la URL (si es que existen)
     empresa_filtro = request.args.get('empresa', default='')
@@ -8370,9 +8524,9 @@ def reporte_consumo():
                            total_consumido=total_consumido_filtrado,
                            filtros=filtros_activos)
 
+@app.route('/exportar-inventario-zisa')
 @login_required
 @permiso_requerido('zisa_inventory')
-@app.route('/exportar-inventario-zisa')
 def exportar_inventario_zisa():
     """
     Exporta el inventario de ZISA/FBCOL a un archivo Excel con filtros.
@@ -8429,8 +8583,8 @@ def exportar_inventario_zisa():
         download_name=filename
     )
 
-@login_required
 @app.route('/exportar-excel/<string:nombre_reporte>')
+@login_required
 def exportar_excel(nombre_reporte):
     """
     Exporta los datos del reporte especificado a un archivo Excel con filtros avanzados.
@@ -8616,8 +8770,8 @@ def exportar_excel(nombre_reporte):
         download_name=filename
     )
 
-@login_required
 @app.route('/descargar-reporte-variaciones-pdf')
+@login_required
 def descargar_reporte_variaciones_pdf():
     filtro_tipo = request.args.get('filtro_tipo', 'mes')
     valor = request.args.get('valor')
@@ -8832,8 +8986,8 @@ def descargar_reporte_variaciones_pdf():
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_variaciones_tanques.pdf'})
 
-@login_required
 @app.route('/descargar-reporte-planta-pdf')
+@login_required
 def descargar_reporte_planta_pdf():
     # --- La lógica de filtros que ya tienes se mantiene igual ---
     filtro_tipo = request.args.get('filtro_tipo', 'dia')
@@ -9003,8 +9157,8 @@ def descargar_reporte_planta_pdf():
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_planta.pdf'})
 
-@login_required
 @app.route('/descargar-reporte-orion-pdf')
+@login_required
 def descargar_reporte_orion_pdf():
     # --- La lógica de filtros se mantiene igual ---
     fecha_str = request.args.get('fecha', date.today().isoformat())
@@ -9115,8 +9269,8 @@ def descargar_reporte_orion_pdf():
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_barcaza_orion.pdf'})
 
-@login_required
 @app.route('/descargar-reporte-bita-pdf')
+@login_required
 def descargar_reporte_bita_pdf():
     # --- Lógica para manejar los filtros avanzados ---
     filtro_tipo = request.args.get('filtro_tipo')
@@ -9229,8 +9383,8 @@ def descargar_reporte_bita_pdf():
     pdf = HTML(string=html_para_pdf).write_pdf()
     return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=reporte_barcaza_bita.pdf'})
 
-@login_required
 @app.route('/descargar-reporte-transito-pdf')
+@login_required
 def descargar_reporte_transito_pdf():
     # 1. Obtener todos los registros de tránsito (la misma lógica que en la página del reporte)
     todos_los_registros = db.session.query(RegistroTransito).order_by(RegistroTransito.timestamp.desc()).all()
@@ -9277,9 +9431,9 @@ def descargar_reporte_transito_pdf():
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_transito.pdf'})
 
+@app.route('/descargar-reporte-pdf')
 @login_required
 @permiso_requerido('zisa_inventory')
-@app.route('/descargar-reporte-pdf')
 def descargar_reporte_pdf():
     # --- PASO 1: REPETIMOS LA MISMA LÓGICA DE FILTRADO DE LA PÁGINA DEL REPORTE ---
     empresa_filtro = request.args.get('empresa', default='')
@@ -9314,24 +9468,24 @@ def descargar_reporte_pdf():
                     mimetype='application/pdf',
                     headers={'Content-Disposition': 'attachment;filename=reporte_consumo.pdf'})
 
-@login_required
 @app.route('/inicio-simulador')
+@login_required
 def home_simulador():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
+@app.route('/simulador_rendimiento')
 @login_required
 @permiso_requerido('simulador_rendimiento')
-@app.route('/simulador_rendimiento')
 def simulador_rendimiento():
     """
     Renderiza la página del Simulador de Rendimiento de Crudo.
     """
     return render_template('simulador_rendimiento.html', nombre=session.get("nombre"))
 
+@app.route('/descargar_reporte_mezcla_pdf', methods=['POST'])
 @login_required
 @permiso_requerido('simulador_rendimiento')
-@app.route('/descargar_reporte_mezcla_pdf', methods=['POST'])
 def descargar_reporte_mezcla_pdf():
     """Genera un PDF del reporte de mezcla de crudos con el mismo estilo visual que
     el reporte gráfico de despachos. Espera un JSON con la estructura:
@@ -9489,9 +9643,9 @@ def descargar_reporte_mezcla_pdf():
         current_app.logger.error(f"Error generando PDF mezcla: {e}")
         return jsonify(success=False, message='Error generando PDF'), 500
 
+@app.route('/descargar_comparativo_kero_pdf', methods=['POST'])
 @login_required
 @permiso_requerido('simulador_rendimiento')
-@app.route('/descargar_comparativo_kero_pdf', methods=['POST'])
 def descargar_comparativo_kero_pdf():
     """Genera un PDF comparativo Con vs Sin KERO por crudo.
     Espera JSON: { resultados: [ { base_crude, include_kero, order:[], yields:{}, api_by_product:{}, sulfur_by_product:{} }, ... ] }"""
@@ -9549,9 +9703,9 @@ def descargar_comparativo_kero_pdf():
         current_app.logger.error(f"Error comparativo KERO PDF: {e}")
         return jsonify(success=False, message='Error generando PDF comparativo'), 500
 
+@app.route('/descargar_comparativo_kero_excel', methods=['POST'])
 @login_required
 @permiso_requerido('simulador_rendimiento')
-@app.route('/descargar_comparativo_kero_excel', methods=['POST'])
 def descargar_comparativo_kero_excel():
     """Genera Excel comparativo KERO. Hoja por crudo o una consolidada.
     Estructura: misma que PDF endpoint."""
@@ -9622,8 +9776,8 @@ def descargar_comparativo_kero_excel():
         current_app.logger.error(f"Error comparativo KERO Excel: {e}")
         return jsonify(success=False, message='Error generando Excel comparativo'), 500
 
-@login_required
 @app.route('/api/calcular_rendimiento', methods=['POST'])
+@login_required
 def api_calcular_rendimiento():
     """
     Calcula rendimiento, API, azufre y viscosidad de productos.
@@ -9912,8 +10066,8 @@ def api_calcular_rendimiento():
         app.logger.error(traceback.format_exc())
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
 
-@login_required
 @app.route('/api/calibrar_modelo', methods=['POST'])
+@login_required
 def calibrar_modelo():
     """
     Endpoint para calibrar el modelo con datos reales de planta.
@@ -9996,8 +10150,8 @@ def calibrar_modelo():
         app.logger.error(f"Error en calibración: {e}")
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/crudos_guardados', methods=['GET'])
+@login_required
 def get_crudos_guardados():
     """Obtiene la lista de todos los crudos guardados desde la base de datos."""
     crudos_db = DefinicionCrudo.query.order_by(DefinicionCrudo.nombre).all()
@@ -10039,8 +10193,8 @@ def get_crudos_guardados():
     response.headers["Expires"] = "0"
     return jsonify(crudos_dict)
 
-@login_required
 @app.route('/api/crudos_guardados', methods=['POST'])
+@login_required
 def save_crudo():
     data = request.get_json()
     nombre_crudo = data.get('nombre')
@@ -10077,8 +10231,8 @@ def save_crudo():
     db.session.commit()
     return jsonify(success=True, message=msg)
 
-@login_required
 @app.route('/api/crudos_guardados/<string:nombre_crudo>', methods=['DELETE'])
+@login_required
 def delete_crudo(nombre_crudo):
     """Elimina un crudo guardado de la base de datos."""
     crudo_a_eliminar = DefinicionCrudo.query.filter_by(nombre=nombre_crudo).first()
@@ -10090,21 +10244,21 @@ def delete_crudo(nombre_crudo):
     else:
         return jsonify(success=False, message="Crudo no encontrado."), 404
     
-@login_required
 @app.route('/inicio-contabilidad')
+@login_required
 def home_contabilidad():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
     
+@app.route('/consolidar-facturas')
 @login_required
 @permiso_requerido('accountingzf@conquerstrading.com')
-@app.route('/consolidar-facturas')
 def consolidar_facturas():
     return render_template('consolidar_facturas.html', nombre=session.get("nombre"))
 
+@app.route('/api/comparar_facturas', methods=['POST'])
 @login_required
 @permiso_exclusivo('accountingzf@conquerstrading.com')
-@app.route('/api/comparar_facturas', methods=['POST'])
 def api_comparar_facturas():
     if 'odoo_file' not in request.files or 'dian_file' not in request.files:
         return jsonify(success=False, message="Ambos archivos son requeridos."), 400
@@ -10174,9 +10328,9 @@ def api_comparar_facturas():
         app.logger.error(f"Error al comparar archivos: {e}")
         return jsonify(success=False, message=f"Ocurrió un error al procesar los archivos: {str(e)}"), 500
     
+@app.route('/api/exportar_facturas_excel', methods=['POST'])
 @login_required
 @permiso_exclusivo('accountingzf@conquerstrading.com')
-@app.route('/api/exportar_facturas_excel', methods=['POST'])
 def exportar_facturas_excel():
     """Recibe un JSON con la lista de facturas faltantes (tras posibles exclusiones de Caja Menor)
     y devuelve un archivo Excel descargable."""
@@ -10226,15 +10380,15 @@ def exportar_facturas_excel():
         app.logger.error(f"Error exportando Excel faltantes: {e}")
         return jsonify(success=False, message='Error interno al generar el Excel.'), 500
 
+@app.route('/control_remolcadores')
 @login_required
 @permiso_requerido('control_remolcadores')    
-@app.route('/control_remolcadores')
 def control_remolcadores_page():
     return render_template('control_remolcadores.html', nombre=session.get("nombre"))
 
+@app.route('/api/remolcadores/upload_excel', methods=['POST'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/remolcadores/upload_excel', methods=['POST'])
 def upload_remolcadores_excel():
     if 'excel_file' not in request.files:
         return jsonify(success=False, message="No se encontró ningún archivo."), 400
@@ -10303,9 +10457,9 @@ def upload_remolcadores_excel():
         app.logger.error(f"Error al procesar Excel de remolcadores: {e}")
         return jsonify(success=False, message=f"Error interno al procesar el archivo: {str(e)}"), 500
 
+@app.route('/api/maniobra/<int:maniobra_id>', methods=['PUT'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/maniobra/<int:maniobra_id>', methods=['PUT'])
 def update_maniobra_details(maniobra_id):
     """Actualiza la barcaza y las MT para todos los eventos de una maniobra."""
     
@@ -10340,9 +10494,9 @@ def update_maniobra_details(maniobra_id):
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/maniobra/<int:maniobra_id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/maniobra/<int:maniobra_id>', methods=['DELETE'])
 def eliminar_maniobra(maniobra_id):
     """Elimina todos los registros asociados a un ID de maniobra."""
     
@@ -10363,9 +10517,9 @@ def eliminar_maniobra(maniobra_id):
         app.logger.error(f"Error al eliminar maniobra: {e}")
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500 
     
+@app.route('/api/registros_remolcadores', methods=['GET'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/registros_remolcadores', methods=['GET'])
 def get_registros_remolcadores():
     try:
         # Tu lógica de filtrado por fecha está bien
@@ -10452,9 +10606,9 @@ def get_registros_remolcadores():
         app.logger.error(f"Error en get_registros_remolcadores: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/registros_remolcadores', methods=['POST'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/registros_remolcadores', methods=['POST'])
 def crear_registro_remolcador():
     """Crea un nuevo evento de remolcador."""
     data = request.get_json()
@@ -10518,9 +10672,9 @@ def crear_registro_remolcador():
         app.logger.error(f"Error al crear evento: {e}")
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
+@app.route('/api/registros_remolcadores/<int:id>', methods=['PUT'])
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/api/registros_remolcadores/<int:id>', methods=['PUT'])
 def update_registro_remolcador(id):
     """Actualiza un evento existente, respetando los permisos de cada rol."""
     registro = RegistroRemolcador.query.get_or_404(id)
@@ -10584,9 +10738,9 @@ def update_registro_remolcador(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
 
+@app.route('/reporte_analisis_remolcadores')
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/reporte_analisis_remolcadores')
 def reporte_analisis_remolcadores():
     try:
         # 1. Leer los filtros desde la URL
@@ -10646,9 +10800,9 @@ def reporte_analisis_remolcadores():
         flash(f"Error al generar el reporte: {str(e)}", "danger")
         return redirect(url_for('control_remolcadores_page'))
 
+@app.route('/descargar_analisis_remolcadores_pdf')
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/descargar_analisis_remolcadores_pdf')
 def descargar_reporte_analisis_remolcadores_pdf():
     try:
         # (Tu lógica de filtrado por fechas se mantiene igual)
@@ -10700,9 +10854,9 @@ def descargar_reporte_analisis_remolcadores_pdf():
         flash(f"Error al generar el PDF: {str(e)}", "danger")
         return redirect(url_for('reporte_analisis_remolcadores'))
 
+@app.route('/descargar_reporte_analisis_remolcadores')
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/descargar_reporte_analisis_remolcadores')
 def descargar_reporte_analisis_remolcadores():
     """Genera y descarga un PDF con el análisis completo."""
     # 1. Obtener todos los registros de la base de datos
@@ -10732,9 +10886,9 @@ def descargar_reporte_analisis_remolcadores():
         headers={'Content-Disposition': 'attachment;filename=reporte_analisis_remolcadores.pdf'}
     )
 
+@app.route('/download_remolcadores_excel')
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/download_remolcadores_excel')
 def download_remolcadores_excel():
     try:
         # 1. Obtener registros (con filtros)
@@ -10809,36 +10963,36 @@ def download_remolcadores_excel():
         app.logger.error(f"Error al generar Excel: {e}")
         return "Error al generar el archivo Excel.", 500
 
-@login_required
 @app.route('/inicio-remolcadores')
+@login_required
 def home_remolcadores():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
+@app.route('/control-remolcadores')
 @login_required
 @permiso_requerido('control_remolcadores')
-@app.route('/control-remolcadores')
 def control_remolcadores():
     """Muestra la planilla de control de remolcadores."""
     # Pasamos el rol del usuario a la plantilla para que el JavaScript sepa qué hacer.
     return render_template('control_remolcadores.html', rol_usuario=session.get('rol'))
 
-@login_required
 @app.route('/home-programacion')
+@login_required
 def home_programacion():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
 
-@login_required
 @app.route('/home-programacion-base')
+@login_required
 def home_programacion_base():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
+@app.route('/programacion-cargue')
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/programacion-cargue')
 def programacion_cargue():
     """Muestra la página de programación de vehículos."""
     clientes = cargar_clientes()
@@ -10851,9 +11005,9 @@ def programacion_cargue():
                            lista_conductores=conductores)
 
 
+@app.route('/programacion-base')
 @login_required
 @permiso_requerido('programacion_base')
-@app.route('/programacion-base')
 def programacion_base():
     """Muestra la página base de programación de cargue con columnas reducidas."""
     clientes = cargar_clientes()
@@ -10867,8 +11021,8 @@ def programacion_base():
         lista_productos=productos
     )
 
-@login_required
 @app.route('/api/conductores', methods=['GET'])
+@login_required
 def listar_conductores():
     """Devuelve la lista completa de conductores (JSON fresco) para que el frontend refresque."""
     try:
@@ -10986,8 +11140,8 @@ def _sync_conductor_postgres(cedula, nombre, placa, placa_remolque, celular, emp
         current_app.logger.error(f"Error sincronizando conductor en PostgreSQL: {e}")
 
 
-@login_required
 @app.route('/api/conductores', methods=['POST'])
+@login_required
 def agregar_conductor():
     try:
         data = request.get_json() or {}
@@ -11044,8 +11198,8 @@ def agregar_conductor():
         current_app.logger.error(f"Error guardando conductor: {e}")
         return jsonify(success=False, message=str(e)), 500
 
-@login_required
 @app.route('/api/conductores/<cedula>', methods=['PUT'])
+@login_required
 def actualizar_conductor(cedula):
     try:
         data = request.get_json() or {}
@@ -11533,9 +11687,9 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
     return registro_prog, creado
 
 
+@app.route('/api/programacion-base', methods=['GET', 'POST'])
 @login_required
 @permiso_requerido('programacion_base')
-@app.route('/api/programacion-base', methods=['GET', 'POST'])
 def handle_programacion_base():
     if request.method == 'POST':
         nuevo = ProgramacionBase(ultimo_editor=session.get('nombre'))
@@ -11599,9 +11753,9 @@ def handle_programacion_base():
     return jsonify(data)
 
 
+@app.route('/api/programacion-base/<int:id>', methods=['PUT', 'DELETE'])
 @login_required
 @permiso_requerido('programacion_base')
-@app.route('/api/programacion-base/<int:id>', methods=['PUT', 'DELETE'])
 def update_programacion_base(id):
     registro = ProgramacionBase.query.get_or_404(id)
 
@@ -11702,9 +11856,9 @@ def update_programacion_base(id):
         return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
 
 
+@app.route('/api/programacion-base/<int:id>/enviar-programacion', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_base')
-@app.route('/api/programacion-base/<int:id>/enviar-programacion', methods=['POST'])
 def enviar_pedido_a_programacion(id):
     registro = ProgramacionBase.query.get_or_404(id)
 
@@ -11738,9 +11892,9 @@ def enviar_pedido_a_programacion(id):
         return jsonify(success=False, message=f'Error interno del servidor: {str(e)}'), 500
 
 
+@app.route('/api/programacion-base/reconciliar-vinculos', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_base')
-@app.route('/api/programacion-base/reconciliar-vinculos', methods=['POST'])
 def reconciliar_vinculos_programacion_base():
     campos_permitidos = _campos_editables_programacion_base(session.get('email'), session.get('rol'))
     if not campos_permitidos:
@@ -11762,9 +11916,9 @@ def reconciliar_vinculos_programacion_base():
         db.session.rollback()
         return jsonify(success=False, message=f'Error reconciliando vínculos: {str(e)}'), 500
 
+@app.route('/api/programacion', methods=['GET', 'POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion', methods=['GET', 'POST'])
 def handle_programacion():
     """Obtiene o crea registros de programación."""
     if request.method == 'POST':
@@ -12116,9 +12270,9 @@ def _es_diluyente_pesado_desde_pedido(registro_programacion):
     es_pesado = 'PESAD' in calidad_fuente or 'PESAD' in producto_fuente
     return es_diluyente and es_pesado
 
+@app.route('/api/programacion/<int:id>', methods=['PUT'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>', methods=['PUT'])
 def update_programacion(id):
     """Actualiza un registro de programación con permisos por campo. (VERSIÓN CORREGIDA)"""
     registro = ProgramacionCargue.query.get_or_404(id)
@@ -12128,6 +12282,7 @@ def update_programacion(id):
     permisos = {
         'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'numero_guia', 'estado'],
         'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -12148,6 +12303,16 @@ def update_programacion(id):
         mensaje_api_corregido_invalido = None
         payload_conductor_sync = None
         campos_tocados = set()
+
+        # Validación específica para asistente logístico: solo cambios de estado hacia atrás
+        if session.get('email') == 'logistics.assistant@conquerstrading.com' and 'estado' in data:
+            nuevo_est = (data.get('estado') or '').upper().strip()
+            est_actual = (registro.estado or 'PROGRAMADO').upper().strip()
+            niveles_estado = {'PROGRAMADO': 1, 'CARGANDO': 2, 'CARGADO': 3, 'DESPACHADO': 4}
+            nivel_actual = niveles_estado.get(est_actual, 1)
+            nivel_nuevo = niveles_estado.get(nuevo_est, 1)
+            if nivel_nuevo > nivel_actual:
+                return jsonify(success=False, message="El asistente logístico solo puede regresar el estado hacia atrás o mantenerlo."), 403
 
         # Bloqueo: si el registro ya está DESPACHADO o si refinería intenta seleccionar un estado no permitido
         if session.get('email') == 'refinery.control@conquerstrading.com':
@@ -12295,9 +12460,9 @@ def update_programacion(id):
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
 
 
+@app.route('/api/programacion/normalizar-mayusculas', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/normalizar-mayusculas', methods=['POST'])
 def normalizar_programacion_mayusculas():
     usuarios_autorizados = {
         'ops@conquerstrading.com',
@@ -12324,9 +12489,9 @@ def normalizar_programacion_mayusculas():
         db.session.rollback()
         return jsonify(success=False, message=f'Error normalizando mayúsculas: {str(e)}'), 500
 
+@app.route('/api/programacion/locks', methods=['GET'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/locks', methods=['GET'])
 def listar_locks_programacion():
     # Limpieza de expirados
     locks = ProgramacionCargueLock.query.all()
@@ -12344,9 +12509,9 @@ def listar_locks_programacion():
     db.session.commit()
     return jsonify(activos)
 
+@app.route('/api/programacion/lock', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/lock', methods=['POST'])
 def crear_lock_programacion():
     data = request.get_json() or {}
     registro_id = data.get('registro_id')
@@ -12367,9 +12532,9 @@ def crear_lock_programacion():
     db.session.commit()
     return jsonify(success=True, message='Lock creado', usuario=nombre)
 
+@app.route('/api/programacion/lock', methods=['DELETE'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/lock', methods=['DELETE'])
 def borrar_lock_programacion():
     registro_id = request.args.get('registro_id', type=int)
     campo = request.args.get('campo')
@@ -12392,9 +12557,9 @@ def borrar_lock_programacion():
 # Almacenamiento en memoria de usuarios activos (limpieza automática después de 30 segundos de inactividad)
 user_presence = {}  # {email: {name, editing_row, editing_column, last_seen}}
 
+@app.route('/api/programacion/presence', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/presence', methods=['POST'])
 def update_presence():
     """Actualizar presencia del usuario actual"""
     data = request.get_json() or {}
@@ -12429,9 +12594,9 @@ def update_presence():
     
     return jsonify(success=True)
 
+@app.route('/api/programacion/presence', methods=['GET'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/presence', methods=['GET'])
 def get_presence():
     """Obtener presencia de todos los usuarios activos"""
     current_email = session.get('email')
@@ -12453,9 +12618,9 @@ def get_presence():
     
     return jsonify(success=True, users=active_users)
 
+@app.route('/api/programacion/live_edit', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/live_edit', methods=['POST'])
 def registrar_live_edit_programacion():
     """Recibe el texto que el usuario está escribiendo en tiempo real (sin guardar todavía)."""
     data = request.get_json() or {}
@@ -12474,9 +12639,9 @@ def registrar_live_edit_programacion():
     }
     return jsonify(success=True)
 
+@app.route('/api/programacion/live_edits', methods=['GET'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/live_edits', methods=['GET'])
 def obtener_live_edits_programacion():
     """Devuelve todas las ediciones activas (texto parcial) y locks vigentes."""
     _purge_live_edits()
@@ -12486,9 +12651,9 @@ def obtener_live_edits_programacion():
         e['timestamp'] = e['timestamp'].isoformat()
     return jsonify({'edits': edits})
     
+@app.route('/exportar_programacion_cargue/<string:formato>')
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/exportar_programacion_cargue/<string:formato>')
 def exportar_programacion_cargue(formato):
     """
     Genera un reporte de Programación de Cargue en Excel o PDF,
@@ -12600,9 +12765,9 @@ def exportar_programacion_cargue(formato):
     # Si el formato no es ni 'excel' ni 'pdf', redirigimos
     return redirect(url_for('programacion_cargue'))
 
+@app.route('/api/programacion/<int:id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>', methods=['DELETE'])
 def delete_programacion(id):
     """Elimina un registro de programación de cargue."""
     # Solo pueden eliminar Juliana (ops), Ignacio (production) y Samantha (logistic)
@@ -12630,9 +12795,9 @@ def delete_programacion(id):
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/programacion/<int:id>/upload_image', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>/upload_image', methods=['POST'])
 def upload_programacion_image(id):
     """Sube un archivo de guía (PDF/imagen) y lo guarda en disco; BD almacena ruta relativa."""
     try:
@@ -12684,9 +12849,9 @@ def upload_programacion_image(id):
         db.session.rollback()
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/programacion/<int:id>/image', methods=['GET'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>/image', methods=['GET'])
 def get_programacion_image(id):
     """Devuelve información para visualizar la guía (URL si está en disco o dataUri si legado)."""
     try:
@@ -12734,9 +12899,9 @@ def get_programacion_image(id):
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/programacion/<int:id>/image', methods=['DELETE'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>/image', methods=['DELETE'])
 def delete_programacion_image(id):
     """Elimina el archivo de guía en disco y limpia la referencia."""
     try:
@@ -12762,9 +12927,9 @@ def delete_programacion_image(id):
         return jsonify(success=False, message=str(e)), 500
 
 
+@app.route('/api/programacion/buscar-reemplazar', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/buscar-reemplazar', methods=['POST'])
 def buscar_reemplazar_programacion():
     """Buscar y reemplazar valores en los registros de programación de cargue."""
     # Solo admins y usuarios con permisos amplios pueden hacer esto
@@ -12817,9 +12982,9 @@ def buscar_reemplazar_programacion():
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
 
 
+@app.route('/api/programacion/<int:id>/importar-sharepoint', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/<int:id>/importar-sharepoint', methods=['POST'])
 def importar_guia_sharepoint(id):
     """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
     registro = ProgramacionCargue.query.get_or_404(id)
@@ -12858,9 +13023,9 @@ def importar_guia_sharepoint(id):
         current_app.logger.error(f"Error importando desde SharePoint (ID: {id}): {e}")
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/reporte_grafico_despachos')
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/reporte_grafico_despachos')
 def reporte_grafico_despachos():
     today = date.today()
     fecha_inicio_str = request.args.get('fecha_inicio', '')
@@ -13225,9 +13390,9 @@ def reporte_grafico_despachos():
         shown_products=list(product_vals.keys()) if producto_filtro in ['ambos', 'todos', ''] else []
     )
 
+@app.route('/descargar_reporte_grafico_despachos_pdf')
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/descargar_reporte_grafico_despachos_pdf')
 def descargar_reporte_grafico_despachos_pdf():
     # Parámetros y lógica equivalente a la vista HTML
     today = date.today()
@@ -13411,30 +13576,30 @@ def descargar_reporte_grafico_despachos_pdf():
     pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
     return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition':'attachment;filename=reporte_grafico_despachos.pdf'})
   
+@app.route('/inventario_epp_home')
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/inventario_epp_home')
 def inventario_epp_home():
     """Página de inicio para el módulo de inventario EPP."""
     return render_template('inventario_epp_home.html', nombre=session.get("nombre"))
 
+@app.route('/inventario_epp')
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/inventario_epp')
 def inventario_epp():
     """Página principal para gestionar el inventario de EPP."""
     return render_template('inventario_epp.html', nombre=session.get("nombre"))
 
+@app.route('/epp_asignaciones')
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/epp_asignaciones')
 def epp_asignaciones():
     """Página para ver el historial de asignaciones de EPP."""
     return render_template('epp_asignaciones.html', nombre=session.get("nombre"))
 
+@app.route('/api/epp/items', methods=['GET'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/items', methods=['GET'])
 def get_epp_items():
     """API para obtener todos los items del inventario con alertas inteligentes."""
     items_query = EPPItem.query.order_by(EPPItem.categoria, EPPItem.nombre).all()
@@ -13458,9 +13623,9 @@ def get_epp_items():
         items_list.append(item_dict)
     return jsonify(items_list)
 
+@app.route('/api/epp/items', methods=['POST'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/items', methods=['POST'])
 def create_epp_item():
     """API para crear un nuevo item en el inventario."""
     data = request.get_json()
@@ -13481,9 +13646,9 @@ def create_epp_item():
         db.session.rollback()
         return jsonify(success=False, message=f"Error al crear: {str(e)}"), 500
 
+@app.route('/api/epp/items/<int:id>', methods=['PUT'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/items/<int:id>', methods=['PUT'])
 def update_epp_item(id):
     """API para actualizar un item existente."""
     item = EPPItem.query.get_or_404(id)
@@ -13500,9 +13665,9 @@ def update_epp_item(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
 
+@app.route('/api/epp/asignar', methods=['POST'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/asignar', methods=['POST'])
 def assign_epp_item():
     """API para asignar un item a un empleado y descontar del stock."""
     data = request.get_json()
@@ -13534,9 +13699,9 @@ def assign_epp_item():
         db.session.rollback()
         return jsonify(success=False, message=f"Error en la asignación: {str(e)}"), 500
 
+@app.route('/api/epp/asignaciones', methods=['GET'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/asignaciones', methods=['GET'])
 def get_epp_assignments():
     """API para obtener el historial de asignaciones."""
     query = db.session.query(EPPAssignment).join(EPPItem).order_by(EPPAssignment.fecha_entrega.desc())
@@ -13556,9 +13721,9 @@ def get_epp_assignments():
     return jsonify(data)
 
 # --- API para editar y eliminar asignaciones de EPP ---
+@app.route('/api/epp/asignaciones/<int:id>', methods=['PUT'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/asignaciones/<int:id>', methods=['PUT'])
 def update_epp_assignment(id):
     """API para actualizar una asignación de EPP."""
     asignacion = EPPAssignment.query.get_or_404(id)
@@ -13591,9 +13756,9 @@ def update_epp_assignment(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error al actualizar: {str(e)}"), 500
 
+@app.route('/api/epp/asignaciones/<int:id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/asignaciones/<int:id>', methods=['DELETE'])
 def delete_epp_assignment(id):
     """API para eliminar una asignación de EPP."""
     asignacion = EPPAssignment.query.get_or_404(id)
@@ -13605,9 +13770,9 @@ def delete_epp_assignment(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error al eliminar: {str(e)}"), 500
 
+@app.route('/api/programacion/upload_excel', methods=['POST'])
 @login_required
 @permiso_requerido('programacion_cargue')
-@app.route('/api/programacion/upload_excel', methods=['POST'])
 def upload_programacion_excel():
     """Carga masiva de ProgramacionCargue desde un archivo Excel (.xlsx).
 
@@ -13734,9 +13899,9 @@ def upload_programacion_excel():
         app.logger.error(f'Error al cargar Excel programación: {e}')
         return jsonify(success=False, message='Error procesando el archivo: ' + str(e)), 500
 
+@app.route('/api/epp/items/<int:id>', methods=['DELETE'])
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/api/epp/items/<int:id>', methods=['DELETE'])
 def delete_epp_item(id):
     """API para eliminar un item."""
     item = EPPItem.query.get_or_404(id)
@@ -13748,9 +13913,9 @@ def delete_epp_item(id):
         db.session.rollback()
         return jsonify(success=False, message=f"Error al eliminar: {str(e)}."), 500
 
+@app.route('/api/epp/items/batch_add', methods=['POST'])
 @login_required
 @permiso_requerido('inventario_epp')    
-@app.route('/api/epp/items/batch_add', methods=['POST'])
 def batch_add_epp_items():
     """API para crear múltiples items (variantes) de una sola vez."""
     items_data = request.get_json()
@@ -13786,9 +13951,9 @@ def batch_add_epp_items():
         app.logger.error(f"Error en carga rápida de EPP: {e}")
         return jsonify(success=False, message=f"Error interno del servidor: {str(e)}"), 500
 
+@app.route('/exportar_inventario_epp/<string:formato>')
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/exportar_inventario_epp/<string:formato>')
 def exportar_inventario_epp(formato):
     # Obtener filtros desde la URL
     nombre = request.args.get('nombre', '')
@@ -13843,9 +14008,9 @@ def exportar_inventario_epp(formato):
     
     return redirect(url_for('inventario_epp'))
 
+@app.route('/exportar_asignaciones_epp/<string:formato>')
 @login_required
 @permiso_requerido('inventario_epp')
-@app.route('/exportar_asignaciones_epp/<string:formato>')
 def exportar_asignaciones_epp(formato):
     empleado = request.args.get('empleado', '')
     fecha_inicio_str = request.args.get('fecha_inicio', '')
@@ -13895,9 +14060,9 @@ def exportar_asignaciones_epp(formato):
 
     return redirect(url_for('epp_asignaciones'))  
 
+@app.route('/gestion_compras')
 @login_required
 @permiso_requerido('gestion_compras')
-@app.route('/gestion_compras')
 def gestion_compras():
     # Obtener filtros
     proveedor_filtro = request.args.get('proveedor', '')
@@ -13937,9 +14102,9 @@ def gestion_compras():
                          total_usd=total_usd,
                          precio_promedio=precio_promedio)
 
+@app.route('/cargar_compras_excel', methods=['POST'])
 @login_required
 @permiso_requerido('gestion_compras')
-@app.route('/cargar_compras_excel', methods=['POST'])
 def cargar_compras_excel():
     if 'excel_file' not in request.files:
         flash('No se encontró el archivo.', 'danger')
@@ -14003,9 +14168,9 @@ def cargar_compras_excel():
 
     return redirect(url_for('gestion_compras'))
 
+@app.route('/reporte_compras')
 @login_required
 @permiso_requerido('gestion_compras')
-@app.route('/reporte_compras')
 def reporte_compras():
     # Histórico de precios agrupado por mes (filtrar meses con datos insignificantes)
     historico_precios_raw = db.session.query(
@@ -14066,9 +14231,9 @@ def reporte_compras():
         precio_promedio=precio_promedio
     )
 
+@app.route('/reporte_compras_pdf')
 @login_required
 @permiso_requerido('gestion_compras')
-@app.route('/reporte_compras_pdf')
 def reporte_compras_pdf():
     # Función auxiliar corregida para formatear meses
     def formatear_mes(fecha_str):
@@ -14176,9 +14341,10 @@ def reporte_compras_pdf():
         headers={'Content-Disposition': 'attachment;filename=reporte_compras.pdf'}
     )
 
+@app.route('/flujo_efectivo')
+@app.route('/flujo-efectivo')
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/flujo_efectivo')
 def flujo_efectivo():
     """
     Renderiza la página principal del Flujo de Efectivo.
@@ -14186,9 +14352,9 @@ def flujo_efectivo():
     return render_template('flujo_efectivo.html', nombre=session.get("nombre"))
 
 
+@app.route('/api/analyze_flujo_file', methods=['POST'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/analyze_flujo_file', methods=['POST'])
 def analyze_flujo_file():
     """Analiza el archivo Excel y devuelve los periodos (Año-Mes) encontrados."""
     if 'archivo_excel' not in request.files:
@@ -14232,9 +14398,9 @@ def analyze_flujo_file():
         app.logger.exception("Error analizando archivo flujo efectivo")
         return jsonify(success=False, message=f"Error analizando archivo: {str(e)}"), 500
 
+@app.route('/api/procesar_flujo_efectivo', methods=['POST'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/procesar_flujo_efectivo', methods=['POST'])
 def procesar_flujo_efectivo_api():
     """Procesa Excel y persiste movimientos. SI recibe 'selected_periods', FILTRA solo esos periodos."""
     if 'archivo_excel' not in request.files:
@@ -14820,9 +14986,9 @@ def procesar_flujo_efectivo_api():
         tb = traceback.format_exc()
         return jsonify(success=False, message=f'Error interno: {str(e)}', details=tb), 500
 
+@app.route('/api/flujo_efectivo_simple', methods=['POST'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/flujo_efectivo_simple', methods=['POST'])
 def flujo_efectivo_simple():
     """Comparativo SIMPLE: (fecha, empresa) -> ingresos_bancos, saldo_inicial_bancos, ingresos_odoo.
     Reglas:
@@ -14889,9 +15055,9 @@ def flujo_efectivo_simple():
         app.logger.exception('Error flujo_efectivo_simple')
         return jsonify(success=False, message='Error interno'), 500
 
+@app.route('/api/flujo_efectivo_cached', methods=['GET'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/flujo_efectivo_cached', methods=['GET'])
 def flujo_efectivo_cached():
     """Devuelve los datos consolidados desde la base sin necesidad de re-subir archivo."""
     try:
@@ -14980,9 +15146,9 @@ def flujo_efectivo_cached():
         app.logger.exception('Error recuperando cache flujo efectivo')
         return jsonify(success=False, message='Error interno.'), 500
 
+@app.route('/api/flujo_efectivo_delete_all', methods=['DELETE'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/flujo_efectivo_delete_all', methods=['DELETE'])
 def flujo_efectivo_delete_all():
     """Elimina registros del módulo Flujo de Efectivo.
        Si se recibe 'year' en el body, elimina solo ese año.
@@ -15025,9 +15191,9 @@ def flujo_efectivo_delete_all():
         app.logger.exception('Error eliminando datos de flujo de efectivo')
         return jsonify(success=False, message=f'Error interno: {e}'), 500
 
+@app.route('/api/procesar_facturacion', methods=['POST'])
 @login_required
 @permiso_requerido('flujo_efectivo')
-@app.route('/api/procesar_facturacion', methods=['POST'])
 def procesar_facturacion_api():
     """Procesa un Excel de facturación para extender la gráfica de ingresos.
     Columnas mínimas: (Numero Factura / Factura), (Cliente / Tercero), (COP$ / Valor / Monto).
@@ -15135,23 +15301,27 @@ def home():
     # --- REGLA 5: Todos los demás usuarios van al home global ---
     return redirect(url_for('home_global'))
 
-@login_required
 @app.route('/inicio-logistica')
+@app.route('/home-logistica')
+@login_required
 def home_logistica():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
-@login_required
+@app.route('/inicio-global')
 @app.route('/home-global')
+@login_required
 def home_global():
     """Página de inicio global unificada para todos los usuarios con permisos."""
     return render_template('home_global.html')
 
 @app.route('/test')
+@admin_required
 def test():
-    return "? El servidor Flask está funcionando"
-@app.route('/debug/productos')
+    return "El servidor Flask está funcionando"
 
+@app.route('/debug/productos')
+@admin_required
 def debug_productos():
     productos = cargar_productos()
     return jsonify({
@@ -15533,46 +15703,49 @@ class Producto(db.Model):
     producto = db.Column(db.String(255), nullable=False, unique=True)
     unidad = db.Column(db.String(64))
 
-    # --- PANEL DE REVISIÓN DE SOLICITUDES DE ENTURNAMIENTO ---
-    @login_required
-    @app.route('/panel_enturnamiento')
-    def panel_enturnamiento():
-        allowed_panel_emails = {'logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'}
-        email_actual = (session.get('email') or '').lower()
-        if session.get('rol') != 'admin' and email_actual not in allowed_panel_emails:
-            flash('Acceso restringido solo para el área de logística.', 'danger')
-            return redirect(url_for('home'))
-        solicitudes = (
-            SolicitudCita.query
-            .filter(
-                or_(
-                    SolicitudCita.estado != 'preconfirmacion',
-                    SolicitudCita.estado.is_(None),
-                    SolicitudCita.asesor_pendiente.is_(True)
-                )
-            )
-            .order_by(SolicitudCita.fecha.desc())
-            .all()
-        )
-        solicitudes_handoff = [s for s in solicitudes if getattr(s, 'asesor_pendiente', False)]
-        handoff_count = len(solicitudes_handoff)
-        # Añadir url de Google Maps si hay lat/lng
-        for s in solicitudes:
-            if getattr(s, 'ubicacion_lat', None) and getattr(s, 'ubicacion_lng', None):
-                s.url_maps = f"https://www.google.com/maps?q={s.ubicacion_lat},{s.ubicacion_lng}"
-            else:
-                s.url_maps = None
-            
-            # Validar secuencia GPS
-            validacion_gps = validar_secuencia_gps(s)
-            s.validacion_gps = validacion_gps
-            s.fecha_local = to_bogota_datetime(getattr(s, 'fecha', None))
-            s.fecha_descargue_local = to_bogota_datetime(getattr(s, 'fecha_descargue', None), assume_local=True)
-            s.whatsapp_last_activity_local = to_bogota_datetime(getattr(s, 'whatsapp_last_activity', None))
-        return render_template('panel_enturnamiento.html', solicitudes=solicitudes, handoff_count=handoff_count)
 
-    @login_required
+# --- PANEL DE REVISIÓN DE SOLICITUDES DE ENTURNAMIENTO ---
+@app.route('/panel_enturnamiento')
+@app.route('/panel-enturnamiento')
+@login_required
+def panel_enturnamiento():
+    allowed_panel_emails = {'logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.assistant@conquerstrading.com'}
+    email_actual = (session.get('email') or '').lower()
+    user_areas = session.get('area') or []
+    if session.get('rol') != 'admin' and email_actual not in allowed_panel_emails and 'panel_enturnamiento' not in user_areas:
+        flash('Acceso restringido solo para el área de logística.', 'danger')
+        return redirect(url_for('home'))
+    solicitudes = (
+        SolicitudCita.query
+        .filter(
+            or_(
+                SolicitudCita.estado != 'preconfirmacion',
+                SolicitudCita.estado.is_(None),
+                SolicitudCita.asesor_pendiente.is_(True)
+            )
+        )
+        .order_by(SolicitudCita.fecha.desc())
+        .all()
+    )
+    solicitudes_handoff = [s for s in solicitudes if getattr(s, 'asesor_pendiente', False)]
+    handoff_count = len(solicitudes_handoff)
+    # Añadir url de Google Maps si hay lat/lng
+    for s in solicitudes:
+        if getattr(s, 'ubicacion_lat', None) and getattr(s, 'ubicacion_lng', None):
+            s.url_maps = f"https://www.google.com/maps?q={s.ubicacion_lat},{s.ubicacion_lng}"
+        else:
+            s.url_maps = None
+        
+        # Validar secuencia GPS
+        validacion_gps = validar_secuencia_gps(s)
+        s.validacion_gps = validacion_gps
+        s.fecha_local = to_bogota_datetime(getattr(s, 'fecha', None))
+        s.fecha_descargue_local = to_bogota_datetime(getattr(s, 'fecha_descargue', None), assume_local=True)
+        s.whatsapp_last_activity_local = to_bogota_datetime(getattr(s, 'whatsapp_last_activity', None))
+    return render_template('panel_enturnamiento.html', solicitudes=solicitudes, handoff_count=handoff_count)
+
     @app.route('/api/solicitud_cita/<int:id>/estado', methods=['POST'])
+    @login_required
     def actualizar_estado_solicitud(id):
         data = request.get_json()
         nuevo_estado = data.get('estado')
@@ -15782,8 +15955,8 @@ class Producto(db.Model):
         return jsonify(success=True, estado=solicitud.estado)
 
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/mensajes', methods=['GET'])
+@login_required
 def obtener_mensajes_whatsapp(id):
     solicitud = SolicitudCita.query.get_or_404(id)
     mensajes = (
@@ -15808,8 +15981,8 @@ def obtener_mensajes_whatsapp(id):
     return jsonify(success=True, mensajes=[serialize(m) for m in mensajes])
 
 
-@login_required
 @app.route('/api/solicitud_cita', methods=['POST'])
+@login_required
 def crear_solicitud_desde_panel():
     data = request.get_json() or {}
     telefono = (data.get('telefono') or '').strip()
@@ -15951,8 +16124,8 @@ def crear_solicitud_desde_panel():
     return jsonify(success=True, id=solicitud.id, conductor_creado=conductor_creado, actualizada=solicitud_actualizada)
 
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/inscripcion/aprobar', methods=['POST'])
+@login_required
 def aprobar_inscripcion_manual(id):
     solicitud = SolicitudCita.query.get_or_404(id)
 
@@ -16076,8 +16249,8 @@ def aprobar_inscripcion_manual(id):
     return jsonify(success=True, message='Inscripción aprobada y conductor notificado.')
 
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/inscripcion/rechazar', methods=['POST'])
+@login_required
 def rechazar_inscripcion_manual(id):
     solicitud = SolicitudCita.query.get_or_404(id)
 
@@ -16136,8 +16309,8 @@ def rechazar_inscripcion_manual(id):
     return jsonify(success=True, message='Inscripción cancelada y conductor notificado.')
 
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>', methods=['DELETE'])
+@login_required
 def eliminar_solicitud(id):
     solicitud = SolicitudCita.query.get_or_404(id)
 
@@ -16159,8 +16332,8 @@ def eliminar_solicitud(id):
     return jsonify(success=True)
 
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/ubicacion_pendiente', methods=['POST'])
+@login_required
 def resolver_ubicacion_pendiente(id):
     solicitud = SolicitudCita.query.get_or_404(id)
     data = request.get_json() or {}
@@ -16748,6 +16921,7 @@ def save_uploaded_file(file, prefix='file'):
     return _normalize_guia_relative_path(unique_filename)
 
 @app.route('/api/solicitud_cita/<int:id>', methods=['GET'])
+@login_required
 def obtener_solicitud(id):
     solicitud = SolicitudCita.query.get_or_404(id)
     return jsonify({
@@ -16765,6 +16939,7 @@ def obtener_solicitud(id):
     })
 
 @app.route('/api/solicitud_cita/<int:id>', methods=['PUT'])
+@login_required
 def actualizar_solicitud(id):
     solicitud = SolicitudCita.query.get_or_404(id)
 
@@ -16901,8 +17076,8 @@ def actualizar_solicitud(id):
     else:
         return jsonify(success=True, message='No se realizaron cambios')
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/enviar_mensaje', methods=['POST'])
+@login_required
 def enviar_mensaje_conductor(id):
     """Envía un mensaje personalizado al conductor desde el panel de enturnamiento"""
     try:
@@ -17248,8 +17423,8 @@ def preparar_sesion_para_pendientes(solicitud, enviar_prompt=True):
 
     return session_payload
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/recordatorio_inteligente', methods=['POST'])
+@login_required
 def enviar_recordatorio_inteligente(id):
     """Envía recordatorios automáticos basados en datos faltantes"""
     try:
@@ -17296,8 +17471,8 @@ def enviar_recordatorio_inteligente(id):
         print(f"Error enviando recordatorio inteligente: {e}")
         return jsonify(success=False, message='Error interno del servidor'), 500
 
-@login_required
 @app.route('/api/solicitud_cita/<int:id>/datos_faltantes', methods=['GET'])
+@login_required
 def obtener_datos_faltantes(id):
     """Retorna información sobre qué datos faltan en una solicitud"""
     try:
@@ -17315,14 +17490,14 @@ def obtener_datos_faltantes(id):
         print(f"Error obteniendo datos faltantes: {e}")
         return jsonify(success=False, message='Error interno del servidor'), 500
 
-@login_required
 @app.route('/gestionar_clientes')
+@login_required
 def gestionar_clientes():    
     clientes_actuales = cargar_clientes()
     return render_template('gestionar_clientes.html', clientes=clientes_actuales)
 
-@login_required
 @app.route('/guardar_cliente', methods=['POST'])
+@login_required
 def guardar_cliente():
     nombre = request.form.get('nombre_cliente', '').strip()
     direccion = request.form.get('direccion_cliente', '').strip()
@@ -17374,8 +17549,8 @@ def guardar_cliente():
     flash(f"Cliente '{nombre_guardado}' agregado exitosamente.", "success")
     return redirect(url_for('gestionar_clientes'))
 
-@login_required
 @app.route('/agregar_cliente_ajax', methods=['POST'])
+@login_required
 def agregar_cliente_ajax():
     data = request.get_json() or {}
     nombre = data.get('nombre', '').strip()
@@ -17428,8 +17603,8 @@ def agregar_cliente_ajax():
     return jsonify(success=True, message="Cliente agregado exitosamente.", nuevo_cliente=nuevo_cliente)
 
 
-@login_required
 @app.route('/actualizar_cliente_ajax', methods=['POST'])
+@login_required
 def actualizar_cliente_ajax():
     data = request.get_json() or {}
     original_nombre = (data.get('original_nombre') or '').strip()
@@ -17527,8 +17702,8 @@ def actualizar_cliente_ajax():
 
     return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=coincidencia)
 
-@login_required
 @app.route('/eliminar_cliente_ajax', methods=['POST'])
+@login_required
 def eliminar_cliente_ajax():
     data = request.get_json() or {}
     nombre = (data.get('nombre') or '').strip()
@@ -17579,8 +17754,8 @@ def eliminar_cliente_ajax():
     return jsonify(success=True, message=f'Se eliminaron {deleted_count} registro(s) correctamente.')
 
 
-@login_required
 @app.route('/api/clientes/depurar_duplicados', methods=['POST'])
+@login_required
 def depurar_clientes_duplicados_ajax():
     """Depura duplicados de clientes en DB y sincroniza Clientes.json."""
     try:
@@ -17607,9 +17782,9 @@ def depurar_clientes_duplicados_ajax():
         app.logger.warning(f"Error depurando clientes duplicados: {e}")
         return jsonify(success=False, message='No se pudo depurar clientes duplicados.'), 500
 
+@app.route('/planilla_precios')
 @login_required
 @permiso_requerido('planilla_precios')
-@app.route('/planilla_precios')
 def planilla_precios():
     # La lógica para cargar los datos se mantiene igual
     datos_guardados = []
@@ -17958,8 +18133,8 @@ def _depurar_conductores_completo(eliminar_no_presentes=True, dry_run=False):
     return {'conductores': limpios, **stats}
 
 
-@login_required
 @app.route('/api/conductores/depurar', methods=['POST'])
+@login_required
 def depurar_conductores_ajax():
     """Depura conductores problemáticos y sincroniza DB + JSON."""
     usuarios_autorizados = {
@@ -18033,8 +18208,8 @@ def guardar_productos(productos):
         json.dump(productos, f, ensure_ascii=False, indent=4)
 
 
-@login_required
 @app.route('/agregar_producto_ajax', methods=['POST'])
+@login_required
 def agregar_producto_ajax():
     data = request.get_json() or {}
     nombre = (data.get('producto') or data.get('nombre') or '').strip()
@@ -18082,8 +18257,8 @@ def agregar_producto_ajax():
     return jsonify(success=True, message='Producto agregado exitosamente.', nuevo_producto=nuevo_producto)
 
 
-@login_required
 @app.route('/actualizar_producto_ajax', methods=['POST'])
+@login_required
 def actualizar_producto_ajax():
     data = request.get_json() or {}
     original = (data.get('original_producto') or '').strip()
@@ -18145,8 +18320,8 @@ def actualizar_producto_ajax():
     actualizado = productos[idx]
     return jsonify(success=True, message='Producto actualizado correctamente.', producto=actualizado)
 
-@login_required
 @app.route('/agregar_conductor_ajax', methods=['POST'])
+@login_required
 def agregar_conductor_ajax():
     data = request.get_json() or {}
     nombre = _formatear_nombre_conductor_apellido_nombre(data.get('nombre', '')) or ''
@@ -18190,8 +18365,8 @@ def agregar_conductor_ajax():
     else:
         return jsonify(success=False, message="Error del servidor: No se pudo escribir en el archivo de conductores."), 500
 
-@login_required
 @app.route('/agregar_empresa_ajax', methods=['POST'])
+@login_required
 def agregar_empresa_ajax():
     data = request.get_json()
     nombre = data.get('nombre')
@@ -19351,8 +19526,8 @@ STEP_HANDLERS = {
     STEP_HUMAN_HANDOFF: None,
 }
 
-@login_required
 @app.route('/api/solicitudes_cita')
+@login_required
 def api_solicitudes_cita():
     solicitudes = SolicitudCita.query.order_by(SolicitudCita.fecha.desc()).all()
     def serialize(s):
@@ -19625,6 +19800,7 @@ def descargar_guia_sharepoint(registro, numero_guia):
 # ===================================================================
 
 @app.route('/cronograma')
+@login_required
 def cronograma_home():
     email = session.get('email', '').strip().lower()
     
@@ -19654,6 +19830,7 @@ def cronograma_home():
     return render_template('cronograma.html', empresa_default=empresa_default, is_kelly=is_kelly, is_kevin=is_kevin)
 
 @app.route('/api/cronograma/<empresa>')
+@login_required
 def api_cronograma_get(empresa):
     mes = request.args.get('mes')
     if not mes:
@@ -19698,6 +19875,7 @@ def api_cronograma_get(empresa):
     return jsonify(res)
 
 @app.route('/api/cronograma/<empresa>/auto-vencidos', methods=['POST'])
+@login_required
 def api_cronograma_auto_vencidos(empresa):
     """Marca automaticamente como 'late' las tareas que pasaron su fecha_fin y no estan completadas."""
     from datetime import date as date_type
@@ -19752,6 +19930,7 @@ def _can_edit_cronograma_for(empresa: str) -> bool:
     return False
 
 @app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
+@login_required
 def api_cronograma_estado(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
@@ -19778,6 +19957,7 @@ def api_cronograma_estado(empresa):
     return jsonify({'success': True})
 
 @app.route('/api/cronograma/<empresa>/actividad', methods=['POST', 'PUT'])
+@login_required
 def api_cronograma_actividad(empresa):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
@@ -19824,6 +20004,7 @@ def api_cronograma_actividad(empresa):
     return jsonify({'success': True, 'id': act.id})
 
 @app.route('/api/cronograma/<empresa>/actividad/<int:id>', methods=['DELETE'])
+@login_required
 def api_cronograma_actividad_delete(empresa, id):
     email = session.get('email', '').strip().lower()
     is_admin = session.get('rol') == 'admin'
@@ -19839,6 +20020,7 @@ def api_cronograma_actividad_delete(empresa, id):
 
 
 @app.route('/api/cronograma/<empresa>/reorder', methods=['POST'])
+@login_required
 def api_cronograma_reorder(empresa):
     # Persist a new order for activities (list of ids)
     if not _can_edit_cronograma_for(empresa):

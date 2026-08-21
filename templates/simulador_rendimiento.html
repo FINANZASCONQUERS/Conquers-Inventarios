@@ -5,33 +5,56 @@
 {% block extra_css %}
 {{ super() }}
 <style>
-    /* ----- Paleta de Colores y Estilos Globales ----- */
-    :root {
-        --primary-color: #0d6efd;
-        --secondary-color: #6c757d;
-        --success-color: #198754;
-        --warning-color: #ffc107;
-        --light-gray: #f8f9fa;
-        --border-color: #dee2e6;
-        --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    /* ----- Paleta y Tokens del Simulador de Rendimiento ----- */
+    .simulador-rendimiento-page {
+        --sim-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
     }
 
     body {
-        background-color: var(--light-gray);
+        background-color: var(--bg-body);
+        color: var(--text-primary);
     }
 
     /* ----- Estilo de las Tarjetas (Cards) ----- */
-    .card {
+    .simulador-rendimiento-page .card {
+        background-color: var(--bg-surface);
         border: 1px solid var(--border-color);
-        box-shadow: var(--card-shadow);
+        box-shadow: var(--sim-shadow);
         transition: box-shadow 0.3s ease-in-out;
+        color: var(--text-primary);
     }
 
-    .card:hover {
+    .simulador-rendimiento-page .card:hover {
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
     }
 
-    .card-header {
+    .simulador-rendimiento-page .card-header {
+        background-color: var(--bg-surface-subtle);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .simulador-rendimiento-page .card-header.bg-primary {
+        background: var(--primary-gradient, linear-gradient(135deg, #0a7c5d 0%, #0d9488 100%)) !important;
+        color: #ffffff !important;
+    }
+
+    .simulador-rendimiento-page .btn-primary {
+        background: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: #ffffff !important;
+    }
+
+    .simulador-rendimiento-page .btn-primary:hover {
+        background: var(--primary-dark, #076249) !important;
+        border-color: var(--primary-dark, #076249) !important;
+    }
+
+    html.dark-mode .simulador-rendimiento-page .btn-primary {
+        background: var(--primary-color) !important;
+        border-color: var(--primary-color) !important;
+        color: #0b131b !important;
         font-weight: 600;
     }
 
@@ -45,11 +68,13 @@
         border-collapse: separate;
         overflow: hidden;
         font-size: 0.9rem;
+        background-color: var(--table-bg);
+        color: var(--table-text);
     }
 
     .results-table thead th {
-        background-color: #343a40;
-        color: white;
+        background: var(--table-header-bg);
+        color: var(--table-header-text);
         vertical-align: middle;
         font-weight: 600;
         border-bottom: 2px solid var(--primary-color);
@@ -59,6 +84,7 @@
     .results-table th {
         padding: 0.5rem;
         text-align: center;
+        border-color: var(--border-color);
     }
 
     .results-table td:first-child {
@@ -68,23 +94,39 @@
 
     /* Estilos para propiedades avanzadas */
     .results-table tr.table-info td {
-        background-color: #d1ecf1 !important;
+        background-color: rgba(14, 165, 233, 0.15) !important;
+        color: #0c4a6e !important;
         font-size: 0.85rem;
+    }
+    html.dark-mode .results-table tr.table-info td {
+        color: #bae6fd !important;
     }
 
     .results-table tr.table-success td {
-        background-color: #d4edda !important;
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        color: #064e3b !important;
         font-size: 0.85rem;
+    }
+    html.dark-mode .results-table tr.table-success td {
+        color: #a7f3d0 !important;
     }
 
     .results-table tr.table-warning td {
-        background-color: #fff3cd !important;
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        color: #78350f !important;
         font-size: 0.85rem;
+    }
+    html.dark-mode .results-table tr.table-warning td {
+        color: #fde68a !important;
     }
 
     .results-table tr.table-secondary td {
-        background-color: #e2e3e5 !important;
+        background-color: rgba(148, 163, 184, 0.15) !important;
+        color: #334155 !important;
         font-size: 0.75rem;
+    }
+    html.dark-mode .results-table tr.table-secondary td {
+        color: #cbd5e1 !important;
     }
 
     .results-table .badge {
@@ -294,10 +336,9 @@
 </style>
 {% endblock %}
 {% block content %}
-<div class="container-fluid my-4">
+<div class="container-fluid my-4 simulador-rendimiento-page">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 text-primary font-weight-bold"><i class="fas fa-chart-pie me-2"></i>Simulador de Rendimiento de
-            Crudo</h2>
+        <h2 class="h3 font-weight-bold" style="color: var(--primary-color);"><i class="fas fa-chart-pie me-2"></i>Simulador de Rendimiento de Crudo</h2>
         <span class="text-muted">Bienvenido, {{ nombre }}</span>
     </div>
 
