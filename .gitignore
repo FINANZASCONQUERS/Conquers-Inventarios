@@ -1,40 +1,90 @@
-# --- Entornos Virtuales (La basura más pesada) ---
+# ==============================================================================
+# .gitignore - CONQUERS TRADING INVENTARIO (PROTECCIÓN TOTAL)
+# ==============================================================================
+
+# --- 1. Entornos Virtuales y Dependencias Locales ---
 venv/
 env/
 .venv/
-.venv-scipy/
+.venv*/
 Scripts/
 Lib/
+include/
+bin/
+*.egg-info/
+dist/
+build/
 
-# --- Python ---
+# --- 2. Python y Caches de Compilación / Pruebas ---
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 *.pyd
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
 
-# --- Base de Datos (Nunca se sube) ---
+# --- 3. Bases de Datos Locales y Archivos de Instancia ---
+*.sqlite
 *.sqlite3
 *.db
 instance/
+*.db-journal
 
-# --- Archivos Multimedia Gigantes (Bloquéalos) ---
+# --- 4. Variables de Entorno y Secretos ---
+.env
+.env.*
+!.env.example
+
+# --- 5. Herramientas de IA e IDEs ---
+.vscode/
+.idea/
+.claude/
+.specify/
+.cursor/
+.gemini/
+*.sublime-project
+*.sublime-workspace
+
+# --- 6. Archivos Temporales y Bloqueos de Office / Excel ---
+~$*.xlsx
+~$*.xls
+~$*.docx
+~$*.pptx
+~$*.csv
+*.tmp
+*.log
+*.bak
+*.swp
+*~
+
+# --- 7. Carpetas Temporales de Modelos y Cálculos ---
+tmp_modelo/
+tmp_modelo_excel/
+upload_modelo_temp.xlsx
+upload_*.xlsx
+
+# --- 8. Pruebas y Scripts Temporales / Scratch ---
+tests/
+scratch/
+scratch_*.py
+test_*.py
+scratch.py
+
+# --- 9. Archivos Multimedia Pesados ---
 *.mp4
 *.mov
 *.avi
+*.mkv
+*.webm
 
-# --- Seguridad ---
-.env
-
-# --- Temporales y Cache ---
-tmp_modelo_excel/
-upload_modelo_temp.xlsx
-*.tmp
-*.log
-
-# --- IDEs ---
-.vscode/
-.idea/
-
-# --- Archivos de prueba temporales en la raiz o scratch (no subir) ---
-/test_*.py
-/scratch/
+# --- 10. Sistema Operativo (Windows / Mac) ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
