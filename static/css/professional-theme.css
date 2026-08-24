@@ -360,6 +360,25 @@ html.dark-mode .theme-icon-sun {
     border: 1px solid var(--table-border);
     border-radius: var(--border-radius);
     background-color: var(--table-bg) !important;
+    overflow-x: auto !important;
+    max-width: 100%;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-responsive-modern::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-track {
+    background: var(--bg-surface-subtle);
+    border-radius: 6px;
+}
+
+.table-responsive-modern::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 6px;
 }
 
 /* Header Columns */

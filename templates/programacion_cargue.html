@@ -38,6 +38,24 @@
         .programacion-cargue-page {
             background-color: var(--bg-body);
             min-height: 100vh;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .programacion-cargue-page .card-modern {
+            max-width: 100%;
+            overflow: hidden;
+            border-radius: var(--border-radius, 12px);
+        }
+
+        .programacion-cargue-page .table-responsive-modern {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: auto !important;
+            overflow-y: visible;
+            display: block;
+            position: relative;
+            -webkit-overflow-scrolling: touch;
         }
 
         .programacion-cargue-page .table-modern th {
@@ -242,35 +260,34 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 38px;
-            height: 38px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
-            background-color: var(--bg-surface);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            border: 1px solid var(--border-color);
+            background-color: var(--bg-surface, #ffffff);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--primary-color, #0a7c5d);
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 100;
+            z-index: 1050;
             cursor: pointer;
-            opacity: 0;
-            transition: opacity 0.25s ease, transform 0.2s ease;
-            color: var(--text-primary);
-            font-size: 1.1rem;
-        }
-
-        .table-responsive-modern:hover .table-scroll-btn {
-            opacity: 1;
+            opacity: 0.95;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--primary-color, #0a7c5d);
+            font-size: 1.2rem;
+            pointer-events: auto;
         }
 
         .table-scroll-btn:hover {
-            background-color: var(--primary-color);
-            color: #ffffff;
-            transform: translateY(-50%) scale(1.1);
+            background-color: var(--primary-color, #0a7c5d);
+            color: #ffffff !important;
+            opacity: 1;
+            transform: translateY(-50%) scale(1.15);
+            box-shadow: 0 8px 24px rgba(10, 124, 93, 0.45);
         }
 
-        .table-scroll-btn.scroll-left { left: 80px; }
-        .table-scroll-btn.scroll-right { right: 20px; }
+        .table-scroll-btn.scroll-left { left: 15px; }
+        .table-scroll-btn.scroll-right { right: 15px; }
 
         /* Floating action buttons */
         .btn-whatsapp-float {
@@ -503,7 +520,15 @@
                 </div>
             </div>
         </div>
-        <div class="card-body p-0">
+        <div class="card-body p-0 position-relative">
+            <!-- Botones flotantes fijos en el viewport del card -->
+            <button type="button" class="table-scroll-btn scroll-left" id="btn-scroll-table-left" title="Desplazar tabla a la izquierda" style="display: none;">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button type="button" class="table-scroll-btn scroll-right" id="btn-scroll-table-right" title="Desplazar tabla a la derecha" style="display: none;">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
             <div class="table-responsive-modern">
                 <table class="table table-modern align-middle mb-0">
                     <thead class="thead-modern">
@@ -1140,24 +1165,24 @@
 
         // --- INICIALIZAR DRAG-TO-SCROLL Y BOTONES FLOTANTES ---
         const tableContainer = document.querySelector('.table-responsive-modern');
-        if (tableContainer) {
-            // Agregar botones de scroll si no existen
-            if (!tableContainer.querySelector('.table-scroll-btn.scroll-left')) {
-                const btnLeft = document.createElement('div');
-                btnLeft.className = 'table-scroll-btn scroll-left';
-                btnLeft.innerHTML = '<i class="fas fa-chevron-left"></i>';
-                btnLeft.onclick = () => {
-                    tableContainer.scrollBy({ left: -300, behavior: 'smooth' });
-                };
-                tableContainer.appendChild(btnLeft);
+        const btnScrollLeft = document.getElementById('btn-scroll-table-left');
+        const btnScrollRight = document.getElementById('btn-scroll-table-right');
 
-                const btnRight = document.createElement('div');
-                btnRight.className = 'table-scroll-btn scroll-right';
-                btnRight.innerHTML = '<i class="fas fa-chevron-right"></i>';
-                btnRight.onclick = () => {
-                    tableContainer.scrollBy({ left: 300, behavior: 'smooth' });
-                };
-                tableContainer.appendChild(btnRight);
+        if (tableContainer) {
+            if (btnScrollLeft) {
+                btnScrollLeft.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tableContainer.scrollBy({ left: -400, behavior: 'smooth' });
+                });
+            }
+
+            if (btnScrollRight) {
+                btnScrollRight.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    tableContainer.scrollBy({ left: 400, behavior: 'smooth' });
+                });
             }
 
             // Lógica Drag-to-Scroll
@@ -1168,8 +1193,8 @@
             tableContainer.classList.add('grab-cursor');
 
             tableContainer.addEventListener('mousedown', (e) => {
-                // No activar si se clickea en inputs o botones
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.closest('button')) return;
+                // No activar si se clickea en inputs, selects o botones
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.closest('button') || e.target.closest('.table-scroll-btn')) return;
 
                 isDown = true;
                 tableContainer.classList.add('grabbing-cursor');
@@ -1195,31 +1220,22 @@
                 tableContainer.scrollLeft = scrollLeft - walk;
             });
 
-            // Actualizar visibilidad de indicadores y botones
+            // Actualizar visibilidad de botones de scroll
             const updateScrollIndicators = () => {
                 const maxScrollLeft = tableContainer.scrollWidth - tableContainer.clientWidth;
-                if (maxScrollLeft > 0 && tableContainer.scrollLeft < maxScrollLeft - 10) {
-                    tableContainer.classList.add('can-scroll-right');
-                    // Mostrar btn derecho
-                    const btnRight = tableContainer.querySelector('.scroll-right');
-                    if (btnRight) btnRight.style.display = 'flex';
+                if (maxScrollLeft > 15) {
+                    if (btnScrollLeft) btnScrollLeft.style.display = tableContainer.scrollLeft > 20 ? 'flex' : 'none';
+                    if (btnScrollRight) btnScrollRight.style.display = tableContainer.scrollLeft < maxScrollLeft - 20 ? 'flex' : 'none';
                 } else {
-                    tableContainer.classList.remove('can-scroll-right');
-                    const btnRight = tableContainer.querySelector('.scroll-right');
-                    if (btnRight) btnRight.style.display = 'none';
-                }
-
-                // Botón izquierdo
-                const btnLeft = tableContainer.querySelector('.scroll-left');
-                if (btnLeft) {
-                    btnLeft.style.display = tableContainer.scrollLeft > 10 ? 'flex' : 'none';
+                    if (btnScrollLeft) btnScrollLeft.style.display = 'none';
+                    if (btnScrollRight) btnScrollRight.style.display = 'none';
                 }
             };
 
-            tableContainer.addEventListener('scroll', updateScrollIndicators);
+            tableContainer.addEventListener('scroll', updateScrollIndicators, { passive: true });
             window.addEventListener('resize', updateScrollIndicators);
-            // Check inicial
-            setTimeout(updateScrollIndicators, 1000); // Esperar renderizado
+            window._updateTableScrollIndicators = updateScrollIndicators;
+            setTimeout(updateScrollIndicators, 600);
         }
         let exportFormat = ''; // Variable para guardar si es 'excel' o 'pdf'
 
@@ -2214,8 +2230,9 @@
     function renderTable(data) {
         renderHeader();
         renderBody(data);
-        // KPIs eliminados por solicitud del usuario
-
+        if (typeof window._updateTableScrollIndicators === 'function') {
+            setTimeout(window._updateTableScrollIndicators, 150);
+        }
     }
 
 
