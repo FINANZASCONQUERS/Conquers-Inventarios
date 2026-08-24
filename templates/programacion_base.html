@@ -16,13 +16,13 @@
         }
 
         .programacion-base-page {
-            background: linear-gradient(180deg, #f4f6f9 0%, #ffffff 100%);
+            background-color: var(--bg-body);
             min-height: 100vh;
             padding-bottom: 2rem;
         }
 
         .page-header {
-            background: white;
+            background: var(--bg-surface);
             border-radius: 1rem;
             padding: 1.5rem;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -49,13 +49,13 @@
         .page-title {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #2c3e50;
+            color: var(--text-primary);
             margin: 0;
         }
 
         .page-subtitle {
             font-size: 0.875rem;
-            color: #6c757d;
+            color: var(--text-muted);
             margin: 0;
         }
 
@@ -92,11 +92,11 @@
             border-radius: 1rem;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
             overflow: hidden;
-            background: white;
+            background: var(--bg-surface);
         }
 
         .card-header-modern {
-            background: linear-gradient(135deg, #f8f9fc 0%, #ffffff 100%);
+            background: var(--bg-surface-subtle);
             border-bottom: 3px solid var(--pb-primary);
             padding: 1.15rem 1.4rem;
         }
@@ -116,7 +116,7 @@
         .card-title-modern {
             font-size: 1.05rem;
             font-weight: 700;
-            color: #2c3e50;
+            color: var(--text-primary);
             margin: 0;
         }
 
@@ -135,13 +135,15 @@
             max-height: calc(100vh - 290px);
             overflow-y: auto;
             overflow-x: auto;
-            border: 2px solid var(--pb-border);
+            border: 2px solid var(--border-color);
             border-radius: 0 0 1rem 1rem;
+            background-color: var(--table-bg);
         }
 
         .table-modern {
             margin-bottom: 0;
             font-size: 0.9rem;
+            background-color: var(--table-bg);
         }
 
         .thead-modern th {
@@ -158,65 +160,70 @@
             white-space: nowrap;
         }
 
+        html.dark-mode .thead-modern th {
+            background: linear-gradient(180deg, #1b382b 0%, #0d2319 100%) !important;
+            color: #a7f3d0 !important;
+            border-color: #224233 !important;
+        }
+
         .tbody-modern td {
             padding: 0.45rem;
-            border-color: #e9ecef !important;
+            border-color: var(--border-color) !important;
             vertical-align: middle;
-            background: #fff;
-            color: #1f2d1f;
+            background: var(--table-bg);
+            color: var(--table-text);
         }
 
         .tbody-modern tr:nth-child(odd) td {
-            background: #fcfdfb;
+            background: var(--bg-surface-subtle);
         }
 
         .base-input,
         .base-select {
             width: 100%;
-            border: 1px solid transparent;
+            border: 1px solid var(--border-color);
             border-radius: 0.5rem;
-            background: rgba(11, 133, 82, 0.04);
+            background: var(--input-bg);
             padding: 0.4rem 0.55rem;
             font-size: 0.88rem;
             transition: all 0.2s ease;
-            color: #1f2d1f;
-            -webkit-text-fill-color: #1f2d1f;
+            color: var(--text-primary);
         }
 
         .base-input::placeholder {
-            color: #6c757d;
-            -webkit-text-fill-color: #6c757d;
+            color: var(--input-placeholder);
         }
 
         .base-select option {
-            color: #1f2d1f;
-            background: #ffffff;
+            color: var(--text-primary);
+            background: var(--bg-surface);
         }
 
         .base-input:hover,
         .base-select:hover {
-            border-color: rgba(11, 133, 82, 0.25);
-            background: rgba(11, 133, 82, 0.08);
+            border-color: var(--primary-color);
+            background: var(--bg-surface-subtle);
         }
 
         .base-input:focus,
         .base-select:focus {
             outline: none;
-            border-color: var(--pb-primary);
-            box-shadow: 0 0 0 0.2rem rgba(11, 133, 82, 0.14);
-            background: #fff;
+            border-color: var(--primary-color);
+            box-shadow: var(--input-focus-shadow);
+            background: var(--bg-surface);
+            color: var(--text-primary);
         }
 
         .base-input.is-saving,
         .base-select.is-saving {
-            background: #fff3cd;
-            border-color: #ffc107;
+            background: rgba(245, 158, 11, 0.18);
+            border-color: #f59e0b;
         }
 
         .base-input.is-saved,
         .base-select.is-saved {
-            background: #d1e7dd;
-            border-color: #198754;
+            background: rgba(16, 185, 129, 0.18);
+            border-color: #10b981;
         }
 
         .base-input-group {
