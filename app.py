@@ -688,8 +688,6 @@ MODULE_ROUTE_MAP = [
     (r'^/api/barcaza_bita', ['barcaza_bita']),
     (r'^/reporte_planta', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
-    (r'^/dashboard_reportes', ['reportes']),
-    (r'^/dashboard-reportes', ['reportes']),
     (r'^/reporte_grafico_despachos', ['reportes']),
     (r'^/reporte_barcaza', ['reportes']),
     (r'^/programacion-base', ['programacion_base']),
