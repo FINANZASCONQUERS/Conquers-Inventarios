@@ -574,7 +574,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Ana Maria Gallo",
         "rol": "logistica_destino",
-        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base"]
+        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base", "facturacion"]
     },
     "refinery.control@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
