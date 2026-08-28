@@ -538,13 +538,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Daniela Cuadrado",
         "rol": "editor",
-        "area": ["zisa_inventory", "programacion_cargue", "siza_solicitante", "siza_gestor"] 
+        "area": ["zisa_inventory", "programacion_cargue", "siza_solicitante", "siza_gestor", "reportes"] 
     },
     "comexzf@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
         "nombre": "Shirli Diaz",
         "rol": "editor",
-        "area": ["programacion_cargue", "siza_solicitante", "siza_gestor"] 
+        "area": ["programacion_cargue", "siza_solicitante", "siza_gestor", "reportes"] 
     },
     "juandiego.cuadros@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -580,7 +580,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base"] 
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte"] 
     },
     "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
