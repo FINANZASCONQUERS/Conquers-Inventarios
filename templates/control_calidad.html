@@ -97,7 +97,7 @@
                     </div>
                     <div class="alert alert-info small">
                         Columnas soportadas: fecha, hora, producto, responsable, origen, placa, campo, bsw, flash_point,
-                        api_obs, temp, api_corr, observaciones.<br>
+                        api_obs, temp, api_corr, viscosidad, azufre, sedimento, observaciones.<br>
                         Si falta algún campo se dejará vacío.
                     </div>
                 </form>
@@ -186,20 +186,23 @@
             'fecha': { width: '100px', type: 'date' },
             'hora': { width: '80px', type: 'time' },
             'producto': { width: '120px', type: 'datalist', options: ['MGO', 'FO4', 'FO6', 'VLSFO', 'HSFO', 'DILUYENTE', 'CRUDO'] },
-            'origen': { width: '140px', type: 'datalist', options: ['Carrotanque', 'Linea', 'Tanque', 'Barcazas'] },
-            'placa': { width: '120px' },
-            'campo': { width: '140px' },
-            'bsw': { width: '80px', type: 'number' },
-            'flash_point': { width: '100px', type: 'number' },
-            'api_obs': { width: '80px', type: 'number' },
+            'origen': { width: '130px', type: 'datalist', options: ['Carrotanque', 'Linea', 'Tanque', 'Barcazas'] },
+            'placa': { width: '110px' },
+            'campo': { width: '130px' },
+            'bsw': { width: '85px', type: 'number' },
+            'flash_point': { width: '95px', type: 'number' },
+            'api_obs': { width: '85px', type: 'number' },
             'temp': { width: '80px', type: 'number' },
-            'api_corr': { width: '80px', type: 'number' },
-            'observaciones': { width: '200px' },
-            'responsable': { width: '140px' }
+            'api_corr': { width: '90px', type: 'number' },
+            'viscosidad': { width: '105px', type: 'number' },
+            'azufre': { width: '95px', type: 'number' },
+            'sedimento': { width: '95px', type: 'number' },
+            'observaciones': { width: '180px' },
+            'responsable': { width: '130px' }
         };
 
-        const allColumns = ['fecha', 'hora', 'producto', 'origen', 'placa', 'campo', 'bsw', 'flash_point', 'api_obs', 'temp', 'api_corr', 'observaciones', 'responsable'];
-        const userPermissions = ['fecha', 'hora', 'producto', 'responsable', 'origen', 'placa', 'campo', 'bsw', 'flash_point', 'api_obs', 'temp', 'api_corr', 'observaciones'];
+        const allColumns = ['fecha', 'hora', 'producto', 'origen', 'placa', 'campo', 'bsw', 'flash_point', 'api_obs', 'temp', 'api_corr', 'viscosidad', 'azufre', 'sedimento', 'observaciones', 'responsable'];
+        const userPermissions = ['fecha', 'hora', 'producto', 'responsable', 'origen', 'placa', 'campo', 'bsw', 'flash_point', 'api_obs', 'temp', 'api_corr', 'viscosidad', 'azufre', 'sedimento', 'observaciones'];
         const isAdmin = userRol === 'admin';
 
         const datalist = document.getElementById('origen-lista');
@@ -545,10 +548,14 @@
 
         function formatColumnName(colName) {
             const abbreviations = {
-                'flash_point': 'FLASH POINT',
+                'bsw': '% VOL',
+                'flash_point': 'FLASH °C',
                 'api_obs': 'API OBS',
-                'api_corr': 'API CORR',
                 'temp': 'TEMP',
+                'api_corr': 'API CORR',
+                'viscosidad': 'VISC. 50°C',
+                'azufre': 'AZUFRE %',
+                'sedimento': 'SEDIM. %',
                 'producto': 'PRODUCTO'
             };
             if (abbreviations[colName]) return abbreviations[colName];

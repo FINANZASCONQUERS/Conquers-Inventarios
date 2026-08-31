@@ -568,13 +568,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),       
         "nombre": "Kelly Suarez",
         "rol": "editor",
-        "area": ["contabilidad", "facturacion"] 
+        "area": ["contabilidad", "facturacion", "consolidar_facturas"] 
     },
     "amariagallo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Ana Maria Gallo",
         "rol": "logistica_destino",
-        "area": ["programacion_cargue","gestion_compras", "planilla_precios", "programacion_base", "facturacion", "reportes"]
+        "area": ["programacion_cargue", "gestion_compras", "planilla_precios", "programacion_base", "facturacion", "reportes"]
     },
     "refinery.control@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -687,8 +687,11 @@ MODULE_ROUTE_MAP = [
     (r'^/barcaza_bita', ['barcaza_bita']),
     (r'^/api/barcaza_bita', ['barcaza_bita']),
     (r'^/reporte_planta', ['reportes', 'planta']),
+    (r'^/descargar-reporte-planta-pdf', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
-    (r'^/reporte_grafico_despachos', ['reportes']),
+    (r'^/reporte_grafico_despachos', ['reportes', 'programacion_cargue']),
+    (r'^/descargar_reporte_grafico_despachos_pdf', ['reportes', 'programacion_cargue']),
+    (r'^/exportar_programacion_cargue', ['programacion_cargue', 'reportes']),
     (r'^/reporte_barcaza', ['reportes']),
     (r'^/programacion-base', ['programacion_base']),
     (r'^/pedidos', ['programacion_base']),
@@ -830,6 +833,44 @@ class EscenarioParametrosLP(db.Model):
     actualizado = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class CorridaModeloLP(db.Model):
+    """Historial de corridas del Modelo de Optimizacion LP.
+
+    Guarda el payload completo de resultados (~40 KB) para poder reabrir una
+    corrida pasada y compararla contra otra. Se conservan las ultimas
+    CORRIDAS_LP_MAX por usuario; las mas viejas se purgan al guardar.
+    """
+    __tablename__ = 'corridas_modelo_lp'
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(200), nullable=False)
+    autor = db.Column(db.String(120), nullable=True, index=True)
+    creado = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    status = db.Column(db.String(40), nullable=True)
+    utilidad_total = db.Column(db.Float, nullable=True)
+    vol_compras_total = db.Column(db.Float, nullable=True)
+    vol_ventas_total = db.Column(db.Float, nullable=True)
+    escenario = db.Column(db.String(200), nullable=True)
+    resultados_json = db.Column(db.Text, nullable=False)
+
+    def resumen(self):
+        """Metadatos para el listado, sin cargar el payload completo."""
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'autor': self.autor,
+            'creado': self.creado.isoformat() if self.creado else None,
+            'status': self.status,
+            'utilidad_total': self.utilidad_total,
+            'vol_compras_total': self.vol_compras_total,
+            'vol_ventas_total': self.vol_ventas_total,
+            'escenario': self.escenario,
+        }
+
+
+# Cuantas corridas se conservan por usuario en el historial.
+CORRIDAS_LP_MAX = 25
+
+
 class CronogramaActividad(db.Model):
     __tablename__ = 'cronograma_actividades'
     id = db.Column(db.Integer, primary_key=True)
@@ -855,7 +896,24 @@ class CronogramaEstado(db.Model):
     estado = db.Column(db.String(50), default='pending') # 'done', 'pending', 'late'
     observacion = db.Column(db.Text, nullable=True)
     usuario = db.Column(db.String(100), nullable=True)
-    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow) # Sin onupdate automático para no corromper la auditoría al guardar notas
+    fecha_entrega_real = db.Column(db.Date, nullable=True) # Fecha en que el trabajador realmente radicó/entregó la información
+
+class CronogramaFechaMes(db.Model):
+    """Fechas límite de una actividad para UN mes concreto.
+
+    Viven aquí y no en CronogramaActividad porque el cumplimiento se mide por mes:
+    si se guardaran en la actividad, regenerar el ciclo de un mes reescribiría los
+    vencimientos de todos los meses anteriores y el histórico dejaría de ser auditable.
+    """
+    __tablename__ = 'cronograma_fechas_mes'
+    id = db.Column(db.Integer, primary_key=True)
+    actividad_id = db.Column(db.Integer, db.ForeignKey('cronograma_actividades.id'), nullable=False)
+    mes = db.Column(db.String(50), nullable=False)  # ej 'Febrero 2026'
+    fecha_inicio = db.Column(db.Date, nullable=True)
+    fecha_fin = db.Column(db.Date, nullable=True)
+    __table_args__ = (db.UniqueConstraint('actividad_id', 'mes', name='uq_cronograma_fecha_mes'),)
+
 
 def _init_cronograma_db():
     from sqlalchemy import inspect
@@ -869,17 +927,47 @@ def _init_cronograma_db():
             CronogramaEstado.__table__.create(db.engine)
             print("[INIT] Tabla cronograma_estados creada.")
         
-        # Migración segura: agregar columnas de fecha si no existen
+        # Migración segura: agregar columnas de fecha en cronograma_actividades si no existen
         existing_cols = [c['name'] for c in insp.get_columns('cronograma_actividades')]
         if 'fecha_inicio' not in existing_cols or 'fecha_fin' not in existing_cols:
             with db.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as conn:
                 if 'fecha_inicio' not in existing_cols:
                     conn.execute(db.text("ALTER TABLE cronograma_actividades ADD COLUMN IF NOT EXISTS fecha_inicio DATE"))
-                    print("[INIT] Columna fecha_inicio agregada.")
+                    print("[INIT] Columna fecha_inicio agregada a cronograma_actividades.")
                 if 'fecha_fin' not in existing_cols:
                     conn.execute(db.text("ALTER TABLE cronograma_actividades ADD COLUMN IF NOT EXISTS fecha_fin DATE"))
-                    print("[INIT] Columna fecha_fin agregada.")
+                    print("[INIT] Columna fecha_fin agregada a cronograma_actividades.")
+
+        # Migración segura: agregar fecha_entrega_real en cronograma_estados si no existe
+        existing_cols_est = [c['name'] for c in insp.get_columns('cronograma_estados')]
+        if 'fecha_entrega_real' not in existing_cols_est:
+            with db.engine.connect().execution_options(isolation_level='AUTOCOMMIT') as conn:
+                conn.execute(db.text("ALTER TABLE cronograma_estados ADD COLUMN IF NOT EXISTS fecha_entrega_real DATE"))
+                print("[INIT] Columna fecha_entrega_real agregada a cronograma_estados.")
             
+        # Tabla de fechas por mes + congelado del histórico existente
+        if 'cronograma_fechas_mes' not in tables:
+            CronogramaFechaMes.__table__.create(db.engine)
+            print("[INIT] Tabla cronograma_fechas_mes creada.")
+            # Cada mes ya visitado hereda las fechas que la actividad tiene hoy, que son
+            # exactamente las que se estaban usando para evaluarlo. Se congelan TODAS las
+            # actividades del mes, no solo las que alcanzaron a tener un estado: el mes se
+            # evaluaba contra las 9, no contra las que alguien tocó.
+            meses_hist = [m for (m,) in db.session.query(CronogramaEstado.mes).distinct().all()]
+            actividades_hist = CronogramaActividad.query.all()
+            congeladas = 0
+            for mes_hist in meses_hist:
+                for act_hist in actividades_hist:
+                    if not act_hist.fecha_inicio and not act_hist.fecha_fin:
+                        continue
+                    db.session.add(CronogramaFechaMes(
+                        actividad_id=act_hist.id, mes=mes_hist,
+                        fecha_inicio=act_hist.fecha_inicio, fecha_fin=act_hist.fecha_fin))
+                    congeladas += 1
+            if congeladas:
+                db.session.commit()
+                print(f"[INIT] Histórico congelado: {congeladas} fechas por mes.")
+
         # Poblar con datos por defecto si está vacía
         if CronogramaActividad.query.count() == 0:
             actividades_default = [
@@ -1088,6 +1176,9 @@ class RegistroCalidad(db.Model):
     api_obs = db.Column(db.Float)
     temp = db.Column(db.Float)
     api_corr = db.Column(db.Float)
+    viscosidad = db.Column(db.Float)
+    azufre = db.Column(db.Float)
+    sedimento = db.Column(db.Float)
     observaciones = db.Column(db.Text)
 
     def __repr__(self):
@@ -1222,6 +1313,7 @@ class ProgramacionCargue(db.Model):
     imagen_guia = db.Column(db.Text, nullable=True)
 
     # Campos de Facturación
+    factura_sicom = db.Column(db.String(100), nullable=True)
     fecha_factura = db.Column(db.Date, nullable=True)
     mes_facturado = db.Column(db.String(20), nullable=True)
     codigo_transporte = db.Column(db.String(100), nullable=True)
@@ -3817,6 +3909,9 @@ def control_calidad():
             "api_obs": r.api_obs or '',
             "temp": r.temp or '',
             "api_corr": r.api_corr or '',
+            "viscosidad": r.viscosidad or '',
+            "azufre": r.azufre or '',
+            "sedimento": r.sedimento or '',
             "observaciones": r.observaciones or ''
         }
         for r in todos_los_registros
@@ -3867,13 +3962,16 @@ def get_control_calidad_data():
         if val:
             query = query.filter(col_attr.ilike(f'%{val}%'))
 
-    # Filtros numéricos (bsw, flash_point, api_obs, temp, api_corr)
+    # Filtros numéricos (bsw, flash_point, api_obs, temp, api_corr, viscosidad, azufre, sedimento)
     filterable_num_cols = {
         'bsw': RegistroCalidad.bsw,
         'flash_point': RegistroCalidad.flash_point,
         'api_obs': RegistroCalidad.api_obs,
         'temp': RegistroCalidad.temp,
         'api_corr': RegistroCalidad.api_corr,
+        'viscosidad': RegistroCalidad.viscosidad,
+        'azufre': RegistroCalidad.azufre,
+        'sedimento': RegistroCalidad.sedimento,
     }
     for col_name, col_attr in filterable_num_cols.items():
         val = request.args.get(f'f_{col_name}', '').strip()
@@ -3893,7 +3991,11 @@ def get_control_calidad_data():
                 "origen": r.origen, "placa": r.placa, "campo": r.campo,
                 "bsw": r.bsw or '', "flash_point": r.flash_point or '',
                 "api_obs": r.api_obs or '', "temp": r.temp or '',
-                "api_corr": r.api_corr or '', "observaciones": r.observaciones or ''
+                "api_corr": r.api_corr or '', 
+                "viscosidad": r.viscosidad or '',
+                "azufre": r.azufre or '',
+                "sedimento": r.sedimento or '',
+                "observaciones": r.observaciones or ''
             }
             for r in todos_los_registros
         ]
@@ -3912,7 +4014,11 @@ def get_control_calidad_data():
             "origen": r.origen, "placa": r.placa, "campo": r.campo,
             "bsw": r.bsw or '', "flash_point": r.flash_point or '',
             "api_obs": r.api_obs or '', "temp": r.temp or '',
-            "api_corr": r.api_corr or '', "observaciones": r.observaciones or ''
+            "api_corr": r.api_corr or '', 
+            "viscosidad": r.viscosidad or '',
+            "azufre": r.azufre or '',
+            "sedimento": r.sedimento or '',
+            "observaciones": r.observaciones or ''
         }
         for r in registros
     ]
@@ -3944,6 +4050,9 @@ def crear_registro_calidad():
             api_obs=None,
             temp=None,
             api_corr=None,
+            viscosidad=None,
+            azufre=None,
+            sedimento=None,
             observaciones=None,
             usuario=session.get("nombre", "No identificado"),
             timestamp=datetime.utcnow()
@@ -4004,6 +4113,12 @@ def actualizar_registro_calidad(id):
             registro.temp = to_float(datos.get('temp'))
         if 'api_corr' in datos:
             registro.api_corr = to_float(datos.get('api_corr'))
+        if 'viscosidad' in datos:
+            registro.viscosidad = to_float(datos.get('viscosidad'))
+        if 'azufre' in datos:
+            registro.azufre = to_float(datos.get('azufre'))
+        if 'sedimento' in datos:
+            registro.sedimento = to_float(datos.get('sedimento'))
         if 'observaciones' in datos:
             registro.observaciones = datos.get('observaciones')
         
@@ -5398,12 +5513,15 @@ def modelo_optimizacion_ejecutar():
             if not escenario:
                 return jsonify(success=False, error='Escenario de parámetros no encontrado.'), 404
             payload = json.loads(escenario.datos_json)
+            # Nombre del escenario, para etiquetar la corrida en el historial
+            session['modelo_escenario_nombre'] = escenario.nombre
             tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
             os.makedirs(tmp_dir, exist_ok=True)
             temp_excel_path = os.path.join(tmp_dir, f"param_db_{uuid4().hex}.xlsx")
             construir_excel_desde_payload(EXCEL_DEFAULT_LP, payload, temp_excel_path)
             excel_path = temp_excel_path
         elif uploaded_file and uploaded_file.filename:
+            session['modelo_escenario_nombre'] = uploaded_file.filename
             tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
             os.makedirs(tmp_dir, exist_ok=True)
             temp_excel_path = os.path.join(tmp_dir, f"param_{uuid4().hex}.xlsx")
@@ -5460,8 +5578,18 @@ def modelo_optimizacion_ejecutar():
             json.dump(cache_data, f, ensure_ascii=False)
             
         session['modelo_result_id'] = result_id
-        
-        return jsonify(success=True, result_id=result_id, resultados=resultados, validation=validation)
+
+        # Historial: se guarda aparte del cache temporal (que se purga a las 2 h).
+        # Si el guardado falla no se pierde la corrida, solo su entrada al historial.
+        corrida_id = None
+        try:
+            corrida_id = _mo_guardar_corrida(resultados, request.form.get('nombre_corrida'))
+        except Exception as e:
+            app.logger.warning(f"No se pudo guardar la corrida en el historial: {e}")
+            db.session.rollback()
+
+        return jsonify(success=True, result_id=result_id, corrida_id=corrida_id,
+                       resultados=resultados, validation=validation)
         
     except Exception as e:
         app.logger.error(f"Error al ejecutar modelo: {e}")
@@ -5539,6 +5667,25 @@ def modelo_parametros_listar():
     } for e in escenarios])
 
 
+def _mo_nombre_escenario_unico(nombre, excluir_id=None):
+    """Evita escenarios con el mismo nombre: agrega ' (2)', ' (3)'...
+
+    Sin esto, repetir "Importar Excel base" con el nombre por defecto llena la
+    lista de entradas indistinguibles.
+    """
+    nombre = (nombre or '').strip() or 'Escenario'
+    q = EscenarioParametrosLP.query.filter_by(autor=session.get('email'))
+    if excluir_id:
+        q = q.filter(EscenarioParametrosLP.id != excluir_id)
+    existentes = {e.nombre for e in q.all()}
+    if nombre not in existentes:
+        return nombre[:200]
+    n = 2
+    while f'{nombre} ({n})' in existentes:
+        n += 1
+    return f'{nombre} ({n})'[:200]
+
+
 @app.route('/modelo-optimizacion/parametros/importar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
@@ -5549,7 +5696,7 @@ def modelo_parametros_importar():
         from modelo_parametros_builder import escenario_a_payload
         from uuid import uuid4
         import json
-        nombre = (request.form.get('nombre') or 'Escenario importado').strip()
+        nombre = _mo_nombre_escenario_unico(request.form.get('nombre') or 'Escenario importado')
         excel_path = EXCEL_DEFAULT_LP
         uploaded = request.files.get('archivo_excel')
         if uploaded and uploaded.filename:
@@ -5581,7 +5728,7 @@ def modelo_parametros_nuevo():
     try:
         from modelo_parametros_builder import escenario_vacio
         import json
-        nombre = (request.form.get('nombre') or 'Escenario nuevo').strip()
+        nombre = _mo_nombre_escenario_unico(request.form.get('nombre') or 'Escenario nuevo')
         payload = escenario_vacio(EXCEL_DEFAULT_LP)
         esc = EscenarioParametrosLP(
             nombre=nombre,
@@ -5648,6 +5795,43 @@ def modelo_parametros_guardar(esc_id):
     return jsonify(success=True, id=esc.id)
 
 
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/renombrar', methods=['POST'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_parametros_renombrar(esc_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    esc = EscenarioParametrosLP.query.get(esc_id)
+    if not esc:
+        return jsonify(success=False, error="Escenario no encontrado."), 404
+    nombre = ((request.get_json(silent=True) or {}).get('nombre') or '').strip()
+    if not nombre:
+        return jsonify(success=False, error="El nombre no puede estar vacío."), 400
+    esc.nombre = _mo_nombre_escenario_unico(nombre, excluir_id=esc_id)
+    db.session.commit()
+    return jsonify(success=True, id=esc.id, nombre=esc.nombre)
+
+
+@app.route('/modelo-optimizacion/parametros/<int:esc_id>/duplicar', methods=['POST'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_parametros_duplicar(esc_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    esc = EscenarioParametrosLP.query.get(esc_id)
+    if not esc:
+        return jsonify(success=False, error="Escenario no encontrado."), 404
+    copia = EscenarioParametrosLP(
+        nombre=_mo_nombre_escenario_unico(esc.nombre),
+        datos_json=esc.datos_json,
+        autor=session.get('email'),
+    )
+    db.session.add(copia)
+    db.session.commit()
+    return jsonify(success=True, id=copia.id, nombre=copia.nombre,
+                   payload=json.loads(copia.datos_json))
+
+
 @app.route('/modelo-optimizacion/parametros/<int:esc_id>/eliminar', methods=['POST'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
@@ -5657,6 +5841,97 @@ def modelo_parametros_eliminar(esc_id):
     esc = EscenarioParametrosLP.query.get(esc_id)
     if esc:
         db.session.delete(esc)
+        db.session.commit()
+    return jsonify(success=True)
+
+
+# ---------------------------------------------------------------------------
+# Historial de corridas del Modelo de Optimizacion LP
+# ---------------------------------------------------------------------------
+
+def _mo_guardar_corrida(resultados, nombre=None):
+    """Persiste una corrida y purga las mas viejas del usuario. Devuelve su id."""
+    autor = session.get('email')
+    if not nombre:
+        nombre = f"Corrida {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+
+    corrida = CorridaModeloLP(
+        nombre=nombre[:200],
+        autor=autor,
+        status=str(resultados.get('status') or '')[:40],
+        utilidad_total=resultados.get('utilidad_total'),
+        vol_compras_total=resultados.get('vol_compras_total'),
+        vol_ventas_total=resultados.get('vol_ventas_total'),
+        escenario=(session.get('modelo_escenario_nombre') or None),
+        resultados_json=json.dumps(resultados, ensure_ascii=False),
+    )
+    db.session.add(corrida)
+    db.session.commit()
+
+    sobrantes = (CorridaModeloLP.query
+                 .filter_by(autor=autor)
+                 .order_by(CorridaModeloLP.creado.desc())
+                 .offset(CORRIDAS_LP_MAX).all())
+    for vieja in sobrantes:
+        db.session.delete(vieja)
+    if sobrantes:
+        db.session.commit()
+
+    return corrida.id
+
+
+@app.route('/modelo-optimizacion/corridas/listar', methods=['GET'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_corridas_listar():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    corridas = (CorridaModeloLP.query
+                .filter_by(autor=session.get('email'))
+                .order_by(CorridaModeloLP.creado.desc())
+                .limit(CORRIDAS_LP_MAX).all())
+    return jsonify(success=True, corridas=[c.resumen() for c in corridas])
+
+
+@app.route('/modelo-optimizacion/corridas/<int:corrida_id>', methods=['GET'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_corridas_obtener(corrida_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    corrida = CorridaModeloLP.query.get(corrida_id)
+    if not corrida or corrida.autor != session.get('email'):
+        return jsonify(success=False, error="Corrida no encontrada."), 404
+    return jsonify(success=True, corrida=corrida.resumen(),
+                   resultados=json.loads(corrida.resultados_json))
+
+
+@app.route('/modelo-optimizacion/corridas/<int:corrida_id>/renombrar', methods=['POST'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_corridas_renombrar(corrida_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    corrida = CorridaModeloLP.query.get(corrida_id)
+    if not corrida or corrida.autor != session.get('email'):
+        return jsonify(success=False, error="Corrida no encontrada."), 404
+    nombre = (request.get_json(silent=True) or {}).get('nombre', '').strip()
+    if not nombre:
+        return jsonify(success=False, error="El nombre no puede estar vacío."), 400
+    corrida.nombre = nombre[:200]
+    db.session.commit()
+    return jsonify(success=True, corrida=corrida.resumen())
+
+
+@app.route('/modelo-optimizacion/corridas/<int:corrida_id>/eliminar', methods=['POST'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_corridas_eliminar(corrida_id):
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    corrida = CorridaModeloLP.query.get(corrida_id)
+    if corrida and corrida.autor == session.get('email'):
+        db.session.delete(corrida)
         db.session.commit()
     return jsonify(success=True)
 
@@ -8052,11 +8327,11 @@ def dashboard_reportes():
             'categoria': 'Laboratorio',
             'titulo': 'Análisis de Laboratorio',
             'descripcion': 'Registro de ensayos físico-químicos de crudo y derivados en laboratorio.',
-            'icono': 'bi-flask-fill',
+            'icono': 'fas fa-flask',
             'color': 'indigo',
             'bg_gradient': 'linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%)',
             'color_hex': '#4F46E5',
-            'badge': 'Ensayos',
+            'badge': 'Laboratorio',
             'url_principal': url_for('analisis_laboratorio'),
             'nombre_btn': 'Ver Análisis',
             'sub_links': []
@@ -8146,6 +8421,42 @@ def dashboard_reportes():
             'badge': 'Contabilidad',
             'url_principal': url_for('consolidar_facturas'),
             'nombre_btn': 'Consolidar',
+            'sub_links': []
+        })
+
+    # 15. Modelo de Optimizacion LP
+    if is_admin or 'modelo_optimizacion' in user_areas or user_email in (
+            'felipe.delavega@conquerstrading.com', 'finance@conquerstrading.com'):
+        modulos_usuario.append({
+            'id': 'modelo_optimizacion',
+            'categoria': 'Planeación',
+            'titulo': 'Modelo de Optimización LP',
+            'descripcion': 'Optimización de compras, blending, refinación y transporte para maximizar la utilidad.',
+            'icono': 'bi-graph-up-arrow',
+            'color': 'indigo',
+            'bg_gradient': 'linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%)',
+            'color_hex': '#4F46E5',
+            'badge': 'Planeación',
+            'url_principal': url_for('modelo_optimizacion_page'),
+            'nombre_btn': 'Abrir Modelo',
+            'sub_links': []
+        })
+
+    # 16. Cronograma Contable
+    if is_admin or 'contabilidad' in user_areas or user_email in (
+            'accountingzf@conquerstrading.com', 'billcwt@conquerstrading.com', 'accounting@conquerstrading.com', 'numbers@conquerstrading.com'):
+        modulos_usuario.append({
+            'id': 'cronograma_contable',
+            'categoria': 'Contabilidad',
+            'titulo': 'Cronograma Contable',
+            'descripcion': 'Gestión, fechas límite y cumplimiento de actividades de cierre contable.',
+            'icono': 'bi-calendar-check-fill',
+            'color': 'warning',
+            'bg_gradient': 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+            'color_hex': '#D97706',
+            'badge': 'Cierre',
+            'url_principal': url_for('cronograma'),
+            'nombre_btn': 'Ver Cronograma',
             'sub_links': []
         })
 
@@ -19797,7 +20108,8 @@ def descargar_guia_sharepoint(registro, numero_guia):
 # --- INICIO: RUTAS CRONOGRAMA ---
 # ===================================================================
 
-@app.route('/cronograma')
+@app.route('/cronograma', endpoint='cronograma')
+@app.route('/cronograma_home', endpoint='cronograma_home')
 @login_required
 def cronograma_home():
     email = session.get('email', '').strip().lower()
@@ -19827,6 +20139,183 @@ def cronograma_home():
 
     return render_template('cronograma.html', empresa_default=empresa_default, is_kelly=is_kelly, is_kevin=is_kevin)
 
+def _mapa_fechas_mes(empresa: str, mes: str) -> dict:
+    """{actividad_id: (fecha_inicio, fecha_fin)} para un mes concreto.
+    Si el mes es nuevo y no tiene fechas generadas, las calcula y guarda automáticamente."""
+    filas = (db.session.query(CronogramaFechaMes)
+             .join(CronogramaActividad, CronogramaFechaMes.actividad_id == CronogramaActividad.id)
+             .filter(CronogramaActividad.empresa == empresa, CronogramaFechaMes.mes == mes)
+             .all())
+    
+    if not filas and mes:
+        fechas_calc = calcular_dias_habiles_cierre(mes)
+        if fechas_calc:
+            acts = CronogramaActividad.query.filter_by(empresa=empresa).all()
+            for a in acts:
+                f_id = (a.fase_id or '').lower().strip()
+                f_nom = (a.fase_nombre or '').lower().strip()
+                key = f_id if f_id in fechas_calc else None
+                if not key:
+                    for cand, test in [('pre','pre' in f_nom),('ult',('últ' in f_nom or 'ult' in f_nom)),
+                                       ('1','1' in f_nom),('2','2' in f_nom),('3','3' in f_nom),
+                                       ('4','4' in f_nom),('5','5' in f_nom)]:
+                        if test: key = cand; break
+                if key and key in fechas_calc:
+                    _set_fechas_mes(a.id, mes, *fechas_calc[key])
+            try:
+                db.session.commit()
+                filas = (db.session.query(CronogramaFechaMes)
+                         .join(CronogramaActividad, CronogramaFechaMes.actividad_id == CronogramaActividad.id)
+                         .filter(CronogramaActividad.empresa == empresa, CronogramaFechaMes.mes == mes)
+                         .all())
+            except Exception:
+                db.session.rollback()
+
+    return {f.actividad_id: (f.fecha_inicio, f.fecha_fin) for f in filas}
+
+
+def _fechas_de(act, mapa: dict):
+    """Fechas límite de una actividad en el mes."""
+    if act.id in mapa:
+        return mapa[act.id]
+    return (None, None)
+
+
+def _set_fechas_mes(actividad_id: int, mes: str, f_ini, f_fin):
+    """Crea o actualiza las fechas límite de (actividad, mes)."""
+    fila = CronogramaFechaMes.query.filter_by(actividad_id=actividad_id, mes=mes).first()
+    if not fila:
+        fila = CronogramaFechaMes(actividad_id=actividad_id, mes=mes)
+        db.session.add(fila)
+    fila.fecha_inicio = f_ini
+    fila.fecha_fin = f_fin
+    return fila
+
+
+def calcular_dias_habiles_cierre(mes_str):
+    """
+    Dada una cadena como 'Febrero 2026' o 'Marzo 2026', calcula las fechas hábiles de cierre:
+    - PRE: 2 días hábiles antes de fin de mes
+    - Últ.: último día hábil del mes
+    - 1°: 1er día hábil del mes siguiente
+    - 2°: 2do día hábil del mes siguiente
+    - 3°: 3er día hábil del mes siguiente
+    - 4°: 4to día hábil del mes siguiente
+    - 5°: 5to día hábil del mes siguiente
+
+    Excluye fines de semana y días festivos en Colombia (Ley Emiliani).
+    """
+    import calendar
+    from datetime import date
+    try:
+        import holidays
+    except ImportError:
+        holidays = None
+    
+    meses_es = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+        'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+    }
+    
+    parts = (mes_str or '').strip().split()
+    if len(parts) < 2:
+        return {}
+    m_name = parts[0].lower()
+    m_num = meses_es.get(m_name, 1)
+    try:
+        year = int(parts[1])
+    except ValueError:
+        return {}
+    
+    # Mes siguiente para los días de cierre (1° al 5° día hábil)
+    if m_num == 12:
+        next_m, next_y = 1, year + 1
+    else:
+        next_m, next_y = m_num + 1, year
+
+    if holidays:
+        try:
+            co_holidays = holidays.CO(years=[year, next_y])
+        except Exception:
+            co_holidays = set()
+    else:
+        co_holidays = set()
+    
+    def _es_habil(d):
+        return d.weekday() < 5 and d not in co_holidays
+    
+    # Obtener todos los días hábiles (L-V y no festivos) del mes base
+    _, last_day = calendar.monthrange(year, m_num)
+    dias_habiles_mes = [date(year, m_num, day) for day in range(1, last_day + 1) if _es_habil(date(year, m_num, day))]
+            
+    _, next_last_day = calendar.monthrange(next_y, next_m)
+    dias_habiles_siguiente = [date(next_y, next_m, day) for day in range(1, next_last_day + 1) if _es_habil(date(next_y, next_m, day))]
+            
+    res = {}
+    if len(dias_habiles_mes) >= 3:
+        res['pre'] = (dias_habiles_mes[-3], dias_habiles_mes[-2])
+        res['ult'] = (dias_habiles_mes[-2], dias_habiles_mes[-1])
+    elif len(dias_habiles_mes) >= 2:
+        res['pre'] = (dias_habiles_mes[-2], dias_habiles_mes[-1])
+        res['ult'] = (dias_habiles_mes[-1], dias_habiles_mes[-1])
+    elif dias_habiles_mes:
+        res['pre'] = (dias_habiles_mes[0], dias_habiles_mes[-1])
+        res['ult'] = (dias_habiles_mes[0], dias_habiles_mes[-1])
+        
+    for i in range(1, 6):
+        idx = i - 1
+        if len(dias_habiles_siguiente) > idx:
+            d_val = dias_habiles_siguiente[idx]
+            res[str(i)] = (d_val, d_val)
+        
+    return res
+
+@app.route('/api/cronograma/<empresa>/generar-fechas', methods=['POST'])
+@login_required
+def api_cronograma_generar_fechas(empresa):
+    if not _can_edit_cronograma_for(empresa):
+        return jsonify({'error': 'Sin permiso'}), 403
+    mes = request.json.get('mes')
+    if not mes:
+        return jsonify({'error': 'Mes requerido'}), 400
+        
+    fechas_map = calcular_dias_habiles_cierre(mes)
+    if not fechas_map:
+        return jsonify({'error': 'No se pudieron calcular los días hábiles para el mes especificado'}), 400
+        
+    actividades = CronogramaActividad.query.filter_by(empresa=empresa).all()
+    actualizados = 0
+    for a in actividades:
+        f_id = (a.fase_id or '').lower().strip()
+        f_nom = (a.fase_nombre or '').lower().strip()
+        
+        target_key = None
+        if f_id in fechas_map:
+            target_key = f_id
+        elif 'pre' in f_nom or 'pre' in f_id:
+            target_key = 'pre'
+        elif 'últ' in f_nom or 'ult' in f_nom or 'ult' in f_id:
+            target_key = 'ult'
+        elif '1' in f_nom:
+            target_key = '1'
+        elif '2' in f_nom:
+            target_key = '2'
+        elif '3' in f_nom:
+            target_key = '3'
+        elif '4' in f_nom:
+            target_key = '4'
+        elif '5' in f_nom:
+            target_key = '5'
+            
+        if target_key and target_key in fechas_map:
+            f_ini, f_fin = fechas_map[target_key]
+            # Solo afecta al mes seleccionado: los meses anteriores quedan intactos.
+            _set_fechas_mes(a.id, mes, f_ini, f_fin)
+            actualizados += 1
+            
+    db.session.commit()
+    return jsonify({'success': True, 'actualizados': actualizados, 'fechas': {k: [v[0].isoformat(), v[1].isoformat()] for k,v in fechas_map.items()}})
+
 @app.route('/api/cronograma/<empresa>')
 @login_required
 def api_cronograma_get(empresa):
@@ -19838,18 +20327,24 @@ def api_cronograma_get(empresa):
         mes = f"{months[now.month - 1]} {now.year}"
         
     actividades = CronogramaActividad.query.filter_by(empresa=empresa).order_by(CronogramaActividad.orden).all()
+    mapa_fechas = _mapa_fechas_mes(empresa, mes)
     
     res = []
     for a in actividades:
         est = CronogramaEstado.query.filter_by(actividad_id=a.id, mes=mes).first()
+        f_ini, f_fin = _fechas_de(a, mapa_fechas)
         
         fecha_str = ''
         fecha_act_raw = ''
-        if est and est.fecha_actualizacion:
-            dt_bogota = to_bogota_datetime(est.fecha_actualizacion)
-            if dt_bogota:
-                fecha_str = dt_bogota.strftime('%d/%b %I:%M %p').lower()
-                fecha_act_raw = dt_bogota.strftime('%Y-%m-%d')
+        fecha_entrega_real_str = ''
+        if est:
+            if est.fecha_actualizacion:
+                dt_bogota = to_bogota_datetime(est.fecha_actualizacion)
+                if dt_bogota:
+                    fecha_str = dt_bogota.strftime('%d/%b %I:%M %p').lower()
+                    fecha_act_raw = dt_bogota.strftime('%Y-%m-%d')
+            if est.fecha_entrega_real:
+                fecha_entrega_real_str = est.fecha_entrega_real.isoformat()
                 
         res.append({
             'id': a.id,
@@ -19866,27 +20361,34 @@ def api_cronograma_get(empresa):
             'obs': est.observacion if est else '',
             'fecha_act': fecha_str,
             'fecha_act_raw': fecha_act_raw,
+            'fecha_entrega_real': fecha_entrega_real_str,
             'usuario': est.usuario if est else '',
-            'fecha_inicio': a.fecha_inicio.isoformat() if a.fecha_inicio else '',
-            'fecha_fin': a.fecha_fin.isoformat() if a.fecha_fin else '',
+            'fecha_inicio': f_ini.isoformat() if f_ini else '',
+            'fecha_fin': f_fin.isoformat() if f_fin else '',
         })
     return jsonify(res)
 
 @app.route('/api/cronograma/<empresa>/auto-vencidos', methods=['POST'])
 @login_required
 def api_cronograma_auto_vencidos(empresa):
-    """Marca automaticamente como 'late' las tareas que pasaron su fecha_fin y no estan completadas."""
-    from datetime import date as date_type
+    """Marca automaticamente como 'late' las tareas que pasaron su fecha_fin y no estan completadas ni entregadas a tiempo."""
+    if not _can_edit_cronograma_for(empresa):
+        return jsonify({'error': 'Sin permiso'}), 403
     mes = request.json.get('mes')
     if not mes:
         return jsonify({'error': 'mes requerido'}), 400
     
-    hoy = date_type.today()
+    # Hora Bogotá
+    dt_bogota = to_bogota_datetime(datetime.utcnow())
+    hoy = dt_bogota.date() if dt_bogota else datetime.utcnow().date()
+    
     actividades = CronogramaActividad.query.filter_by(empresa=empresa).all()
+    mapa_fechas = _mapa_fechas_mes(empresa, mes)
     actualizados = 0
     
     for a in actividades:
-        if not a.fecha_fin or a.fecha_fin >= hoy:
+        _, fecha_fin = _fechas_de(a, mapa_fechas)
+        if not fecha_fin or fecha_fin >= hoy:
             continue
         
         est = CronogramaEstado.query.filter_by(actividad_id=a.id, mes=mes).first()
@@ -19894,14 +20396,30 @@ def api_cronograma_auto_vencidos(empresa):
         
         if estado_actual == 'done':
             continue
+            
+        # Si ya tiene fecha de entrega real registrada y fue entregada a tiempo, no marcar late
+        if est and est.fecha_entrega_real and est.fecha_entrega_real <= fecha_fin:
+            continue
         
         if not est:
             est = CronogramaEstado(actividad_id=a.id, mes=mes)
             db.session.add(est)
         
         est.estado = 'late'
-        if not est.observacion:
-            est.observacion = f'Vencido automaticamente. Fecha limite: {a.fecha_fin.strftime("%d/%m/%Y")}'
+        # Guardar observación como array JSON para mantener formato consistente
+        notas = []
+        if est.observacion:
+            try:
+                parsed = json.loads(est.observacion)
+                notas = parsed if isinstance(parsed, list) else [str(parsed)]
+            except Exception:
+                notas = [est.observacion]
+                
+        nota_auto = f'Vencido automáticamente. Fecha límite: {fecha_fin.strftime("%d/%m/%Y")}'
+        if not any('Vencido automáticamente' in n for n in notas):
+            notas.append(nota_auto)
+            est.observacion = json.dumps(notas)
+            
         est.fecha_actualizacion = datetime.utcnow()
         actualizados += 1
     
@@ -19930,27 +20448,83 @@ def _can_edit_cronograma_for(empresa: str) -> bool:
 @app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
 @login_required
 def api_cronograma_estado(empresa):
-    email = session.get('email', '').strip().lower()
-    is_admin = session.get('rol') == 'admin'
     if not _can_edit_cronograma_for(empresa):
         return jsonify({'error': 'No tienes permiso para editar esta empresa'}), 403
         
-    data = request.json
+    data = request.json or {}
     act_id = data.get('actividad_id')
     mes = data.get('mes')
     estado = data.get('estado')
-    obs = data.get('obs', '')
+    obs = data.get('obs')
+    fecha_entrega_raw = data.get('fecha_entrega_real')
+    is_only_note = data.get('is_only_note', False)
+    
+    # Hora Bogotá actual
+    dt_bogota_now = to_bogota_datetime(datetime.utcnow())
+    hoy_bogota = dt_bogota_now.date() if dt_bogota_now else datetime.utcnow().date()
+    usuario_actual = session.get('nombre') or session.get('email') or 'Usuario'
     
     est = CronogramaEstado.query.filter_by(actividad_id=act_id, mes=mes).first()
+    estado_anterior = est.estado if est else None
     if not est:
-        est = CronogramaEstado(actividad_id=act_id, mes=mes, estado=estado, observacion=obs, usuario=session.get('nombre'))
+        est = CronogramaEstado(actividad_id=act_id, mes=mes, estado=estado or 'pending', usuario=usuario_actual)
         db.session.add(est)
-    else:
-        est.estado = estado
-        if estado == 'late' or obs.strip() != '':
-            est.observacion = obs
-        est.usuario = session.get('nombre')
     
+    # Parse fecha_entrega_real
+    fecha_entrega_obj = None
+    if fecha_entrega_raw:
+        try:
+            from datetime import date as date_type
+            fecha_entrega_obj = date_type.fromisoformat(fecha_entrega_raw)
+        except Exception:
+            try:
+                fecha_entrega_obj = datetime.strptime(fecha_entrega_raw, '%Y-%m-%d').date()
+            except Exception:
+                fecha_entrega_obj = None
+                
+    # La radicación no puede ser futura: sería un 100% de cumplimiento imposible de auditar.
+    if fecha_entrega_obj and fecha_entrega_obj > hoy_bogota:
+        return jsonify({'error': 'La fecha de entrega no puede ser futura'}), 400
+
+    # Auditoría automática cuando se edita la fecha_entrega_real
+    if fecha_entrega_obj and est.fecha_entrega_real and fecha_entrega_obj != est.fecha_entrega_real:
+        nota_audit = f"Fecha de entrega ajustada a {fecha_entrega_obj.strftime('%d/%m/%Y')} por {usuario_actual} el {hoy_bogota.strftime('%d/%m/%Y')}"
+        notas_list = []
+        target_obs = obs if obs is not None else est.observacion
+        if target_obs:
+            try:
+                notas_list = json.loads(target_obs) if isinstance(target_obs, str) else target_obs
+                if not isinstance(notas_list, list):
+                    notas_list = [str(notas_list)]
+            except Exception:
+                notas_list = [str(target_obs)]
+        notas_list.append(nota_audit)
+        obs = json.dumps(notas_list)
+
+    if fecha_entrega_obj is not None:
+        est.fecha_entrega_real = fecha_entrega_obj
+    elif estado == 'done' and not est.fecha_entrega_real:
+        est.fecha_entrega_real = hoy_bogota
+    elif estado is not None and estado != 'done' and estado_anterior == 'done':
+        # Al revertir Listo -> Pendiente/Atrasado hay que soltar la radicación: si no,
+        # auto-vencidos y getEffectiveStatus la dejan inmunizada de por vida.
+        est.fecha_entrega_real = None
+        
+    # Cambio de estado / revisión
+    if estado is not None:
+        if est.estado != estado:
+            est.estado = estado
+            est.usuario = usuario_actual
+            est.fecha_actualizacion = datetime.utcnow()
+        elif not is_only_note:
+            est.usuario = usuario_actual
+            est.fecha_actualizacion = datetime.utcnow()
+
+    # Si se actualizan notas u observaciones
+    if obs is not None:
+        est.observacion = obs
+        # Si solo es una nota, NO se re-estampa fecha_actualizacion para proteger el sello de auditoría!
+
     db.session.commit()
     return jsonify({'success': True})
 
@@ -19981,22 +20555,29 @@ def api_cronograma_actividad(empresa):
     act.responsables = json.dumps(data.get('resp', []))
     act.resaltado = data.get('highlight', False)
     
-    # Fechas
+    # Fechas: van a la fila del mes seleccionado, no a la actividad.
     from datetime import date as date_type
-    fi = data.get('fecha_inicio')
-    ff = data.get('fecha_fin')
-    try:
-        act.fecha_inicio = date_type.fromisoformat(fi) if fi else None
-    except Exception:
-        act.fecha_inicio = None
-    try:
-        act.fecha_fin = date_type.fromisoformat(ff) if ff else None
-    except Exception:
-        act.fecha_fin = None
+
+    def _parse_fecha(v):
+        try:
+            return date_type.fromisoformat(v) if v else None
+        except Exception:
+            return None
+
+    fi = _parse_fecha(data.get('fecha_inicio'))
+    ff = _parse_fecha(data.get('fecha_fin'))
+    mes_sel = data.get('mes')
     
     max_orden = db.session.query(db.func.max(CronogramaActividad.orden)).filter_by(empresa=empresa).scalar() or 0
     if not act_id:
         act.orden = max_orden + 1
+    
+    db.session.flush()  # necesitamos act.id para la fila de fechas
+    if mes_sel:
+        _set_fechas_mes(act.id, mes_sel, fi, ff)
+    else:
+        # Cliente sin mes: se guarda en la plantilla de la actividad (fallback).
+        act.fecha_inicio, act.fecha_fin = fi, ff
         
     db.session.commit()
     return jsonify({'success': True, 'id': act.id})
@@ -20012,6 +20593,7 @@ def api_cronograma_actividad_delete(empresa, id):
     act = CronogramaActividad.query.get(id)
     if act:
         CronogramaEstado.query.filter_by(actividad_id=id).delete()
+        CronogramaFechaMes.query.filter_by(actividad_id=id).delete()
         db.session.delete(act)
         db.session.commit()
     return jsonify({'success': True})
@@ -20095,6 +20677,24 @@ with app.app_context():
 
     try:
         db.session.execute(text("ALTER TABLE registros_transito ADD COLUMN transportadora VARCHAR(100)"))
+        db.session.commit()
+    except:
+        db.session.rollback()
+
+    try:
+        db.session.execute(text("ALTER TABLE registros_calidad ADD COLUMN viscosidad FLOAT"))
+        db.session.commit()
+    except:
+        db.session.rollback()
+
+    try:
+        db.session.execute(text("ALTER TABLE registros_calidad ADD COLUMN azufre FLOAT"))
+        db.session.commit()
+    except:
+        db.session.rollback()
+
+    try:
+        db.session.execute(text("ALTER TABLE registros_calidad ADD COLUMN sedimento FLOAT"))
         db.session.commit()
     except:
         db.session.rollback()

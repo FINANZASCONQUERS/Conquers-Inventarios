@@ -145,7 +145,15 @@
                 <!-- Encabezado de la Tarjeta -->
                 <div class="d-flex align-items-start justify-content-between mb-3">
                     <div class="module-icon-box" style="background: {{ modulo.bg_gradient }}; color: {{ modulo.color_hex }};">
+                        {% if 'fa-' in modulo.icono or 'fas' in modulo.icono %}
+                        <i class="{{ modulo.icono }}"></i>
+                        {% elif modulo.icono.startswith('bi-') %}
                         <i class="bi {{ modulo.icono }}"></i>
+                        {% elif modulo.icono.startswith('bi ') %}
+                        <i class="{{ modulo.icono }}"></i>
+                        {% else %}
+                        <i class="bi bi-{{ modulo.icono }}"></i>
+                        {% endif %}
                     </div>
                     <span class="badge bg-light text-dark border px-2 py-1 small fw-semibold">
                         {{ modulo.categoria }}

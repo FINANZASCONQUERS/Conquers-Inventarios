@@ -378,10 +378,11 @@ def procesar_excel_dry_run(
 
         cols = list(df.columns)
         col_guia = _buscar_columna(cols, ['GUIA', 'GUÍA', 'NUMERO GUIA', 'N° GUIA', 'NRO GUIA', 'GUIA DESPACHO', 'CONSECUTIVO GUIA'])
-        if not col_guia:
-            continue
-
         col_dv = _buscar_columna(cols, ['DV', 'D.V', 'DIGITO', 'DIGITO VERIFICACION', 'DIGITO VERIFICADOR'])
+        col_factura_sicom = _buscar_columna(cols, [
+            'FACTURA SICOM', 'FACTURA-SICOM', 'FACTURA_SICOM', 'SICOM', 'N° FACTURA SICOM',
+            'NO FACTURA SICOM', 'NUMERO FACTURA SICOM', 'FAC SICOM', 'SICOM FACTURA'
+        ])
         col_factura = _buscar_columna(cols, [
             'FACTURA', 'N° FACTURA', 'NUMERO FACTURA', 'NRO FACTURA', 'FACTURA N°',
             'NO FACTURA', 'NUMERO DE FACTURA', 'CONTROL CONSECUTIVO DS', 'CONSECUTIVO DS',
@@ -405,6 +406,7 @@ def procesar_excel_dry_run(
             if not guia_val:
                 continue
 
+            factura_sicom_val = limpiar_texto_factura(row.get(col_factura_sicom)) if col_factura_sicom else None
             factura_val = limpiar_texto_factura(row.get(col_factura)) if col_factura else None
             fecha_fac_val = normalizar_fecha(row.get(col_fecha_fac)) if col_fecha_fac else None
             fecha_cargue_val = normalizar_fecha(row.get(col_fecha_cargue)) if col_fecha_cargue else None
@@ -442,31 +444,34 @@ def procesar_excel_dry_run(
                 obs = f"Guía '{guia_val}' no encontrada en la tabla de despachos activos de Agosto."
                 no_encontrados += 1
                 prog_id = None
+                fac_sicom_ant = None
                 fac_ant = None
                 ffac_ant = None
                 mfac_ant = None
                 trans_ant = None
             elif len(prog_coincidencias) > 1:
                 tipo_cruce = 'AMBIGUO'
-                obs = f"Guía coincide con {len(prog_coincidencias)} despachos activos de Agosto."
+                obs = f"Guía '{guia_val}' coincide con {len(prog_coincidencias)} registros distintos."
                 ambiguos += 1
-                prog_rec = prog_coincidencias[0]
-                prog_id = prog_rec.id
-                fac_ant = prog_rec.factura
-                ffac_ant = getattr(prog_rec, 'fecha_factura', None)
-                mfac_ant = getattr(prog_rec, 'mes_facturado', None)
-                trans_ant = getattr(prog_rec, 'codigo_transporte', None)
+                prog_id = None
+                fac_sicom_ant = None
+                fac_ant = None
+                ffac_ant = None
+                mfac_ant = None
+                trans_ant = None
             else:
                 prog_rec = prog_coincidencias[0]
                 prog_id = prog_rec.id
-                fac_ant = prog_rec.factura
+                fac_sicom_ant = getattr(prog_rec, 'factura_sicom', None)
+                fac_ant = getattr(prog_rec, 'factura', None)
                 ffac_ant = getattr(prog_rec, 'fecha_factura', None)
                 mfac_ant = getattr(prog_rec, 'mes_facturado', None)
                 trans_ant = getattr(prog_rec, 'codigo_transporte', None)
 
-                if fac_ant and factura_val and fac_ant.strip().upper() != factura_val.strip().upper():
+                tiene_datos_previos = bool(fac_ant or fac_sicom_ant or ffac_ant or mfac_ant or trans_ant)
+                if tiene_datos_previos:
                     tipo_cruce = 'SOBRESCRITURA'
-                    obs = f"Sobrescribe factura anterior '{fac_ant}' por '{factura_val}'."
+                    obs = f"Ya tenía datos previos (Fac: {fac_ant or fac_sicom_ant or 'S/N'}). Se actualizará."
                     sobrescrituras += 1
                 else:
                     tipo_cruce = 'EXACTO'
@@ -481,11 +486,13 @@ def procesar_excel_dry_run(
                 fila_excel=fila_num,
                 numero_guia=guia_val,
                 factura_nueva=factura_val,
+                factura_sicom_nueva=factura_sicom_val,
                 fecha_factura_nueva=fecha_fac_val,
                 mes_facturado_nuevo=mes_fac_val,
                 codigo_transporte_nuevo=trans_val,
                 programacion_id=prog_id,
                 factura_anterior=fac_ant,
+                factura_sicom_anterior=fac_sicom_ant,
                 fecha_factura_anterior=ffac_ant,
                 mes_facturado_anterior=mfac_ant,
                 codigo_transporte_anterior=trans_ant,
@@ -593,6 +600,10 @@ def confirmar_lote_importacion(batch_uuid, usuario_nombre, ProgramacionCargueMod
             continue
 
         modificado = False
+        if item.factura_sicom_nueva:
+            reg.factura_sicom = item.factura_sicom_nueva
+            modificado = True
+
         if item.factura_nueva:
             reg.factura = item.factura_nueva
             modificado = True

@@ -118,6 +118,18 @@
             opacity: 1;
         }
 
+        .field-factura-sicom {
+            color: #0369a1 !important;
+            font-weight: 700 !important;
+            border-color: rgba(14, 165, 233, 0.4) !important;
+            background: rgba(14, 165, 233, 0.1) !important;
+        }
+
+        .field-factura-sicom:focus {
+            background: var(--bg-surface) !important;
+            border-color: #0284c7 !important;
+        }
+
         .field-factura {
             color: var(--primary-color) !important;
             font-weight: 700 !important;
@@ -365,6 +377,7 @@
                     <thead class="sticky-top">
                         <tr>
                             <th style="width: 40px;" class="text-center">#</th>
+                            <th style="width: 140px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">Factura-SICOM</th>
                             <th style="width: 100px;">Estado</th>
                             <th style="width: 150px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">N° Factura</th>
                             <th style="width: 140px; background-color: #e2f7e7 !important; color: #0f5132; border-bottom: 2px solid #86efac;">Fecha Factura</th>
@@ -384,7 +397,7 @@
                     </thead>
                     <tbody id="tabla-despachos-body">
                         <tr>
-                            <td colspan="16" class="text-center py-5 text-muted">
+                            <td colspan="17" class="text-center py-5 text-muted">
                                 <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
                                 Cargando despachos...
                             </td>
@@ -587,6 +600,7 @@
                                     <th>Hoja</th>
                                     <th>Fila</th>
                                     <th>N° Guía</th>
+                                    <th>Factura-SICOM</th>
                                     <th>N° Factura</th>
                                     <th>Fecha Factura</th>
                                     <th>Mes</th>
@@ -639,7 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cargar despachos por mes seleccionado
     async function cargarDespachos(page = 1) {
         currentPage = page;
-        tbody.innerHTML = `<tr><td colspan="16" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando registros...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="17" class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando registros...</td></tr>`;
 
         const params = new URLSearchParams({
             page: currentPage,
@@ -655,7 +669,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const result = await res.json();
 
             if (!result.success) {
-                tbody.innerHTML = `<tr><td colspan="16" class="text-center text-danger py-4">Error cargando despachos: ${result.message || 'Error desconocido'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="17" class="text-center text-danger py-4">Error cargando despachos: ${result.message || 'Error desconocido'}</td></tr>`;
                 return;
             }
 
@@ -699,7 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Renderizar filas
             if (!result.data || result.data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="16" class="text-center text-muted py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i>No se encontraron despachos con los filtros seleccionados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="17" class="text-center text-muted py-5"><i class="bi bi-inbox fs-3 d-block mb-2"></i>No se encontraron despachos con los filtros seleccionados.</td></tr>`;
                 infoPaginacion.textContent = 'Mostrando 0 de 0 registros';
                 btnPagAnt.disabled = true;
                 btnPagSig.disabled = true;
@@ -717,6 +731,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += `
                 <tr data-id="${r.id}">
                     <td class="text-center text-muted small">${filaIndex}</td>
+                    <td style="background-color: #f6fdf7;">
+                        <input type="text" class="editable-cell-input field-factura-sicom text-uppercase fw-bold" 
+                               value="${r.factura_sicom || ''}" placeholder="${puedeEditar ? 'Factura-SICOM' : '-'}" 
+                               data-field="factura_sicom" data-id="${r.id}" ${disabledAttr}>
+                    </td>
                     <td>
                         <span class="badge ${badgeClass} status-badge">${r.estado_facturacion}</span>
                         ${puedeEditar ? `<span class="save-indicator ms-1" id="save-ind-${r.id}"></span>` : ''}
@@ -826,6 +845,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (data.registro.mes_facturado) {
                                 const mesInput = row.querySelector('.field-mes-fac');
                                 if (mesInput) mesInput.value = data.registro.mes_facturado;
+                            }
+                            if (data.registro.factura_sicom !== undefined) {
+                                const sicomInput = row.querySelector('.field-factura-sicom');
+                                if (sicomInput && document.activeElement !== sicomInput) sicomInput.value = data.registro.factura_sicom || '';
                             }
                             if (data.registro.fecha_factura) {
                                 const fechaInput = row.querySelector('.field-fecha-fac');
@@ -1010,6 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>${it.hoja || '-'}</td>
                     <td>${it.fila_excel || '-'}</td>
                     <td class="font-monospace fw-bold text-dark">${it.numero_guia || '-'}</td>
+                    <td class="text-primary fw-bold">${it.factura_sicom_nueva || '<span class="text-muted fst-italic">-</span>'}</td>
                     <td class="text-success fw-bold">${it.factura_nueva || '<span class="text-muted fst-italic">Sin Factura</span>'}</td>
                     <td>${it.fecha_factura_nueva || '-'}</td>
                     <td class="font-monospace">${it.mes_facturado_nuevo || '-'}</td>
@@ -1020,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             tbodyItems.innerHTML = itemsHtml;
         } else {
-            tbodyItems.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i>No hay registros que coincidan con el filtro seleccionado.</td></tr>`;
+            tbodyItems.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="bi bi-search me-1"></i>No hay registros que coincidan con el filtro seleccionado.</td></tr>`;
         }
     }
 

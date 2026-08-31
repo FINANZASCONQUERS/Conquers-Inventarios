@@ -283,6 +283,7 @@ def listar_despachos_facturacion():
             or_(
                 ProgramacionCargue.numero_guia.ilike(term),
                 ProgramacionCargue.factura.ilike(term),
+                ProgramacionCargue.factura_sicom.ilike(term),
                 ProgramacionCargue.cliente.ilike(term),
                 ProgramacionCargue.placa.ilike(term),
                 ProgramacionCargue.destino.ilike(term),
@@ -391,6 +392,7 @@ def listar_despachos_facturacion():
             'placa': r.placa,
             'empresa_transportadora': r.empresa_transportadora,
             # Campos de Facturación
+            'factura_sicom': getattr(r, 'factura_sicom', None) or '',
             'factura': r.factura,
             'fecha_factura': r.fecha_factura.isoformat() if getattr(r, 'fecha_factura', None) else None,
             'mes_facturado': mes_fac_display,
@@ -427,12 +429,16 @@ def listar_despachos_facturacion():
 @login_requerido
 @permiso_facturacion_edicion_requerido
 def actualizar_facturacion_despacho(id):
-    """Actualiza en línea los 4 campos de facturación para un despacho específico."""
+    """Actualiza en línea los campos de facturación para un despacho específico."""
     ProgramacionCargue = _get_programacion_model()
     registro = ProgramacionCargue.query.get_or_404(id)
     data = request.get_json() or {}
 
     try:
+        if 'factura_sicom' in data:
+            val_sicom = data.get('factura_sicom')
+            registro.factura_sicom = str(val_sicom).strip().upper() if val_sicom not in (None, '') else None
+
         if 'factura' in data:
             val_fac = data.get('factura')
             registro.factura = str(val_fac).strip().upper() if val_fac not in (None, '') else None
@@ -463,6 +469,7 @@ def actualizar_facturacion_despacho(id):
             message="Datos de facturación actualizados.",
             registro={
                 'id': registro.id,
+                'factura_sicom': getattr(registro, 'factura_sicom', None),
                 'factura': registro.factura,
                 'fecha_factura': registro.fecha_factura.isoformat() if getattr(registro, 'fecha_factura', None) else None,
                 'mes_facturado': mes_fac_out,
@@ -663,21 +670,22 @@ def exportar_facturacion_excel():
     for r in registros:
         filas.append({
             'ID': r.id,
-            'Producto': r.producto_a_cargar,
-            'Cliente': r.cliente,
-            'Ciudad Destino': r.destino,
-            'Galones': r.galones,
-            'Barriles': r.barriles,
-            'API Corregido': r.api_corregido,
-            'Fecha Despacho': r.fecha_despacho.strftime('%Y-%m-%d') if r.fecha_despacho else (r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else ''),
-            'Número Guía': r.numero_guia,
-            'Placa': r.placa,
-            'Transportadora': r.empresa_transportadora,
+            'Factura SICOM': getattr(r, 'factura_sicom', '') or '',
+            'Estado': 'FACTURADO' if (r.factura and r.factura.strip()) else 'PENDIENTE',
             'N° Factura': r.factura or '',
             'Fecha Factura': r.fecha_factura.strftime('%Y-%m-%d') if getattr(r, 'fecha_factura', None) else '',
             'Mes Facturado': getattr(r, 'mes_facturado', '') or '',
             'Código Transporte': getattr(r, 'codigo_transporte', '') or '',
-            'Estado': 'FACTURADO' if (r.factura and r.factura.strip()) else 'PENDIENTE',
+            'Número Guía': r.numero_guia,
+            'Fecha Despacho': r.fecha_despacho.strftime('%Y-%m-%d') if r.fecha_despacho else (r.fecha_programacion.strftime('%Y-%m-%d') if r.fecha_programacion else ''),
+            'Cliente': r.cliente,
+            'Ciudad Destino': r.destino,
+            'Producto': r.producto_a_cargar,
+            'Galones': r.galones,
+            'Barriles': r.barriles,
+            'API Corregido': r.api_corregido,
+            'Placa': r.placa,
+            'Transportadora': r.empresa_transportadora,
             'Último Editor': r.ultimo_editor or ''
         })
 

@@ -1057,6 +1057,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
             'refinacion': [],
             'throughput': [],
             'blending': [],
+            'calidad_blending': [],
             'costos_operacionales': [],
             'costos_operacionales_ref': [],
             'composicion_blending': []
@@ -1556,7 +1557,95 @@ def ejecutar_modelo(excel_path: str) -> dict:
                     record[key_in_record] = 0.0
                     
             blending_list.append(record)
-            
+
+    # 6b. Limites de calidad vs valor logrado (para el panel de cumplimiento)
+    # Las columnas de 8.LIMITES_CALIDAD traen espacios dobles inconsistentes, asi
+    # que se resuelven por nombre normalizado en vez de literal.
+    import re as _re
+
+    def _norm_col(text):
+        return _re.sub(r'\s+', ' ', str(text).strip()).upper()
+
+    _lim_cols = {_norm_col(c): c for c in LimitesCALIDADES.columns}
+
+    def _lim_col(kind, sufijo):
+        for cand in (kind + ' CALIDAD ' + sufijo, kind + ' ' + sufijo):
+            if cand in _lim_cols:
+                return _lim_cols[cand]
+        return None
+
+    # (clave en `record`, sufijo normalizado en 8.LIMITES_CALIDAD, unidad)
+    PROPIEDADES_CALIDAD = [
+        ('API', 'API', 'API'),
+        ('%AZUFRE', 'AZUFRE', '% m/m'),
+        ('Viscosidad Cst', 'VISCOSIDAD', 'cSt'),
+        ('ACID NUMBER mg KOH/g', 'ACID NUMBER MG KOH/G', 'mg KOH/g'),
+        ('Accelerated Total Sediment by Hot Filtration % m/m',
+         'ACCELERATED TOTAL SEDIMENT BY HOT FILTRATION % M/M', '% m/m'),
+        ('Micro Carbon Residue % m/m', 'MICRO CARBON RESIDUE % M/M', '% m/m'),
+        ('Water by Distillation % v/v', 'WATER BY DISTILLATION % V/V', '% v/v'),
+        ('Ash Content % m/m', 'ASH CONTENT % M/M', '% m/m'),
+        ('Vanadium (V) mg/kg', 'VANADIUM (V) MG/KG', 'mg/kg'),
+        ('Sodium (Na) mg/kg', 'SODIUM (NA) MG/KG', 'mg/kg'),
+        ('Aluminum (Al)  mg/kg', 'ALUMINUM (AL) MG/KG', 'mg/kg'),
+        ('Silicon (Si) mg/kg', 'SILICON (SI) MG/KG', 'mg/kg'),
+        ('Aluminum plus Silicon mg/kg', 'ALUMINUM PLUS SILICON MG/KG', 'mg/kg'),
+        ('Calcium (Ca)  mg/kg', 'CALCIUM (CA) MG/KG', 'mg/kg'),
+        ('Zinc (Zn)  mg/kg', 'ZINC (ZN) MG/KG', 'mg/kg'),
+        ('Phosphorus (P)   mg/kg', 'PHOSPHORUS (P) MG/KG', 'mg/kg'),
+    ]
+
+    # Margen relativo bajo el cual se considera que la restriccion esta activa
+    # (es decir, que es la que esta amarrando la mezcla).
+    TOL_ACTIVA = 0.005
+
+    calidad_list = []
+    for record in blending_list:
+        m_key, b_key = record['Mezcla'], record['Centro de Blending']
+        try:
+            fila_lim = LimitesCALIDADES.loc[(m_key, b_key)]
+        except (KeyError, TypeError):
+            continue
+        if hasattr(fila_lim, 'iloc') and getattr(fila_lim, 'ndim', 1) > 1:
+            fila_lim = fila_lim.iloc[0]
+
+        for clave, sufijo, unidad in PROPIEDADES_CALIDAD:
+            col_min, col_max = _lim_col('MINIMO', sufijo), _lim_col('MAXIMO', sufijo)
+            if col_min is None or col_max is None:
+                continue
+            try:
+                vmin = float(fila_lim[col_min])
+                vmax = float(fila_lim[col_max])
+                valor = float(record.get(clave) or 0.0)
+            except (TypeError, ValueError):
+                continue
+            if math.isnan(vmin) or math.isnan(vmax) or math.isnan(valor):
+                continue
+
+            rango = vmax - vmin
+            # Posicion dentro de la banda: 0 % = en el minimo, 100 % = en el maximo
+            posicion = ((valor - vmin) / rango * 100.0) if rango > 0 else 0.0
+            if valor < vmin or valor > vmax:
+                estado = 'FUERA'
+            elif rango > 0 and (posicion <= TOL_ACTIVA * 100 or posicion >= 100 - TOL_ACTIVA * 100):
+                estado = 'ACTIVA'
+            else:
+                estado = 'OK'
+
+            calidad_list.append({
+                'Mezcla': str(m_key),
+                'Centro de Blending': str(b_key),
+                'Propiedad': clave,
+                'Unidad': unidad,
+                'Valor': valor,
+                'Minimo': vmin,
+                'Maximo': vmax,
+                'Posicion %': float(posicion),
+                'Holgura al Minimo': float(valor - vmin),
+                'Holgura al Maximo': float(vmax - valor),
+                'Estado': estado,
+            })
+
     # 7. Costos Operacionales Extraction
     costos_op_list = []
     for b in Vb:
@@ -1619,6 +1708,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
         'refinacion': refinacion_list,
         'throughput': throughput_list,
         'blending': blending_list,
+        'calidad_blending': calidad_list,
         'costos_operacionales': costos_op_list,
         'costos_operacionales_ref': costos_op_ref_list,
         'composicion_blending': composicion_list

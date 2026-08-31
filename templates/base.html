@@ -197,8 +197,12 @@ defecto seguros. #}
                     {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
                     {% if 'simulador_rendimiento' in session.get('area', []) %}{% set _ = user_planillas.append(('simulador_rendimiento', 'Simulador Rendimiento', 'droplet-fill')) %}{% endif %}
                     {% if 'planilla_precios' in session.get('area', []) %}{% set _ = user_planillas.append(('planilla_precios', 'Planilla Precios', 'currency-exchange')) %}{% endif %}
+                    {% if 'modelo_optimizacion' in session.get('area', []) %}{% set _ = user_planillas.append(('modelo_optimizacion_page', 'Modelo de Optimización LP', 'graph-up-arrow')) %}{% endif %}
                     {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('facturacion_bp.facturacion_despachos', 'Facturación de Despachos', 'receipt')) %}
+                    {% endif %}
+                    {% if session.get('email') == 'accountingzf@conquerstrading.com' or 'consolidar_facturas' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
+                    {% set _ = user_planillas.append(('consolidar_facturas', 'Consolidar Facturas', 'file-earmark-zip')) %}
                     {% endif %}
                     {% set panel_allowed = ['logistic@conquerstrading.com', 'ops@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.assistant@conquerstrading.com'] %}
                     {% if 'programacion_cargue' in session.get('area', []) %}
@@ -311,15 +315,35 @@ defecto seguros. #}
                             {% endif %}
 
                             <!-- 💰 FINANZAS Y FACTURACIÓN -->
-                            {% if 'planilla_precios' in session.get('area', []) or 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
+                            {# La ruta acepta admin, el area 'modelo_optimizacion' o estos dos correos #}
+                            {% set modelo_lp_allowed = ['felipe.delavega@conquerstrading.com', 'finance@conquerstrading.com'] %}
+                            {% if 'modelo_optimizacion' in session.get('area', []) or session.get('email', '')|lower in modelo_lp_allowed %}
                             <li>
-                                <h6 class="dropdown-header text-primary"><i class="bi bi-cash-stack me-2"></i>Finanzas
+                                <h6 class="dropdown-header text-primary"><i
+                                        class="bi bi-graph-up-arrow me-2"></i>Planeación</h6>
+                            </li>
+                            <li><a class="dropdown-item {% if request.endpoint == 'modelo_optimizacion_page' %}active{% endif %}"
+                                    href="{{ url_for('modelo_optimizacion_page') }}"><i
+                                        class="bi bi-graph-up-arrow me-2 text-primary"></i>Modelo de Optimización LP</a>
+                            </li>
+                            {% endif %}
+                            {% if 'planilla_precios' in session.get('area', []) or 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) or 'consolidar_facturas' in session.get('area', []) or session.get('email') in ['accountingzf@conquerstrading.com', 'billcwt@conquerstrading.com', 'numbers@conquerstrading.com'] %}
+                            <li>
+                                <h6 class="dropdown-header text-primary"><i class="bi bi-cash-stack me-2"></i>Finanzas & Contabilidad
                                 </h6>
                             </li>
-                            {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'cronograma' %}active{% endif %}"
+                                    href="{{ url_for('cronograma') }}"><i
+                                        class="bi bi-calendar-check-fill me-2 text-warning"></i>Cronograma Contable</a></li>
+                            {% if 'facturacion' in session.get('area', []) or 'contabilidad' in session.get('area', []) or session.get('rol') == 'admin' %}
                             <li><a class="dropdown-item {% if request.endpoint == 'facturacion_bp.facturacion_despachos' %}active{% endif %}"
                                     href="{{ url_for('facturacion_bp.facturacion_despachos') }}"><i
                                         class="bi bi-receipt me-2 text-primary"></i>Facturación de Despachos</a></li>
+                            {% endif %}
+                            {% if session.get('email') in ['accountingzf@conquerstrading.com', 'numbers@conquerstrading.com'] or 'consolidar_facturas' in session.get('area', []) or 'contabilidad' in session.get('area', []) or session.get('rol') == 'admin' %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'consolidar_facturas' %}active{% endif %}"
+                                    href="{{ url_for('consolidar_facturas') }}"><i
+                                        class="bi bi-file-earmark-zip me-2 text-info"></i>Consolidar Facturas</a></li>
                             {% endif %}
                             {% if 'planilla_precios' in session.get('area', []) %}
                             <li>
@@ -462,8 +486,28 @@ defecto seguros. #}
                                     </ul>
                                 </div>
                             </li>
+                            <li><a class="dropdown-item {% if request.endpoint == 'cronograma' %}active{% endif %}"
+                                    href="{{ url_for('cronograma') }}"><i
+                                        class="bi bi-calendar-check-fill me-2 text-warning"></i>Cronograma Contable</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('facturacion_bp.facturacion_despachos') }}"><i
                                         class="bi bi-receipt me-2 text-primary"></i>Facturación de Despachos</a></li>
+                            <li><a class="dropdown-item {% if request.endpoint == 'consolidar_facturas' %}active{% endif %}"
+                                    href="{{ url_for('consolidar_facturas') }}"><i
+                                        class="bi bi-file-earmark-zip me-2 text-info"></i>Consolidar Facturas</a></li>
+
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <!-- 📈 PLANEACIÓN -->
+                            <li>
+                                <h6 class="dropdown-header text-primary"><i
+                                        class="bi bi-graph-up-arrow me-2"></i>Planeación</h6>
+                            </li>
+                            <li><a class="dropdown-item {% if request.endpoint == 'modelo_optimizacion_page' %}active{% endif %}"
+                                    href="{{ url_for('modelo_optimizacion_page') }}"><i
+                                        class="bi bi-graph-up-arrow me-2 text-primary"></i>Modelo de Optimización LP</a>
+                            </li>
 
                             <li>
                                 <hr class="dropdown-divider">
@@ -479,14 +523,6 @@ defecto seguros. #}
                                         class="bi bi-diagram-3-fill me-2 text-primary"></i>Organigrama RH</a></li>
                             {% endif %}
                         </ul>
-                    </li>
-                    {% endif %}
-                    {% if session.get('email') == 'accountingzf@conquerstrading.com' %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'consolidar_facturas' %}active{% endif %}"
-                            href="{{ url_for('consolidar_facturas') }}">
-                            <i class="bi bi-file-earmark-zip me-1"></i> Consolidar Facturas
-                        </a>
                     </li>
                     {% endif %}
                     <!-- DevTracker: portal de solicitudes para todos; tablero solo para desarrollo -->

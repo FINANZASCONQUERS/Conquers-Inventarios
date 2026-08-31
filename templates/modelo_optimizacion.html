@@ -700,7 +700,7 @@ html.dark-mode .mo-kpi .kpi-value {
 }
 
 .mo-table {
-    font-size: .82rem;
+    font-size: .9rem;
     margin-bottom: 0;
     border-collapse: separate;
     border-spacing: 0;
@@ -709,8 +709,8 @@ html.dark-mode .mo-kpi .kpi-value {
     background: var(--mo-table-header-bg);
     color: var(--mo-table-header-color);
     backdrop-filter: blur(10px);
-    font-weight: 700; font-size: .72rem; text-transform: uppercase; letter-spacing: .6px;
-    padding: 0.8rem 1rem; border-bottom: 2px solid var(--mo-border-neon) !important; border-top: none !important;
+    font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .5px;
+    padding: 0.75rem 1rem; border-bottom: 2px solid var(--mo-border-neon) !important; border-top: none !important;
     position: sticky; top: 0; z-index: 2;
     box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
@@ -1141,6 +1141,571 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
     .mo-signal-list { max-height: none; }
     .mo-chart-wrap.is-composition { height: 300px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   Resumen ejecutivo: cascada de P&L (de donde sale la utilidad)
+   ══════════════════════════════════════════════════════════════════ */
+.mo-waterfall {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.mo-wf-row {
+    display: grid;
+    grid-template-columns: minmax(140px, 1.4fr) minmax(0, 3fr) minmax(96px, auto) minmax(56px, auto);
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--mo-radius-sm);
+    transition: var(--mo-transition);
+}
+.mo-wf-row:hover { background: var(--mo-tab-hover-bg); }
+.mo-wf-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--mo-text);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+.mo-wf-label i { opacity: 0.65; flex-shrink: 0; }
+.mo-wf-label span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Carril donde flota cada barra del puente */
+.mo-wf-track {
+    position: relative;
+    height: 22px;
+    background: var(--mo-vol-bar-bg);
+    border-radius: 6px;
+    overflow: hidden;
+}
+.mo-wf-bar {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    border-radius: 4px;
+    min-width: 2px;
+    transition: var(--mo-transition);
+}
+.mo-wf-bar.is-ingreso { background: linear-gradient(90deg, var(--mo-emerald), #34d399); }
+.mo-wf-bar.is-costo   { background: linear-gradient(90deg, #fb7185, var(--mo-rose)); }
+.mo-wf-bar.is-total   { background: linear-gradient(90deg, var(--mo-indigo), #818cf8); }
+.mo-wf-amount {
+    font-size: 0.84rem;
+    font-weight: 700;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.mo-wf-amount.is-neg { color: var(--mo-rose); }
+.mo-wf-amount.is-pos { color: var(--mo-emerald); }
+.mo-wf-pct {
+    font-size: 0.72rem;
+    color: var(--mo-text-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.mo-wf-row.is-resultado {
+    margin-top: 6px;
+    border-top: 2px solid var(--mo-border);
+    padding-top: 13px;
+    background: var(--mo-surface-alt);
+}
+.mo-wf-row.is-resultado .mo-wf-label { font-size: 0.92rem; font-weight: 800; }
+.mo-wf-row.is-resultado .mo-wf-amount { font-size: 1.02rem; }
+
+.mo-wf-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px dashed var(--mo-border);
+    font-size: 0.72rem;
+    color: var(--mo-text-muted);
+}
+.mo-wf-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.mo-wf-legend i {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+}
+
+/* Desglose por partida dentro de un bucket de costo */
+.mo-wf-detail {
+    display: none;
+    grid-column: 1 / -1;
+    padding: 8px 0 4px 22px;
+}
+.mo-wf-row.is-open .mo-wf-detail { display: block; }
+.mo-wf-detail-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.75rem;
+    color: var(--mo-text-muted);
+    padding: 3px 0;
+}
+.mo-wf-detail-item strong { color: var(--mo-text); font-variant-numeric: tabular-nums; }
+.mo-wf-row.is-expandable { cursor: pointer; }
+.mo-wf-row.is-expandable .mo-wf-label::after {
+    content: '\F282';
+    font-family: 'bootstrap-icons';
+    font-size: 0.62rem;
+    opacity: 0.5;
+    transition: var(--mo-transition);
+}
+.mo-wf-row.is-expandable.is-open .mo-wf-label::after { transform: rotate(180deg); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Cumplimiento de calidad por mezcla
+   ══════════════════════════════════════════════════════════════════ */
+.mo-quality-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 16px;
+}
+.mo-quality-card {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius);
+    padding: 16px 18px;
+    box-shadow: var(--mo-shadow);
+}
+.mo-quality-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.mo-quality-title {
+    font-family: var(--mo-font-title);
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    margin: 0;
+}
+.mo-quality-sub {
+    font-size: 0.74rem;
+    color: var(--mo-text-muted);
+}
+.mo-quality-vol {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    font-variant-numeric: tabular-nums;
+}
+.mo-quality-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    margin: 8px 0 12px;
+}
+.mo-quality-status.ok    { background: rgba(16,185,129,.12); color: var(--mo-emerald); }
+.mo-quality-status.activa{ background: rgba(245,158,11,.14); color: #b45309; }
+.mo-quality-status.fuera { background: rgba(239,68,68,.14); color: var(--mo-rose); }
+html.dark-mode .mo-quality-status.activa { color: #fbbf24; }
+
+.mo-prop {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(84px, 1fr) minmax(96px, auto);
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--mo-border);
+}
+.mo-prop:first-of-type { border-top: none; }
+.mo-prop-name {
+    font-size: 0.76rem;
+    color: var(--mo-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mo-prop-name small { color: var(--mo-text-muted); }
+/* Banda min-max con un marcador en el valor logrado */
+.mo-prop-track {
+    position: relative;
+    height: 8px;
+    background: var(--mo-vol-bar-bg);
+    border-radius: 999px;
+}
+.mo-prop-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 999px;
+    background: rgba(16,185,129,.28);
+}
+.mo-prop-marker {
+    position: absolute;
+    top: -3px;
+    width: 3px;
+    height: 14px;
+    border-radius: 2px;
+    background: var(--mo-emerald);
+    transform: translateX(-50%);
+}
+.mo-prop.is-activa .mo-prop-fill   { background: rgba(245,158,11,.28); }
+.mo-prop.is-activa .mo-prop-marker { background: var(--mo-amber); }
+.mo-prop.is-fuera  .mo-prop-fill   { background: rgba(239,68,68,.28); }
+.mo-prop.is-fuera  .mo-prop-marker { background: var(--mo-rose); }
+.mo-prop-vals {
+    font-size: 0.72rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--mo-text-muted);
+    white-space: nowrap;
+}
+.mo-prop-vals strong { color: var(--mo-text); font-size: 0.78rem; }
+.mo-prop.is-activa .mo-prop-vals strong { color: #b45309; }
+.mo-prop.is-fuera  .mo-prop-vals strong { color: var(--mo-rose); }
+html.dark-mode .mo-prop.is-activa .mo-prop-vals strong { color: #fbbf24; }
+
+.mo-quality-toggle {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--mo-cyan);
+    cursor: pointer;
+}
+.mo-quality-toggle:hover { text-decoration: underline; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Comparador de corridas
+   ══════════════════════════════════════════════════════════════════ */
+.mo-compare-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius-sm);
+    margin-bottom: 14px;
+}
+.mo-compare-bar label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--mo-text-muted);
+    margin: 0;
+}
+.mo-compare-bar select {
+    max-width: 320px;
+    font-size: 0.8rem;
+}
+.mo-delta {
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 1px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.mo-delta.up   { background: rgba(16,185,129,.14); color: var(--mo-emerald); }
+.mo-delta.down { background: rgba(239,68,68,.14); color: var(--mo-rose); }
+.mo-delta.flat { background: var(--mo-vol-bar-bg); color: var(--mo-text-muted); }
+
+.mo-movers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+    margin-top: 4px;
+}
+.mo-mover-col h6 {
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--mo-text-muted);
+    margin-bottom: 8px;
+}
+.mo-mover-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 0;
+    border-top: 1px solid var(--mo-border);
+    font-size: 0.78rem;
+}
+.mo-mover-item:first-of-type { border-top: none; }
+.mo-mover-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .mo-wf-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+    .mo-wf-track { grid-column: 1 / -1; order: 3; }
+    .mo-prop { grid-template-columns: 1fr auto; }
+    .mo-prop-track { grid-column: 1 / -1; order: 3; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Barra de escenario: una sola fila con jerarquia clara
+   ══════════════════════════════════════════════════════════════════ */
+.mo-scen-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.mo-scen-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1 1 280px;
+    max-width: 420px;
+}
+.mo-scen-field > label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mo-text-muted);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.mo-scen-count {
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    opacity: 0.75;
+}
+.mo-scen-select {
+    font-size: 0.86rem;
+    font-weight: 600;
+    border-radius: 10px;
+    border-color: var(--mo-border);
+}
+.mo-scen-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+/* Estado del escenario: guardado / con cambios / sin cargar */
+.mo-scen-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.mo-scen-state.limpio  { background: rgba(16,185,129,.12); color: var(--mo-emerald); }
+.mo-scen-state.sucio   { background: rgba(245,158,11,.15); color: #b45309; }
+.mo-scen-state.vacio   { background: var(--mo-vol-bar-bg); color: var(--mo-text-muted); }
+html.dark-mode .mo-scen-state.sucio { color: #fbbf24; }
+
+.mo-scen-menu .dropdown-item { font-size: 0.84rem; }
+.mo-scen-menu .dropdown-item i { width: 18px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Estado inicial: en vez de un vacio enorme, que oriente
+   ══════════════════════════════════════════════════════════════════ */
+.mo-start {
+    background: var(--mo-kpi-bg);
+    border: 1px solid var(--mo-kpi-border);
+    border-radius: var(--mo-radius-lg);
+    box-shadow: var(--mo-shadow);
+    padding: 26px 28px;
+}
+.mo-start-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.mo-start-head .icono {
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+    background: linear-gradient(135deg, #E0E7FF, #C7D2FE);
+    color: var(--mo-indigo);
+}
+html.dark-mode .mo-start-head .icono {
+    background: linear-gradient(135deg, rgba(99,102,241,.25), rgba(99,102,241,.12));
+    color: #a5b4fc;
+}
+.mo-start-head h5 {
+    font-family: var(--mo-font-title);
+    font-weight: 800;
+    color: var(--mo-text);
+    margin: 0 0 3px;
+    font-size: 1.05rem;
+}
+.mo-start-head p {
+    color: var(--mo-text-muted);
+    font-size: 0.84rem;
+    margin: 0;
+    max-width: 70ch;
+}
+.mo-start-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.mo-start-step {
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius-sm);
+    padding: 14px 16px;
+    background: var(--mo-surface);
+    position: relative;
+}
+.mo-start-step .n {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--mo-indigo);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    margin-bottom: 9px;
+}
+.mo-start-step h6 {
+    font-size: 0.86rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    margin: 0 0 4px;
+}
+.mo-start-step p {
+    font-size: 0.78rem;
+    color: var(--mo-text-muted);
+    margin: 0;
+    line-height: 1.45;
+}
+.mo-start-preview {
+    border-top: 1px dashed var(--mo-border);
+    padding-top: 16px;
+}
+.mo-start-preview h6 {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mo-text-muted);
+    margin-bottom: 10px;
+}
+.mo-start-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.mo-start-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--mo-text);
+    background: var(--mo-surface-alt);
+    border: 1px solid var(--mo-border);
+    border-radius: 999px;
+    padding: 5px 12px;
+}
+.mo-start-chip i { color: var(--mo-indigo); }
+
+@media (max-width: 700px) {
+    .mo-scen-actions { margin-left: 0; width: 100%; }
+    .mo-scen-field { max-width: none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Tablas: ordenar por columna y exportar
+   ══════════════════════════════════════════════════════════════════ */
+.mo-tbl-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 2px 10px;
+}
+.mo-tbl-count {
+    font-size: 0.78rem;
+    color: var(--mo-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.mo-tbl-hint {
+    font-size: 0.75rem;
+    color: var(--mo-text-muted);
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.mo-tbl-btn {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 4px 11px;
+    border-radius: 8px;
+    border: 1px solid var(--mo-border);
+    background: var(--mo-surface);
+    color: var(--mo-text);
+    cursor: pointer;
+    transition: var(--mo-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.mo-tbl-btn:hover { background: var(--mo-tab-hover-bg); border-color: var(--mo-primary); }
+
+/* Cabeceras ordenables */
+.mo-table thead th[data-sort] {
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    white-space: nowrap;
+}
+.mo-table thead th[data-sort]:hover { color: var(--mo-primary); }
+.mo-table thead th[data-sort]::after {
+    content: '\F0DC';
+    font-family: 'bootstrap-icons';
+    font-size: 0.62rem;
+    opacity: 0.28;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.mo-table thead th[data-sort][aria-sort="ascending"]::after  { content: '\F148'; opacity: 1; }
+.mo-table thead th[data-sort][aria-sort="descending"]::after { content: '\F149'; opacity: 1; }
+.mo-table thead th[aria-sort] { color: var(--mo-primary); }
+
+/* Cuerpo un poco mas legible */
+.mo-table tbody td { font-variant-numeric: tabular-nums; }
+.mo-tab-description { font-size: 0.86rem; }
+.mo-tab-title { font-size: 1.06rem; }
+
 </style>
 
 <!-- ═══════════════ LOADING OVERLAY ═══════════════ -->
@@ -1243,31 +1808,63 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
         .mo-sum-h { font-family: var(--mo-font-title); font-weight: 700; font-size: .95rem; margin: .4rem 0 .5rem; color: var(--mo-text); }
     </style>
     <div class="mo-param-card mb-4" id="moParamCard">
-        <div class="mo-param-toolbar">
-            <span class="mo-param-title"><i class="bi bi-sliders2"></i> Editor de Parámetros</span>
-            <select class="form-select form-select-sm" id="moParamScenario" style="max-width:280px">
-                <option value="">— Selecciona un escenario —</option>
-            </select>
-            <button class="btn btn-sm btn-outline-primary" id="moParamNewBtn" type="button">
-                <i class="bi bi-file-earmark-plus"></i> Nuevo en blanco
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" id="moParamImportBtn" type="button">
-                <i class="bi bi-box-arrow-in-down"></i> Importar Excel base
-            </button>
-            <button class="btn btn-sm btn-success" id="moParamSaveBtn" type="button" disabled>
-                <i class="bi bi-save"></i> Guardar
-            </button>
-            <button class="btn btn-sm btn-outline-info" id="moParamRecalcBtn" type="button" disabled title="Recalcular columnas derivadas">
-                <i class="bi bi-arrow-repeat"></i> Recalcular
-            </button>
-            <button class="btn btn-sm btn-primary" id="moParamRunBtn" type="button" disabled>
-                <i class="bi bi-cpu"></i> Ejecutar este escenario
-            </button>
-            <button class="btn btn-sm btn-outline-danger" id="moParamDeleteBtn" type="button" disabled title="Eliminar escenario">
-                <i class="bi bi-trash"></i>
-            </button>
-            <span class="mo-param-status" id="moParamStatus"></span>
+        <div class="mo-scen-bar">
+            <div class="mo-scen-field">
+                <label for="moParamScenario">
+                    <i class="bi bi-sliders2"></i> Escenario de parámetros
+                    <span class="mo-scen-count" id="moParamCount"></span>
+                </label>
+                <select class="form-select form-select-sm mo-scen-select" id="moParamScenario">
+                    <option value="">— Selecciona un escenario —</option>
+                </select>
+            </div>
+
+            <span class="mo-scen-state vacio" id="moParamState">
+                <i class="bi bi-dash-circle"></i> Ninguno cargado
+            </span>
+
+            <div class="mo-scen-actions">
+                <button class="btn btn-sm btn-outline-secondary" id="moParamSaveBtn" type="button" disabled>
+                    <i class="bi bi-save me-1"></i>Guardar
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="moParamRecalcBtn" type="button" disabled
+                        title="Recalcular las columnas que el sistema deriva (SPG, densidades, precios)">
+                    <i class="bi bi-arrow-repeat me-1"></i>Recalcular
+                </button>
+
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                            id="moParamMenuBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Más acciones">
+                        <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end mo-scen-menu" aria-labelledby="moParamMenuBtn">
+                        <li><h6 class="dropdown-header">Crear</h6></li>
+                        <li><button class="dropdown-item" id="moParamImportBtn" type="button">
+                            <i class="bi bi-box-arrow-in-down"></i> Importar desde Excel
+                        </button></li>
+                        <li><button class="dropdown-item" id="moParamNewBtn" type="button">
+                            <i class="bi bi-file-earmark-plus"></i> Nuevo en blanco
+                        </button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Escenario cargado</h6></li>
+                        <li><button class="dropdown-item" id="moParamRenameBtn" type="button" disabled>
+                            <i class="bi bi-pencil"></i> Renombrar
+                        </button></li>
+                        <li><button class="dropdown-item" id="moParamDuplicateBtn" type="button" disabled>
+                            <i class="bi bi-files"></i> Duplicar
+                        </button></li>
+                        <li><button class="dropdown-item text-danger" id="moParamDeleteBtn" type="button" disabled>
+                            <i class="bi bi-trash"></i> Eliminar
+                        </button></li>
+                    </ul>
+                </div>
+
+                <button class="btn btn-sm btn-primary" id="moParamRunBtn" type="button" disabled>
+                    <i class="bi bi-play-fill me-1"></i>Ejecutar escenario
+                </button>
+            </div>
         </div>
+        <div class="mo-param-status mt-2" id="moParamStatus"></div>
         <div class="mo-param-body d-none" id="moParamBody">
             <div class="mo-param-sheets" id="moParamSheetNav"></div>
             <div class="mo-param-desc" id="moParamSheetDesc"></div>
@@ -1351,8 +1948,32 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
             el.className = 'mo-param-status ' + (kind || '');
         }
         function setEnabled(on) {
-            ['moParamSaveBtn', 'moParamRunBtn', 'moParamDeleteBtn', 'moParamRecalcBtn'].forEach(id => { $('#' + id).disabled = !on; });
+            ['moParamSaveBtn', 'moParamRunBtn', 'moParamDeleteBtn', 'moParamRecalcBtn',
+             'moParamRenameBtn', 'moParamDuplicateBtn'].forEach(id => {
+                const el = $('#' + id); if (el) el.disabled = !on;
+            });
             $('#moParamBody').classList.toggle('d-none', !on);
+            if (!on) marcarEstado('vacio');
+        }
+
+        // Indicador de si lo que se ve en pantalla está guardado en la base
+        function marcarEstado(modo, texto) {
+            const el = $('#moParamState');
+            if (!el) return;
+            const mapa = {
+                vacio:  ['vacio',  'bi-dash-circle',        texto || 'Ninguno cargado'],
+                limpio: ['limpio', 'bi-check-circle-fill',  texto || 'Guardado'],
+                sucio:  ['sucio',  'bi-exclamation-circle-fill', texto || 'Cambios sin guardar'],
+            };
+            const [cls, icono, txt] = mapa[modo] || mapa.vacio;
+            el.className = 'mo-scen-state ' + cls;
+            el.innerHTML = `<i class="bi ${icono}"></i> ${txt}`;
+            state.sucio = (modo === 'sucio');
+        }
+
+        // Llamar en cada edición del payload
+        function marcarSucio() {
+            if (state.id) marcarEstado('sucio');
         }
         function parseVal(v) {
             const t = String(v).trim();
@@ -1386,18 +2007,40 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
             return [];
         }
 
+        // Fecha relativa corta: mas facil de distinguir que un timestamp repetido
+        function haceCuanto(iso) {
+            if (!iso) return '';
+            const t = new Date(iso.replace(' ', 'T'));
+            if (isNaN(t)) return iso;
+            const min = Math.round((Date.now() - t.getTime()) / 60000);
+            if (min < 1) return 'hace un momento';
+            if (min < 60) return `hace ${min} min`;
+            const h = Math.round(min / 60);
+            if (h < 24) return `hace ${h} h`;
+            const d = Math.round(h / 24);
+            if (d < 30) return `hace ${d} d`;
+            return t.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
         async function refreshList(selId) {
             try {
                 const r = await fetch('/modelo-optimizacion/parametros/listar');
                 const d = await r.json();
                 const sel = $('#moParamScenario');
-                sel.innerHTML = '<option value="">— Selecciona un escenario —</option>';
-                (d.escenarios || []).forEach(e => {
+                const lista = d.escenarios || [];
+                sel.innerHTML = lista.length
+                    ? '<option value="">— Selecciona un escenario —</option>'
+                    : '<option value="">— Aún no hay escenarios guardados —</option>';
+                lista.forEach(e => {
                     const o = document.createElement('option');
-                    o.value = e.id; o.textContent = `${e.nombre} · ${e.actualizado || ''}`;
+                    o.value = e.id;
+                    o.textContent = `${e.nombre}  ·  ${haceCuanto(e.actualizado)}`;
                     sel.appendChild(o);
                 });
                 if (selId) sel.value = selId;
+                const cnt = $('#moParamCount');
+                if (cnt) cnt.textContent = lista.length
+                    ? `(${lista.length} guardado${lista.length > 1 ? 's' : ''})` : '';
             } catch (e) { /* noop */ }
         }
 
@@ -1526,10 +2169,12 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
             wrap.innerHTML = html;
             wrap.querySelectorAll('input[data-r]').forEach(inp => inp.addEventListener('input', () => {
                 state.payload.sheets[state.sheet].rows[+inp.dataset.r][decodeURIComponent(inp.dataset.c)] = parseVal(inp.value);
+                marcarSucio();
                 scheduleRecalc();
             }));
             wrap.querySelectorAll('select[data-r]').forEach(sel => sel.addEventListener('change', () => {
                 state.payload.sheets[state.sheet].rows[+sel.dataset.r][decodeURIComponent(sel.dataset.c)] = sel.value === '' ? null : sel.value;
+                marcarSucio();
                 scheduleRecalc();
             }));
             wrap.querySelectorAll('[data-del]').forEach(btn => btn.addEventListener('click', () => {
@@ -1602,10 +2247,12 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
         }
 
         function loadPayload(id, nombre, payload, startSheet) {
-            state.id = id; state.payload = payload; state.sheet = startSheet || '__economics__';
+            state.id = id; state.payload = payload; state.nombre = nombre;
+            state.sheet = startSheet || '__economics__';
             setEnabled(true);
             buildSheetNav();
             renderGrid();
+            marcarEstado('limpio');
             setStatus(`Escenario "${nombre}" cargado.`, 'ok');
         }
 
@@ -1664,10 +2311,46 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
                 const d = await r.json();
                 if (!d.success) throw new Error(d.error || 'Error al guardar');
                 setStatus('Guardado ✓', 'ok');
+                marcarEstado('limpio');
                 return true;
             } catch (e) { setStatus(e.message, 'err'); return false; }
         }
         $('#moParamSaveBtn').addEventListener('click', saveScenario);
+
+        // Renombrar el escenario cargado
+        $('#moParamRenameBtn')?.addEventListener('click', async () => {
+            if (!state.id) return;
+            const nuevo = prompt('Nuevo nombre del escenario:', state.nombre || '');
+            if (nuevo === null) return;
+            const limpio = nuevo.trim();
+            if (!limpio) { setStatus('El nombre no puede estar vacío.', 'err'); return; }
+            setStatus('Renombrando…');
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/' + state.id + '/renombrar', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre: limpio })
+                });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al renombrar');
+                state.nombre = d.nombre;
+                await refreshList(state.id);
+                setStatus(`Renombrado a "${d.nombre}".`, 'ok');
+            } catch (e) { setStatus(e.message, 'err'); }
+        });
+
+        // Duplicar: util para probar una variante sin tocar el original
+        $('#moParamDuplicateBtn')?.addEventListener('click', async () => {
+            if (!state.id) return;
+            setStatus('Duplicando…');
+            try {
+                const r = await fetch('/modelo-optimizacion/parametros/' + state.id + '/duplicar', { method: 'POST' });
+                const d = await r.json();
+                if (!d.success) throw new Error(d.error || 'Error al duplicar');
+                await refreshList(d.id);
+                loadPayload(d.id, d.nombre, d.payload, '__resumen__');
+                setStatus(`Copia creada: "${d.nombre}".`, 'ok');
+            } catch (e) { setStatus(e.message, 'err'); }
+        });
 
         // Recalcular columnas derivadas (autoritativo: misma lógica del solver)
         $('#moParamRecalcBtn').addEventListener('click', async () => {
@@ -1696,7 +2379,8 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
         });
 
         $('#moParamDeleteBtn').addEventListener('click', async () => {
-            if (!state.id || !confirm('¿Eliminar este escenario de parámetros?')) return;
+            if (!state.id) return;
+            if (!confirm(`¿Eliminar el escenario "${state.nombre || ''}"?\n\nEsta acción no se puede deshacer.`)) return;
             await fetch('/modelo-optimizacion/parametros/' + state.id + '/eliminar', { method: 'POST' });
             state.id = null; setEnabled(false); setStatus('Escenario eliminado.', 'ok');
             await refreshList();
@@ -1861,8 +2545,19 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
 
     <!-- ── Detail Tabs ── -->
     <div class="d-none" id="moTabsSection">
+        <div class="mo-compare-bar" id="moCompareBar">
+            <label for="moCompareSelect"><i class="bi bi-clock-history me-1"></i>Comparar contra:</label>
+            <select class="form-select form-select-sm" id="moCompareSelect">
+                <option value="">Sin comparación</option>
+            </select>
+            <span class="mo-quality-sub" id="moCompareHint">Elige una corrida guardada para ver qué cambió.</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" id="moCompareClear" hidden>
+                <i class="bi bi-x-lg me-1"></i>Quitar
+            </button>
+        </div>
         <ul class="nav nav-tabs mo-tabs" id="moTabNav" role="tablist">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabCompras" role="tab"><i class="bi bi-cart3 me-1"></i>Compras</a></li>
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabResumen" role="tab"><i class="bi bi-clipboard-data me-1"></i>Resumen</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabCompras" role="tab"><i class="bi bi-cart3 me-1"></i>Compras</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabVentas" role="tab"><i class="bi bi-shop me-1"></i>Ventas</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabTransporte" role="tab"><i class="bi bi-signpost-2 me-1"></i>Transporte</a></li>
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabBlending" role="tab"><i class="bi bi-droplet-half me-1"></i>Blending</a></li>
@@ -1871,8 +2566,47 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabComposicion" role="tab"><i class="bi bi-pie-chart me-1"></i>Composición</a></li>
         </ul>
         <div class="tab-content mo-tab-content" id="moTabContent">
+            <!-- Resumen ejecutivo -->
+            <div class="tab-pane fade show active" id="tabResumen" role="tabpanel">
+                <div class="mo-tab-header">
+                    <div class="mo-tab-info">
+                        <h5 class="mo-tab-title"><i class="bi bi-clipboard-data"></i> De dónde sale la utilidad</h5>
+                        <p class="mo-tab-description">Puente de ingresos a utilidad: cada barra es una partida del P&amp;L y reconcilia exactamente con el objetivo del solver. Haz clic en una partida de costo para ver su desglose.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-xl-7">
+                        <div class="mo-quality-card">
+                            <div class="mo-quality-head">
+                                <div>
+                                    <h6 class="mo-quality-title">Puente de P&amp;L</h6>
+                                    <span class="mo-quality-sub" id="moWaterfallSub">USD por día</span>
+                                </div>
+                            </div>
+                            <div class="mo-waterfall" id="moWaterfall"></div>
+                            <div class="mo-wf-legend">
+                                <span><i style="background:var(--mo-emerald)"></i>Ingreso</span>
+                                <span><i style="background:var(--mo-rose)"></i>Costo</span>
+                                <span><i style="background:var(--mo-indigo)"></i>Utilidad</span>
+                                <span id="moWaterfallCheck"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-5">
+                        <div class="mo-quality-card h-100">
+                            <div class="mo-quality-head">
+                                <div>
+                                    <h6 class="mo-quality-title">Qué cambió</h6>
+                                    <span class="mo-quality-sub" id="moMoversSub">Selecciona una corrida en «Comparar contra»</span>
+                                </div>
+                            </div>
+                            <div class="mo-movers" id="moMovers"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Compras -->
-            <div class="tab-pane fade show active" id="tabCompras" role="tabpanel">
+            <div class="tab-pane fade" id="tabCompras" role="tabpanel">
                 <div class="mo-tab-header">
                     <div class="mo-tab-info">
                         <h5 class="mo-tab-title"><i class="bi bi-cart3"></i> Abastecimiento y Compras de Crudo</h5>
@@ -1945,6 +2679,8 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
                         </div>
                     </div>
                 </div>
+                <div class="mo-quality-grid mb-4" id="moQualityGrid"></div>
+                <h6 class="mo-quality-title mb-2"><i class="bi bi-table me-1"></i>Detalle numérico</h6>
                 <div class="mo-scroll" id="blendingTableWrap"></div>
             </div>
             <!-- Refinación -->
@@ -2017,11 +2753,43 @@ html.dark-mode .mo-empty i { color: var(--mo-emerald-light); }
         </div>
     </div>
 
-    <!-- ── Empty State ── -->
-    <div id="moEmptyState" class="mo-empty">
-        <div id="moEmptyIcon"><i class="bi bi-calculator"></i></div>
-        <h5 id="moEmptyTitle" class="fw-bold">Sin resultados aún</h5>
-        <p id="moEmptyDesc" class="small">Sube el archivo de parámetros y ejecuta el modelo para ver los resultados optimizados.</p>
+    <!-- ── Estado inicial ── -->
+    <div id="moEmptyState" class="mo-start">
+        <div class="mo-start-head">
+            <div class="icono"><i class="bi bi-graph-up-arrow"></i></div>
+            <div>
+                <h5 id="moEmptyTitle">Listo para optimizar</h5>
+                <p id="moEmptyDesc">El modelo decide qué crudo comprar, cómo mezclarlo, qué refinar y por qué ruta moverlo, buscando la combinación que deja la mayor utilidad respetando las especificaciones de calidad.</p>
+            </div>
+        </div>
+        <div class="mo-start-steps">
+            <div class="mo-start-step">
+                <div class="n">1</div>
+                <h6>Elige los parámetros</h6>
+                <p>Carga un escenario guardado, impórtalo desde el Excel maestro o sube un archivo propio.</p>
+            </div>
+            <div class="mo-start-step">
+                <div class="n">2</div>
+                <h6>Ajusta lo que quieras probar</h6>
+                <p>Precios, disponibilidad, costos de ruta o límites de calidad. Lo derivado se recalcula solo.</p>
+            </div>
+            <div class="mo-start-step">
+                <div class="n">3</div>
+                <h6>Ejecuta y compara</h6>
+                <p>Cada corrida queda guardada, así puedes ver qué cambió frente a la anterior.</p>
+            </div>
+        </div>
+        <div class="mo-start-preview">
+            <h6>Lo que verás al ejecutar</h6>
+            <div class="mo-start-chips">
+                <span class="mo-start-chip"><i class="bi bi-clipboard-data"></i>De dónde sale la utilidad</span>
+                <span class="mo-start-chip"><i class="bi bi-droplet-half"></i>Cumplimiento de calidad por mezcla</span>
+                <span class="mo-start-chip"><i class="bi bi-cart3"></i>Plan de compras</span>
+                <span class="mo-start-chip"><i class="bi bi-signpost-2"></i>Rutas y costos de transporte</span>
+                <span class="mo-start-chip"><i class="bi bi-building"></i>Refinación y throughput</span>
+                <span class="mo-start-chip"><i class="bi bi-clock-history"></i>Comparación entre corridas</span>
+            </div>
+        </div>
     </div>
 
 </div><!-- /container -->
@@ -2161,7 +2929,52 @@ const COLORS = {
     teal: '#14b8a6', purple: '#8b5cf6', cyan: '#06b6d4',
     orange: '#f97316', lime: '#84cc16', pink: '#ec4899'
 };
-const PALETTE = [COLORS.emerald, COLORS.blue, COLORS.amber, COLORS.indigo, COLORS.teal, COLORS.purple, COLORS.cyan, COLORS.orange, COLORS.rose, COLORS.lime, COLORS.pink, COLORS.navy];
+// Paleta categorica validada (script validate_palette.js de la guia de dataviz):
+// separacion CVD adjacente dE 9.2 en claro y 9.4 en oscuro; piso de vision
+// normal 27.6 / 26.5. Los pasos oscuros NO son un aclarado automatico de los
+// claros: son la misma familia de tonos re-escalonada para el fondo oscuro.
+const PALETTE_LIGHT = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
+const PALETTE_DARK  = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
+// Maximo de segmentos en un part-to-whole antes de agrupar la cola en "Otros".
+const MAX_SEGMENTOS = 6;
+
+function esModoOscuro() {
+    return document.documentElement.classList.contains('dark-mode') ||
+           document.documentElement.getAttribute('data-bs-theme') === 'dark';
+}
+function paletaCategorica() {
+    return esModoOscuro() ? PALETTE_DARK : PALETTE_LIGHT;
+}
+
+// Agrupa la cola para no pasar de MAX_SEGMENTOS y no ciclar colores.
+function agruparCola(labels, values, maximo = MAX_SEGMENTOS) {
+    const pares = labels.map((l, i) => ({ l, v: values[i] }))
+                        .sort((a, b) => b.v - a.v);
+    if (pares.length <= maximo) {
+        return { labels: pares.map(p => p.l), values: pares.map(p => p.v) };
+    }
+    const cabeza = pares.slice(0, maximo - 1);
+    const resto = pares.slice(maximo - 1).reduce((s, p) => s + p.v, 0);
+    return {
+        labels: [...cabeza.map(p => p.l), `Otros (${pares.length - maximo + 1})`],
+        values: [...cabeza.map(p => p.v), resto],
+    };
+}
+
+// Rejilla y ejes: hairline solido, un tono por encima del fondo.
+function ejesBase(theme, ejeValor = 'y') {
+    const eje = {
+        grid: { color: theme.grid, drawTicks: false, lineWidth: 1 },
+        border: { display: false },
+        ticks: { color: theme.muted, font: { size: 11 }, padding: 8 },
+    };
+    const categoria = {
+        grid: { display: false },
+        border: { display: false },
+        ticks: { color: theme.muted, font: { size: 11 }, padding: 6 },
+    };
+    return ejeValor === 'y' ? { y: eje, x: categoria } : { x: eje, y: categoria };
+}
 
 let currentResults = null;
 let chartInstances = {};
@@ -2303,7 +3116,9 @@ $('#moRunBtn').addEventListener('click', async () => {
         updatePremiumControlsUI();
         const statusNorm = normalizeSolverStatus(currentResults?.status);
         renderDashboard(currentResults);
-        
+        // La corrida recién guardada debe aparecer en el comparador
+        cargarListaCorridas();
+
         if (statusNorm === 'optimal') {
             alertArea.innerHTML = `<div class="alert alert-success alert-dismissible fade show py-2 small" role="alert">
                 <i class="bi bi-check-circle me-1"></i><strong>Modelo resuelto exitosamente:</strong> Se encontró una solución óptima viable.
@@ -2427,6 +3242,9 @@ function renderDashboard(r) {
     renderVentas(r.ventas || []);
     renderTransporte(r.transporte || []);
     renderBlending(r.blending || []);
+    renderCalidad(r.calidad_blending || [], r.blending || []);
+    renderWaterfall(r);
+    renderComparacion(r, corridaComparada?.resultados || null, corridaComparada?.corrida || null);
     renderRefinacion(r.refinacion || []);
     renderThroughput(r.throughput || []);
     renderCostosOp(r.costos_operacionales || [], r.costos_operacionales_ref || []);
@@ -2697,10 +3515,17 @@ function renderNarrativeAndSignals(r, meta) {
 /* ═══════════════ TABLE BUILDERS ═══════════════ */
 
 function buildTable(headers, rows, footerCells) {
-    let html = '<table class="table table-sm table-hover mo-table"><thead><tr>';
-    headers.forEach(h => {
+    // Barra con conteo y exportacion; el orden se activa clicando la cabecera.
+    let html = `<div class="mo-tbl-tools">
+        <span class="mo-tbl-count">${rows.length} fila${rows.length === 1 ? '' : 's'}</span>
+        <button type="button" class="mo-tbl-btn" data-tbl-export="csv"><i class="bi bi-filetype-csv"></i>CSV</button>
+        <button type="button" class="mo-tbl-btn" data-tbl-export="copy"><i class="bi bi-clipboard"></i>Copiar</button>
+        <span class="mo-tbl-hint"><i class="bi bi-sort-down"></i>Clic en una columna para ordenar</span>
+    </div>`;
+    html += '<table class="table table-sm table-hover mo-table"><thead><tr>';
+    headers.forEach((h, idx) => {
         const align = h.align === 'right' ? ' class="text-end"' : '';
-        html += `<th${align}>${h.label}</th>`;
+        html += `<th${align} data-sort="${idx}" scope="col">${h.label}</th>`;
     });
     html += '</tr></thead><tbody>';
     rows.forEach(cells => {
@@ -2723,6 +3548,444 @@ function buildTable(headers, rows, footerCells) {
     html += '</table>';
     return html;
 }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   RESUMEN: puente de P&L
+   Las partidas replican exactamente los terminos de la funcion objetivo
+   del solver, por eso la suma cierra contra utilidad_total.
+   ══════════════════════════════════════════════════════════════════ */
+const sumCol = (rows, col) => (rows || []).reduce((s, r) => s + (toNum(r[col]) || 0), 0);
+
+// La columna del efecto de densidad contractual lleva una "Δ" en el nombre;
+// se busca por contenido para no depender del texto exacto. Debe mencionar las
+// DOS variantes (con y sin densidad): así se distingue de las columnas de
+// ingreso individuales, que solo mencionan una.
+function colDensidad(rows) {
+    const first = (rows || [])[0];
+    if (!first) return null;
+    return Object.keys(first).find(k =>
+        k.includes('Ingreso Con Densidad Contractual') &&
+        k.includes('Ingreso Sin Densidad Contractual')) || null;
+}
+
+function calcularPnl(r) {
+    const ventas = r.ventas || [];
+    const colDen = colDensidad(ventas);
+    const ingresoBase = sumCol(ventas, 'Costo Total');
+    const ingresoDensidad = colDen ? sumCol(ventas, colDen) : 0;
+    const ingresos = ingresoBase + ingresoDensidad;
+
+    const partidas = [
+        { key: 'compras',   label: 'Compras de crudo',      icon: 'bi-cart3',
+          monto: sumCol(r.compras, 'Costo Total USD'),
+          detalle: (r.compras || []).map(x => ({ n: x['Crudo o Producto'], v: toNum(x['Costo Total USD']) })) },
+        { key: 'transporte', label: 'Transporte',           icon: 'bi-signpost-2',
+          monto: sumCol(r.transporte, 'Costo Total USD'),
+          detalle: (r.transporte || []).map(x => ({ n: `${x['Flujo']} · ${x['Origen']}→${x['Destino']}`, v: toNum(x['Costo Total USD']) })) },
+        { key: 'refinacion', label: 'Refinación',           icon: 'bi-building',
+          monto: sumCol(r.throughput, 'Costo Total USD'),
+          detalle: (r.throughput || []).map(x => ({ n: x['Refineria'], v: toNum(x['Costo Total USD']) })) },
+        { key: 'operacion',  label: 'Operación blending',   icon: 'bi-gear',
+          monto: sumCol(r.costos_operacionales, 'Costo Total USD'),
+          detalle: (r.costos_operacionales || []).map(x => ({ n: x['Centro de Operacion'], v: toNum(x['Costo Total USD']) })) },
+        { key: 'operacionRef', label: 'Operación refinados en blend', icon: 'bi-gear-wide',
+          monto: sumCol(r.costos_operacionales_ref, 'Costo Total USD'),
+          detalle: (r.costos_operacionales_ref || []).map(x => ({ n: x['Centro de Operacion'], v: toNum(x['Costo Total USD']) })) },
+    ];
+
+    const costoTotal = partidas.reduce((s, p) => s + p.monto, 0);
+    const utilidad = ingresos - costoTotal;
+    return {
+        ingresos, ingresoBase, ingresoDensidad, partidas, costoTotal, utilidad,
+        utilidadSolver: toNum(r.utilidad_total) || 0,
+        residuo: utilidad - (toNum(r.utilidad_total) || 0),
+    };
+}
+
+function renderWaterfall(r) {
+    const wrap = $('#moWaterfall');
+    if (!wrap) return;
+    const p = calcularPnl(r);
+    if (!p.ingresos && !p.costoTotal) {
+        wrap.innerHTML = emptyMsg('resumen');
+        return;
+    }
+
+    const escala = Math.max(p.ingresos, p.utilidad, 1);
+    const pct = v => `${Math.max(0, Math.min(100, (v / escala) * 100))}%`;
+    const share = v => p.ingresos > 0 ? (v / p.ingresos) * 100 : 0;
+
+    let html = '';
+    // Ingresos: barra completa desde cero
+    html += `
+        <div class="mo-wf-row">
+            <div class="mo-wf-label"><i class="bi bi-shop"></i><span>Ingresos por ventas</span></div>
+            <div class="mo-wf-track"><div class="mo-wf-bar is-ingreso" style="left:0;width:${pct(p.ingresos)}"></div></div>
+            <div class="mo-wf-amount is-pos">${fmtM(p.ingresos)}</div>
+            <div class="mo-wf-pct">100%</div>
+        </div>`;
+
+    if (Math.abs(p.ingresoDensidad) > 0.005) {
+        html += `
+        <div class="mo-wf-row">
+            <div class="mo-wf-label" style="padding-left:22px"><i class="bi bi-droplet"></i><span>· incl. efecto densidad contractual</span></div>
+            <div class="mo-wf-track"></div>
+            <div class="mo-wf-amount is-pos">${fmtM(p.ingresoDensidad)}</div>
+            <div class="mo-wf-pct">${fmtP(share(p.ingresoDensidad))}</div>
+        </div>`;
+    }
+
+    // Cada costo baja el acumulado: la barra flota entre el nuevo y el viejo total
+    let acum = p.ingresos;
+    p.partidas.forEach(part => {
+        if (Math.abs(part.monto) < 0.005) return;
+        const nuevo = acum - part.monto;
+        const top = part.detalle
+            .filter(d => Math.abs(d.v) > 0.005)
+            .sort((a, b) => b.v - a.v).slice(0, 6);
+        html += `
+        <div class="mo-wf-row ${top.length ? 'is-expandable' : ''}" data-wf-key="${part.key}">
+            <div class="mo-wf-label"><i class="bi ${part.icon}"></i><span>${part.label}</span></div>
+            <div class="mo-wf-track"><div class="mo-wf-bar is-costo" style="left:${pct(nuevo)};width:${pct(part.monto)}"></div></div>
+            <div class="mo-wf-amount is-neg">−${fmtM(part.monto).replace('$', '$')}</div>
+            <div class="mo-wf-pct">${fmtP(share(part.monto))}</div>
+            ${top.length ? `<div class="mo-wf-detail">${top.map(d =>
+                `<div class="mo-wf-detail-item"><span>${d.n}</span><strong>${fmtM(d.v)}</strong></div>`).join('')}
+                ${part.detalle.length > top.length ? `<div class="mo-wf-detail-item"><span>+ ${part.detalle.length - top.length} partidas más</span><strong></strong></div>` : ''}
+            </div>` : ''}
+        </div>`;
+        acum = nuevo;
+    });
+
+    html += `
+        <div class="mo-wf-row is-resultado">
+            <div class="mo-wf-label"><i class="bi bi-trophy"></i><span>Utilidad neta</span></div>
+            <div class="mo-wf-track"><div class="mo-wf-bar is-total" style="left:0;width:${pct(p.utilidad)}"></div></div>
+            <div class="mo-wf-amount ${p.utilidad >= 0 ? 'is-pos' : 'is-neg'}">${fmtM(p.utilidad)}</div>
+            <div class="mo-wf-pct">${fmtP(share(p.utilidad))}</div>
+        </div>`;
+
+    wrap.innerHTML = html;
+
+    // Chequeo de cuadre contra el objetivo del solver
+    const chk = $('#moWaterfallCheck');
+    if (chk) {
+        const ok = Math.abs(p.residuo) < 0.01;
+        chk.innerHTML = ok
+            ? `<i style="background:var(--mo-emerald)"></i>Cuadra con el solver (residuo ${fmtN(p.residuo, 2)})`
+            : `<i style="background:var(--mo-rose)"></i>Descuadre de ${fmtM(p.residuo)} contra el solver`;
+    }
+
+    wrap.querySelectorAll('.mo-wf-row.is-expandable').forEach(row => {
+        row.addEventListener('click', () => row.classList.toggle('is-open'));
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BLENDING: cumplimiento de calidad contra limites
+   ══════════════════════════════════════════════════════════════════ */
+function renderCalidad(calidad, blending) {
+    const grid = $('#moQualityGrid');
+    if (!grid) return;
+    if (!calidad || !calidad.length) {
+        grid.innerHTML = '';
+        return;
+    }
+
+    const volPorMezcla = {};
+    (blending || []).forEach(b => {
+        volPorMezcla[`${b['Mezcla']}||${b['Centro de Blending']}`] = toNum(b['Volumen BPD']);
+    });
+
+    // Agrupar por mezcla + centro
+    const grupos = {};
+    calidad.forEach(c => {
+        const k = `${c['Mezcla']}||${c['Centro de Blending']}`;
+        (grupos[k] = grupos[k] || []).push(c);
+    });
+
+    const orden = { 'FUERA': 0, 'ACTIVA': 1, 'OK': 2 };
+    let html = '';
+
+    Object.keys(grupos).forEach((k, gi) => {
+        const props = grupos[k].slice().sort((a, b) =>
+            (orden[a.Estado] ?? 3) - (orden[b.Estado] ?? 3) || a.Propiedad.localeCompare(b.Propiedad));
+        const [mezcla, centro] = k.split('||');
+        const nFuera = props.filter(p => p.Estado === 'FUERA').length;
+        const nActiva = props.filter(p => p.Estado === 'ACTIVA').length;
+
+        let estadoCls, estadoTxt;
+        if (nFuera) { estadoCls = 'fuera'; estadoTxt = `${nFuera} fuera de especificación`; }
+        else if (nActiva) { estadoCls = 'activa'; estadoTxt = `${nActiva} restricción${nActiva > 1 ? 'es' : ''} activa${nActiva > 1 ? 's' : ''}`; }
+        else { estadoCls = 'ok'; estadoTxt = 'Toda la calidad con holgura'; }
+
+        const filaProp = p => {
+            const rango = p.Maximo - p.Minimo;
+            const pos = rango > 0 ? Math.max(0, Math.min(100, p['Posicion %'])) : 0;
+            const cls = p.Estado === 'FUERA' ? 'is-fuera' : (p.Estado === 'ACTIVA' ? 'is-activa' : '');
+            return `
+            <div class="mo-prop ${cls}" title="${p.Propiedad}: ${fmtN(p.Valor, 4)} ${p.Unidad} — límites ${fmtN(p.Minimo, 4)} a ${fmtN(p.Maximo, 4)}">
+                <div class="mo-prop-name">${p.Propiedad} <small>${p.Unidad}</small></div>
+                <div class="mo-prop-track">
+                    <div class="mo-prop-fill" style="width:${pos}%"></div>
+                    <div class="mo-prop-marker" style="left:${pos}%"></div>
+                </div>
+                <div class="mo-prop-vals"><strong>${fmtN(p.Valor, 3)}</strong><br>${fmtN(p.Minimo, 2)} – ${fmtN(p.Maximo, 2)}</div>
+            </div>`;
+        };
+
+        const criticas = props.filter(p => p.Estado !== 'OK');
+        const resto = props.filter(p => p.Estado === 'OK');
+
+        html += `
+        <div class="mo-quality-card">
+            <div class="mo-quality-head">
+                <div>
+                    <h6 class="mo-quality-title">${renameBlendLabel(mezcla)}</h6>
+                    <span class="mo-quality-sub">${centro}</span>
+                </div>
+                <div class="mo-quality-vol">${fmtN(volPorMezcla[k] || 0, 1)} <span class="mo-quality-sub">BPD</span></div>
+            </div>
+            <span class="mo-quality-status ${estadoCls}">
+                <i class="bi ${estadoCls === 'ok' ? 'bi-check-circle-fill' : (estadoCls === 'activa' ? 'bi-exclamation-triangle-fill' : 'bi-x-octagon-fill')}"></i>
+                ${estadoTxt}
+            </span>
+            ${criticas.map(filaProp).join('')}
+            <div id="moQualityRest${gi}" ${criticas.length ? 'hidden' : ''}>${resto.map(filaProp).join('')}</div>
+            ${criticas.length && resto.length ? `<button type="button" class="mo-quality-toggle" data-quality-toggle="moQualityRest${gi}">
+                Ver las ${resto.length} propiedades con holgura
+            </button>` : ''}
+        </div>`;
+    });
+
+    grid.innerHTML = html;
+    grid.querySelectorAll('[data-quality-toggle]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.qualityToggle);
+            if (!target) return;
+            const oculto = target.hasAttribute('hidden');
+            if (oculto) target.removeAttribute('hidden'); else target.setAttribute('hidden', '');
+            btn.textContent = oculto
+                ? 'Ocultar las propiedades con holgura'
+                : `Ver las ${target.children.length} propiedades con holgura`;
+        });
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   COMPARADOR DE CORRIDAS
+   ══════════════════════════════════════════════════════════════════ */
+let corridaComparada = null;
+
+function badgeDelta(actual, previo, formato = fmtM) {
+    const d = (toNum(actual) || 0) - (toNum(previo) || 0);
+    if (Math.abs(d) < 0.005) return '<span class="mo-delta flat">sin cambio</span>';
+    const cls = d > 0 ? 'up' : 'down';
+    return `<span class="mo-delta ${cls}">${d > 0 ? '+' : '−'}${formato(Math.abs(d))}</span>`;
+}
+
+async function cargarListaCorridas() {
+    const sel = $('#moCompareSelect');
+    if (!sel) return;
+    try {
+        const resp = await fetch('/modelo-optimizacion/corridas/listar');
+        const data = await resp.json();
+        if (!data.success) return;
+        const actual = sel.value;
+        sel.innerHTML = '<option value="">Sin comparación</option>' +
+            (data.corridas || []).map(c => {
+                const f = c.creado ? new Date(c.creado).toLocaleString('es-CO', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                return `<option value="${c.id}">${c.nombre} — ${fmtM(c.utilidad_total)} · ${f}</option>`;
+            }).join('');
+        sel.value = actual;
+        const hint = $('#moCompareHint');
+        if (hint) {
+            hint.textContent = (data.corridas || []).length
+                ? `${data.corridas.length} corrida${data.corridas.length > 1 ? 's' : ''} guardada${data.corridas.length > 1 ? 's' : ''}.`
+                : 'Aún no hay corridas guardadas: ejecuta el modelo para empezar el historial.';
+        }
+    } catch (e) { console.error('No se pudo cargar el historial de corridas:', e); }
+}
+
+function agruparPor(rows, keyCol, valCol) {
+    const out = {};
+    (rows || []).forEach(r => {
+        const k = String(r[keyCol] ?? '—');
+        out[k] = (out[k] || 0) + (toNum(r[valCol]) || 0);
+    });
+    return out;
+}
+
+function movers(actual, previo, keyCol, valCol, limite = 5) {
+    const a = agruparPor(actual, keyCol, valCol);
+    const b = agruparPor(previo, keyCol, valCol);
+    const claves = new Set([...Object.keys(a), ...Object.keys(b)]);
+    return [...claves]
+        .map(k => ({ n: k, d: (a[k] || 0) - (b[k] || 0) }))
+        .filter(x => Math.abs(x.d) > 0.01)
+        .sort((x, y) => Math.abs(y.d) - Math.abs(x.d))
+        .slice(0, limite);
+}
+
+function renderComparacion(actual, previo, meta) {
+    const cont = $('#moMovers');
+    const sub = $('#moMoversSub');
+    if (!cont) return;
+
+    if (!previo) {
+        cont.innerHTML = '';
+        if (sub) sub.textContent = 'Selecciona una corrida en «Comparar contra»';
+        return;
+    }
+
+    const pa = calcularPnl(actual);
+    const pp = calcularPnl(previo);
+    if (sub) sub.innerHTML = `Contra <strong>${meta?.nombre || 'corrida previa'}</strong>`;
+
+    const listaPartidas = [
+        { label: 'Ingresos', a: pa.ingresos, b: pp.ingresos },
+        ...pa.partidas.map((x, i) => ({ label: x.label, a: -x.monto, b: -(pp.partidas[i]?.monto || 0) })),
+        { label: 'Utilidad neta', a: pa.utilidad, b: pp.utilidad, fuerte: true },
+    ];
+
+    const bloques = [
+        { titulo: 'P&L por partida', items: listaPartidas.map(x => ({
+            n: x.label, html: badgeDelta(x.a, x.b), fuerte: x.fuerte })) },
+        { titulo: 'Compras (BPD)', items: movers(actual.compras, previo.compras,
+            'Crudo o Producto', 'Volumen Comprado BPD').map(x => ({
+            n: x.n, html: `<span class="mo-delta ${x.d > 0 ? 'up' : 'down'}">${x.d > 0 ? '+' : '−'}${fmtN(Math.abs(x.d), 1)}</span>` })) },
+        { titulo: 'Ventas (BPD)', items: movers(actual.ventas, previo.ventas,
+            'Corriente Venta', 'Volumen Vendido BPD').map(x => ({
+            n: x.n, html: `<span class="mo-delta ${x.d > 0 ? 'up' : 'down'}">${x.d > 0 ? '+' : '−'}${fmtN(Math.abs(x.d), 1)}</span>` })) },
+        { titulo: 'Mezclas (BPD)', items: movers(actual.blending, previo.blending,
+            'Mezcla', 'Volumen BPD').map(x => ({
+            n: renameBlendLabel(x.n), html: `<span class="mo-delta ${x.d > 0 ? 'up' : 'down'}">${x.d > 0 ? '+' : '−'}${fmtN(Math.abs(x.d), 1)}</span>` })) },
+    ];
+
+    cont.innerHTML = bloques.filter(b => b.items.length).map(b => `
+        <div class="mo-mover-col">
+            <h6>${b.titulo}</h6>
+            ${b.items.map(i => `<div class="mo-mover-item"><span ${i.fuerte ? 'style="font-weight:700"' : ''}>${i.n}</span>${i.html}</div>`).join('')}
+        </div>`).join('');
+}
+
+async function seleccionarComparacion(id) {
+    const clearBtn = $('#moCompareClear');
+    if (!id) {
+        corridaComparada = null;
+        if (clearBtn) clearBtn.hidden = true;
+        renderComparacion(currentResults, null, null);
+        return;
+    }
+    try {
+        const resp = await fetch(`/modelo-optimizacion/corridas/${id}`);
+        const data = await resp.json();
+        if (!data.success) return;
+        corridaComparada = data;
+        if (clearBtn) clearBtn.hidden = false;
+        renderComparacion(currentResults, data.resultados, data.corrida);
+    } catch (e) { console.error('No se pudo cargar la corrida:', e); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Orden y exportacion, delegados a nivel de documento: cualquier tabla
+   construida con buildTable los hereda sin tocar su render.
+   ══════════════════════════════════════════════════════════════════ */
+
+// "$54,694.00" -> 54694 ; "—" -> null. Permite ordenar numericamente
+// columnas que se muestran formateadas.
+function valorOrdenable(celda) {
+    const txt = (celda.textContent || '').trim();
+    if (!txt || txt === '—') return { num: null, txt: '' };
+    const limpio = txt.replace(/[^0-9.,\-]/g, '').replace(/,/g, '');
+    const num = Number(limpio);
+    const esNumero = limpio !== '' && !Number.isNaN(num) && /\d/.test(limpio);
+    return { num: esNumero ? num : null, txt: txt.toLowerCase() };
+}
+
+document.addEventListener('click', (ev) => {
+    const th = ev.target.closest('.mo-table thead th[data-sort]');
+    if (!th) return;
+    const tabla = th.closest('table');
+    const tbody = tabla.querySelector('tbody');
+    if (!tbody) return;
+
+    const idx = Number(th.dataset.sort);
+    const previo = th.getAttribute('aria-sort');
+    const asc = previo !== 'ascending';
+
+    tabla.querySelectorAll('thead th[data-sort]').forEach(o => o.removeAttribute('aria-sort'));
+    th.setAttribute('aria-sort', asc ? 'ascending' : 'descending');
+
+    const filas = Array.from(tbody.rows);
+    filas.sort((f1, f2) => {
+        const a = valorOrdenable(f1.cells[idx]);
+        const b = valorOrdenable(f2.cells[idx]);
+        // Las celdas vacias siempre al final, ordene como ordene
+        if (a.num === null && b.num === null) {
+            if (!a.txt) return 1;
+            if (!b.txt) return -1;
+            return asc ? a.txt.localeCompare(b.txt, 'es') : b.txt.localeCompare(a.txt, 'es');
+        }
+        if (a.num === null) return 1;
+        if (b.num === null) return -1;
+        return asc ? a.num - b.num : b.num - a.num;
+    });
+    filas.forEach(f => tbody.appendChild(f));
+});
+
+function tablaATexto(tabla, sep) {
+    const lineas = [];
+    const cab = Array.from(tabla.querySelectorAll('thead th'))
+        .map(th => (th.textContent || '').trim());
+    lineas.push(cab.join(sep));
+    tabla.querySelectorAll('tbody tr').forEach(tr => {
+        lineas.push(Array.from(tr.cells).map(td => {
+            const v = (td.textContent || '').trim();
+            // En CSV, entrecomillar lo que lleve el separador
+            return (sep === ',' && /[",\n]/.test(v)) ? `"${v.replace(/"/g, '""')}"` : v;
+        }).join(sep));
+    });
+    const tfoot = tabla.querySelector('tfoot tr');
+    if (tfoot) {
+        lineas.push(Array.from(tfoot.cells).map(td => (td.textContent || '').trim()).join(sep));
+    }
+    return lineas.join('\n');
+}
+
+document.addEventListener('click', async (ev) => {
+    const btn = ev.target.closest('[data-tbl-export]');
+    if (!btn) return;
+    const tabla = btn.closest('.mo-tbl-tools')?.parentElement?.querySelector('table.mo-table');
+    if (!tabla) return;
+    const modo = btn.dataset.tblExport;
+
+    if (modo === 'copy') {
+        // Separado por tabuladores: se pega directo en Excel
+        try {
+            await navigator.clipboard.writeText(tablaATexto(tabla, '\t'));
+            const original = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i>Copiado';
+            setTimeout(() => { btn.innerHTML = original; }, 1600);
+        } catch (e) { console.error('No se pudo copiar:', e); }
+        return;
+    }
+
+    // CSV con BOM para que Excel respete los acentos
+    const csv = '\ufeff' + tablaATexto(tabla, ',');
+    const pestana = document.querySelector('#moTabNav .nav-link.active')?.textContent?.trim() || 'tabla';
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `modelo-lp-${pestana.toLowerCase().replace(/\s+/g, '-')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+});
 
 /* ── COMPRAS ── */
 function renderCompras(data) {
@@ -2823,29 +4086,30 @@ function renderVentasCharts(data) {
     const pvValues = Object.values(byPV);
 
     destroyChart('ventasBar');
+    const serie = paletaCategorica()[0];
     chartInstances.ventasBar = new Chart($('#chartVentasBar'), {
         type: 'bar',
         data: {
             labels: pvLabels,
             datasets: [{
                 label: 'Volumen BPD',
+                // Una sola serie -> un solo color. El largo de la barra ya
+                // codifica la magnitud; teñirla ademas seria redundante.
                 data: pvValues,
-                backgroundColor: (ctx) => {
-                    const base = PALETTE[ctx.dataIndex % PALETTE.length];
-                    return makeGradient(ctx.chart, hexToRgba(base, 0.55), base);
-                },
-                borderColor: (ctx) => PALETTE[ctx.dataIndex % PALETTE.length],
-                borderWidth: 1.4,
-                borderRadius: 10,
+                backgroundColor: serie,
+                borderWidth: 0,
+                borderRadius: 4,
                 borderSkipped: false,
-                barThickness: 44,
-                maxBarThickness: 48
+                barThickness: 'flex',
+                maxBarThickness: 34,
+                categoryPercentage: 0.7,
+                barPercentage: 0.9
             }]
         },
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
-            animation: { duration: 1100, easing: 'easeOutCubic' },
+            animation: { duration: 320, easing: 'easeOutCubic' },
             plugins: {
                 legend: { display: false },
                 title: { display: true, text: 'Volumen por Punto de Venta (BPD)', font: { size: 13, weight: 700 }, color: theme.text },
@@ -2860,17 +4124,14 @@ function renderVentasCharts(data) {
                     }
                 }
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { callback: v => fmtI(v), color: theme.muted },
-                    grid: { color: hexToRgba(theme.grid, 0.55), drawBorder: false }
-                },
-                x: {
-                    ticks: { font: { size: 10, weight: 600 }, color: theme.muted },
-                    grid: { color: hexToRgba(theme.grid, 0.35), drawBorder: false }
-                }
-            },
+            // Rejilla solo en el eje de valor y en hairline solido; en un eje
+            // de categorias las lineas verticales solo agregan ruido.
+            scales: (() => {
+                const ejes = ejesBase(theme, 'y');
+                ejes.y.beginAtZero = true;
+                ejes.y.ticks.callback = v => fmtI(v);
+                return ejes;
+            })(),
             onClick: (_, elements) => {
                 if (!elements.length) return;
                 const selected = pvLabels[elements[0].index];
@@ -2890,8 +4151,9 @@ function renderVentasCharts(data) {
         const cor = renameBlendLabel(d['Corriente Venta'] || 'N/A');
         byCor[cor] = (byCor[cor] || 0) + (d['Ingreso Con Densidad Contractual (USD)'] || d['Costo Total'] || 0);
     });
-    const corLabels = Object.keys(byCor);
-    const corValues = Object.values(byCor);
+    const agrupadoVentas = agruparCola(Object.keys(byCor), Object.values(byCor));
+    const corLabels = agrupadoVentas.labels;
+    const corValues = agrupadoVentas.values;
     const totalIngresos = corValues.reduce((sum, value) => sum + value, 0);
 
     destroyChart('ventasPie');
@@ -2901,13 +4163,10 @@ function renderVentasCharts(data) {
             labels: corLabels,
             datasets: [{
                 data: corValues,
-                backgroundColor: corLabels.map((_, index) => {
-                    const base = PALETTE[index % PALETTE.length];
-                    return hexToRgba(base, 0.9);
-                }),
+                backgroundColor: corLabels.map((_, index) => paletaCategorica()[index]),
                 borderWidth: 2,
                 borderColor: theme.surface,
-                hoverOffset: 10,
+                hoverOffset: 6,
                 spacing: 2
             }]
         },
@@ -3149,8 +4408,9 @@ function renderComposicion(data) {
         const blend = renameBlendLabel(d['Blend'] || 'N/A');
         byBlend[blend] = (byBlend[blend] || 0) + (d['Volumen a Blending BPD'] || 0);
     });
-    const labels = Object.keys(byBlend);
-    const values = Object.values(byBlend);
+    const agrupadoBlend = agruparCola(Object.keys(byBlend), Object.values(byBlend));
+    const labels = agrupadoBlend.labels;
+    const values = agrupadoBlend.values;
     const totalBlend = values.reduce((sum, value) => sum + value, 0);
 
     destroyChart('composicion');
@@ -3160,10 +4420,10 @@ function renderComposicion(data) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: labels.map((_, index) => hexToRgba(PALETTE[index % PALETTE.length], 0.92)),
+                backgroundColor: labels.map((_, index) => paletaCategorica()[index]),
                 borderColor: theme.surface,
                 borderWidth: 2,
-                hoverOffset: 10,
+                hoverOffset: 6,
                 spacing: 2
             }]
         },
@@ -3246,7 +4506,11 @@ function applyTabFilter(tab, query) {
     } else if (tab === 'transporte') {
         renderTransporte(filterArray(currentResults.transporte || [], query));
     } else if (tab === 'blending') {
-        renderBlending(filterArray(currentResults.blending || [], query));
+        const blendFiltrado = filterArray(currentResults.blending || [], query);
+        renderBlending(blendFiltrado);
+        const clavesVisibles = new Set(blendFiltrado.map(x => `${x['Mezcla']}||${x['Centro de Blending']}`));
+        renderCalidad((currentResults.calidad_blending || []).filter(
+            c => clavesVisibles.has(`${c['Mezcla']}||${c['Centro de Blending']}`)), blendFiltrado);
     } else if (tab === 'refinacion') {
         renderRefinacion(filterArray(currentResults.refinacion || [], query));
     } else if (tab === 'costos') {
@@ -3385,6 +4649,16 @@ function destroyChart(key) {
 initInteractiveControls();
 initFilters();
 updatePremiumControlsUI();
+
+// Historial de corridas para el comparador
+cargarListaCorridas();
+$('#moCompareSelect')?.addEventListener('change', e => seleccionarComparacion(e.target.value));
+$('#moCompareClear')?.addEventListener('click', () => {
+    const sel = $('#moCompareSelect');
+    if (sel) sel.value = '';
+    seleccionarComparacion('');
+});
+
 // If cached results exist from server-side, render immediately
 const cachedEl = document.getElementById('cachedResultsJSON');
 if (cachedEl) {

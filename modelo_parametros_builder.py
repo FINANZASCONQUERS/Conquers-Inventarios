@@ -67,7 +67,10 @@ DERIVED_COLUMNS = {
         'CRUDO ORIGEN', 'TIPO FLUJO', 'TIPO DE NODO ORIGEN',
         'TIPO DE NODO DESTINO', 'Costo de transporte USD/BBL para modelo',
     ],
-    '5.CURVA_DESTILACION': ['SPG', 'DENSIDAD (BBL/TONMETRICA)', 'Iv50'],
+    '5.CURVA_DESTILACION': [
+        'SPG', 'DENSIDAD (BBL/TONMETRICA)', 'Iv50',
+        'TOTAL (DEBE SER IGUAL A 1)',
+    ],
     '6.VENTAS': [
         'CRUDO ORIGEN', 'TIPO FLUJO', 'VALIDACION TIPO DE NODO VENTA',
         'ORIGEN BLEND',
@@ -330,6 +333,27 @@ def recompute_derived(sheets, economics):
             cu[dens_col] = [density_from_spg(spg_from_api(x)) for x in cu[cu_api]]
         if cu_visc and iv50_col:
             cu[iv50_col] = [iv50_from_visc(x) for x in cu[cu_visc]]
+
+        # Columna de verificacion: suma de FRACCION % por crudo. El Excel la
+        # escribe solo en la primera fila de cada grupo de crudo.
+        cu_crudo = C(cu, 'CRUDO ORIGEN')
+        cu_frac = C(cu, 'FRACCION %')
+        total_col = C(cu, 'TOTAL (DEBE SER IGUAL A 1)')
+        if cu_crudo and cu_frac and total_col:
+            sumas = {}
+            for crudo, frac in zip(cu[cu_crudo], cu[cu_frac]):
+                key = _norm(crudo)
+                sumas[key] = sumas.get(key, 0.0) + (_to_float(frac) or 0.0)
+            vistos = set()
+            totales = []
+            for crudo in cu[cu_crudo]:
+                key = _norm(crudo)
+                if key and key not in vistos:
+                    vistos.add(key)
+                    totales.append(sumas[key])
+                else:
+                    totales.append(None)
+            cu[total_col] = totales
 
     # --- 6.VENTAS ---
     if '6.VENTAS' in sheets:
@@ -598,7 +622,14 @@ def construir_excel(base_template_path, sheets, economics, out_path):
                     value = None
                 else:
                     value = _coerce_num(value)
-                ws.cell(row=excel_row, column=col_idx).value = value
+                cell = ws.cell(row=excel_row, column=col_idx)
+                cell.value = value
+                # Un texto que empieza por '=' (p. ej. la columna documental
+                # 'Formula de Precio de venta' = '=+BRENT+15') seria interpretado
+                # por openpyxl como formula y se guardaria sin valor cacheado, con
+                # lo que pandas lo leeria vacio. Lo forzamos a texto.
+                if isinstance(value, str) and value.startswith('='):
+                    cell.data_type = 's'
 
     wb.save(out_path)
     return out_path
@@ -729,9 +760,12 @@ def _self_test(excel_path):
             real = _find_col(original[sn], col)
             if real is None:
                 continue
-            a = original[sn][real].reset_index(drop=True)
-            b = sheets[sn][_find_col(sheets[sn], col)].reset_index(drop=True)
-            n = min(len(a), len(b)); ok = bad = 0; ex = None
+            # Alinear por el indice original: recompute_derived puede eliminar
+            # filas (p. ej. duplicados exactos en 11.REL_CRUDO_MEZCLA), y comparar
+            # por posicion desalinearia todo lo que viene despues.
+            b = sheets[sn][_find_col(sheets[sn], col)]
+            a = original[sn][real].reindex(b.index)
+            n = len(b); ok = bad = 0; ex = None
             for k in range(n):
                 x, y = a.iloc[k], b.iloc[k]
                 if _is_blank(x) and _is_blank(y):

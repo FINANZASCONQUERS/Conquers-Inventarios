@@ -53,12 +53,14 @@ class FacturacionImportItem(db.Model):
     numero_guia = db.Column(db.String(100), nullable=True, index=True)
 
     factura_nueva = db.Column(db.String(100), nullable=True)
+    factura_sicom_nueva = db.Column(db.String(100), nullable=True)
     fecha_factura_nueva = db.Column(db.Date, nullable=True)
     mes_facturado_nuevo = db.Column(db.String(20), nullable=True)
     codigo_transporte_nuevo = db.Column(db.String(100), nullable=True)
 
     programacion_id = db.Column(db.Integer, nullable=True)
     factura_anterior = db.Column(db.String(100), nullable=True)
+    factura_sicom_anterior = db.Column(db.String(100), nullable=True)
     fecha_factura_anterior = db.Column(db.Date, nullable=True)
     mes_facturado_anterior = db.Column(db.String(20), nullable=True)
     codigo_transporte_anterior = db.Column(db.String(100), nullable=True)
@@ -75,11 +77,13 @@ class FacturacionImportItem(db.Model):
             'fila_excel': self.fila_excel,
             'numero_guia': self.numero_guia,
             'factura_nueva': self.factura_nueva,
+            'factura_sicom_nueva': self.factura_sicom_nueva,
             'fecha_factura_nueva': self.fecha_factura_nueva.isoformat() if self.fecha_factura_nueva else None,
             'mes_facturado_nuevo': self.mes_facturado_nuevo,
             'codigo_transporte_nuevo': self.codigo_transporte_nuevo,
             'programacion_id': self.programacion_id,
             'factura_anterior': self.factura_anterior,
+            'factura_sicom_anterior': self.factura_sicom_anterior,
             'fecha_factura_anterior': self.fecha_factura_anterior.isoformat() if self.fecha_factura_anterior else None,
             'mes_facturado_anterior': self.mes_facturado_anterior,
             'codigo_transporte_anterior': self.codigo_transporte_anterior,
@@ -105,6 +109,14 @@ def _ensure_facturacion_schema(app=None):
         if 'facturacion_import_items' not in tables:
             FacturacionImportItem.__table__.create(db.engine)
             print("[INIT FACTURACION] Tabla facturacion_import_items creada.")
+        else:
+            item_cols = [c['name'] for c in insp.get_columns('facturacion_import_items')]
+            str100_type = 'VARCHAR(100)'
+            with db.engine.begin() as conn:
+                if 'factura_sicom_nueva' not in item_cols:
+                    conn.execute(text(f"ALTER TABLE facturacion_import_items ADD COLUMN factura_sicom_nueva {str100_type}"))
+                if 'factura_sicom_anterior' not in item_cols:
+                    conn.execute(text(f"ALTER TABLE facturacion_import_items ADD COLUMN factura_sicom_anterior {str100_type}"))
 
         # 2. Verificar columnas en `programacion_cargue`
         if 'programacion_cargue' in tables:
@@ -116,6 +128,9 @@ def _ensure_facturacion_schema(app=None):
             str100_type = 'VARCHAR(100)'
 
             with db.engine.begin() as conn:
+                if 'factura_sicom' not in cols:
+                    conn.execute(text(f"ALTER TABLE programacion_cargue ADD COLUMN factura_sicom {str100_type}"))
+                    print("[INIT FACTURACION] Columna factura_sicom añadida a programacion_cargue.")
                 if 'fecha_factura' not in cols:
                     conn.execute(text(f"ALTER TABLE programacion_cargue ADD COLUMN fecha_factura {date_type}"))
                     print("[INIT FACTURACION] Columna fecha_factura añadida a programacion_cargue.")
