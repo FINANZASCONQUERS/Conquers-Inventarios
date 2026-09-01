@@ -693,7 +693,7 @@
                     <i class="fas fa-file-pdf"></i>
                     <span>Exportar Informe PDF</span>
                 </a>
-                {% if rol_usuario == 'admin' or email_usuario in ['carlos.baron@conquerstrading.com', 'finance@conquerstrading.com', 'german.galvis@conquerstrading.com', 'felipe.ayala@conquerstrading.com', 'logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
+                {% if session.get('rol') == 'admin' or session.get('email') in ['numbers@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'finance@conquerstrading.com', 'german.galvis@conquerstrading.com', 'felipe.ayala@conquerstrading.com', 'logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
                 <button type="button" class="btn-exec-action" id="btnLimpiarDuplicadosBD" onclick="ejecutarLimpiezaDuplicadosBD()" style="border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b;" title="Unifica y normaliza nombres de clientes y productos duplicados en la base de datos">
                     <i class="fas fa-broom"></i>
                     <span>Limpiar Duplicados BD</span>

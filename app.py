@@ -14265,6 +14265,7 @@ def api_admin_limpiar_duplicados_bd():
     user_email = session.get('email', '')
     user_rol = session.get('rol', '')
     ALLOWED_CLEANUP = [
+        'numbers@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'finance@conquerstrading.com',
         'german.galvis@conquerstrading.com',
