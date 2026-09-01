@@ -954,6 +954,9 @@
         <li data-action="view"><i class="fas fa-image"></i> Ver Guía</li>
         <li data-action="delete-img"><i class="fas fa-times"></i> Eliminar Imagen</li>
         <div class="menu-divider"></div>
+        <li data-action="precintos-asignar"><i class="fas fa-bolt"></i> Asignar precintos…</li>
+        <li data-action="precintos-liberar"><i class="fas fa-undo"></i> Liberar precintos</li>
+        <div class="menu-divider"></div>
         <li data-action="delete-row" class="delete-option"><i class="fas fa-trash-alt"></i> Eliminar Registro</li>
     </ul>
 </div>
@@ -1071,6 +1074,8 @@
         const userEmail = "{{ email_usuario }}";
         const userRol = "{{ rol_usuario }}";
         const userName = "{{ nombre }}";
+        // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
+        const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)
         const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'].includes(userEmail);
         const tbody = document.getElementById('schedule-table-body');
@@ -1104,7 +1109,7 @@
             'producto_a_cargar': {
                 width: '160px',
                 type: 'datalist',
-                options: ['FUEL OIL 4', 'FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'VLSFO', 'CRUDO', 'FUEL OIL - COMBUSTOLEO'],
+                options: ['FUEL OIL 4', 'FUEL OIL 6', 'DILUYENTE', 'MGO', 'DIESEL MARINO', 'FUEL OIL (VLSFO)', 'CRUDO', 'FUEL OIL - COMBUSTOLEO'],
                 normalize: true  // Activar normalización automática
             },
             'tipo_guia': {
@@ -1185,39 +1190,64 @@
                 });
             }
 
-            // Lógica Drag-to-Scroll
+            // Lógica Drag-to-Scroll inteligente (sin interferir con selección ni copiado/pegado)
             let isDown = false;
-            let startX;
-            let scrollLeft;
-
-            tableContainer.classList.add('grab-cursor');
+            let isDragging = false;
+            let startX = 0;
+            let scrollLeft = 0;
+            const DRAG_THRESHOLD = 8; // Mínimo de píxeles para considerar arrastre de tabla
 
             tableContainer.addEventListener('mousedown', (e) => {
-                // No activar si se clickea en inputs, selects o botones
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.closest('button') || e.target.closest('.table-scroll-btn')) return;
+                // Solo botón izquierdo (0) o botón central (1 - rueda)
+                if (e.button !== 0 && e.button !== 1) return;
+
+                // Ignorar absolutamente elementos interactivos y de edición
+                if (e.target.closest('input, select, textarea, button, a, label, .btn, .badge, .editable-cell, .editable-input, [contenteditable="true"], .dropdown-menu, .table-scroll-btn, .table-modern thead input')) {
+                    return;
+                }
 
                 isDown = true;
-                tableContainer.classList.add('grabbing-cursor');
+                isDragging = false;
                 startX = e.pageX - tableContainer.offsetLeft;
                 scrollLeft = tableContainer.scrollLeft;
             });
 
-            tableContainer.addEventListener('mouseleave', () => {
+            const stopDrag = () => {
+                if (isDragging) {
+                    tableContainer.classList.remove('grabbing-cursor');
+                }
                 isDown = false;
-                tableContainer.classList.remove('grabbing-cursor');
-            });
+                isDragging = false;
+            };
 
-            tableContainer.addEventListener('mouseup', () => {
-                isDown = false;
-                tableContainer.classList.remove('grabbing-cursor');
-            });
+            tableContainer.addEventListener('mouseleave', stopDrag);
+            tableContainer.addEventListener('mouseup', stopDrag);
+            window.addEventListener('mouseup', stopDrag);
 
             tableContainer.addEventListener('mousemove', (e) => {
                 if (!isDown) return;
-                e.preventDefault();
+
+                // Si el usuario está seleccionando texto en la página, cancelar el arrastre de inmediato
+                const activeSelection = window.getSelection() ? window.getSelection().toString() : '';
+                if (activeSelection && activeSelection.length > 0) {
+                    stopDrag();
+                    return;
+                }
+
                 const x = e.pageX - tableContainer.offsetLeft;
-                const walk = (x - startX) * 1.5; // Velocidad de scroll
-                tableContainer.scrollLeft = scrollLeft - walk;
+                const distance = Math.abs(x - startX);
+
+                // Solo activar arrastre si supera el umbral de movimiento
+                if (!isDragging && distance > DRAG_THRESHOLD) {
+                    isDragging = true;
+                    tableContainer.classList.add('grabbing-cursor');
+                }
+
+                if (isDragging) {
+                    e.preventDefault();
+                    const walk = (x - startX) * 1.3;
+                    tableContainer.scrollLeft = scrollLeft - walk;
+                }
             });
 
             // Actualizar visibilidad de botones de scroll
@@ -2246,7 +2276,10 @@
 
         allColumns.forEach(col => {
             const config = columnsConfig[col];
-            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}</th>`;
+            const stockBadge = (col === 'precintos' && puedePrecintos)
+                ? ' <span class="badge bg-success-subtle text-success-emphasis" id="badge-stock-precintos" title="Precintos disponibles en inventario">…</span>'
+                : '';
+            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}${stockBadge}</th>`;
             filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
 
@@ -2258,6 +2291,7 @@
         filterHtml += '</tr>';
         thead.innerHTML = headerHtml + filterHtml;
         thead.querySelector('#filter-row').addEventListener('input', applyFilters);
+        actualizarStockPrecintos();
     }
 
     // --- FUNCIÓN MODIFICADA PARA RENDERIZAR EL INPUT ---
@@ -2437,6 +2471,22 @@
                                     ${lockBadge}
                                     <input type="time" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
                                 </td>`;
+                } else if (col === 'precintos' && puedePrecintos && !refineriaBlocked) {
+                    // Dos permisos distintos: el area `precintos` habilita el rayo
+                    // (asignacion controlada desde el inventario), mientras que
+                    // escribir la celda a mano requiere permiso sobre el campo.
+                    // El asistente logistico, por ejemplo, asigna pero no digita.
+                    const editorPrecintos = finalEditable
+                        ? `<span class="cell-editor flex-grow-1" contenteditable="true" data-col="precintos">${formatCellValue(value, config)}</span>`
+                        : `<span class="flex-grow-1 text-truncate" title="Solo puedes asignar precintos desde el inventario">${formatCellValue(value, config)}</span>`;
+                    rowHtml += `<td data-field="precintos" data-type="text" class="${finalEditable ? 'editable-cell' : ''} position-relative" style="min-width: ${config.width}">
+                                    <div class="d-flex align-items-center gap-1">
+                                        ${editorPrecintos}
+                                        <button type="button" class="btn btn-outline-warning btn-xs btn-asignar-precintos flex-shrink-0"
+                                                data-cantidad="5" title="Asignar 5 precintos del inventario (clic derecho en la fila para otra cantidad)"
+                                                style="padding: 0.1rem 0.4rem; line-height: 1.2;"><i class="fas fa-bolt"></i></button>
+                                    </div>
+                                </td>`;
                 } else {
                     if (finalEditable) {
                         rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true" data-col="${col}">${formatCellValue(value, config)}</span></td>`;
@@ -2488,6 +2538,120 @@
         Array.from(tbody.querySelectorAll('tr')).forEach(refreshPrintButtonState);
     }
 
+    // --- INVENTARIO DE PRECINTOS ---
+    // La celda `precintos` se sigue pudiendo escribir a mano; esto solo evita
+    // tener que digitarla y mantiene el inventario cuadrado con lo despachado.
+
+    async function actualizarStockPrecintos() {
+        if (!puedePrecintos) return;
+        const badge = document.getElementById('badge-stock-precintos');
+        if (!badge) return;
+        try {
+            const resp = await fetch('/api/precintos/resumen');
+            const data = await resp.json();
+            if (!data.success) return;
+            badge.textContent = data.disponibles.toLocaleString('es-CO');
+            badge.title = data.siguiente
+                ? `${data.disponibles} precintos disponibles. El siguiente es ${data.siguiente}.`
+                : 'Sin precintos disponibles. Registra un lote en Inventario de Precintos.';
+            badge.className = 'badge ' + (data.stock_bajo
+                ? 'bg-danger-subtle text-danger-emphasis'
+                : 'bg-success-subtle text-success-emphasis');
+        } catch (err) {
+            // El badge es informativo: si falla, la planilla sigue funcionando.
+        }
+    }
+
+    async function asignarPrecintos(tr, cantidad, forzar) {
+        if (!tr || !cantidad || cantidad < 1) return;
+        const indicador = tr.querySelector('.save-indicator');
+        if (indicador) {
+            indicador.innerHTML = '<span class="spinner-border spinner-border-sm text-warning" role="status"></span>';
+        }
+
+        try {
+            const resp = await fetch('/api/precintos/asignar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    programacion_id: parseInt(tr.dataset.id, 10),
+                    cantidad: cantidad,
+                    forzar: !!forzar
+                })
+            });
+            const data = await resp.json();
+
+            if (!data.success) {
+                if (indicador) indicador.innerHTML = '';
+                if (data.requiere_confirmacion && !forzar) {
+                    if (confirm(data.message + '\n\n¿Asignar de todas formas?')) {
+                        return asignarPrecintos(tr, cantidad, true);
+                    }
+                    return;
+                }
+                showToast('danger', data.message || 'No se pudieron asignar los precintos.');
+                if (indicador) indicador.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+                return;
+            }
+
+            setRowFieldEditorValue(tr, 'precintos', data.precintos);
+            if (indicador) indicador.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+            showToast('success', data.message);
+
+            if (data.consecutivos === false) {
+                showToast('warning', 'Los sellos asignados no quedaron consecutivos: hay números anulados en medio.');
+            }
+            if (data.resumen && data.resumen.stock_bajo) {
+                showToast('warning', `Quedan ${data.resumen.disponibles} precintos en stock. Conviene reordenar.`);
+            }
+            actualizarStockPrecintos();
+        } catch (err) {
+            showToast('danger', 'Error de conexión al asignar precintos.');
+            if (indicador) indicador.innerHTML = '<i class="fas fa-times-circle text-danger"></i>';
+        }
+    }
+
+    async function liberarPrecintos(tr) {
+        if (!tr) return;
+        if (!confirm('¿Devolver al stock los precintos de esta fila?')) return;
+        try {
+            const resp = await fetch('/api/precintos/liberar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ programacion_id: parseInt(tr.dataset.id, 10) })
+            });
+            const data = await resp.json();
+            if (!data.success) {
+                showToast('danger', data.message || 'No se pudieron liberar los precintos.');
+                return;
+            }
+            setRowFieldEditorValue(tr, 'precintos', data.precintos || '');
+            showToast('success', data.message);
+            actualizarStockPrecintos();
+        } catch (err) {
+            showToast('danger', 'Error de conexión al liberar precintos.');
+        }
+    }
+
+    function pedirCantidadPrecintos(tr) {
+        const valor = prompt('¿Cuántos precintos asignar a esta fila?\n(lo normal son 5; los carros pequeños llevan 4)', '5');
+        if (valor === null) return;
+        const cantidad = parseInt(String(valor).replace(/\D/g, ''), 10);
+        if (!cantidad || cantidad < 1 || cantidad > 12) {
+            showToast('warning', 'Indica una cantidad entre 1 y 12.');
+            return;
+        }
+        asignarPrecintos(tr, cantidad, false);
+    }
+
+    tbody.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-asignar-precintos');
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        asignarPrecintos(btn.closest('tr'), parseInt(btn.dataset.cantidad, 10) || 5, false);
+    });
+
     // --- LOGICA DEL MENU CONTEXTUAL ---
     const contextMenu = document.getElementById('row-context-menu');
     let activeRowId = null;
@@ -2509,6 +2673,9 @@
             const action = item.dataset.action;
             if (action === 'upload' || action === 'import') item.style.display = hasImage ? 'none' : 'flex';
             if (action === 'view' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
+            if (action === 'precintos-asignar' || action === 'precintos-liberar') {
+                item.style.display = puedePrecintos ? 'flex' : 'none';
+            }
         });
 
         // Posicionar menú
@@ -2524,6 +2691,13 @@
         const action = li.dataset.action;
         const tr = tbody.querySelector(`tr[data-id="${activeRowId}"]`);
         if (!tr) return;
+
+        if (action === 'precintos-asignar' || action === 'precintos-liberar') {
+            contextMenu.style.display = 'none';
+            if (action === 'precintos-asignar') pedirCantidadPrecintos(tr);
+            else liberarPrecintos(tr);
+            return;
+        }
 
         // Simular clic en el botón correspondiente de la fila
         const actionMap = {

@@ -1,0 +1,1093 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario de Precintos | Conquers Trading{% endblock %}
+
+{% block container_class %}container-fluid px-3 px-lg-4 py-3{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Todo se apoya en los tokens de professional-theme.css para que la vista
+       siga al tema claro/oscuro sin colores fijos. */
+    .precintos { --pr-gap: 1rem; }
+
+    /* ---------- Encabezado ---------- */
+    .pr-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--pr-gap);
+        padding: 1.15rem 1.35rem;
+        margin-bottom: var(--pr-gap);
+    }
+
+    .pr-header__id {
+        display: flex;
+        align-items: center;
+        gap: .9rem;
+        min-width: 0;
+    }
+
+    .pr-header__mark {
+        flex: 0 0 auto;
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: var(--border-radius-sm);
+        background: var(--primary-gradient);
+        color: #fff;
+        font-size: 1.35rem;
+        box-shadow: 0 6px 14px -6px var(--primary-color);
+    }
+
+    .pr-header h1 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin: 0;
+        line-height: 1.2;
+        color: var(--text-primary);
+    }
+
+    .pr-header p {
+        margin: .15rem 0 0;
+        font-size: .82rem;
+        color: var(--text-muted);
+    }
+
+    .pr-header__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+
+    /* ---------- Indicadores ---------- */
+    .pr-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--pr-gap);
+        margin-bottom: var(--pr-gap);
+    }
+
+    @media (max-width: 991px) { .pr-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 575px) { .pr-kpis { grid-template-columns: 1fr; } }
+
+    /* .kpi-card ya trae superficie, borde, radio y sombra del tema. */
+    .pr-kpi {
+        position: relative;
+        padding: 1rem 1.15rem 1.05rem;
+        overflow: hidden;
+    }
+
+    .pr-kpi::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 3px;
+        background: var(--kpi-accent);
+    }
+
+    .pr-kpi__top {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin-bottom: .5rem;
+    }
+
+    .pr-kpi__ico {
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border-radius: 6px;
+        font-size: .8rem;
+        color: var(--kpi-accent);
+        background: color-mix(in srgb, var(--kpi-accent) 14%, transparent);
+    }
+
+    .pr-kpi__cap {
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+
+    .pr-kpi__num {
+        font-size: 1.85rem;
+        font-weight: 700;
+        line-height: 1.05;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -.01em;
+    }
+
+    .pr-kpi__sub {
+        margin-top: .3rem;
+        font-size: .75rem;
+        color: var(--text-muted);
+        line-height: 1.35;
+        min-height: 1.05rem;
+    }
+
+    .pr-kpi--stock { --kpi-accent: var(--success-color); }
+    .pr-kpi--uso { --kpi-accent: var(--info-color); }
+    .pr-kpi--merma { --kpi-accent: var(--danger-color); }
+    .pr-kpi--next { --kpi-accent: var(--primary-color); }
+
+    /* El consecutivo es el dato accionable de la pantalla: se destaca. */
+    .pr-kpi--next .pr-kpi__num {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: var(--primary-color);
+        letter-spacing: .04em;
+    }
+
+    /* ---------- Barra de herramientas ---------- */
+    .pr-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .75rem;
+        padding: .85rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .pr-search {
+        position: relative;
+        flex: 1 1 320px;
+        min-width: 220px;
+    }
+
+    .pr-search > .bi {
+        position: absolute;
+        left: .75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: .9rem;
+        pointer-events: none;
+    }
+
+    .pr-search input { padding-left: 2.25rem; }
+
+    .pr-seg {
+        display: inline-flex;
+        padding: 3px;
+        gap: 2px;
+        border-radius: var(--border-radius-sm);
+        background: var(--bg-surface-subtle);
+        border: 1px solid var(--border-color);
+    }
+
+    .pr-seg button {
+        border: 0;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: .8rem;
+        font-weight: 600;
+        padding: .32rem .7rem;
+        border-radius: calc(var(--border-radius-sm) - 2px);
+        cursor: pointer;
+        transition: var(--transition);
+        white-space: nowrap;
+    }
+
+    .pr-seg button:hover { color: var(--text-primary); }
+
+    .pr-seg button[aria-pressed="true"] {
+        background: var(--bg-surface);
+        color: var(--primary-color);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+    }
+
+    /* ---------- Tabla ---------- */
+    .pr-tabla-wrap {
+        max-height: 58vh;
+        overflow: auto;
+    }
+
+    .pr-tabla {
+        margin: 0;
+        font-size: .845rem;
+    }
+
+    .pr-tabla thead th {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .pr-tabla tbody td {
+        vertical-align: middle;
+        padding: .6rem .65rem;
+        border-color: var(--border-subtle);
+        color: var(--text-secondary);
+    }
+
+    .pr-tabla tbody tr { transition: background-color .15s ease; }
+    .pr-tabla tbody tr:hover td { background-color: var(--table-hover); }
+
+    .pr-codigo {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 600;
+        font-size: .875rem;
+        letter-spacing: .04em;
+        color: var(--text-primary);
+    }
+
+    /* Estado como punto + texto: más limpio que una píldora en cada fila. */
+    .pr-estado {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        font-size: .78rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .pr-estado::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        flex: 0 0 auto;
+    }
+
+    .pr-estado--disponible { color: var(--success-color); }
+    .pr-estado--usado { color: var(--info-color); }
+    .pr-estado--anulado { color: var(--danger-color); }
+
+    /* Un sello en bodega no tiene placa, guía ni cliente: una sola celda lo
+       dice mejor que cinco guiones seguidos repetidos en toda la página. */
+    .pr-libre {
+        color: var(--text-muted);
+        font-size: .8rem;
+        font-style: italic;
+    }
+
+    .pr-motivo {
+        display: inline-block;
+        max-width: 190px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+        font-size: .75rem;
+        color: var(--text-muted);
+    }
+
+    .pr-acciones {
+        display: inline-flex;
+        gap: .3rem;
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .pr-icobtn {
+        width: 28px;
+        height: 28px;
+        display: inline-grid;
+        place-items: center;
+        border-radius: var(--border-radius-sm);
+        border: 1px solid var(--border-color);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        font-size: .78rem;
+        cursor: pointer;
+        transition: var(--transition);
+        flex: 0 0 auto;
+    }
+
+    .pr-icobtn:hover {
+        color: #fff;
+        border-color: transparent;
+    }
+
+    .pr-icobtn--anular:hover { background: var(--danger-color); }
+    .pr-icobtn--reactivar:hover { background: var(--success-color); }
+    .pr-icobtn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* ---------- Pie ---------- */
+    .pr-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: .75rem;
+        padding: .7rem 1rem;
+        border-top: 1px solid var(--border-color);
+        font-size: .8rem;
+        color: var(--text-muted);
+    }
+
+    /* ---------- Lotes ---------- */
+    .pr-lotes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+        gap: var(--pr-gap);
+    }
+
+    .pr-lote { padding: 1.1rem 1.2rem; }
+
+    .pr-lote-nuevo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        min-height: 140px;
+        padding: 1.1rem;
+        border: 1px dashed var(--border-strong);
+        border-radius: var(--border-radius);
+        background: transparent;
+        color: var(--text-muted);
+        font-size: .85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .pr-lote-nuevo i { font-size: 1.3rem; }
+
+    .pr-lote-nuevo:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    }
+
+    .pr-lote__head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: .6rem;
+        margin-bottom: .85rem;
+    }
+
+    .pr-lote__rango {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: .03em;
+    }
+
+    .pr-lote__meta {
+        font-size: .76rem;
+        color: var(--text-muted);
+        margin-top: .15rem;
+    }
+
+    .pr-barra {
+        height: 6px;
+        border-radius: 99px;
+        background: var(--border-color);
+        overflow: hidden;
+    }
+
+    .pr-barra > i {
+        display: block;
+        height: 100%;
+        border-radius: 99px;
+        background: var(--primary-gradient);
+        transition: width .5s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .pr-lote__nums {
+        display: flex;
+        justify-content: space-between;
+        gap: .5rem;
+        font-size: .75rem;
+        margin-top: .5rem;
+        color: var(--text-muted);
+    }
+
+    .pr-lote__nums b {
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- Estados vacíos y carga ---------- */
+    .pr-vacio {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+
+    .pr-vacio > .bi {
+        font-size: 2rem;
+        opacity: .35;
+        display: block;
+        margin-bottom: .6rem;
+    }
+
+    .pr-skel {
+        height: 12px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--border-subtle) 25%, var(--border-color) 37%, var(--border-subtle) 63%);
+        background-size: 400% 100%;
+        animation: prShimmer 1.3s ease infinite;
+    }
+
+    @keyframes prShimmer {
+        0% { background-position: 100% 50%; }
+        100% { background-position: 0 50%; }
+    }
+
+    /* ---------- Pestañas ---------- */
+    .precintos .nav-tabs { border-bottom: 1px solid var(--border-color); }
+
+    .precintos .nav-tabs .nav-link {
+        font-size: .86rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        border: 0;
+        border-bottom: 2px solid transparent;
+        padding: .55rem .9rem;
+    }
+
+    .precintos .nav-tabs .nav-link.active {
+        color: var(--primary-color);
+        background: transparent;
+        border-bottom-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="precintos">
+
+    <!-- ENCABEZADO -->
+    <div class="panel-modern pr-header">
+        <div class="pr-header__id">
+            <div class="pr-header__mark"><i class="bi bi-shield-lock-fill"></i></div>
+            <div>
+                <h1>Inventario de Precintos</h1>
+                <p>Sellos de seguridad · stock, trazabilidad y control de anulados</p>
+            </div>
+        </div>
+        <div class="pr-header__actions">
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('programacion_cargue') }}">
+                <i class="bi bi-calendar-check me-1"></i>Programación de Cargue
+            </a>
+            <button class="btn btn-sm btn-outline-success" id="btnExportar">
+                <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+            </button>
+            {% if puede_registrar_lotes %}
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalLote">
+                <i class="bi bi-plus-lg me-1"></i>Registrar Lote
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="alertaStock" class="alert alert-warning d-none align-items-center" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span id="alertaStockTexto"></span>
+    </div>
+
+    <!-- INDICADORES -->
+    <div class="pr-kpis">
+        <div class="kpi-card pr-kpi pr-kpi--stock">
+            <div class="pr-kpi__top">
+                <span class="pr-kpi__ico"><i class="bi bi-box-seam-fill"></i></span>
+                <span class="pr-kpi__cap">Disponibles</span>
+            </div>
+            <div class="pr-kpi__num" id="kpiDisponibles">—</div>
+            <div class="pr-kpi__sub" id="kpiDisponiblesHint">Listos para asignar</div>
+        </div>
+
+        <div class="kpi-card pr-kpi pr-kpi--uso">
+            <div class="pr-kpi__top">
+                <span class="pr-kpi__ico"><i class="bi bi-truck"></i></span>
+                <span class="pr-kpi__cap">Utilizados</span>
+            </div>
+            <div class="pr-kpi__num" id="kpiUsados">—</div>
+            <div class="pr-kpi__sub">Ya salieron en un cargue</div>
+        </div>
+
+        <div class="kpi-card pr-kpi pr-kpi--merma">
+            <div class="pr-kpi__top">
+                <span class="pr-kpi__ico"><i class="bi bi-x-octagon-fill"></i></span>
+                <span class="pr-kpi__cap">Anulados / Dañados</span>
+            </div>
+            <div class="pr-kpi__num" id="kpiAnulados">—</div>
+            <div class="pr-kpi__sub" id="kpiAnuladosHint">Merma registrada</div>
+        </div>
+
+        <div class="kpi-card pr-kpi pr-kpi--next">
+            <div class="pr-kpi__top">
+                <span class="pr-kpi__ico"><i class="bi bi-upc-scan"></i></span>
+                <span class="pr-kpi__cap">Siguiente consecutivo</span>
+            </div>
+            <div class="pr-kpi__num" id="kpiSiguiente">—</div>
+            <div class="pr-kpi__sub" id="kpiProximos">&nbsp;</div>
+        </div>
+    </div>
+
+    <!-- PESTAÑAS -->
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-trazabilidad" type="button" role="tab">
+                <i class="bi bi-search me-1"></i>Trazabilidad y Stock
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lotes" type="button" role="tab">
+                <i class="bi bi-box-seam me-1"></i>Lotes de Precintos
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content">
+        <!-- TRAZABILIDAD -->
+        <div class="tab-pane fade show active" id="tab-trazabilidad" role="tabpanel">
+            <div class="panel-modern">
+                <div class="pr-toolbar">
+                    <div class="pr-search">
+                        <i class="bi bi-search"></i>
+                        <input type="search" class="form-control form-control-sm" id="inputBuscar"
+                               placeholder="Buscar por número de sello, placa, guía, cliente o conductor…"
+                               autocomplete="off">
+                    </div>
+                    <div class="pr-seg" id="filtroEstado" role="group" aria-label="Filtrar por estado">
+                        <button type="button" data-estado="" aria-pressed="true">Todos</button>
+                        <button type="button" data-estado="DISPONIBLE" aria-pressed="false">Disponibles</button>
+                        <button type="button" data-estado="USADO" aria-pressed="false">Utilizados</button>
+                        <button type="button" data-estado="ANULADO" aria-pressed="false">Anulados</button>
+                    </div>
+                </div>
+
+                <div class="pr-tabla-wrap">
+                    <table class="table pr-tabla" id="tablaPrecintos">
+                        <thead>
+                            <tr>
+                                <th style="width:120px;">Precinto</th>
+                                <th style="width:130px;">Estado</th>
+                                <th style="width:110px;">Placa</th>
+                                <th style="width:170px;">Guía</th>
+                                <th>Cliente</th>
+                                <th style="width:130px;">Producto</th>
+                                <th style="width:115px;">Fecha uso</th>
+                                <th style="width:100px;" class="text-end">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="pr-footer">
+                    <span id="resumenListado">&nbsp;</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" id="btnAnterior" disabled title="Página anterior">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span id="indicadorPagina">&nbsp;</span>
+                        <button class="btn btn-sm btn-outline-secondary" id="btnSiguiente" disabled title="Página siguiente">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LOTES -->
+        <div class="tab-pane fade" id="tab-lotes" role="tabpanel">
+            <div class="pr-lotes" id="tablaLotes"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: registrar lote -->
+{% if puede_registrar_lotes %}
+<div class="modal fade" id="modalLote" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formLote">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Registrar lote de precintos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Rango inicial <span class="text-danger">*</span></label>
+                            <input class="form-control pr-codigo" name="rango_inicial" inputmode="numeric"
+                                   placeholder="004361" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Rango final <span class="text-danger">*</span></label>
+                            <input class="form-control pr-codigo" name="rango_final" inputmode="numeric"
+                                   placeholder="005000" required>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 mb-0 small d-none" id="previewLote"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Color</label>
+                            <input class="form-control" name="color" value="Verde">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Proveedor</label>
+                            <input class="form-control" name="proveedor" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Remisión / factura</label>
+                            <input class="form-control" name="documento_remision" placeholder="Opcional">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small">Fecha de ingreso</label>
+                            <input type="date" class="form-control" name="fecha_ingreso">
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label small">Nombre del lote</label>
+                            <input class="form-control" name="nombre" placeholder="Ej: Rollo agosto 2026">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">Observaciones</label>
+                            <textarea class="form-control" name="observaciones" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnGuardarLote">
+                        <i class="bi bi-check-lg me-1"></i>Crear lote
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal: anular -->
+<div class="modal fade" id="modalAnular" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formAnular">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-x-octagon me-2 text-danger"></i>Anular precinto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Precinto <strong class="pr-codigo" id="anularCodigo"></strong>
+                        <span class="text-muted" id="anularContexto"></span>
+                    </p>
+                    <input type="hidden" id="anularId">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Motivo <span class="text-danger">*</span></label>
+                        <input class="form-control" id="anularMotivo" list="motivosAnulacion"
+                               placeholder="Ej: Roto al cerrar la válvula" required>
+                        <datalist id="motivosAnulacion">
+                            <option value="Roto al cerrar la válvula"></option>
+                            <option value="Roto al cerrar el manhole"></option>
+                            <option value="Sello defectuoso de fábrica"></option>
+                            <option value="Numeración ilegible"></option>
+                            <option value="Extraviado"></option>
+                        </datalist>
+                    </div>
+                    <div class="form-check" id="anularReemplazoWrap">
+                        <input class="form-check-input" type="checkbox" id="anularReemplazar" checked>
+                        <label class="form-check-label small" for="anularReemplazar">
+                            Asignar automáticamente el siguiente consecutivo a este cargue
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Anular</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    'use strict';
+
+    const PUEDE_REGISTRAR_LOTES = {{ 'true' if puede_registrar_lotes else 'false' }};
+    const POR_PAGINA = 100;
+    const COLUMNAS = 8;
+
+    let paginaActual = 1;
+    let totalPaginas = 1;
+    let estadoActual = '';
+    let temporizadorBusqueda = null;
+
+    const $ = (id) => document.getElementById(id);
+    const nfmt = (n) => Number(n || 0).toLocaleString('es-CO');
+
+    function esc(v) {
+        return String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    function aviso(mensaje, tipo) {
+        let cont = $('toastPrecintos');
+        if (!cont) {
+            cont = document.createElement('div');
+            cont.id = 'toastPrecintos';
+            cont.className = 'toast-container position-fixed top-0 end-0 p-3';
+            cont.style.zIndex = '2000';
+            document.body.appendChild(cont);
+        }
+        const el = document.createElement('div');
+        el.className = 'toast align-items-center text-bg-' +
+            (tipo === 'danger' ? 'danger' : tipo === 'success' ? 'success' : 'secondary') + ' border-0';
+        el.innerHTML = '<div class="d-flex"><div class="toast-body">' + esc(mensaje) +
+            '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+        cont.appendChild(el);
+        const t = new bootstrap.Toast(el, { delay: 5000 });
+        el.addEventListener('hidden.bs.toast', () => el.remove());
+        t.show();
+    }
+
+    const ESTADOS = {
+        DISPONIBLE: ['pr-estado--disponible', 'Disponible'],
+        USADO: ['pr-estado--usado', 'Utilizado'],
+        ANULADO: ['pr-estado--anulado', 'Anulado']
+    };
+
+    function estadoHtml(estado) {
+        const par = ESTADOS[estado] || ['', estado];
+        return `<span class="pr-estado ${par[0]}">${esc(par[1])}</span>`;
+    }
+
+    function filaEsqueleto() {
+        return '<tr>' + '<td><div class="pr-skel"></div></td>'.repeat(COLUMNAS) + '</tr>';
+    }
+
+    function vacio(icono, texto) {
+        return `<tr><td colspan="${COLUMNAS}"><div class="pr-vacio">
+                    <i class="bi ${icono}"></i>${esc(texto)}
+                </div></td></tr>`;
+    }
+
+    // ---------- Indicadores ----------
+    async function cargarResumen() {
+        const r = await fetch('/api/precintos/resumen');
+        const d = await r.json();
+        if (!d.success) return;
+
+        $('kpiDisponibles').textContent = nfmt(d.disponibles);
+        $('kpiUsados').textContent = nfmt(d.usados);
+        $('kpiAnulados').textContent = nfmt(d.anulados);
+        // Los retirados por ajuste no son merma: son rollos viejos que ya no
+        // están en bodega, se separan para no inflar el indicador de daños.
+        $('kpiAnuladosHint').textContent = d.retirados
+            ? 'Merma real · ' + nfmt(d.retirados) + ' retirados de circulación'
+            : 'Merma registrada';
+        $('kpiSiguiente').textContent = d.siguiente || 'Sin stock';
+        $('kpiProximos').textContent = (d.proximos && d.proximos.length > 1)
+            ? 'Siguen: ' + d.proximos.slice(1).join(', ')
+            : (d.siguiente ? '' : 'Registra un lote para empezar');
+
+        const alerta = $('alertaStock');
+        if (d.stock_bajo) {
+            $('alertaStockTexto').innerHTML = d.disponibles === 0
+                ? '<strong>No hay precintos disponibles.</strong> Registra un lote antes del próximo cargue.'
+                : `Quedan <strong>${nfmt(d.disponibles)}</strong> precintos disponibles (mínimo sugerido: ${d.stock_minimo}). Conviene reordenar.`;
+            alerta.classList.remove('d-none');
+            alerta.classList.add('d-flex');
+        } else {
+            alerta.classList.add('d-none');
+            alerta.classList.remove('d-flex');
+        }
+    }
+
+    // ---------- Listado ----------
+    function fila(p) {
+        const alerta = p.requiere_revision
+            ? ` <i class="bi bi-exclamation-triangle-fill text-warning" title="${esc(p.nota_revision)}"></i>`
+            : '';
+
+        const cuerpo = p.estado === 'DISPONIBLE'
+            ? '<td colspan="5" class="pr-libre">En bodega · sin asignar</td>'
+            : `<td>${esc(p.placa) || '—'}</td>
+               <td>${esc(p.numero_guia) || '—'}</td>
+               <td class="text-truncate" style="max-width:220px;" title="${esc(p.cliente)}">${esc(p.cliente) || '—'}</td>
+               <td>${esc(p.producto) || '—'}</td>
+               <td>${esc(p.fecha_uso) || '—'}</td>`;
+
+        let acciones;
+        if (p.estado === 'ANULADO') {
+            acciones =
+                (p.motivo_anulacion ? `<span class="pr-motivo" title="${esc(p.motivo_anulacion)}">${esc(p.motivo_anulacion)}</span>` : '') +
+                (PUEDE_REGISTRAR_LOTES ? `<button class="pr-icobtn pr-icobtn--reactivar" data-reactivar="${p.id}"
+                        data-codigo="${esc(p.codigo)}" title="Reactivar y devolver a bodega">
+                        <i class="bi bi-arrow-counterclockwise"></i></button>` : '');
+        } else {
+            acciones = `<button class="pr-icobtn pr-icobtn--anular" data-anular="${p.id}"
+                    data-codigo="${esc(p.codigo)}" data-placa="${esc(p.placa)}"
+                    data-prog="${p.programacion_id || ''}" title="Anular precinto">
+                    <i class="bi bi-x-lg"></i></button>`;
+        }
+
+        return `<tr>
+            <td class="pr-codigo">${esc(p.codigo)}${alerta}</td>
+            <td>${estadoHtml(p.estado)}</td>
+            ${cuerpo}
+            <td class="text-end"><span class="pr-acciones">${acciones}</span></td>
+        </tr>`;
+    }
+
+    async function cargarListado() {
+        const params = new URLSearchParams({ page: paginaActual, per_page: POR_PAGINA });
+        const q = $('inputBuscar').value.trim();
+        if (q) params.set('q', q);
+        if (estadoActual) params.set('estado', estadoActual);
+
+        const tbody = document.querySelector('#tablaPrecintos tbody');
+        tbody.innerHTML = filaEsqueleto().repeat(8);
+
+        let d;
+        try {
+            const r = await fetch('/api/precintos/listado?' + params.toString());
+            d = await r.json();
+        } catch (err) {
+            tbody.innerHTML = vacio('bi-wifi-off', 'No se pudo conectar con el servidor.');
+            return;
+        }
+        if (!d.success) {
+            tbody.innerHTML = vacio('bi-exclamation-circle', 'No se pudo cargar el listado.');
+            return;
+        }
+
+        totalPaginas = d.paginas;
+        const desde = d.total ? (d.page - 1) * d.per_page + 1 : 0;
+        const hasta = Math.min(d.page * d.per_page, d.total);
+        $('resumenListado').innerHTML = d.total
+            ? `Mostrando <b>${nfmt(desde)}–${nfmt(hasta)}</b> de <b>${nfmt(d.total)}</b> precintos`
+            : 'Sin precintos';
+        $('indicadorPagina').textContent = d.page + ' / ' + d.paginas;
+        $('btnAnterior').disabled = d.page <= 1;
+        $('btnSiguiente').disabled = d.page >= d.paginas;
+
+        if (!d.precintos.length) {
+            tbody.innerHTML = vacio('bi-inbox', (q || estadoActual)
+                ? 'Ningún precinto coincide con la búsqueda.'
+                : 'Todavía no hay precintos registrados.');
+            return;
+        }
+
+        tbody.innerHTML = d.precintos.map(fila).join('');
+    }
+
+    // ---------- Lotes ----------
+    async function cargarLotes() {
+        const cont = $('tablaLotes');
+        const r = await fetch('/api/precintos/lotes');
+        const d = await r.json();
+
+        if (!d.success || !d.lotes.length) {
+            cont.innerHTML = `<div class="panel-modern pr-vacio" style="grid-column:1/-1;">
+                    <i class="bi bi-box-seam"></i>Aún no hay lotes registrados.
+                    ${PUEDE_REGISTRAR_LOTES ? `<div class="mt-3"><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalLote">
+                        <i class="bi bi-plus-lg me-1"></i>Registrar el primer lote</button></div>` : ''}
+                </div>`;
+            return;
+        }
+
+        cont.innerHTML = d.lotes.map((l) => {
+            const agotado = l.disponibles === 0;
+            return `<div class="kpi-card pr-lote">
+                <div class="pr-lote__head">
+                    <div>
+                        <div class="pr-lote__rango">${esc(l.rango_inicial)} – ${esc(l.rango_final)}</div>
+                        <div class="pr-lote__meta">
+                            ${esc(l.nombre) || 'Sin nombre'}${l.proveedor ? ' · ' + esc(l.proveedor) : ''}${l.fecha_ingreso ? ' · ' + esc(l.fecha_ingreso) : ''}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="badge ${agotado ? 'bg-secondary-subtle text-secondary-emphasis' : 'bg-success-subtle text-success-emphasis'}">
+                            ${agotado ? 'Agotado' : 'Activo'}
+                        </span>
+                        ${PUEDE_REGISTRAR_LOTES ? `<button class="pr-icobtn pr-icobtn--anular" data-eliminar-lote="${l.id}" title="Eliminar lote">
+                            <i class="bi bi-trash3"></i></button>` : ''}
+                    </div>
+                </div>
+                <div class="pr-barra"><i style="width:${l.pct_consumido}%"></i></div>
+                <div class="pr-lote__nums">
+                    <span><b>${nfmt(l.disponibles)}</b> disponibles</span>
+                    <span>${l.pct_consumido}% consumido</span>
+                    <span><b>${nfmt(l.total)}</b> en total</span>
+                </div>
+            </div>`;
+        }).join('') + (PUEDE_REGISTRAR_LOTES ? `
+            <button type="button" class="pr-lote-nuevo" data-bs-toggle="modal" data-bs-target="#modalLote">
+                <i class="bi bi-plus-circle"></i>Registrar un lote nuevo
+            </button>` : '');
+    }
+
+    async function recargarTodo() {
+        await Promise.all([cargarResumen(), cargarListado(), cargarLotes()]);
+    }
+
+    // ---------- Eventos ----------
+    $('filtroEstado').addEventListener('click', (ev) => {
+        const btn = ev.target.closest('button[data-estado]');
+        if (!btn) return;
+        estadoActual = btn.dataset.estado;
+        $('filtroEstado').querySelectorAll('button').forEach((b) => {
+            b.setAttribute('aria-pressed', String(b === btn));
+        });
+        paginaActual = 1;
+        cargarListado();
+    });
+
+    $('inputBuscar').addEventListener('input', () => {
+        clearTimeout(temporizadorBusqueda);
+        temporizadorBusqueda = setTimeout(() => { paginaActual = 1; cargarListado(); }, 300);
+    });
+
+    $('btnAnterior').addEventListener('click', () => {
+        if (paginaActual > 1) { paginaActual--; cargarListado(); }
+    });
+    $('btnSiguiente').addEventListener('click', () => {
+        if (paginaActual < totalPaginas) { paginaActual++; cargarListado(); }
+    });
+
+    $('btnExportar').addEventListener('click', () => {
+        window.location = '/api/precintos/exportar' + (estadoActual ? '?estado=' + estadoActual : '');
+    });
+
+    // Eliminar lote
+    if (PUEDE_REGISTRAR_LOTES) {
+        $('tablaLotes').addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('[data-eliminar-lote]');
+            if (!btn) return;
+            const loteId = btn.dataset.eliminarLote;
+            if (!confirm(`¿Estás seguro de que deseas eliminar este lote (#${loteId}) y todos sus precintos asociados?`)) return;
+
+            btn.disabled = true;
+            try {
+                let r = await fetch(`/api/precintos/lotes/${loteId}`, { method: 'DELETE' });
+                let d = await r.json();
+                if (!d.success && d.requiere_confirmacion) {
+                    if (confirm(d.message)) {
+                        r = await fetch(`/api/precintos/lotes/${loteId}?forzar=1`, { method: 'DELETE' });
+                        d = await r.json();
+                    } else {
+                        return;
+                    }
+                }
+                aviso(d.message, d.success ? 'success' : 'danger');
+                if (d.success) recargarTodo();
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // Anular o reactivar
+    document.querySelector('#tablaPrecintos tbody').addEventListener('click', async (ev) => {
+        const btnReactivar = ev.target.closest('[data-reactivar]');
+        if (btnReactivar) {
+            const id = btnReactivar.dataset.reactivar;
+            const codigo = btnReactivar.dataset.codigo;
+            if (!confirm(`¿Deseas reactivar el precinto ${codigo} y devolverlo a DISPONIBLE en bodega?`)) return;
+
+            btnReactivar.disabled = true;
+            try {
+                const r = await fetch('/api/precintos/reactivar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ precinto_id: parseInt(id, 10) })
+                });
+                const d = await r.json();
+                aviso(d.message, d.success ? 'success' : 'danger');
+                if (d.success) recargarTodo();
+            } finally {
+                btnReactivar.disabled = false;
+            }
+            return;
+        }
+
+        const btn = ev.target.closest('[data-anular]');
+        if (!btn) return;
+        $('anularId').value = btn.dataset.anular;
+        $('anularCodigo').textContent = btn.dataset.codigo;
+        const placa = btn.dataset.placa;
+        $('anularContexto').textContent = placa ? ' — asignado a la placa ' + placa : '';
+        $('anularReemplazoWrap').classList.remove('d-none');
+        $('anularReemplazar').checked = true;
+        $('anularMotivo').value = '';
+        bootstrap.Modal.getOrCreateInstance($('modalAnular')).show();
+    });
+
+    $('formAnular').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const motivo = $('anularMotivo').value.trim();
+        if (!motivo) return;
+        const r = await fetch('/api/precintos/anular', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                precinto_id: parseInt($('anularId').value, 10),
+                motivo: motivo,
+                reemplazar: $('anularReemplazar').checked
+            })
+        });
+        const d = await r.json();
+        aviso(d.message, d.success ? 'success' : 'danger');
+        if (d.success) {
+            bootstrap.Modal.getOrCreateInstance($('modalAnular')).hide();
+            recargarTodo();
+        }
+    });
+
+    // Crear lote
+    if (PUEDE_REGISTRAR_LOTES) {
+        const form = $('formLote');
+        const preview = $('previewLote');
+
+        function actualizarPreview() {
+            const ini = (form.rango_inicial.value || '').replace(/\D/g, '');
+            const fin = (form.rango_final.value || '').replace(/\D/g, '');
+            if (!ini || !fin) { preview.classList.add('d-none'); return; }
+            const n = parseInt(fin, 10) - parseInt(ini, 10) + 1;
+            preview.classList.remove('d-none');
+            preview.className = 'alert py-2 mb-0 small ' + (n > 0 ? 'alert-info' : 'alert-danger');
+            preview.textContent = n > 0
+                ? `Se crearán ${nfmt(n)} precintos, de ${ini.padStart(6, '0')} a ${fin.padStart(6, '0')}.`
+                : 'El rango final debe ser mayor o igual al inicial.';
+        }
+
+        form.rango_inicial.addEventListener('input', actualizarPreview);
+        form.rango_final.addEventListener('input', actualizarPreview);
+
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const btn = $('btnGuardarLote');
+            btn.disabled = true;
+            const payload = Object.fromEntries(new FormData(form).entries());
+            try {
+                const r = await fetch('/api/precintos/lotes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const d = await r.json();
+                aviso(d.message, d.success ? 'success' : 'danger');
+                if (d.success) {
+                    bootstrap.Modal.getOrCreateInstance($('modalLote')).hide();
+                    form.reset();
+                    preview.classList.add('d-none');
+                    recargarTodo();
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    recargarTodo();
+})();
+</script>
+{% endblock %}

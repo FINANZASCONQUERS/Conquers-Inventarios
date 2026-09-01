@@ -1706,6 +1706,306 @@ html.dark-mode .mo-start-head .icono {
 .mo-tab-description { font-size: 0.86rem; }
 .mo-tab-title { font-size: 1.06rem; }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   Lo que el modelo descarto, y los compromisos minimos
+   ══════════════════════════════════════════════════════════════════ */
+.mo-aparte {
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--mo-border);
+}
+.mo-aparte-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+.mo-aparte-head h6 {
+    font-family: var(--mo-font-title);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--mo-text);
+    margin: 0;
+}
+.mo-aparte-count {
+    font-family: var(--mo-font-body);
+    font-size: 0.74rem;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--mo-vol-bar-bg);
+    color: var(--mo-text-muted);
+}
+.mo-aparte p.sub {
+    font-size: 0.84rem;
+    color: var(--mo-text-muted);
+    margin: 0 0 14px;
+    max-width: 78ch;
+}
+
+/* Motivo por el que no se compro */
+.mo-motivo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.mo-motivo.sinvol  { background: var(--mo-vol-bar-bg); color: var(--mo-text-muted); }
+.mo-motivo.caro    { background: rgba(245,158,11,.15); color: #b45309; }
+.mo-motivo.empata  { background: rgba(99,102,241,.13); color: var(--mo-indigo); }
+.mo-motivo.sinruta { background: rgba(239,68,68,.13); color: var(--mo-rose); }
+html.dark-mode .mo-motivo.caro { color: #fbbf24; }
+
+/* Cumplimiento de un minimo */
+.mo-min-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 14px;
+}
+.mo-min {
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius-sm);
+    padding: 14px 16px;
+    background: var(--mo-surface);
+}
+.mo-min.falla { border-color: var(--mo-rose); background: rgba(239,68,68,.05); }
+.mo-min-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 3px;
+}
+.mo-min-nombre { font-weight: 700; font-size: 0.92rem; color: var(--mo-text); }
+.mo-min-sub { font-size: 0.74rem; color: var(--mo-text-muted); }
+.mo-min-bar {
+    position: relative;
+    height: 9px;
+    background: var(--mo-vol-bar-bg);
+    border-radius: 999px;
+    margin: 11px 0 8px;
+    overflow: hidden;
+}
+.mo-min-bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 999px;
+    background: var(--mo-emerald);
+    display: block;
+}
+.mo-min.falla .mo-min-bar i { background: var(--mo-rose); }
+.mo-min-cifras {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--mo-text-muted);
+}
+.mo-min-cifras b { color: var(--mo-text); }
+.mo-min.falla .mo-min-cifras b.falta { color: var(--mo-rose); }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Franja de cifras por pestaña: lo esencial de esa vista, sin scroll
+   ══════════════════════════════════════════════════════════════════ */
+.mo-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+    gap: 1px;
+    background: var(--mo-border);
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius-sm);
+    overflow: hidden;
+    margin-bottom: 18px;
+}
+.mo-stat {
+    background: var(--mo-surface);
+    padding: 13px 16px;
+    min-width: 0;
+}
+.mo-stat .k {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--mo-text-muted);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mo-stat .v {
+    display: block;
+    font-family: var(--mo-font-title);
+    font-size: 1.22rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: var(--mo-text);
+    font-variant-numeric: tabular-nums;
+}
+.mo-stat .u {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--mo-text-muted);
+    margin-left: 3px;
+}
+.mo-stat.acento .v { color: var(--mo-primary); }
+.mo-stat.alerta .v { color: var(--mo-rose); }
+.mo-stat.aviso  .v { color: var(--mo-amber); }
+html.dark-mode .mo-stat.acento .v { color: var(--mo-emerald-light); }
+
+/* Cabecera de pestaña mas contenida */
+.mo-tab-header { padding-block: 0.85rem; }
+.mo-tab-description { max-width: 88ch; }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Una planta, una tarjeta. Nada de mezclar refinerias en una tabla.
+   ══════════════════════════════════════════════════════════════════ */
+.mo-planta {
+    background: var(--mo-surface);
+    border: 1px solid var(--mo-border);
+    border-radius: var(--mo-radius);
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+.mo-planta-head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    background: var(--mo-surface-alt);
+    border-bottom: 1px solid var(--mo-border);
+}
+.mo-planta-nombre {
+    font-family: var(--mo-font-title);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+.mo-planta-nombre i { color: var(--mo-primary); }
+.mo-planta-unit {
+    margin-left: auto;
+    text-align: right;
+    white-space: nowrap;
+}
+.mo-planta-unit b {
+    display: block;
+    font-family: var(--mo-font-title);
+    font-size: 1.32rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--mo-primary);
+    font-variant-numeric: tabular-nums;
+}
+html.dark-mode .mo-planta-unit b { color: var(--mo-emerald-light); }
+.mo-planta-unit span {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mo-text-muted);
+}
+.mo-planta-cifras {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1px;
+    background: var(--mo-border);
+    border-bottom: 1px solid var(--mo-border);
+}
+.mo-planta-cifra { background: var(--mo-surface); padding: 11px 16px; }
+.mo-planta-cifra .k {
+    display: block;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--mo-text-muted);
+    margin-bottom: 3px;
+}
+.mo-planta-cifra .v {
+    font-family: var(--mo-font-title);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    font-variant-numeric: tabular-nums;
+}
+.mo-planta-carga {
+    padding: 11px 20px;
+    font-size: 0.8rem;
+    color: var(--mo-text-muted);
+    border-bottom: 1px solid var(--mo-rule, var(--mo-border));
+}
+.mo-planta-carga b { color: var(--mo-text); font-weight: 600; }
+.mo-planta-cuerpo { padding: 4px 12px 12px; }
+
+/* Barras de participación en la ventana de costos */
+.mo-costo-linea {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.3fr) minmax(0, 3fr) minmax(110px, auto) minmax(52px, auto);
+    align-items: center;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--mo-border);
+}
+.mo-costo-linea:last-child { border-bottom: none; }
+.mo-costo-linea .et {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--mo-text);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.mo-costo-linea .et i { opacity: 0.6; }
+.mo-costo-track {
+    height: 16px;
+    background: var(--mo-vol-bar-bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.mo-costo-track i { display: block; height: 100%; border-radius: 4px; }
+.mo-costo-linea .mt {
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--mo-text);
+}
+.mo-costo-linea .pc {
+    text-align: right;
+    font-size: 0.75rem;
+    color: var(--mo-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.mo-bloque { margin-bottom: 26px; }
+.mo-bloque > h6 {
+    font-family: var(--mo-font-title);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--mo-text);
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mo-bloque > p {
+    font-size: 0.8rem;
+    color: var(--mo-text-muted);
+    margin: 0 0 12px;
+    max-width: 80ch;
+}
+
 </style>
 
 <!-- ═══════════════ LOADING OVERLAY ═══════════════ -->
@@ -1891,13 +2191,15 @@ html.dark-mode .mo-start-head .icono {
         // Orden lógico de captura (como las pestañas numeradas del Excel)
         const SHEET_ORDER = ['__resumen__', '__economics__', '1.NODOS', '2.FLUJOS', '3.COMPRAS',
             '5.CURVA_DESTILACION', '4.RUTAS_TRANSPORTE', '6.VENTAS', '7.COSTOS_REFINACION',
-            '8.LIMITES_CALIDAD', '11.REL_CRUDO_MEZCLA', '9.FLASH_RESTR', '10.CVC', '12.COSTOS_OPERACIONALES'];
+            '8.LIMITES_CALIDAD', '11.REL_CRUDO_MEZCLA', '9.FLASH_RESTR', '10.CVC', '12.COSTOS_OPERACIONALES',
+            '13.PRECIOS_VENTA'];
         const SHEET_LABELS = {
             '__resumen__': 'Resumen', '__economics__': '1·Económicos', '1.NODOS': '2·Nodos', '2.FLUJOS': '3·Flujos',
             '3.COMPRAS': '4·Compras', '5.CURVA_DESTILACION': '5·Curva Destilación', '4.RUTAS_TRANSPORTE': '6·Rutas',
             '6.VENTAS': '7·Ventas', '7.COSTOS_REFINACION': '8·Costos Refinación', '8.LIMITES_CALIDAD': '9·Límites Calidad',
             '11.REL_CRUDO_MEZCLA': '10·Rel. Crudo-Mezcla', '9.FLASH_RESTR': '11·Flash Point', '10.CVC': '12·CVC',
-            '12.COSTOS_OPERACIONALES': '13·Costos Operac.'
+            '12.COSTOS_OPERACIONALES': '13·Costos Operac.',
+            '13.PRECIOS_VENTA': '14·Precios de Venta'
         };
         const SHEET_DESC = {
             '__resumen__': 'Vista general del escenario: valores económicos, conteos por hoja y avisos de validación.',
@@ -1913,7 +2215,8 @@ html.dark-mode .mo-start-head .icono {
             '11.REL_CRUDO_MEZCLA': 'Pertenencia: qué flujos pueden componer cada mezcla, en qué centro de blending.',
             '9.FLASH_RESTR': 'Restricción de punto de inflamación (flash point) mínimo requerido en el destino.',
             '10.CVC': 'Factor CVC (corrección volumétrica) por flujo, mezcla y destino.',
-            '12.COSTOS_OPERACIONALES': 'Costos operacionales por centro de blending. El total es la suma de los componentes.'
+            '12.COSTOS_OPERACIONALES': 'Costos operacionales por centro de blending. El total es la suma de los componentes.',
+            '13.PRECIOS_VENTA': 'Un precio por corriente comercial, no por fila. NAFTA, GASOIL y FUELOIL se cotizan igual salgan del crudo que salgan; las mezclas y los crudos llevan el suyo. Escribes el ajuste sobre el Brent y el precio se calcula solo.'
         };
         // Columnas con lista desplegable y su fuente (catálogos dinámicos o lista fija)
         const DROPDOWNS = {
@@ -2474,75 +2777,6 @@ html.dark-mode .mo-start-head .icono {
         </button>
     </div>
 
-    <div class="row g-3 mb-4 d-none" id="moInsightSection">
-        <div class="col-xl-7">
-            <div class="mo-insight-card mo-animate mo-animate-d1">
-                <div class="mo-insight-kicker">Lectura Ejecutiva</div>
-                <h4 class="mo-story-title">Resumen del escenario</h4>
-                <p class="mo-story-copy" id="moNarrativeSummary">
-                    Ejecuta el modelo para generar una lectura automática de desempeño y riesgos operativos.
-                </p>
-                <p class="mo-story-copy mo-story-copy-soft" id="moNarrativeSecondary">
-                    Aquí verás automáticamente los principales puntos de control del escenario y dónde enfocar la revisión.
-                </p>
-                <div class="mo-stepper" id="moFlowStepper">
-                    <div class="mo-step" data-step="compras"><span>1. Compras</span><strong>Carga de insumos</strong></div>
-                    <div class="mo-step" data-step="ventas"><span>2. Ventas</span><strong>Monetización de volúmenes</strong></div>
-                    <div class="mo-step" data-step="logistica"><span>3. Logística</span><strong>Costos por rutas y destinos</strong></div>
-                    <div class="mo-step" data-step="resultado"><span>4. Resultado</span><strong>Utilidad final y viabilidad</strong></div>
-                </div>
-                <div class="mo-story-metrics" id="moStoryMetrics">
-                    <div class="mo-story-metric is-ok">
-                        <span class="metric-label">Estado Solver</span>
-                        <span class="metric-value">Sin ejecutar</span>
-                    </div>
-                    <div class="mo-story-metric is-ok">
-                        <span class="metric-label">Utilidad Neta</span>
-                        <span class="metric-value">—</span>
-                    </div>
-                    <div class="mo-story-metric is-warn">
-                        <span class="metric-label">Balance Compras/Ventas</span>
-                        <span class="metric-value">—</span>
-                    </div>
-                    <div class="mo-story-metric is-warn">
-                        <span class="metric-label">Prioridad Operativa</span>
-                        <span class="metric-value">Esperando corrida</span>
-                    </div>
-                </div>
-                <div class="mo-story-actions">
-                    <h6 class="mo-story-actions-title">Acciones Recomendadas</h6>
-                    <div class="mo-story-actions-list" id="moStoryActionsList">
-                        <button type="button" class="mo-story-action-btn" data-mo-tab-target="tabCompras" data-mo-wrap-target="comprasTableWrap">
-                            <i class="bi bi-upload me-1"></i> Cargar parámetros y ejecutar modelo
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-5">
-            <div class="mo-insight-card mo-animate mo-animate-d2">
-                <div class="mo-insight-kicker">Señales del Solver</div>
-                <div class="mo-signal-list" id="moSignalList">
-                    <button type="button" class="mo-signal-item mo-signal-ok">
-                        <span class="mo-signal-title">Esperando resultados</span>
-                        <strong>Sin datos ejecutados</strong>
-                        <small>Lanza el modelo para visualizar alertas e insights automáticos.</small>
-                    </button>
-                </div>
-                <div class="mo-mini-metrics">
-                    <div class="mo-mini-metric">
-                        <div class="label">Balance ventas/compras <strong id="moGaugeBalance">0%</strong></div>
-                        <div class="mo-mini-bar"><div class="mo-mini-bar-fill balance" id="moGaugeBalanceBar"></div></div>
-                    </div>
-                    <div class="mo-mini-metric">
-                        <div class="label">Peso logístico sobre costos <strong id="moGaugeLogistica">0%</strong></div>
-                        <div class="mo-mini-bar"><div class="mo-mini-bar-fill logistica" id="moGaugeLogisticaBar"></div></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- ── Detail Tabs ── -->
     <div class="d-none" id="moTabsSection">
         <div class="mo-compare-bar" id="moCompareBar">
@@ -2619,7 +2853,17 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
+                <div class="mo-stats" id="statsCompras"></div>
                 <div class="mo-scroll" id="comprasTableWrap"></div>
+
+                <div class="mo-aparte d-none" id="moRechazosBox">
+                    <div class="mo-aparte-head">
+                        <h6><i class="bi bi-slash-circle me-1"></i>Lo que el modelo no compró</h6>
+                        <span class="mo-aparte-count" id="moRechazosCount"></span>
+                    </div>
+                    <p class="sub">Productos declarados en la hoja de compras que quedaron fuera del plan, con el motivo. Cuando la razón es el precio, se indica a cuánto tendría que bajar para que convenga comprarlo.</p>
+                    <div class="mo-scroll" id="moRechazosWrap"></div>
+                </div>
             </div>
             <!-- Ventas -->
             <div class="tab-pane fade" id="tabVentas" role="tabpanel">
@@ -2635,8 +2879,18 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
+                <div class="mo-aparte d-none" id="moMinimosBox" style="margin-top:0;padding-top:0;border-top:none">
+                    <div class="mo-aparte-head">
+                        <h6><i class="bi bi-flag me-1"></i>Compromisos mínimos de entrega</h6>
+                        <span class="mo-aparte-count" id="moMinimosCount"></span>
+                    </div>
+                    <p class="sub">Volúmenes que te obligaste a entregar. Si el modelo no alcanza a cumplir uno, entrega lo máximo que puede y aquí se ve cuánto faltó.</p>
+                    <div class="mo-min-grid" id="moMinimosWrap"></div>
+                </div>
+
                 <div class="row g-3">
-                    <div class="col-xl-7"><div class="mo-scroll" id="ventasTableWrap"></div></div>
+                    <div class="mo-stats" id="statsVentas"></div>
+                <div class="col-xl-7"><div class="mo-scroll" id="ventasTableWrap"></div></div>
                     <div class="col-xl-5">
                         <div class="mo-chart-card mb-3">
                             <div class="mo-chart-kicker">Distribución de Volumen</div>
@@ -2663,6 +2917,7 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
+                <div class="mo-stats" id="statsTransporte"></div>
                 <div class="mo-scroll" id="transporteTableWrap"></div>
             </div>
             <!-- Blending -->
@@ -2679,6 +2934,7 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
+                <div class="mo-stats" id="statsBlending"></div>
                 <div class="mo-quality-grid mb-4" id="moQualityGrid"></div>
                 <h6 class="mo-quality-title mb-2"><i class="bi bi-table me-1"></i>Detalle numérico</h6>
                 <div class="mo-scroll" id="blendingTableWrap"></div>
@@ -2697,7 +2953,13 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
-                <div class="mo-scroll" id="refinacionTableWrap"></div>
+                <div class="mo-stats" id="statsRefinacion"></div>
+                <div id="moPlantasWrap"></div>
+                <div class="mo-bloque">
+                    <h6><i class="bi bi-table"></i>Todos los productos refinados</h6>
+                    <p>La misma información en una sola tabla, para ordenar y exportar.</p>
+                    <div class="mo-scroll" id="refinacionTableWrap"></div>
+                </div>
             </div>
             <!-- Costos -->
             <div class="tab-pane fade" id="tabCostos" role="tabpanel">
@@ -2713,17 +2975,43 @@ html.dark-mode .mo-start-head .icono {
                         </div>
                     </div>
                 </div>
+                <div class="mo-stats" id="statsCostos"></div>
+
+                <div class="mo-bloque">
+                    <h6><i class="bi bi-pie-chart-fill"></i>En qué se va el dinero</h6>
+                    <p>Los cuatro conceptos que componen el costo total del sistema, cada uno con lo que pesa.</p>
+                    <div id="moCostoDesglose"></div>
+                </div>
+
+                <div class="mo-bloque">
+                    <h6><i class="bi bi-building"></i>Costo por refinería</h6>
+                    <p>Cada planta con su crudo, su transporte y su proceso, para poder compararlas. El costo por barril es lo que hace comparable una planta grande con una pequeña.</p>
+                    <div class="mo-scroll" id="moCostoRefiWrap"></div>
+                </div>
+
+                <div class="mo-bloque">
+                    <h6><i class="bi bi-signpost-2"></i>Rutas más costosas</h6>
+                    <p>Las diez rutas que más pesan en el costo logístico.</p>
+                    <div class="mo-scroll" id="moCostoRutasWrap"></div>
+                </div>
+
                 <div class="row g-3">
-                    <div class="col-lg-6">
-                        <h6 class="fw-bold small text-uppercase mb-2"><i class="bi bi-building me-1"></i>Throughput Refinerías</h6>
-                        <div class="mo-scroll" id="throughputTableWrap"></div>
-                    </div>
-                    <div class="col-lg-6">
-                        <h6 class="fw-bold small text-uppercase mb-2"><i class="bi bi-gear me-1"></i>Costos Operacionales</h6>
+                    <div class="col-lg-6 mo-bloque">
+                        <h6><i class="bi bi-gear"></i>Operación en centros de blending</h6>
+                        <p>Almacenamiento, portuaria, barcazas y demás cargos por centro.</p>
                         <div class="mo-scroll" id="costosOpTableWrap"></div>
-                        <h6 class="fw-bold small text-uppercase mb-2 mt-3"><i class="bi bi-droplet me-1"></i>Costos Op. Refinados en Blend</h6>
+                    </div>
+                    <div class="col-lg-6 mo-bloque">
+                        <h6><i class="bi bi-droplet"></i>Operación de refinados en blend</h6>
+                        <p>Cargo especial por mover producto refinado dentro del centro de mezcla.</p>
                         <div class="mo-scroll" id="costosOpRefTableWrap"></div>
                     </div>
+                </div>
+
+                <div class="mo-bloque">
+                    <h6><i class="bi bi-speedometer2"></i>Throughput de refinerías</h6>
+                    <p>Volumen procesado y tarifa unitaria de cada planta.</p>
+                    <div class="mo-scroll" id="throughputTableWrap"></div>
                 </div>
             </div>
             <!-- Composición -->
@@ -2741,7 +3029,8 @@ html.dark-mode .mo-start-head .icono {
                     </div>
                 </div>
                 <div class="row g-3">
-                    <div class="col-xl-7"><div class="mo-scroll" id="composicionTableWrap"></div></div>
+                    <div class="col-xl-7"><div class="mo-stats" id="statsComposicion"></div>
+                <div class="mo-scroll" id="composicionTableWrap"></div></div>
                     <div class="col-xl-5">
                         <div class="mo-chart-card">
                             <div class="mo-chart-kicker">Composición por Blend</div>
@@ -3178,8 +3467,7 @@ function renderDashboard(r) {
         $('#moWarningBannerSection').classList.add('d-none');
         $('#moKpiSection').classList.add('d-none');
         $('#moCommandStrip').classList.add('d-none');
-        $('#moInsightSection').classList.add('d-none');
-        $('#moTabsSection').classList.add('d-none');
+            $('#moTabsSection').classList.add('d-none');
         $('#moDownloadBtn').classList.add('d-none');
         $('#moLastRunText').innerHTML = '<i class="bi bi-clock-history"></i> Sin ejecuciones recientes';
         return;
@@ -3189,7 +3477,6 @@ function renderDashboard(r) {
     $('#moEmptyState').classList.add('d-none');
     $('#moKpiSection').classList.remove('d-none');
     $('#moCommandStrip').classList.remove('d-none');
-    $('#moInsightSection').classList.remove('d-none');
     $('#moTabsSection').classList.remove('d-none');
     $('#moDownloadBtn').classList.remove('d-none');
 
@@ -3235,17 +3522,21 @@ function renderDashboard(r) {
         costoOpRef
     };
     updateKpiHints(kpiData);
-    renderNarrativeAndSignals(r, kpiData);
 
     // Tabs
+    renderStatsTodas(r);
     renderCompras(r.compras || []);
+    renderRechazos(r.compras_rechazadas || []);
     renderVentas(r.ventas || []);
+    renderMinimos(r.minimos_venta || []);
     renderTransporte(r.transporte || []);
     renderBlending(r.blending || []);
     renderCalidad(r.calidad_blending || [], r.blending || []);
     renderWaterfall(r);
     renderComparacion(r, corridaComparada?.resultados || null, corridaComparada?.corrida || null);
     renderRefinacion(r.refinacion || []);
+    renderPlantas(r.costos_por_refineria || [], r.refinacion || []);
+    renderCostosEstructura(r);
     renderThroughput(r.throughput || []);
     renderCostosOp(r.costos_operacionales || [], r.costos_operacionales_ref || []);
     renderComposicion(r.composicion_blending || []);
@@ -3314,202 +3605,6 @@ function updateFlowStepper(statusRaw) {
         steps.logistica?.classList.add('is-active');
         steps.resultado?.classList.add('is-active');
     }
-}
-
-function renderNarrativeAndSignals(r, meta) {
-    const escenario = escHtml(($('#moEscenario')?.value || 'Escenario Base').trim() || 'Escenario Base');
-    const statusRaw = r.status || 'Sin estado';
-    const status = normalizeSolverStatus(statusRaw);
-    const statusLabel = solverStatusLabel(statusRaw);
-    const balancePct = meta.volC > 0 ? (meta.volV / meta.volC) * 100 : 0;
-    const logistPct = meta.costoTotal > 0 ? (meta.costoTransp / meta.costoTotal) * 100 : 0;
-    const spreadPct = meta.volC > 0 ? ((meta.volV - meta.volC) / meta.volC) * 100 : 0;
-
-    const topCompra = getTopItem(r.compras, row => row['Costo Total USD']);
-    const topVenta = getTopItem(r.ventas, row => row['Ingreso Con Densidad Contractual (USD)'] || row['Costo Total']);
-    const topRuta = getTopItem(r.transporte, row => row['Costo Total USD']);
-
-    const textoStatus = status === 'infeasible'
-        ? 'El solver detecta restricciones incompatibles; interpreta los números como aproximación diagnóstica.'
-        : status === 'optimal'
-            ? 'El solver encontró una configuración viable y económicamente consistente.'
-            : 'El solver devolvió una solución parcial; se recomienda revisar límites y capacidades.';
-
-    const narrativa = `Escenario ${escenario} con estado ${statusLabel}. ${textoStatus} Utilidad estimada ${fmtM(meta.utilidad)} y margen ${fmtM(meta.margen)} por barril vendido.`;
-    $('#moNarrativeSummary').textContent = narrativa;
-    const narrativaSecundaria = `Compras ${fmtI(meta.volC)} BPD vs ventas ${fmtI(meta.volV)} BPD (${fmtDeltaP(spreadPct, 1)}). Logística representa ${fmtP(logistPct, 1)} del costo total${topRuta ? ` y la ruta de mayor impacto es ${topRuta.item['Ruta'] || 'N/A'}` : ''}.`;
-    const secondaryEl = $('#moNarrativeSecondary');
-    if (secondaryEl) secondaryEl.textContent = narrativaSecundaria;
-
-    const ventasPorPunto = {};
-    (r.ventas || []).forEach(item => {
-        const punto = item['Punto de Venta'] || 'N/A';
-        ventasPorPunto[punto] = (ventasPorPunto[punto] || 0) + toNum(item['Volumen Vendido BPD']);
-    });
-    const totalVolVentas = Object.values(ventasPorPunto).reduce((sum, value) => sum + value, 0);
-    const mayorPunto = Object.entries(ventasPorPunto).sort((a, b) => b[1] - a[1])[0];
-    const concentracion = totalVolVentas > 0 && mayorPunto ? (mayorPunto[1] / totalVolVentas) * 100 : 0;
-
-    const statusClass = status === 'optimal' ? 'is-ok' : (status === 'infeasible' ? 'is-risk' : 'is-warn');
-    const balanceClass = balancePct >= 95 && balancePct <= 105 ? 'is-ok' : (balancePct >= 90 && balancePct <= 110 ? 'is-warn' : 'is-risk');
-    const priority = (() => {
-        if (status === 'infeasible') return { label: 'Recuperar factibilidad', cls: 'is-risk' };
-        if (meta.utilidad < 0) return { label: 'Elevar margen comercial', cls: 'is-risk' };
-        if (logistPct > 35) return { label: 'Reducir costo logístico', cls: 'is-warn' };
-        if (concentracion > 60) return { label: 'Diversificar puntos de venta', cls: 'is-warn' };
-        return { label: 'Escalar escenario rentable', cls: 'is-ok' };
-    })();
-
-    const storyMetrics = [
-        { label: 'Estado Solver', value: statusLabel, cls: statusClass },
-        { label: 'Utilidad Neta', value: fmtM(meta.utilidad), cls: meta.utilidad >= 0 ? 'is-ok' : 'is-risk' },
-        { label: 'Balance Compras/Ventas', value: fmtP(balancePct, 1), cls: balanceClass },
-        { label: 'Prioridad Operativa', value: priority.label, cls: priority.cls }
-    ];
-
-    const metricsEl = $('#moStoryMetrics');
-    if (metricsEl) {
-        metricsEl.innerHTML = storyMetrics.map(metric => {
-            return `<div class="mo-story-metric ${metric.cls}">
-                <span class="metric-label">${metric.label}</span>
-                <span class="metric-value">${metric.value}</span>
-            </div>`;
-        }).join('');
-    }
-
-    const storyActions = [];
-    if (status === 'infeasible') {
-        storyActions.push({
-            icon: 'bi bi-droplet-half',
-            text: 'Revisar límites de calidad en blending',
-            tab: 'tabBlending',
-            wrap: 'blendingTableWrap'
-        });
-        storyActions.push({
-            icon: 'bi bi-box-seam',
-            text: 'Validar abastecimiento y capacidades',
-            tab: 'tabCompras',
-            wrap: 'comprasTableWrap'
-        });
-    } else {
-        storyActions.push({
-            icon: 'bi bi-shop',
-            text: 'Auditar corrientes de mayor ingreso',
-            tab: 'tabVentas',
-            wrap: 'ventasTableWrap'
-        });
-        storyActions.push({
-            icon: 'bi bi-signpost-2',
-            text: 'Optimizar rutas de mayor costo',
-            tab: 'tabTransporte',
-            wrap: 'transporteTableWrap'
-        });
-    }
-
-    storyActions.push({
-        icon: 'bi bi-wallet2',
-        text: 'Revisar estructura de costos operativos',
-        tab: 'tabCostos',
-        wrap: 'costosOpTableWrap'
-    });
-
-    const actionsEl = $('#moStoryActionsList');
-    if (actionsEl) {
-        actionsEl.innerHTML = storyActions.slice(0, 3).map(action => {
-            return `<button type="button" class="mo-story-action-btn" data-mo-tab-target="${action.tab}" data-mo-wrap-target="${action.wrap}">
-                <i class="${action.icon} me-1"></i>${action.text}
-            </button>`;
-        }).join('');
-    }
-
-    const signals = [
-        {
-            level: meta.utilidad >= 0 ? 'ok' : 'risk',
-            title: 'Rentabilidad',
-            value: fmtM(meta.utilidad),
-            detail: meta.utilidad >= 0 ? 'Resultado neto positivo del día operativo.' : 'Utilidad negativa, conviene revisar mix comercial.',
-            tab: 'tabVentas',
-            wrap: 'ventasTableWrap'
-        },
-        {
-            level: balancePct >= 95 && balancePct <= 105 ? 'ok' : 'warn',
-            title: 'Balance de Volúmenes',
-            value: fmtP(balancePct, 1),
-            detail: 'Relación entre volumen vendido y comprado para el escenario.',
-            tab: 'tabCompras',
-            wrap: 'comprasTableWrap'
-        },
-        {
-            level: concentracion > 60 ? 'risk' : 'ok',
-            title: 'Concentración de Ventas',
-            value: mayorPunto ? `${fmtP(concentracion, 1)} en ${escHtml(mayorPunto[0])}` : 'Sin datos',
-            detail: 'Detecta dependencia excesiva de un punto de venta.',
-            tab: 'tabVentas',
-            wrap: 'ventasTableWrap'
-        },
-        {
-            level: logistPct > 35 ? 'warn' : 'ok',
-            title: 'Costo Logístico',
-            value: fmtP(logistPct, 1),
-            detail: 'Porcentaje de logística sobre el costo total del sistema.',
-            tab: 'tabTransporte',
-            wrap: 'transporteTableWrap'
-        }
-    ];
-
-    if (topCompra) {
-        signals.push({
-            level: 'warn',
-            title: 'Compra de Mayor Impacto',
-            value: `${escHtml(topCompra.item['Crudo o Producto'] || 'N/A')} · ${fmtM(topCompra.value)}`,
-            detail: 'Producto con mayor peso económico en abastecimiento.',
-            tab: 'tabCompras',
-            wrap: 'comprasTableWrap'
-        });
-    }
-    if (topVenta) {
-        signals.push({
-            level: 'ok',
-            title: 'Fuente Principal de Ingreso',
-            value: `${escHtml(renameBlendLabel(topVenta.item['Corriente Venta'] || 'N/A'))} · ${fmtM(topVenta.value)}`,
-            detail: 'Corriente comercial más relevante para ingresos.',
-            tab: 'tabVentas',
-            wrap: 'ventasTableWrap'
-        });
-    }
-    if (topRuta) {
-        signals.push({
-            level: 'warn',
-            title: 'Ruta Más Costosa',
-            value: `${escHtml(topRuta.item['Ruta'] || 'N/A')} · ${fmtM(topRuta.value)}`,
-            detail: 'Ruta logística con mayor costo acumulado.',
-            tab: 'tabTransporte',
-            wrap: 'transporteTableWrap'
-        });
-    }
-    if (status === 'infeasible') {
-        signals.unshift({
-            level: 'risk',
-            title: 'Alerta de Viabilidad',
-            value: 'Escenario Inviable',
-            detail: 'Revisa límites de calidad y capacidad para recuperar factibilidad.',
-            tab: 'tabBlending',
-            wrap: 'blendingTableWrap'
-        });
-    }
-
-    $('#moSignalList').innerHTML = signals.slice(0, 4).map(signal => {
-        return `<button type="button" class="mo-signal-item mo-signal-${signal.level}" data-mo-tab-target="${signal.tab}" data-mo-wrap-target="${signal.wrap}">
-            <span class="mo-signal-title">${signal.title}</span>
-            <strong>${signal.value}</strong>
-            <small>${signal.detail}</small>
-        </button>`;
-    }).join('');
-
-    setMiniGauge('moGaugeBalance', 'moGaugeBalanceBar', balancePct);
-    setMiniGauge('moGaugeLogistica', 'moGaugeLogisticaBar', logistPct);
-    updateFlowStepper(statusRaw);
-    $('#moLastRunText').innerHTML = `<i class="bi bi-clock-history"></i> ${new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' })}`;
 }
 
 /* ═══════════════ TABLE BUILDERS ═══════════════ */
@@ -3986,6 +4081,393 @@ document.addEventListener('click', async (ev) => {
     a.remove();
     URL.revokeObjectURL(url);
 });
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Lo que el modelo NO compro, con el motivo
+   ══════════════════════════════════════════════════════════════════ */
+function claseMotivo(motivo) {
+    const m = String(motivo || '').toLowerCase();
+    if (m.startsWith('sin volumen')) return ['sinvol', 'Sin volumen'];
+    if (m.startsWith('sin ruta')) return ['sinruta', 'Sin ruta'];
+    if (m.startsWith('empata')) return ['empata', 'Empata'];
+    return ['caro', 'Precio'];
+}
+
+function renderRechazos(data) {
+    const box = $('#moRechazosBox');
+    if (!box) return;
+    if (!data || !data.length) { box.classList.add('d-none'); return; }
+    box.classList.remove('d-none');
+
+    // Los que tienen volumen disponible son los unicos rechazos de verdad:
+    // el resto simplemente no tenia nada que comprar.
+    const conVolumen = data.filter(d => (toNum(d['Volumen Disponible BPD']) || 0) > 0);
+    $('#moRechazosCount').textContent =
+        `${data.length} sin comprar · ${conVolumen.length} con volumen disponible`;
+
+    const headers = [
+        {label: 'Crudo / Producto', align: 'left'},
+        {label: 'Origen', align: 'left'},
+        {label: 'Motivo', align: 'left'},
+        {label: 'Disponible BPD', align: 'right'},
+        {label: 'Precio actual USD/BBL', align: 'right'},
+        {label: 'Entraría a USD/BBL', align: 'right'},
+        {label: 'Diferencia', align: 'right'},
+    ];
+    const rows = data.map(d => {
+        const [cls, corto] = claseMotivo(d['Motivo']);
+        const entra = d['Precio que lo haría entrar USD/BBL'] ?? d['Precio que lo haria entrar USD/BBL'];
+        const brecha = toNum(d['Brecha USD/BBL']);
+        return [
+            d['Crudo o Producto'],
+            d['Origen'],
+            `<span class="mo-motivo ${cls}" title="${escHtml(d['Motivo'] || '')}">${corto}</span>`,
+            fmtN(d['Volumen Disponible BPD'], 1),
+            fmtM(d['Precio Compra USD/BBL']),
+            entra == null ? '—' : fmtM(entra),
+            (brecha && brecha > 0.0001) ? `−${fmtM(brecha)}` : '—',
+        ];
+    });
+    $('#moRechazosWrap').innerHTML = buildTable(headers, rows);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Compromisos minimos de entrega
+   ══════════════════════════════════════════════════════════════════ */
+function renderMinimos(data) {
+    const box = $('#moMinimosBox');
+    if (!box) return;
+    if (!data || !data.length) { box.classList.add('d-none'); return; }
+    box.classList.remove('d-none');
+
+    const fallan = data.filter(d => !d['Cumple']).length;
+    $('#moMinimosCount').textContent = fallan
+        ? `${fallan} de ${data.length} sin cumplir`
+        : `${data.length} cumplidos`;
+
+    $('#moMinimosWrap').innerHTML = data.map(d => {
+        const exigido = toNum(d['Minimo Exigido BPD']) || 0;
+        const entregado = toNum(d['Entregado BPD']) || 0;
+        const falta = toNum(d['Faltante BPD']) || 0;
+        const pct = exigido > 0 ? Math.min(100, (entregado / exigido) * 100) : 100;
+        const ok = d['Cumple'];
+        return `
+        <div class="mo-min ${ok ? '' : 'falla'}">
+            <div class="mo-min-top">
+                <span class="mo-min-nombre">${renameBlendLabel(d['Mezcla'])}</span>
+                <span class="mo-min-sub">${ok ? 'Cumple' : 'No alcanza'}</span>
+            </div>
+            <div class="mo-min-sub">${d['Punto de Venta'] || ''}${d['Tipo de Venta'] ? ' · ' + d['Tipo de Venta'] : ''}</div>
+            <div class="mo-min-bar"><i style="width:${pct}%"></i></div>
+            <div class="mo-min-cifras">
+                <span>exigido <b>${fmtN(exigido, 0)}</b></span>
+                <span>entregado <b>${fmtN(entregado, 1)}</b></span>
+                ${ok ? '' : `<span>faltan <b class="falta">${fmtN(falta, 1)}</b></span>`}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   Franja de cifras por pestaña
+   Cada vista abre con lo suyo, en vez de repetir los KPI de arriba.
+   ══════════════════════════════════════════════════════════════════ */
+function pintarStats(id, items) {
+    const cont = document.getElementById(id);
+    if (!cont) return;
+    const vivos = items.filter(Boolean);
+    if (!vivos.length) { cont.innerHTML = ''; return; }
+    cont.innerHTML = vivos.map(it => `
+        <div class="mo-stat ${it.tono || ''}">
+            <span class="k">${it.k}</span>
+            <span class="v">${it.v}${it.u ? `<span class="u">${it.u}</span>` : ''}</span>
+        </div>`).join('');
+}
+
+const distintos = (filas, campo) => new Set((filas || [])
+    .map(f => String(f[campo] ?? '')).filter(Boolean)).size;
+
+function renderStatsTodas(r) {
+    const compras = r.compras || [];
+    const ventas = r.ventas || [];
+    const transporte = r.transporte || [];
+    const blending = r.blending || [];
+    const refinacion = r.refinacion || [];
+    const throughput = r.throughput || [];
+    const composicion = r.composicion_blending || [];
+    const calidad = r.calidad_blending || [];
+
+    // ── Compras ──
+    const volC = sumCol(compras, 'Volumen Comprado BPD');
+    const costoC = sumCol(compras, 'Costo Total USD');
+    const rechazados = (r.compras_rechazadas || []);
+    const rechConVol = rechazados.filter(x => (toNum(x['Volumen Disponible BPD']) || 0) > 0).length;
+    pintarStats('statsCompras', [
+        { k: 'Volumen comprado', v: fmtN(volC, 0), u: 'BPD' },
+        { k: 'Costo total', v: fmtM(costoC), tono: 'alerta' },
+        { k: 'Precio promedio', v: fmtM(volC ? costoC / volC : 0), u: '/bbl' },
+        { k: 'Orígenes activos', v: distintos(compras, 'Origen') },
+        rechazados.length ? { k: 'Sin comprar', v: rechazados.length,
+                              u: rechConVol ? `· ${rechConVol} con volumen` : '',
+                              tono: rechConVol ? 'aviso' : '' } : null,
+    ]);
+
+    // ── Ventas ──
+    const volV = sumCol(ventas, 'Volumen Vendido BPD');
+    const colDen = colDensidad(ventas);
+    const ingV = sumCol(ventas, 'Costo Total') + (colDen ? sumCol(ventas, colDen) : 0);
+    const minimos = r.minimos_venta || [];
+    const incumplidos = minimos.filter(m => !m['Cumple']).length;
+    pintarStats('statsVentas', [
+        { k: 'Volumen vendido', v: fmtN(volV, 0), u: 'BPD' },
+        { k: 'Ingreso total', v: fmtM(ingV), tono: 'acento' },
+        { k: 'Precio promedio', v: fmtM(volV ? ingV / volV : 0), u: '/bbl' },
+        { k: 'Puntos de venta', v: distintos(ventas, 'Punto de Venta') },
+        minimos.length ? { k: 'Compromisos mínimos',
+                           v: `${minimos.length - incumplidos}/${minimos.length}`,
+                           u: 'cumplidos', tono: incumplidos ? 'alerta' : '' } : null,
+    ]);
+
+    // ── Transporte ──
+    const volT = sumCol(transporte, 'Volumen Transportado BPD');
+    const costoT = sumCol(transporte, 'Costo Total USD');
+    const rutasCaras = transporte.slice().sort(
+        (a, b) => (toNum(b['Costo Total USD']) || 0) - (toNum(a['Costo Total USD']) || 0))[0];
+    pintarStats('statsTransporte', [
+        { k: 'Rutas activas', v: transporte.length },
+        { k: 'Volumen movido', v: fmtN(volT, 0), u: 'BPD' },
+        { k: 'Costo total', v: fmtM(costoT), tono: 'alerta' },
+        { k: 'Tarifa promedio', v: fmtM(volT ? costoT / volT : 0), u: '/bbl' },
+        rutasCaras ? { k: 'Ruta más cara', v: fmtM(rutasCaras['Costo Total USD']),
+                       u: `· ${rutasCaras['Destino'] || ''}` } : null,
+    ]);
+
+    // ── Blending ──
+    const volB = sumCol(blending, 'Volumen BPD');
+    const activas = calidad.filter(c => c.Estado === 'ACTIVA').length;
+    const fuera = calidad.filter(c => c.Estado === 'FUERA').length;
+    pintarStats('statsBlending', [
+        { k: 'Mezclas producidas', v: blending.length },
+        { k: 'Volumen total', v: fmtN(volB, 0), u: 'BPD' },
+        { k: 'Propiedades evaluadas', v: calidad.length },
+        { k: 'Restricciones activas', v: activas, tono: activas ? 'aviso' : '' },
+        { k: 'Fuera de especificación', v: fuera, tono: fuera ? 'alerta' : '' },
+    ]);
+
+    // ── Refinación ──
+    const volR = sumCol(refinacion, 'Volumen Producido BPD');
+    const costoR = sumCol(throughput, 'Costo Total USD');
+    const tputR = sumCol(throughput, 'Throughput Refineria BPD');
+    pintarStats('statsRefinacion', [
+        { k: 'Plantas activas', v: throughput.length },
+        { k: 'Throughput total', v: fmtN(tputR, 0), u: 'BPD' },
+        { k: 'Productos obtenidos', v: distintos(refinacion, 'Producto Refinado') },
+        { k: 'Volumen producido', v: fmtN(volR, 0), u: 'BPD' },
+        { k: 'Costo de refinación', v: fmtM(costoR), tono: 'alerta' },
+    ]);
+
+    // ── Costos ──
+    const cOp = sumCol(r.costos_operacionales, 'Costo Total USD');
+    const cOpRef = sumCol(r.costos_operacionales_ref, 'Costo Total USD');
+    const cTotal = costoC + costoT + costoR + cOp + cOpRef;
+    pintarStats('statsCostos', [
+        { k: 'Costo total', v: fmtM(cTotal), tono: 'alerta' },
+        { k: 'Compras', v: fmtP(cTotal ? (costoC / cTotal) * 100 : 0) },
+        { k: 'Transporte', v: fmtP(cTotal ? (costoT / cTotal) * 100 : 0) },
+        { k: 'Refinación', v: fmtP(cTotal ? (costoR / cTotal) * 100 : 0) },
+        { k: 'Operación', v: fmtP(cTotal ? ((cOp + cOpRef) / cTotal) * 100 : 0) },
+    ]);
+
+    // ── Composición ──
+    const volComp = sumCol(composicion, 'Volumen a Blending BPD');
+    pintarStats('statsComposicion', [
+        { k: 'Mezclas', v: distintos(composicion, 'Blend') },
+        { k: 'Componentes distintos', v: distintos(composicion, 'Crudo/Refinado') },
+        { k: 'Volumen a blending', v: fmtN(volComp, 0), u: 'BPD' },
+        { k: 'Centros', v: distintos(composicion, 'Centro de Operacion') },
+    ]);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   REFINACIÓN: una tarjeta por planta
+   Antes todos los productos iban en una tabla y no se distinguia
+   que salia de Cartagena y que de Madrid.
+   ══════════════════════════════════════════════════════════════════ */
+function renderPlantas(porRefineria, refinacion) {
+    const cont = $('#moPlantasWrap');
+    if (!cont) return;
+    if (!porRefineria || !porRefineria.length) { cont.innerHTML = ''; return; }
+
+    cont.innerHTML = porRefineria.map(p => {
+        const planta = p['Refineria'];
+        const suyos = (refinacion || []).filter(
+            x => String(x['Planta de Refinacion']) === String(planta));
+        const volTotal = suyos.reduce((a, b) => a + (toNum(b['Volumen Producido BPD']) || 0), 0);
+
+        const filas = suyos
+            .slice()
+            .sort((a, b) => (toNum(b['Volumen Producido BPD']) || 0) - (toNum(a['Volumen Producido BPD']) || 0))
+            .map(x => {
+                const v = toNum(x['Volumen Producido BPD']) || 0;
+                const pct = volTotal ? (v / volTotal) * 100 : 0;
+                return `<tr>
+                    <td>${x['Producto Refinado']}</td>
+                    <td>${x['Crudo Origen']}</td>
+                    <td class="text-end">${fmtN(v, 1)}</td>
+                    <td style="width:26%">
+                        <div class="mo-costo-track"><i style="width:${pct}%;background:var(--mo-primary)"></i></div>
+                    </td>
+                    <td class="text-end">${fmtP(pct)}</td>
+                </tr>`;
+            }).join('');
+
+        const cifra = (k, v) => `<div class="mo-planta-cifra"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+
+        return `
+        <div class="mo-planta">
+            <div class="mo-planta-head">
+                <span class="mo-planta-nombre"><i class="bi bi-building-fill"></i>${planta}</span>
+                <span class="mo-planta-unit">
+                    <b>${fmtM(p['Costo USD por BBL'])}</b>
+                    <span>por barril procesado</span>
+                </span>
+            </div>
+            <div class="mo-planta-cifras">
+                ${cifra('Throughput', fmtN(p['Throughput BPD'], 0) + ' BPD')}
+                ${cifra('Costo crudo', fmtM(p['Costo Crudo USD']))}
+                ${cifra('Transporte entrada', fmtM(p['Transporte Entrada USD']))}
+                ${cifra('Transporte salida', fmtM(p['Transporte Salida USD']))}
+                ${cifra('Refinación', fmtM(p['Costo Refinacion USD']))}
+                ${cifra('Costo total', fmtM(p['Costo Total USD']))}
+            </div>
+            <div class="mo-planta-carga">
+                Carga: <b>${(p['Crudos Cargados'] || []).join(', ') || '—'}</b>
+                &nbsp;·&nbsp; produce <b>${suyos.length}</b> corriente${suyos.length === 1 ? '' : 's'}
+                por <b>${fmtN(volTotal, 1)}</b> BPD
+            </div>
+            <div class="mo-planta-cuerpo">
+                <table class="table table-sm table-hover mo-table">
+                    <thead><tr>
+                        <th>Producto</th><th>Crudo origen</th>
+                        <th class="text-end">Volumen BPD</th><th>Participación</th>
+                        <th class="text-end">%</th>
+                    </tr></thead>
+                    <tbody>${filas}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   COSTOS: desglose por concepto, por planta y por ruta
+   ══════════════════════════════════════════════════════════════════ */
+function renderCostosEstructura(r) {
+    const compras = sumCol(r.compras, 'Costo Total USD');
+    const transporte = sumCol(r.transporte, 'Costo Total USD');
+    const refinacion = sumCol(r.throughput, 'Costo Total USD');
+    const op = sumCol(r.costos_operacionales, 'Costo Total USD');
+    const opRef = sumCol(r.costos_operacionales_ref, 'Costo Total USD');
+    const total = compras + transporte + refinacion + op + opRef;
+
+    // ── Desglose por concepto ──
+    const conceptos = [
+        { et: 'Compras de crudo', icono: 'bi-cart3', v: compras, color: 'var(--mo-rose)' },
+        { et: 'Transporte', icono: 'bi-signpost-2', v: transporte, color: 'var(--mo-amber)' },
+        { et: 'Refinación', icono: 'bi-building', v: refinacion, color: 'var(--mo-indigo)' },
+        { et: 'Operación blending', icono: 'bi-gear', v: op, color: 'var(--mo-cyan)' },
+        { et: 'Operación refinados', icono: 'bi-droplet', v: opRef, color: 'var(--mo-purple)' },
+    ].filter(c => Math.abs(c.v) > 0.005);
+
+    const maxV = Math.max(...conceptos.map(c => c.v), 1);
+    const cont = $('#moCostoDesglose');
+    if (cont) {
+        cont.innerHTML = conceptos.map(c => `
+            <div class="mo-costo-linea">
+                <span class="et"><i class="bi ${c.icono}"></i>${c.et}</span>
+                <div class="mo-costo-track"><i style="width:${(c.v / maxV) * 100}%;background:${c.color}"></i></div>
+                <span class="mt">${fmtM(c.v)}</span>
+                <span class="pc">${fmtP(total ? (c.v / total) * 100 : 0)}</span>
+            </div>`).join('') + `
+            <div class="mo-costo-linea" style="border-top:2px solid var(--mo-border);margin-top:4px">
+                <span class="et"><i class="bi bi-calculator"></i><strong>Costo total</strong></span>
+                <div></div>
+                <span class="mt">${fmtM(total)}</span>
+                <span class="pc">100%</span>
+            </div>`;
+    }
+
+    // ── Por refinería ──
+    const porRef = r.costos_por_refineria || [];
+    if (porRef.length) {
+        const headers = [
+            {label: 'Refinería', align: 'left'},
+            {label: 'Throughput BPD', align: 'right'},
+            {label: 'Crudo cargado BPD', align: 'right'},
+            {label: 'Costo crudo', align: 'right'},
+            {label: 'Transp. entrada', align: 'right'},
+            {label: 'Transp. salida', align: 'right'},
+            {label: 'Refinación', align: 'right'},
+            {label: 'Costo total', align: 'right'},
+            {label: 'USD por barril', align: 'right'},
+        ];
+        const rows = porRef.map(p => [
+            p['Refineria'],
+            fmtN(p['Throughput BPD'], 0),
+            fmtN(p['Crudo Cargado BPD'], 0),
+            fmtM(p['Costo Crudo USD']),
+            fmtM(p['Transporte Entrada USD']),
+            fmtM(p['Transporte Salida USD']),
+            fmtM(p['Costo Refinacion USD']),
+            `<strong>${fmtM(p['Costo Total USD'])}</strong>`,
+            `<strong>${fmtM(p['Costo USD por BBL'])}</strong>`,
+        ]);
+        const t = (c) => sumCol(porRef, c);
+        const footer = ['<strong>TOTAL</strong>',
+            `<strong>${fmtN(t('Throughput BPD'), 0)}</strong>`,
+            `<strong>${fmtN(t('Crudo Cargado BPD'), 0)}</strong>`,
+            `<strong>${fmtM(t('Costo Crudo USD'))}</strong>`,
+            `<strong>${fmtM(t('Transporte Entrada USD'))}</strong>`,
+            `<strong>${fmtM(t('Transporte Salida USD'))}</strong>`,
+            `<strong>${fmtM(t('Costo Refinacion USD'))}</strong>`,
+            `<strong>${fmtM(t('Costo Total USD'))}</strong>`, ''];
+        $('#moCostoRefiWrap').innerHTML = buildTable(headers, rows, footer);
+    } else {
+        $('#moCostoRefiWrap').innerHTML = emptyMsg('refinerías');
+    }
+
+    // ── Rutas más costosas ──
+    const rutas = (r.transporte || [])
+        .filter(x => (toNum(x['Costo Total USD']) || 0) > 0.005)
+        .sort((a, b) => (toNum(b['Costo Total USD']) || 0) - (toNum(a['Costo Total USD']) || 0))
+        .slice(0, 10);
+    if (rutas.length) {
+        const maxR = toNum(rutas[0]['Costo Total USD']) || 1;
+        const headers = [
+            {label: 'Flujo', align: 'left'},
+            {label: 'Origen', align: 'left'},
+            {label: 'Destino', align: 'left'},
+            {label: 'Ruta', align: 'left'},
+            {label: 'Volumen BPD', align: 'right'},
+            {label: 'Tarifa USD/BBL', align: 'right'},
+            {label: 'Costo', align: 'right'},
+            {label: 'Peso', align: 'left'},
+        ];
+        const rows = rutas.map(x => [
+            x['Flujo'], x['Origen'], x['Destino'], x['Ruta'],
+            fmtN(x['Volumen Transportado BPD'], 1),
+            fmtM(x['Costo de transporte USD/BBL']),
+            fmtM(x['Costo Total USD']),
+            `<div class="mo-costo-track"><i style="width:${((toNum(x['Costo Total USD']) || 0) / maxR) * 100}%;background:var(--mo-amber)"></i></div>`,
+        ]);
+        $('#moCostoRutasWrap').innerHTML = buildTable(headers, rows);
+    } else {
+        $('#moCostoRutasWrap').innerHTML = emptyMsg('rutas con costo');
+    }
+}
 
 /* ── COMPRAS ── */
 function renderCompras(data) {

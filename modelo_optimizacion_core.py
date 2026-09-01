@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pulp import *
+import re
 import pandas as pd
 import openpyxl
 import numpy as np
@@ -37,8 +38,99 @@ def sanitize_nans(obj):
             
         return obj
 
-def ejecutar_modelo(excel_path: str) -> dict:
-    """Runs the linear programming model and returns KPIs and tables of results."""
+# Las 12 hojas que el modelo consume, en el orden en que se declaran.
+HOJAS_MODELO = [
+    '1.NODOS', '2.FLUJOS', '3.COMPRAS', '4.RUTAS_TRANSPORTE',
+    '5.CURVA_DESTILACION', '6.VENTAS', '7.COSTOS_REFINACION',
+    '8.LIMITES_CALIDAD', '9.FLASH_RESTR', '10.CVC',
+    '11.REL_CRUDO_MEZCLA', '12.COSTOS_OPERACIONALES',
+]
+
+
+# Nombre de la columna opcional con el compromiso minimo de entrega.
+COL_MIN_VENTA = 'Volumen Minimo a Venta (BPD)'
+
+# Penalizacion por cada barril que falte para cumplir un minimo. Debe superar
+# con holgura cualquier margen unitario del problema (los precios andan por
+# 100 USD/bbl) para que el modelo solo incumpla cuando es realmente imposible,
+# pero sin llegar a magnitudes que le den problemas numericos al solver.
+PENALIZACION_MIN_VENTA = 10000.0
+
+
+def _norm_encabezado(texto):
+    """Normaliza un encabezado: sin tildes, sin espacios de mas, en mayusculas."""
+    import unicodedata
+    t = unicodedata.normalize('NFKD', str(texto or ''))
+    t = ''.join(c for c in t if not unicodedata.combining(c))
+    return re.sub(r'\s+', ' ', t).strip().upper()
+
+
+def _minimo_venta(df, clave):
+    """Minimo exigido para una fila de ventas; 0 si la columna no existe.
+
+    El encabezado se busca sin tildes ni espacios de mas: escribir
+    "Volumen Mínimo a Venta (BPD)" en Excel funciona igual.
+    """
+    objetivo = _norm_encabezado(COL_MIN_VENTA)
+    col = next((c for c in df.columns
+                if _norm_encabezado(c) == objetivo), None)
+    if col is None:
+        return 0.0
+    try:
+        v = float(df.loc[clave, col])
+    except (KeyError, TypeError, ValueError):
+        return 0.0
+    return v if v == v and v > 0 else 0.0   # v == v descarta NaN
+
+
+def _cargar_hojas(fuente):
+    """Normaliza la entrada del modelo a {hoja: DataFrame}.
+
+    `fuente` puede ser la ruta de un .xlsx (como siempre) o un diccionario de
+    tablas ya cargadas. Lo segundo permite alimentar el solver directamente
+    desde los datos de la pagina, sin que exista ningun archivo de por medio.
+    """
+    if isinstance(fuente, dict):
+        faltan = [h for h in HOJAS_MODELO if h not in fuente]
+        if faltan:
+            raise ValueError('Faltan hojas en los datos del modelo: ' + ', '.join(faltan))
+        # Las celdas vacias deben llegar como NaN, no como ''. Al pasar por Excel
+        # eso ocurria solo (openpyxl escribe None), pero alimentando las tablas
+        # directamente hay que normalizarlo o los .loc numericos revientan con
+        # "could not convert string to float: ''".
+        hojas = {}
+        for h in HOJAS_MODELO:
+            df = fuente[h].copy()
+            obj = df.columns[df.dtypes == object]
+            if len(obj):
+                df[obj] = df[obj].replace(r'^\s*$', np.nan, regex=True)
+            hojas[h] = df
+        return hojas
+
+    xls = pd.ExcelFile(fuente)
+    return {h: pd.read_excel(xls, sheet_name=h) for h in HOJAS_MODELO}
+
+
+def _hoja(hojas, nombre, index_col=None, usecols=None):
+    """Una hoja con el mismo shape que daria pd.read_excel con esos argumentos.
+
+    `index_col` y `usecols` son POSICIONES de columna, igual que en el codigo
+    original, para no depender de los encabezados (que traen espacios dobles).
+    """
+    df = hojas[nombre].copy()
+    if usecols is not None:
+        df = df[[df.columns[i] for i in usecols]]
+    if index_col is not None:
+        df = df.set_index([df.columns[i] for i in index_col])
+    return df
+
+
+def ejecutar_modelo(fuente) -> dict:
+    """Corre el modelo LP y devuelve los KPIs y las tablas de resultados.
+
+    `fuente`: ruta de un .xlsx, o {hoja: DataFrame} con las 12 hojas del modelo.
+    """
+    hojas = _cargar_hojas(fuente)
     
     'Parte 1: Importacion de datos'
     
@@ -49,7 +141,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
     
     
     #Indexar vectores de nodos
-    nodos = pd.read_excel(excel_path,sheet_name='1.NODOS')
+    nodos = _hoja(hojas, '1.NODOS')
     nodosb = nodos[['NOMBRE DEL NODO','TIPO DE NODO']]
     
     nodos_origen= nodosb[(nodosb['TIPO DE NODO'] == "ORIGEN") ]
@@ -67,7 +159,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
     nodos_est= nodosb[(nodosb['TIPO DE NODO'] == "ESTACION") ]
     nodos_est.set_index(['NOMBRE DEL NODO'],inplace=True)
     
-    flujos = pd.read_excel(excel_path,sheet_name='2.FLUJOS')
+    flujos = _hoja(hojas, '2.FLUJOS')
     flujosb =  flujos[['FLUJO','TIPO DE FLUJO']]
     
     flujo_compras= flujosb[(flujosb['TIPO DE FLUJO'] == "CRUDO")  + (flujosb['TIPO DE FLUJO'] == "PRODUCTO COMPRADO")]
@@ -79,7 +171,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
     flujo_mezcla= flujosb[(flujosb['TIPO DE FLUJO'] == "MEZCLA A VENTA")]
     flujo_mezcla.set_index(['FLUJO'],inplace=True)
     
-    vector = pd.read_excel(excel_path,sheet_name='4.RUTAS_TRANSPORTE', usecols="I")
+    vector = _hoja(hojas, '4.RUTAS_TRANSPORTE', usecols=[8])
     #vectortt  = vector[['RUTA DE TRANSPORTE']]
     vectort= vector.drop_duplicates('RUTA DE TRANSPORTE')
     vectort.set_index('RUTA DE TRANSPORTE', inplace=True)
@@ -90,16 +182,16 @@ def ejecutar_modelo(excel_path: str) -> dict:
     
     
     #Indexa y crea la tupla: Crudo o producto comprado i en el centro c
-    Compras = pd.read_excel(excel_path,sheet_name='3.COMPRAS',index_col=[0,2])
+    Compras = _hoja(hojas, '3.COMPRAS', index_col=[0, 2])
     
     
-    Compras1 = pd.read_excel(excel_path,sheet_name='3.COMPRAS',index_col=[0])
+    Compras1 = _hoja(hojas, '3.COMPRAS', index_col=[0])
     Compras1 
     
     '____________________________________________________________________________________________________________________________________________'
     
     'CREACION DE SETS de Transporte para crudos y productos comprados'
-    Rutasbase = pd.read_excel(excel_path,sheet_name='4.RUTAS_TRANSPORTE')
+    Rutasbase = _hoja(hojas, '4.RUTAS_TRANSPORTE')
     Rutasbase
     
     #SETTranspi_c_b_t SETTransp Sets Crudo o producto comprado i que viaja del origen c al centro de blending b en el medio de transporte t.
@@ -199,7 +291,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
     '____________________________________________________________________________________________________________________________________________'
     
     'SETS de Pertenencia de Crudo-PuntodeBlending-Mezcla'
-    RELA = pd.read_excel(excel_path,sheet_name='11.REL_CRUDO_MEZCLA')
+    RELA = _hoja(hojas, '11.REL_CRUDO_MEZCLA')
     
     SETCrudoBlend_i_b = RELA[(RELA['TIPO FLUJO'] == "CRUDO") + (RELA['TIPO FLUJO'] == "PRODUCTO COMPRADO")]
     SETCrudoBlend_i_b.set_index(['FLUJO','DESTINO'], inplace=True)
@@ -238,7 +330,7 @@ def ejecutar_modelo(excel_path: str) -> dict:
     
     '   CREACION DE SETS DE VENTAS'
     
-    Ventas = pd.read_excel(excel_path,sheet_name='6.VENTAS')
+    Ventas = _hoja(hojas, '6.VENTAS')
     Ventas
     
     
@@ -274,11 +366,11 @@ def ejecutar_modelo(excel_path: str) -> dict:
     
     
     'SET GLOBAL DE  Blend m producido en centro blending b'
-    SETBlendGlobalm_b= pd.read_excel(excel_path,sheet_name='8.LIMITES_CALIDAD')
+    SETBlendGlobalm_b= _hoja(hojas, '8.LIMITES_CALIDAD')
     SETBlendGlobalm_b.set_index(['MEZCLA' , 'CENTRO DE BLENDING'], inplace=True)
     
     
-    Blends= pd.read_excel(excel_path,sheet_name='8.LIMITES_CALIDAD')
+    Blends= _hoja(hojas, '8.LIMITES_CALIDAD')
     SUBSET_DENS_BlendGlobalm_b = Blends[(Blends['VENTA DENSIDAD'] == "DEN")]
     SUBSET_DENS_BlendGlobalm_b.set_index(['MEZCLA' , 'CENTRO DE BLENDING'], inplace=True)
     
@@ -287,26 +379,26 @@ def ejecutar_modelo(excel_path: str) -> dict:
     
     ' LECTURA DE PARAMETROS'
     #Indexa y crea la tupla: Mezcla producida m en el centro de blend b
-    LimitesCALIDADES = pd.read_excel(excel_path,sheet_name='8.LIMITES_CALIDAD',index_col=[0,1])
+    LimitesCALIDADES = _hoja(hojas, '8.LIMITES_CALIDAD', index_col=[0, 1])
     LimitesCALIDADES
     
     
     #Indexa sobre la tupla: Producto  refinado p del crudo i
-    CurvaDestilacion= pd.read_excel(excel_path,sheet_name='5.CURVA_DESTILACION',index_col=[0,1])
+    CurvaDestilacion= _hoja(hojas, '5.CURVA_DESTILACION', index_col=[0, 1])
     #Indexa y crea  la tupla: planta de refinacion r
-    CostosRef= pd.read_excel(excel_path,sheet_name='7.COSTOS_REFINACION',index_col=[0])
-    CostosOPERA= pd.read_excel(excel_path,sheet_name='12.COSTOS_OPERACIONALES',index_col=[0])
+    CostosRef= _hoja(hojas, '7.COSTOS_REFINACION', index_col=[0])
+    CostosOPERA= _hoja(hojas, '12.COSTOS_OPERACIONALES', index_col=[0])
     
     '________'
     ' SET DE FLASH POINT'
-    SETCRUDOBLENDFLASHi_b= pd.read_excel(excel_path,sheet_name='9.FLASH_RESTR',index_col=[0,3])
+    SETCRUDOBLENDFLASHi_b= _hoja(hojas, '9.FLASH_RESTR', index_col=[0, 3])
     
     '__________________________________________________________________________'
     
     '    CREACION SETS PARA CVC '
     
     ' SET DE CVC PARA CRUDOS'
-    datacvc= pd.read_excel(excel_path,sheet_name='10.CVC')
+    datacvc= _hoja(hojas, '10.CVC')
     SETCVCCRUDOi_b_m= datacvc[(datacvc['TIPO FLUJO'] == "CRUDO") + (datacvc['TIPO FLUJO'] == "PRODUCTO COMPRADO") ]
     SETCVCCRUDOi_b_m.set_index(['FLUJO','DESTINO','MEZCLA A PERTENECER'], inplace=True)
     
@@ -654,6 +746,44 @@ def ejecutar_modelo(excel_path: str) -> dict:
     for m, z in SETVentaGlobalm_z.index:
         Maxdisponibled = SETVentaGlobalm_z.loc[(m,z),'Volumen Maximo a Venta (Si aplica)  (BPD)']
         Utilidad += ( Mm_z[(m, z)] <= Maxdisponibled )
+
+    'ii-b) Compromiso MINIMO de entrega por mezcla y punto de venta (elastico).'
+    # Cada tipo de venta se modela con una variable distinta, y el minimo tiene
+    # que apuntar a la que realmente lleva ese volumen:
+    #   venta normal          -> Mm_z  (mezcla vendida en el punto de venta)
+    #   venta CVC             -> MCVCm_z
+    #   venta formula densidad-> Mm_b  (la venta se liquida sobre lo producido
+    #                                   en el centro de blending, no sobre Mm_z)
+    # Apuntar a la variable equivocada haria que el minimo no se cumpla nunca.
+    #
+    # La holgura permite incumplir, pero cuesta PENALIZACION_MIN_VENTA por barril,
+    # asi que el solver solo la usa cuando cumplir es imposible. A cambio el
+    # modelo nunca responde "Inviable" por un minimo: dice cuanto falto y donde.
+    compromisos_min = []
+    for _conjunto, _variable, _tipo in (
+            (SUBSETVentaNormalm_z, Mm_z, 'venta directa'),
+            (SUBSETVentaCVCm_z, MCVCm_z, 'venta CVC'),
+            (SUBSETVentaDENm_b, Mm_b, 'venta por formula de densidad')):
+        for clave in _conjunto.index:
+            minimo = _minimo_venta(_conjunto, clave)
+            if minimo <= 0 or clave not in _variable:
+                continue
+            compromisos_min.append({
+                'clave': clave, 'minimo': minimo,
+                'var': _variable[clave], 'tipo': _tipo,
+            })
+
+    FaltanteMin = pulp.LpVariable.dicts(
+        "FaltanteMinimo", (n for n in range(len(compromisos_min))), 0, cat='Continuous')
+
+    for n, comp in enumerate(compromisos_min):
+        Utilidad += ( comp['var'] + FaltanteMin[n] >= comp['minimo'] )
+
+    if compromisos_min:
+        # OJO: `Utilidad += expresion` REEMPLAZA la funcion objetivo en PuLP.
+        # La penalizacion hay que sumarla al objetivo existente.
+        Utilidad.objective += pulp.lpSum(
+            [(-1) * PENALIZACION_MIN_VENTA * FaltanteMin[n] for n in range(len(compromisos_min))])
         
     'iii) Demanda de productos refinados a venta. Limite maximo de venta'
     for p, i, z  in SETVentap_i_z.index: 
@@ -1052,6 +1182,9 @@ def ejecutar_modelo(excel_path: str) -> dict:
             'vol_compras_total': 0.0,
             'vol_ventas_total': 0.0,
             'compras': [],
+            'compras_rechazadas': [],
+            'minimos_venta': [],
+            'costos_por_refineria': [],
             'ventas': [],
             'transporte': [],
             'refinacion': [],
@@ -1130,6 +1263,80 @@ def ejecutar_modelo(excel_path: str) -> dict:
                 'Peso Comprado TPD': weight_tpd
             })
     compras_list = sorted(compras_list, key=lambda x: (x.get('Flujo Base Premium', ''), x['Origen'], x.get('Variante Transporte', '')))
+
+    # 1b. Compras RECHAZADAS: lo que estaba disponible y el modelo decidio no comprar.
+    # El "costo reducido" (dj) de una variable que quedo en cero dice cuanto
+    # empeoraria la utilidad por forzar el primer barril; en un problema de
+    # maximizacion es negativo. Su magnitud es exactamente cuanto tendria que
+    # bajar el precio de compra para que ese producto empiece a ser rentable.
+    comprado_por_ic = {}
+    for i, c, v in Ci_c_v:
+        vol = Ci_c_v[(i, c, v)].varValue or 0.0
+        comprado_por_ic[(i, c)] = comprado_por_ic.get((i, c), 0.0) + vol
+
+    rechazos_list = []
+    for i, c in Compras.index:
+        if comprado_por_ic.get((i, c), 0.0) > 0.001:
+            continue
+
+        disponible = _safe_positive_float(Compras.loc[(i, c), 'Volumen Disponible a Compra (BPD)']) or 0.0
+        # Sin volumen disponible no hay nada que decidir: no es un rechazo del
+        # modelo, es una fila sin oferta. No se reporta.
+        if disponible <= 0:
+            continue
+        precio = float(Compras.loc[(i, c), 'Precio de Compra CALCULADO  (USD/BPD)'])
+
+        # Costo reducido de la compra. Se toma el de la variante menos mala.
+        brecha = None
+        for v in compra_variants_by_ic.get((i, c), []):
+            dj = getattr(Ci_c_v[(i, c, v)], 'dj', None)
+            if dj is None:
+                continue
+            if brecha is None or abs(dj) < abs(brecha):
+                brecha = dj
+
+        if not compra_variants_by_ic.get((i, c)):
+            motivo = 'Sin ruta de salida: no hay ninguna ruta declarada desde este origen.'
+        elif brecha is None:
+            motivo = 'No resulto rentable frente a las demas opciones.'
+        elif abs(brecha) < 1e-6:
+            motivo = ('Empata con la mejor opcion: entra o no entra sin cambiar la utilidad.')
+        else:
+            motivo = (f'Sale mas caro que la alternativa: tendria que bajar '
+                      f'{abs(brecha):,.2f} USD/bbl para que convenga comprarlo.')
+
+        rechazos_list.append({
+            'Crudo o Producto': str(i),
+            'Origen': str(c),
+            'Volumen Disponible BPD': disponible,
+            'Precio Compra USD/BBL': precio,
+            'Precio que lo haria entrar USD/BBL': (
+                float(precio - abs(brecha)) if brecha is not None and abs(brecha) >= 1e-6 else None),
+            'Brecha USD/BBL': float(abs(brecha)) if brecha is not None else None,
+            'Motivo': motivo,
+        })
+    rechazos_list = sorted(
+        rechazos_list,
+        key=lambda x: (x['Brecha USD/BBL'] is None, x['Brecha USD/BBL'] or 0.0))
+
+    # 1c. Compromisos minimos de entrega y si se cumplieron.
+    minimos_list = []
+    for n, comp in enumerate(compromisos_min):
+        faltante = FaltanteMin[n].varValue or 0.0
+        entregado = comp['var'].varValue or 0.0
+        clave = comp['clave']
+        mezcla = clave[0] if isinstance(clave, tuple) else clave
+        destino = clave[1] if isinstance(clave, tuple) and len(clave) > 1 else ''
+        minimos_list.append({
+            'Mezcla': str(mezcla),
+            'Punto de Venta': str(destino),
+            'Tipo de Venta': comp['tipo'],
+            'Minimo Exigido BPD': float(comp['minimo']),
+            'Entregado BPD': float(entregado),
+            'Faltante BPD': float(faltante),
+            'Cumple': faltante <= 0.001,
+        })
+    minimos_list = sorted(minimos_list, key=lambda x: -x['Faltante BPD'])
     
     # 2. Ventas Table Extraction
     # 2.1 Ventas mezcla normal
@@ -1697,12 +1904,56 @@ def ejecutar_modelo(excel_path: str) -> dict:
                 'Volumen a Blending BPD': float(vol)
             })
             
+    # 1d. Costos abiertos por refineria, para poder comparar plantas.
+    # Lo atribuible directamente: la refinacion (ya viene por planta), el
+    # transporte de las rutas que entran o salen de ella, y el crudo que
+    # entra por esas rutas valorado a su precio de compra.
+    precio_compra_por_flujo = {}
+    for _fila in compras_list:
+        _base = str(_fila.get('Flujo Base Premium') or _fila.get('Crudo o Producto') or '')
+        precio_compra_por_flujo.setdefault(_base, float(_fila.get('Precio Compra USD/BBL') or 0.0))
+
+    refinerias_list = []
+    for _t in throughput_list:
+        _planta = str(_t.get('Refineria'))
+        _entradas = [x for x in transporte_list if str(x.get('Destino')) == _planta]
+        _salidas = [x for x in transporte_list if str(x.get('Origen')) == _planta]
+
+        _vol_crudo = sum(float(x.get('Volumen Transportado BPD') or 0) for x in _entradas)
+        _costo_crudo = sum(float(x.get('Volumen Transportado BPD') or 0)
+                           * precio_compra_por_flujo.get(str(x.get('Flujo')), 0.0)
+                           for x in _entradas)
+        _t_ent = sum(float(x.get('Costo Total USD') or 0) for x in _entradas)
+        _t_sal = sum(float(x.get('Costo Total USD') or 0) for x in _salidas)
+        _refi = float(_t.get('Costo Total USD') or 0)
+        _tput = float(_t.get('Throughput Refineria BPD') or 0)
+        _total = _costo_crudo + _t_ent + _t_sal + _refi
+
+        refinerias_list.append({
+            'Refineria': _planta,
+            'Throughput BPD': _tput,
+            'Crudo Cargado BPD': _vol_crudo,
+            'Costo Crudo USD': _costo_crudo,
+            'Transporte Entrada USD': _t_ent,
+            'Transporte Salida USD': _t_sal,
+            'Costo Refinacion USD': _refi,
+            'Costo Total USD': _total,
+            'Costo USD por BBL': (_total / _tput) if _tput > 0 else 0.0,
+            'Productos': sorted({str(x.get('Producto Refinado')) for x in refinacion_list
+                                 if str(x.get('Planta de Refinacion')) == _planta}),
+            'Crudos Cargados': sorted({str(x.get('Flujo')) for x in _entradas}),
+        })
+    refinerias_list = sorted(refinerias_list, key=lambda x: -x['Costo Total USD'])
+
     return sanitize_nans({
         'status': status,
         'utilidad_total': utilidad_total,
         'vol_compras_total': float(sum(r['Volumen Comprado BPD'] for r in compras_list)),
         'vol_ventas_total': float(sum(r['Volumen Vendido BPD'] for r in ventas_list)),
         'compras': compras_list,
+        'compras_rechazadas': rechazos_list,
+        'minimos_venta': minimos_list,
+        'costos_por_refineria': refinerias_list,
         'ventas': ventas_list,
         'transporte': transporte_list,
         'refinacion': refinacion_list,

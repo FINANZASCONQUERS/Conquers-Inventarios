@@ -20,6 +20,8 @@ MarkupSafe==3.0.2
 matplotlib==3.10.3
 numpy<2.0.0
 scipy==1.11.4
+# Solver del Modelo de Optimizacion LP (el wheel trae el binario CBC)
+pulp==2.9.0
 openpyxl==3.1.5
 packaging==25.0
 pandas==2.2.3

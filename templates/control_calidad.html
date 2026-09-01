@@ -46,10 +46,16 @@
                         <span class="badge badge-modern badge-primary">
                             <i class="fas fa-user-shield me-1"></i>{{ rol_usuario }}
                         </span>
+                        {% if puede_editar %}
                         <button id="btn-add-row" class="btn btn-sm btn-modern btn-outline-primary" type="button"
                             title="Agregar nuevo análisis">
                             <i class="fas fa-plus me-1"></i>Agregar
                         </button>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis px-2 py-1">
+                            <i class="fas fa-eye me-1"></i>Solo lectura
+                        </span>
+                        {% endif %}
                         <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-secondary"
                             type="button">
                             <i class="fas fa-history me-1"></i>Ver historial
@@ -166,6 +172,7 @@
         const userEmail = "{{ email_usuario }}";
         const userRol = "{{ rol_usuario }}";
         const userName = "{{ nombre }}";
+        const puedeEditar = {{ 'true' if puede_editar else 'false' }};
         const tbody = document.getElementById('calidad-table-body');
         const thead = document.querySelector('table thead');
         const btnAddRow = document.getElementById('btn-add-row');
@@ -300,7 +307,7 @@
                 const currentVal = currentFilters[col] || '';
                 filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..." value="${currentVal}"></th>`;
             });
-            headerHtml += '<th style="width: 180px; min-width: 180px;" class="text-center sticky-col">Acciones</th></tr>';
+            headerHtml += `<th style="width: ${puedeEditar ? '180px' : '100px'}; min-width: ${puedeEditar ? '180px' : '100px'}" class="text-center sticky-col">${puedeEditar ? 'Acciones' : 'Estado'}</th></tr>`;
             filterHtml += '<th class="sticky-col"></th></tr>';
             thead.innerHTML = headerHtml + filterHtml;
 
@@ -351,7 +358,7 @@
                 allColumns.forEach(col => {
                     const config = columnsConfig[col];
                     const value = row[col] || '';
-                    const isEditable = isAdmin || userPermissions.includes(col);
+                    const isEditable = puedeEditar && (isAdmin || userPermissions.includes(col));
                     const td = document.createElement('td');
                     td.style.minWidth = config.width;
 
@@ -430,21 +437,25 @@
                     tr.appendChild(td);
                 });
 
-                // Columna de acciones
+                // Columna de acciones / estado
                 const actionTd = document.createElement('td');
                 actionTd.className = 'text-center save-status-cell sticky-col';
                 actionTd.dataset.id = row.id;
-                actionTd.style.minWidth = '180px';
-                actionTd.innerHTML = `<div class="action-buttons-container">
-                <div class="d-flex justify-content-center align-items-center mb-1">
-                    <span class="save-indicator me-2" style="width: 16px; height: 16px;"></span>
-                </div>
-                <div class="btn-group btn-group-sm flex-wrap" role="group">
-                    <button class="btn btn-outline-danger btn-xs btn-delete-row" title="Eliminar registro completo" aria-label="Eliminar">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </div>
-            </div>`;
+                actionTd.style.minWidth = puedeEditar ? '180px' : '100px';
+                if (puedeEditar) {
+                    actionTd.innerHTML = `<div class="action-buttons-container">
+                    <div class="d-flex justify-content-center align-items-center mb-1">
+                        <span class="save-indicator me-2" style="width: 16px; height: 16px;"></span>
+                    </div>
+                    <div class="btn-group btn-group-sm flex-wrap" role="group">
+                        <button class="btn btn-outline-danger btn-xs btn-delete-row" title="Eliminar registro completo" aria-label="Eliminar">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>`;
+                } else {
+                    actionTd.innerHTML = `<span class="badge bg-light text-muted border py-1 px-2"><i class="fas fa-lock me-1"></i>Lectura</span>`;
+                }
                 tr.appendChild(actionTd);
 
                 fragment.appendChild(tr);
@@ -577,28 +588,31 @@
         }
 
         // --- MANEJADORES DE EVENTOS ---
-        btnAddRow.addEventListener('click', function () {
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
-            fetch("/api/control_calidad", { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        showToast('success', 'Nuevo registro creado');
-                        currentPage = 1; // Go to first page to see new record
-                        fetchAndRender(mostrandoHistorialCompleto);
-                    } else {
-                        showToast('danger', 'Error: ' + data.message);
-                    }
-                })
-                .catch(error => showToast('danger', 'Error de conexión'))
-                .finally(() => {
-                    this.disabled = false;
-                    this.innerHTML = `<i class="fas fa-plus me-1"></i>Agregar`;
-                });
-        });
+        if (btnAddRow) {
+            btnAddRow.addEventListener('click', function () {
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
+                fetch("/api/control_calidad", { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            showToast('success', 'Nuevo registro creado');
+                            currentPage = 1; // Go to first page to see new record
+                            fetchAndRender(mostrandoHistorialCompleto);
+                        } else {
+                            showToast('danger', 'Error: ' + data.message);
+                        }
+                    })
+                    .catch(error => showToast('danger', 'Error de conexión'))
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = `<i class="fas fa-plus me-1"></i>Agregar`;
+                    });
+            });
+        }
 
         tbody.addEventListener('blur', function (e) {
+            if (!puedeEditar) return;
             if (e.target.classList.contains('cell-editor') || e.target.classList.contains('editable-input')) {
                 const td = e.target.closest('td[data-field]');
                 autosaveCell(td);
@@ -606,6 +620,7 @@
         }, true);
 
         tbody.addEventListener('click', function (e) {
+            if (!puedeEditar) return;
             const deleteButton = e.target.closest('.btn-delete-row');
             if (deleteButton) {
                 const row = deleteButton.closest('tr');
@@ -627,6 +642,7 @@
         });
 
         function autosaveCell(cell) {
+            if (!puedeEditar) return;
             const row = cell.closest('tr');
             const id = row.dataset.id;
             const field = cell.dataset.field;

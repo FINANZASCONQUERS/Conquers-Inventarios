@@ -73,7 +73,7 @@ DERIVED_COLUMNS = {
     ],
     '6.VENTAS': [
         'CRUDO ORIGEN', 'TIPO FLUJO', 'VALIDACION TIPO DE NODO VENTA',
-        'ORIGEN BLEND',
+        'ORIGEN BLEND', 'Precio de venta (USD/BPD)',
         'CRUDO: DENSIDAD  (BBL/TONMETRICA)', 'REFINADO: DENSIDAD  (BBL/TONMETRICA)',
         'RELACION  DCONTRAC/DENTREGA',
     ],
@@ -88,6 +88,7 @@ DERIVED_COLUMNS = {
     '10.CVC': ['CRUDO ORIGEN', 'TIPO FLUJO'],
     '11.REL_CRUDO_MEZCLA': ['CRUDO ORIGEN', 'TIPO FLUJO'],
     '12.COSTOS_OPERACIONALES': ['Costo Operacional (USD/BBL)'],
+    '13.PRECIOS_VENTA': ['PRECIO CALCULADO (USD/BBL)'],
 }
 
 # Constante de densidad contractual cuando la venta es por formula de densidad.
@@ -137,6 +138,54 @@ def _to_float(value):
 
 def _is_blank(value):
     return value is None or (isinstance(value, float) and math.isnan(value)) or str(value).strip() == ''
+
+
+# Cortes refinados que se cotizan por igual, salgan del crudo que salgan.
+CORTES_REFINADOS = ('NAFTA', 'GASOIL', 'FUELOIL')
+HOJA_PRECIOS = '13.PRECIOS_VENTA'
+
+
+def corriente_comercial(flujo):
+    """A que corriente comercial pertenece un flujo, para efectos de precio.
+
+    NAFTA_R_TILODIRAN, NAFTA_R_BORANDA... son todos 'NAFTA': comercialmente es
+    el mismo producto. Las mezclas y los crudos se cotizan uno a uno.
+    """
+    texto = str(flujo or '').strip()
+    for corte in CORTES_REFINADOS:
+        if texto.upper().startswith(corte + '_R_'):
+            return corte
+    return texto
+
+
+def construir_precios_desde_ventas(ventas, brent):
+    """Deriva la hoja de precios a partir de los precios que ya tiene 6.VENTAS.
+
+    El ajuste sale del PRECIO REAL menos el BRENT, no de la columna de formula:
+    en el archivo actual 23 de esas formulas contradicen el precio que se esta
+    cobrando, asi que tomarlas como fuente meteria errores.
+    """
+    col_flujo = _find_col(ventas, 'FLUJO')
+    col_precio = _find_col(ventas, 'Precio de venta (USD/BPD)')
+    if col_flujo is None or col_precio is None:
+        return pd.DataFrame(columns=['CORRIENTE COMERCIAL',
+                                     'AJUSTE VS BRENT (USD/BBL)',
+                                     'PRECIO CALCULADO (USD/BBL)'])
+
+    vistos = {}
+    for flujo, precio in zip(ventas[col_flujo], ventas[col_precio]):
+        p = _to_float(precio)
+        if p is None:
+            continue
+        vistos.setdefault(corriente_comercial(flujo), p)
+
+    filas = [{'CORRIENTE COMERCIAL': c,
+              'AJUSTE VS BRENT (USD/BBL)': round(p - (brent or 0.0), 6),
+              'PRECIO CALCULADO (USD/BBL)': p}
+             for c, p in vistos.items()]
+    return pd.DataFrame(filas, columns=['CORRIENTE COMERCIAL',
+                                        'AJUSTE VS BRENT (USD/BBL)',
+                                        'PRECIO CALCULADO (USD/BBL)'])
 
 
 def _is_den(value):
@@ -355,9 +404,39 @@ def recompute_derived(sheets, economics):
                     totales.append(None)
             cu[total_col] = totales
 
+    # --- 13.PRECIOS_VENTA (antes de 6.VENTAS, que depende de ella) ---
+    if HOJA_PRECIOS in sheets:
+        pv = sheets[HOJA_PRECIOS]
+        c_corr = C(pv, 'CORRIENTE COMERCIAL')
+        c_aj = C(pv, 'AJUSTE VS BRENT (USD/BBL)')
+        c_pre = C(pv, 'PRECIO CALCULADO (USD/BBL)')
+        if c_corr and c_aj and c_pre:
+            pv[c_pre] = [
+                (BRENT + (_to_float(a) or 0.0)) if not _is_blank(a) else None
+                for a in pv[c_aj]
+            ]
+
     # --- 6.VENTAS ---
     if '6.VENTAS' in sheets:
         v = sheets['6.VENTAS']
+        # El precio sale de la hoja de precios cuando esa hoja tiene datos; si
+        # no, se respeta el que ya trae la fila (compatibilidad hacia atras).
+        tabla_precios = sheets.get(HOJA_PRECIOS)
+        if tabla_precios is not None and len(tabla_precios):
+            c_corr = C(tabla_precios, 'CORRIENTE COMERCIAL')
+            c_pre = C(tabla_precios, 'PRECIO CALCULADO (USD/BBL)')
+            v_flujo0 = C(v, 'FLUJO')
+            v_precio0 = C(v, 'Precio de venta (USD/BPD)')
+            if c_corr and c_pre and v_flujo0 and v_precio0:
+                mapa_precio = {
+                    _norm(k): _to_float(p)
+                    for k, p in zip(tabla_precios[c_corr], tabla_precios[c_pre])
+                    if not _is_blank(k)
+                }
+                v[v_precio0] = [
+                    mapa_precio.get(_norm(corriente_comercial(f)), actual)
+                    for f, actual in zip(v[v_flujo0], v[v_precio0])
+                ]
         v_flujo = C(v, 'FLUJO'); v_punto = C(v, 'PUNTO DE VENTA'); v_den = C(v, 'VENTA DENSIDAD')
         
         orig_col = C(v, 'CRUDO ORIGEN')
@@ -554,6 +633,22 @@ def extraer_escenario(excel_path):
     """Lee el Excel base y devuelve {'economics': {...}, 'sheets': {hoja: DataFrame}}."""
     xls = pd.ExcelFile(excel_path)
     sheets = {s: pd.read_excel(xls, sheet_name=s) for s in MODEL_SHEETS}
+
+    # Un Excel viejo no trae las columnas que el sistema haya agregado despues
+    # (por ejemplo el minimo de venta). Se agregan vacias para que aparezcan en
+    # el editor y el usuario pueda usarlas sin rehacer el archivo.
+    # Hoja auxiliar de precios: si el Excel no la trae, se deriva de 6.VENTAS
+    if HOJA_PRECIOS in xls.sheet_names:
+        sheets[HOJA_PRECIOS] = pd.read_excel(xls, sheet_name=HOJA_PRECIOS)
+
+    try:
+        from modelo_esquema import COLUMNAS
+        for hoja, df in sheets.items():
+            faltantes = [c for c in COLUMNAS.get(hoja, []) if c not in df.columns]
+            for c in faltantes:
+                df[c] = None
+    except ImportError:
+        pass
     economics = {}
     if '0.ECONOMICS' in xls.sheet_names:
         econ = pd.read_excel(xls, sheet_name='0.ECONOMICS')
@@ -561,6 +656,10 @@ def extraer_escenario(excel_path):
         if idx_col and val_col:
             for _, row in econ.iterrows():
                 economics[str(row[idx_col]).strip()] = row[val_col]
+    if HOJA_PRECIOS not in sheets:
+        sheets[HOJA_PRECIOS] = construir_precios_desde_ventas(
+            sheets['6.VENTAS'], _to_float(economics.get('BRENT')) or 0.0)
+
     return {'economics': economics, 'sheets': sheets}
 
 
@@ -696,15 +795,20 @@ def escenario_a_payload(excel_path):
     return _sheets_a_payload(data['sheets'], data['economics'])
 
 
-def escenario_vacio(base_template_path):
+def escenario_vacio(base_template_path=None):
     """Payload con la MISMA estructura (columnas) pero SIN filas, para empezar de cero.
 
-    Conserva las claves economicas (BRENT, TRM, ...) con sus valores actuales como
-    punto de partida editable.
+    Sin `base_template_path` la estructura sale de `modelo_esquema`, asi que se
+    puede crear un escenario en blanco aunque no exista ningun Excel. Si se pasa
+    una ruta, se toma la estructura y los valores economicos de ese archivo.
     """
-    data = extraer_escenario(base_template_path)
-    vacios = {name: df.iloc[0:0].copy() for name, df in data['sheets'].items()}
-    return _sheets_a_payload(vacios, data['economics'])
+    if base_template_path:
+        data = extraer_escenario(base_template_path)
+        vacios = {name: df.iloc[0:0].copy() for name, df in data['sheets'].items()}
+        return _sheets_a_payload(vacios, data['economics'])
+
+    from modelo_esquema import payload_vacio
+    return payload_vacio()
 
 
 def recalcular_payload(payload):
@@ -718,9 +822,14 @@ def recalcular_payload(payload):
 
 
 def payload_a_sheets(payload):
-    """Convierte el payload JSON de la pagina/BD a (economics, {hoja: DataFrame})."""
+    """Convierte el payload JSON de la pagina/BD a (economics, {hoja: DataFrame}).
+
+    Devuelve tambien las hojas auxiliares (precios); el solver ignora las que
+    no necesita.
+    """
     sheets = {}
-    for name in MODEL_SHEETS:
+    for name in list(MODEL_SHEETS) + [h for h in payload.get('sheets', {})
+                                      if h not in MODEL_SHEETS]:
         sp = payload['sheets'][name]
         cols = sp['columns']
         rows = [{c: row.get(c) for c in cols} for row in sp['rows']]

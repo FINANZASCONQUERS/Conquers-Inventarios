@@ -265,11 +265,11 @@
         {% set is_kevin = 'billcwt' in email_val or 'kevin' in email_val or 'marin' in email_val %}
         {% set role_val = session.get('rol', '') | lower %}
         {% set area_str = (session.get('area', []) | join(' ')) | lower %}
-        {% set has_contabilidad = 'contabilidad' in area_str %}
+        {% set has_contabilidad = 'contabilidad' in area_str or 'facturacion' in area_str %}
 
         {% if is_kelly or is_kevin or role_val == 'admin' or has_contabilidad %}
         <div class="col-12 mt-4">
-            <h3 class="mb-3"><i class="bi bi-calculator me-2 text-primary"></i>Contabilidad</h3>
+            <h3 class="mb-3"><i class="bi bi-calculator me-2 text-primary"></i>Contabilidad y Facturación</h3>
         </div>
 
         {% if session.get('email') == 'accountingzf@conquerstrading.com' or is_kelly or session.get('rol') == 'admin' %}

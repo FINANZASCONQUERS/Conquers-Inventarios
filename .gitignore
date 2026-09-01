@@ -67,7 +67,9 @@ tmp_modelo_excel/
 upload_modelo_temp.xlsx
 upload_*.xlsx
 
-# --- 8. Pruebas y Scripts Temporales / Scratch ---
+# --- 8. Pruebas y Scripts Temporales / Scratch / Backups ---
+backups/
+backup_*.csv
 tests/
 scratch/
 scratch_*.py

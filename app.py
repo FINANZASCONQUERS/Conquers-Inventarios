@@ -6,6 +6,7 @@ from datetime import datetime, time, date, timedelta
 import os
 import unicodedata
 from functools import wraps
+import click
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory, has_app_context # Añadido send_file, current_app, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl 
@@ -97,7 +98,23 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- Módulo modelo optimización (nuevo) ---
 from modelo_optimizacion import ejecutar_modelo, EXCEL_DEFAULT
-EXCEL_DEFAULT_LP = r"C:\Users\Juan Diego Ayala\OneDrive - conquerstrading\Documentos\ACTIVIDADES FINANCIERAS\MODELO MATEMATICO\Parametros.xlsx"
+# Excel maestro de parametros del Modelo LP. En local vive en el OneDrive del
+# usuario; en el servidor esa ruta NO existe, por eso se puede fijar por entorno.
+# Sin ese archivo solo funcionan los flujos que suben su propio .xlsx.
+EXCEL_DEFAULT_LP = os.environ.get('MODELO_LP_EXCEL_PATH') or \
+    r"C:\Users\Juan Diego Ayala\OneDrive - conquerstrading\Documentos\ACTIVIDADES FINANCIERAS\MODELO MATEMATICO\Parametros.xlsx"
+
+
+def _mo_excel_base_disponible():
+    """Ruta del Excel maestro, o None si no existe en esta maquina."""
+    return EXCEL_DEFAULT_LP if (EXCEL_DEFAULT_LP and os.path.isfile(EXCEL_DEFAULT_LP)) else None
+
+
+MO_ERROR_SIN_EXCEL = (
+    "El Excel maestro de parametros no esta disponible en el servidor. Sube un "
+    "archivo .xlsx en la zona de carga, o define la variable de entorno "
+    "MODELO_LP_EXCEL_PATH apuntando a un archivo accesible."
+)
 
 # --- Blueprint para WhatsApp ---
 # TEMPORALMENTE DESHABILITADO por error de spacy
@@ -472,7 +489,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad"]
+    },
+    "carlos.baron@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Carlos Barón",
+        "rol": "editor",
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad"]
     },
     "logistics.inventory@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -496,7 +519,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio"]
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad"]
     },
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -514,25 +537,25 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base"] 
+        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos"] 
     },
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
     },
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
     },
     "logistics.assistant@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Asistente Logístico",
         "rol": "editor",
-        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento"]
+        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion"]
     },
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
@@ -550,7 +573,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["siza_solicitante"]
+        "area": ["siza_solicitante", "control_calidad", "barcaza_orion", "barcaza_bita", "programacion_cargue", "analisis_laboratorio", "reportes"]
     },
     "brando@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -580,7 +603,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte"] 
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte", "precintos"] 
     },
     "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -636,6 +659,8 @@ MODULE_ROUTE_MAP = [
     (r'^/api/control_calidad', ['control_calidad']),
     (r'^/analisis-laboratorio', ['analisis_laboratorio']),
     (r'^/api/analisis-laboratorio', ['analisis_laboratorio']),
+    (r'^/inventario-precintos', ['precintos']),
+    (r'^/api/precintos', ['precintos']),
     (r'^/programacion-cargue', ['programacion_cargue']),
     (r'^/api/programacion-base', ['programacion_base']),
     (r'^/api/programacion_base', ['programacion_base']),
@@ -1323,6 +1348,104 @@ class ProgramacionCargue(db.Model):
     fecha_actualizacion = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     # Nuevo: momento en que TODOS los campos de refinería quedaron completos (para iniciar conteo de 30 min)
     refineria_completado_en = db.Column(db.DateTime, nullable=True)
+
+
+# =============================================================================
+# INVENTARIO DE PRECINTOS (SELLOS DE SEGURIDAD)
+# =============================================================================
+# Los precintos se digitaban a mano en la columna `precintos` de
+# ProgramacionCargue. El histórico dejó 50 filas con formato roto y 39 números
+# repetidos, así que aquí el número vive como registro propio: se da de alta
+# DISPONIBLE al entrar el lote a bodega y solo puede morir USADO o ANULADO.
+
+PRECINTOS_DIGITOS = 6
+PRECINTOS_ESTADOS = ('DISPONIBLE', 'USADO', 'ANULADO')
+PRECINTOS_STOCK_MINIMO = 100
+PRECINTOS_CANTIDAD_DEFECTO = 5
+PRECINTOS_CANTIDAD_MAXIMA = 12
+# Saltarse 1 o 2 numeros es normal: son sellos que se rompen al colocarlos.
+PRECINTOS_SALTO_TOLERADO = 3
+# Sellos sacados de circulacion por ajuste (rollos viejos que ya no estan en
+# bodega). Van a ANULADO igual que los rotos, pero no son merma: se separan
+# en el resumen por este marcador.
+PRECINTOS_USUARIO_AJUSTE = 'Ajuste de inventario'
+
+
+class LotePrecintos(db.Model):
+    """Paquete de precintos que entra a bodega con numeración consecutiva."""
+    __tablename__ = 'lotes_precintos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(120))
+    rango_inicial = db.Column(db.BigInteger, nullable=False)
+    rango_final = db.Column(db.BigInteger, nullable=False)
+    numero_digitos = db.Column(db.Integer, default=PRECINTOS_DIGITOS)
+    color = db.Column(db.String(40), default='Verde')
+    proveedor = db.Column(db.String(150))
+    documento_remision = db.Column(db.String(120))
+    fecha_ingreso = db.Column(db.Date, default=date.today)
+    total_precintos = db.Column(db.Integer, default=0)
+    usuario_registro = db.Column(db.String(120))
+    observaciones = db.Column(db.Text)
+    # El lote sintético que agrupa lo importado de la columna vieja.
+    es_historico = db.Column(db.Boolean, default=False)
+    activo = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<LotePrecintos {self.rango_inicial}-{self.rango_final}>'
+
+
+class InventarioPrecinto(db.Model):
+    """Un precinto individual y todo lo que se sabe de dónde terminó."""
+    __tablename__ = 'inventario_precintos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lote_id = db.Column(db.Integer, db.ForeignKey('lotes_precintos.id'), index=True)
+    numero = db.Column(db.BigInteger, nullable=False, index=True)
+    codigo = db.Column(db.String(20), nullable=False, index=True)
+    estado = db.Column(db.String(20), nullable=False, default='DISPONIBLE', index=True)
+
+    # Trazabilidad: a qué cargue se fue el sello.
+    programacion_id = db.Column(
+        db.Integer, db.ForeignKey('programacion_cargue.id', ondelete='SET NULL'), index=True
+    )
+    placa = db.Column(db.String(50))
+    numero_guia = db.Column(db.String(100))
+    cliente = db.Column(db.String(150))
+    producto = db.Column(db.String(100))
+    conductor = db.Column(db.String(150))
+    fecha_uso = db.Column(db.Date, index=True)
+    usuario_uso = db.Column(db.String(120))
+
+    # Anulación: el sello que se rompe al cerrar la válvula.
+    motivo_anulacion = db.Column(db.String(255))
+    fecha_anulacion = db.Column(db.DateTime)
+    usuario_anulacion = db.Column(db.String(120))
+
+    # Importación del histórico digitado a mano.
+    origen = db.Column(db.String(20), default='INVENTARIO')  # INVENTARIO | HISTORICO
+    texto_original = db.Column(db.String(60))
+    requiere_revision = db.Column(db.Boolean, default=False, index=True)
+    nota_revision = db.Column(db.String(255))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<InventarioPrecinto {self.codigo} {self.estado}>'
+
+
+def _formatear_codigo_precinto(numero, digitos=PRECINTOS_DIGITOS):
+    """004346 a partir de 4346. Los números fuera de rango se dejan tal cual."""
+    try:
+        return str(int(numero)).zfill(int(digitos or PRECINTOS_DIGITOS))
+    except (TypeError, ValueError):
+        return str(numero or '')
+
+
+def _texto_precintos(codigos):
+    """Formato que ya usa la columna: 004346-004347-004348-004349-004350."""
+    return '-'.join(codigos)
 
 
 class ProgramacionBase(db.Model):
@@ -3869,23 +3992,49 @@ def transito():
                            transito_config=cargar_transito_config(),
                            filtros=filtros)
   
+# --- PERMISOS DE CONTROL DE CALIDAD ---
+EMAILS_EDITORES_CALIDAD = {
+    'refinery.control@conquerstrading.com',
+    'quality.manager@conquerstrading.com',
+    'qualitycontrol@conquerstrading.com',
+    'juandiego.cuadros@conquerstrading.com'
+}
+
+def puede_ver_control_calidad(email, rol, area=None):
+    if rol == 'admin':
+        return True
+    if area and 'control_calidad' in area:
+        return True
+    if email in EMAILS_EDITORES_CALIDAD:
+        return True
+    if email in {'omar.morales@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'production@conquerstrading.com'}:
+        return True
+    return False
+
+def puede_editar_control_calidad(email, rol):
+    if rol == 'admin':
+        return True
+    return email in EMAILS_EDITORES_CALIDAD
+
 @app.route('/control_calidad')
 @login_required
 def control_calidad():
-    # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    area_usuario = session.get('area', [])
     
-    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+    if not puede_ver_control_calidad(email_usuario, rol_usuario, area_usuario):
         flash("No tienes permisos para acceder a esta página.", "danger")
         return redirect(url_for('home'))
+        
+    puede_editar = puede_editar_control_calidad(email_usuario, rol_usuario)
+    
     # Consulta todos los registros de RegistroCalidad ordenados por timestamp desc
     todos_los_registros = db.session.query(RegistroCalidad).order_by(RegistroCalidad.timestamp.desc()).all()
     
     # Calcular KPIs
     today = date.today()
-    registros_hoy = [r for r in todos_los_registros if r.timestamp.date() == today]
+    registros_hoy = [r for r in todos_los_registros if r.timestamp and r.timestamp.date() == today]
     registros_hoy_count = len(registros_hoy)
     
     bsw_values = [r.bsw for r in registros_hoy if r.bsw is not None]
@@ -3923,18 +4072,18 @@ def control_calidad():
                            registros_hoy=registros_hoy_count, 
                            bsw_promedio=bsw_promedio, 
                            alertas_calidad=alertas_calidad,
-                           email_usuario=session.get('email'),
-                           rol_usuario=session.get('rol'))
+                           email_usuario=email_usuario,
+                           rol_usuario=rol_usuario,
+                           puede_editar=puede_editar)
   
 @app.route('/api/control_calidad', methods=['GET'])
 @login_required
 def get_control_calidad_data():
-    # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
+    area_usuario = session.get('area', [])
     
-    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
+    if not puede_ver_control_calidad(email_usuario, rol_usuario, area_usuario):
         return jsonify({"error": "No tienes permisos para acceder a esta información"}), 403
 
     # --- Paginación server-side ---
@@ -3957,12 +4106,6 @@ def get_control_calidad_data():
         'campo': RegistroCalidad.campo,
         'observaciones': RegistroCalidad.observaciones,
     }
-    for col_name, col_attr in filterable_text_cols.items():
-        val = request.args.get(f'f_{col_name}', '').strip()
-        if val:
-            query = query.filter(col_attr.ilike(f'%{val}%'))
-
-    # Filtros numéricos (bsw, flash_point, api_obs, temp, api_corr, viscosidad, azufre, sedimento)
     filterable_num_cols = {
         'bsw': RegistroCalidad.bsw,
         'flash_point': RegistroCalidad.flash_point,
@@ -3973,51 +4116,53 @@ def get_control_calidad_data():
         'azufre': RegistroCalidad.azufre,
         'sedimento': RegistroCalidad.sedimento,
     }
-    for col_name, col_attr in filterable_num_cols.items():
-        val = request.args.get(f'f_{col_name}', '').strip()
-        if val:
-            query = query.filter(cast(col_attr, String).ilike(f'%{val}%'))
 
-    # Ordenar por timestamp desc
+    for col_name, sa_col in filterable_text_cols.items():
+        filter_val = request.args.get(f'f_{col_name}', '').strip()
+        if filter_val:
+            query = query.filter(sa_col.ilike(f'%{filter_val}%'))
+
+    for col_name, sa_col in filterable_num_cols.items():
+        filter_val = request.args.get(f'f_{col_name}', '').strip()
+        if filter_val:
+            try:
+                # Permitir búsqueda por aproximación convirtiendo a texto
+                query = query.filter(db.cast(sa_col, db.String).ilike(f'%{filter_val}%'))
+            except Exception:
+                pass
+
+    # Orden por fecha/hora descendente (más recientes primero)
     query = query.order_by(RegistroCalidad.timestamp.desc())
 
-    # Si show_all, no paginar (mantener compatibilidad con historial completo)
-    if show_all:
-        todos_los_registros = query.all()
-        datos = [
-            {
-                "id": r.id, "fecha": r.fecha, "hora": r.hora,
-                "producto": r.producto or '', "responsable": r.responsable,
-                "origen": r.origen, "placa": r.placa, "campo": r.campo,
-                "bsw": r.bsw or '', "flash_point": r.flash_point or '',
-                "api_obs": r.api_obs or '', "temp": r.temp or '',
-                "api_corr": r.api_corr or '', 
-                "viscosidad": r.viscosidad or '',
-                "azufre": r.azufre or '',
-                "sedimento": r.sedimento or '',
-                "observaciones": r.observaciones or ''
-            }
-            for r in todos_los_registros
-        ]
-        return jsonify({"data": datos, "total": len(datos), "page": 1, "per_page": len(datos), "pages": 1})
-
-    # Paginación eficiente
     total = query.count()
-    pages = max(1, (total + per_page - 1) // per_page)
-    page = max(1, min(page, pages))
-    registros = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    if show_all:
+        registros = query.all()
+        pages = 1
+        page = 1
+        per_page = total
+    else:
+        registros = query.offset((page - 1) * per_page).limit(per_page).all()
+        pages = max(1, (total + per_page - 1) // per_page)
 
     datos = [
         {
-            "id": r.id, "fecha": r.fecha, "hora": r.hora,
-            "producto": r.producto or '', "responsable": r.responsable,
-            "origen": r.origen, "placa": r.placa, "campo": r.campo,
-            "bsw": r.bsw or '', "flash_point": r.flash_point or '',
-            "api_obs": r.api_obs or '', "temp": r.temp or '',
-            "api_corr": r.api_corr or '', 
-            "viscosidad": r.viscosidad or '',
-            "azufre": r.azufre or '',
-            "sedimento": r.sedimento or '',
+            "id": r.id,
+            "fecha": r.fecha,
+            "hora": r.hora,
+            "producto": r.producto or '',
+            "responsable": r.responsable,
+            "origen": r.origen,
+            "placa": r.placa,
+            "campo": r.campo,
+            "bsw": r.bsw if r.bsw is not None else '',
+            "flash_point": r.flash_point if r.flash_point is not None else '',
+            "api_obs": r.api_obs if r.api_obs is not None else '',
+            "temp": r.temp if r.temp is not None else '',
+            "api_corr": r.api_corr if r.api_corr is not None else '',
+            "viscosidad": r.viscosidad if r.viscosidad is not None else '',
+            "azufre": r.azufre if r.azufre is not None else '',
+            "sedimento": r.sedimento if r.sedimento is not None else '',
             "observaciones": r.observaciones or ''
         }
         for r in registros
@@ -4029,13 +4174,11 @@ def get_control_calidad_data():
 @login_required
 def crear_registro_calidad():
     """Crear un nuevo registro vacío de control de calidad"""
-    # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
     
-    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
-        return jsonify({"success": False, "message": "No tienes permisos para crear registros"}), 403
+    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+        return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para crear registros."}), 403
     try:
         nuevo = RegistroCalidad(
             fecha=None,
@@ -4068,13 +4211,11 @@ def crear_registro_calidad():
 @login_required
 def actualizar_registro_calidad(id):
     """Actualizar un campo específico de un registro de control de calidad"""
-    # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
     
-    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
-        return jsonify({"success": False, "message": "No tienes permisos para editar registros"}), 403
+    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+        return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para editar registros."}), 403
     try:
         registro = RegistroCalidad.query.get_or_404(id)
         datos = request.get_json()
@@ -4134,13 +4275,11 @@ def actualizar_registro_calidad(id):
 @app.route('/api/control_calidad/<int:id>', methods=['DELETE'])
 @login_required
 def eliminar_registro_calidad(id):
-    # Solo permitir acceso a usuarios específicos y admin
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    emails_permitidos = ['production@conquerstrading.com', 'qualitycontrol@conquerstrading.com', 'refinery.control@conquerstrading.com', 'quality.manager@conquerstrading.com']
     
-    if rol_usuario != 'admin' and email_usuario not in emails_permitidos:
-        return jsonify({"success": False, "message": "No tienes permisos para eliminar registros"}), 403
+    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+        return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para eliminar registros."}), 403
     try:
         registro = RegistroCalidad.query.get_or_404(id)
         db.session.delete(registro)
@@ -5169,7 +5308,12 @@ def _safe_excel_rows(index_like):
     return sorted(set(rows))
 
 
-def validar_parametros_modelo_optimizacion(excel_path: str) -> dict:
+def validar_parametros_modelo_optimizacion(fuente) -> dict:
+    """Valida los parametros del modelo.
+
+    `fuente` puede ser la ruta de un .xlsx o {hoja: DataFrame}, para poder
+    validar los datos de la pagina sin escribir ningun archivo.
+    """
     validation = {
         'is_valid': True,
         'errors': [],
@@ -5182,15 +5326,23 @@ def validar_parametros_modelo_optimizacion(excel_path: str) -> dict:
             issue['rows'] = rows
         validation[bucket].append(issue)
 
-    try:
-        xls = pd.ExcelFile(excel_path)
-    except Exception as exc:
-        add_issue('errors', 'file_read_error', f'No se pudo leer el archivo de parámetros: {exc}')
-        validation['is_valid'] = False
-        return validation
+    if isinstance(fuente, dict):
+        hojas_disponibles = list(fuente.keys())
+        def leer_hoja(nombre):
+            return fuente[nombre]
+    else:
+        try:
+            xls = pd.ExcelFile(fuente)
+        except Exception as exc:
+            add_issue('errors', 'file_read_error', f'No se pudo leer el archivo de parámetros: {exc}')
+            validation['is_valid'] = False
+            return validation
+        hojas_disponibles = xls.sheet_names
+        def leer_hoja(nombre):
+            return pd.read_excel(xls, sheet_name=nombre)
 
     required_sheets = ['3.COMPRAS', '11.REL_CRUDO_MEZCLA']
-    missing_sheets = [s for s in required_sheets if s not in xls.sheet_names]
+    missing_sheets = [s for s in required_sheets if s not in hojas_disponibles]
     if missing_sheets:
         add_issue(
             'errors',
@@ -5201,7 +5353,7 @@ def validar_parametros_modelo_optimizacion(excel_path: str) -> dict:
         return validation
 
     # Validaciones críticas de 3.COMPRAS
-    compras = pd.read_excel(xls, sheet_name='3.COMPRAS')
+    compras = leer_hoja('3.COMPRAS')
     compras_cols_required = ['CRUDO O PRODUCTO', 'ORIGEN', 'Volumen Minimo a Compra (BPD)', 'Volumen Disponible a Compra (BPD)']
     missing_cols_comp = [c for c in compras_cols_required if c not in compras.columns]
     if missing_cols_comp:
@@ -5235,7 +5387,7 @@ def validar_parametros_modelo_optimizacion(excel_path: str) -> dict:
             )
 
     # Validaciones críticas de 11.REL_CRUDO_MEZCLA
-    rel = pd.read_excel(xls, sheet_name='11.REL_CRUDO_MEZCLA')
+    rel = leer_hoja('11.REL_CRUDO_MEZCLA')
     rel_cols_required = ['FLUJO', 'CRUDO ORIGEN', 'TIPO FLUJO', 'DESTINO', 'MEZCLA A PERTENECER']
     missing_cols_rel = [c for c in rel_cols_required if c not in rel.columns]
     if missing_cols_rel:
@@ -5371,11 +5523,77 @@ def _parse_premium_overrides(raw_payload):
     return list(cleaned.values())
 
 
+def _mo_aplicar_premium_tablas(hojas, premium_overrides):
+    """Suma el premium al precio de compra, directamente sobre las tablas.
+
+    Reemplaza a la version que manipulaba el .xlsx: al no pasar por openpyxl no
+    hay forma de perder los valores cacheados de las formulas.
+    Devuelve (hojas, detalle_aplicado).
+    """
+    if not premium_overrides:
+        return hojas, []
+
+    df = hojas['3.COMPRAS'].copy()
+
+    def buscar(*prefijos):
+        for c in df.columns:
+            n = _normalize_header_name(c)
+            if any(n.startswith(_normalize_header_name(p)) for p in prefijos):
+                return c
+        return None
+
+    col_flujo = buscar('CRUDO O PRODUCTO')
+    col_origen = buscar('ORIGEN')
+    col_precio = buscar('PRECIO DE COMPRA CALCULADO')
+    if not col_flujo or not col_origen or not col_precio:
+        return hojas, []
+
+    mapa = {
+        (_normalize_lp_text(i['flujo']), _normalize_lp_text(i['origen'])): float(i['premium_usd_bbl'])
+        for i in premium_overrides
+    }
+
+    aplicado = []
+    precios = df[col_precio].tolist()
+    for idx in range(len(df)):
+        clave = (_normalize_lp_text(df[col_flujo].iloc[idx]),
+                 _normalize_lp_text(df[col_origen].iloc[idx]))
+        if clave not in mapa:
+            continue
+        try:
+            base = float(precios[idx])
+        except (TypeError, ValueError):
+            continue
+        premium = mapa[clave]
+        precios[idx] = base + premium
+        aplicado.append({
+            'flujo': str(df[col_flujo].iloc[idx]),
+            'origen': str(df[col_origen].iloc[idx]),
+            'premium_usd_bbl': premium,
+            'precio_base_usd_bbl': base,
+            'precio_ajustado_usd_bbl': base + premium,
+        })
+
+    if not aplicado:
+        return hojas, []
+
+    df[col_precio] = precios
+    hojas = dict(hojas)
+    hojas['3.COMPRAS'] = df
+    return hojas, aplicado
+
+
 def _apply_premium_overrides_to_excel(excel_path: str, premium_overrides: list, output_dir: str):
     if not premium_overrides:
         return excel_path, []
 
-    wb = openpyxl.load_workbook(excel_path)
+    # data_only=True congela los valores cacheados de las formulas como literales.
+    # Sin esto, al guardar con openpyxl se pierde el valor de TODA formula del libro
+    # (~33 % de las celdas, incluidos los costos de transporte) y el solver revienta
+    # con "Cannot multiply variables with NaN/inf values". El archivo que se genera
+    # aqui es temporal y solo lo consume el solver, asi que no necesita conservar
+    # las formulas: solo sus resultados.
+    wb = openpyxl.load_workbook(excel_path, data_only=True)
     if '3.COMPRAS' not in wb.sheetnames:
         return excel_path, []
 
@@ -5494,9 +5712,14 @@ def modelo_optimizacion_ejecutar():
         from uuid import uuid4
         import json
         
-        excel_path = EXCEL_DEFAULT_LP
         uploaded_file = request.files.get('archivo_excel')
         parametros_id = request.form.get('parametros_id')
+        excel_path = None
+        if not parametros_id and not (uploaded_file and uploaded_file.filename):
+            # Unico caso en que todavia se necesita el Excel maestro
+            excel_path = _mo_excel_base_disponible()
+            if not excel_path:
+                return jsonify(success=False, error=MO_ERROR_SIN_EXCEL), 503
         premium_payload = request.form.get('premium_overrides_json', '')
         try:
             premium_overrides = _parse_premium_overrides(premium_payload)
@@ -5504,22 +5727,22 @@ def modelo_optimizacion_ejecutar():
             return jsonify(success=False, error=str(exc)), 400
         premium_applied = []
 
+        # Todo se normaliza a tablas: desde aqui el modelo ya no necesita que
+        # exista ningun archivo. El .xlsx sigue siendo un formato de entrada
+        # valido, pero deja de ser un requisito para correr.
+        from modelo_optimizacion_core import _cargar_hojas
         temp_excel_path = None
         if parametros_id:
-            # Escenario capturado en la pagina (BD): se construye el Excel temporal
-            # desde los datos planos, usando el archivo base solo como plantilla.
-            from modelo_parametros_builder import construir_excel_desde_payload
+            # Escenario capturado en la pagina (BD): del JSON a tablas, sin disco.
+            from modelo_parametros_builder import payload_a_sheets
             escenario = EscenarioParametrosLP.query.get(int(parametros_id))
             if not escenario:
                 return jsonify(success=False, error='Escenario de parámetros no encontrado.'), 404
             payload = json.loads(escenario.datos_json)
             # Nombre del escenario, para etiquetar la corrida en el historial
             session['modelo_escenario_nombre'] = escenario.nombre
-            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
-            os.makedirs(tmp_dir, exist_ok=True)
-            temp_excel_path = os.path.join(tmp_dir, f"param_db_{uuid4().hex}.xlsx")
-            construir_excel_desde_payload(EXCEL_DEFAULT_LP, payload, temp_excel_path)
-            excel_path = temp_excel_path
+            _econ, hojas = payload_a_sheets(payload)
+            excel_path = None
         elif uploaded_file and uploaded_file.filename:
             session['modelo_escenario_nombre'] = uploaded_file.filename
             tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
@@ -5527,24 +5750,22 @@ def modelo_optimizacion_ejecutar():
             temp_excel_path = os.path.join(tmp_dir, f"param_{uuid4().hex}.xlsx")
             uploaded_file.save(temp_excel_path)
             excel_path = temp_excel_path
+            hojas = _cargar_hojas(excel_path)
+        else:
+            hojas = _cargar_hojas(excel_path)
 
         if premium_overrides:
-            tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
-            excel_path, premium_applied = _apply_premium_overrides_to_excel(
-                excel_path,
-                premium_overrides,
-                tmp_dir
-            )
+            hojas, premium_applied = _mo_aplicar_premium_tablas(hojas, premium_overrides)
 
-        validation = validar_parametros_modelo_optimizacion(excel_path)
+        validation = validar_parametros_modelo_optimizacion(hojas)
         if not validation.get('is_valid'):
             return jsonify(
                 success=False,
-                error='Se detectaron inconsistencias en el archivo de parámetros. Corrige los errores antes de ejecutar el modelo.',
+                error='Se detectaron inconsistencias en los parámetros. Corrige los errores antes de ejecutar el modelo.',
                 validation=validation
             ), 400
-            
-        resultados = ejecutar_core(excel_path)
+
+        resultados = ejecutar_core(hojas)
         if premium_applied:
             resultados['premium_overrides_applied'] = premium_applied
         
@@ -5626,7 +5847,9 @@ def modelo_optimizacion_descargar_reporte():
         resultados = cache_data['resultados']
         uploaded_excel_path = cache_data['excel_path']
         
-        excel_path_param = uploaded_excel_path if uploaded_excel_path else EXCEL_DEFAULT_LP
+        # El informe solo usa este archivo para leer BRENT/TRM; si no esta,
+        # se genera igual (el lector ya tolera que falte).
+        excel_path_param = uploaded_excel_path if uploaded_excel_path else _mo_excel_base_disponible()
         
         from modelo_optimizacion_report import generar_informe_excel
         report_bytes = generar_informe_excel(nombre_escenario, resultados, excel_path_param=excel_path_param)
@@ -5697,8 +5920,10 @@ def modelo_parametros_importar():
         from uuid import uuid4
         import json
         nombre = _mo_nombre_escenario_unico(request.form.get('nombre') or 'Escenario importado')
-        excel_path = EXCEL_DEFAULT_LP
+        excel_path = _mo_excel_base_disponible()
         uploaded = request.files.get('archivo_excel')
+        if not excel_path and not (uploaded and uploaded.filename):
+            return jsonify(success=False, error=MO_ERROR_SIN_EXCEL), 503
         if uploaded and uploaded.filename:
             tmp_dir = os.path.join(BASE_DIR, 'tmp_modelo')
             os.makedirs(tmp_dir, exist_ok=True)
@@ -5729,7 +5954,9 @@ def modelo_parametros_nuevo():
         from modelo_parametros_builder import escenario_vacio
         import json
         nombre = _mo_nombre_escenario_unico(request.form.get('nombre') or 'Escenario nuevo')
-        payload = escenario_vacio(EXCEL_DEFAULT_LP)
+        # La estructura sale del esquema en codigo; el Excel solo se usa si esta
+        # disponible, para heredar los valores economicos actuales.
+        payload = escenario_vacio(_mo_excel_base_disponible())
         esc = EscenarioParametrosLP(
             nombre=nombre,
             datos_json=json.dumps(payload, ensure_ascii=False),
@@ -8214,6 +8441,23 @@ def dashboard_reportes():
             'badge': 'Logística',
             'url_principal': url_for('programacion_cargue'),
             'nombre_btn': 'Ver Programación',
+            'sub_links': []
+        })
+
+    # 2b. Inventario de Precintos
+    if is_admin or 'precintos' in user_areas:
+        modulos_usuario.append({
+            'id': 'inventario_precintos',
+            'categoria': 'Logística',
+            'titulo': 'Inventario de Precintos',
+            'descripcion': 'Stock de sellos de seguridad, asignación consecutiva automática y trazabilidad por placa.',
+            'icono': 'bi-shield-lock-fill',
+            'color': 'warning',
+            'bg_gradient': 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)',
+            'color_hex': '#D97706',
+            'badge': 'Logística',
+            'url_principal': url_for('inventario_precintos'),
+            'nombre_btn': 'Ver Inventario',
             'sub_links': []
         })
 
@@ -11311,7 +11555,8 @@ def programacion_cargue():
                            email_usuario=session.get('email'),
                            nombre=session.get('nombre'),
                            lista_clientes=clientes,
-                           lista_conductores=conductores)
+                           lista_conductores=conductores,
+                           puede_precintos=tiene_permiso('precintos'))
 
 
 @app.route('/programacion-base')
@@ -11949,8 +12194,8 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
 
         registro_prog = ProgramacionCargue(
             fecha_programacion=fecha_ref,
-            producto_a_cargar=(registro_base.producto or '').strip().upper() or None,
-            cliente=_a_mayuscula_guardado(registro_base.cliente),
+            producto_a_cargar=_normalizar_producto_cargue(registro_base.producto),
+            cliente=_normalizar_cliente_cargue(registro_base.cliente),
             destino=_normalizar_destino_ciudad(registro_base.destino),
             estado='PROGRAMADO',
             ultimo_editor=session.get('nombre')
@@ -11976,8 +12221,8 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
         return registro_prog, creado
 
     registro_prog.fecha_programacion = registro_base.fecha_cargue_confirmada or registro_prog.fecha_programacion
-    registro_prog.producto_a_cargar = (registro_base.producto or '').strip().upper() or registro_prog.producto_a_cargar
-    registro_prog.cliente = _a_mayuscula_guardado(registro_base.cliente) or registro_prog.cliente
+    registro_prog.producto_a_cargar = _normalizar_producto_cargue(registro_base.producto) or registro_prog.producto_a_cargar
+    registro_prog.cliente = _normalizar_cliente_cargue(registro_base.cliente) or registro_prog.cliente
     registro_prog.destino = _normalizar_destino_ciudad(registro_base.destino) or registro_prog.destino
 
     if registro_base.galones not in (None, ''):
@@ -12307,6 +12552,207 @@ def _normalizar_destino_ciudad(valor):
     texto = re.sub(r'[^A-ZÁÉÍÓÚÜÑ ]+', ' ', texto)
     texto = re.sub(r'\s+', ' ', texto).strip()
     return texto or None
+
+
+def _generar_clave_normalizada(texto):
+    """Genera una clave de búsqueda limpia: mayúsculas, sin acentos, sin puntuación (salvo / para compuestos), espacios colapsados y siglas unificadas (S.A.S -> SAS, C.I. -> CI)."""
+    if not texto:
+        return ''
+    s = str(texto).replace('\xa0', ' ')
+    s = unicodedata.normalize('NFKD', s).encode('ASCII', 'ignore').decode('utf-8')
+    s = re.sub(r'[^A-Z0-9\s/]', ' ', s.upper())
+    s = re.sub(r'\bS\s+A\s+S\b', 'SAS', s)
+    s = re.sub(r'\bS\s+A\b', 'SA', s)
+    s = re.sub(r'\bC\s+I\b', 'CI', s)
+    s = re.sub(r'\bL\s+T\s+D\s+A\b', 'LTDA', s)
+    s = re.sub(r'\s*/\s*', ' / ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+
+DICCIONARIO_CANONICO_PRODUCTOS = {
+    'FO4': 'FUEL OIL 4',
+    'F04': 'FUEL OIL 4',
+    'FO 4': 'FUEL OIL 4',
+    'F 04': 'FUEL OIL 4',
+    'FUEL OIL 4': 'FUEL OIL 4',
+    'FUEL OIL 04': 'FUEL OIL 4',
+    'VLSFO': 'FUEL OIL (VLSFO)',
+    'FUEL OIL VLSFO': 'FUEL OIL (VLSFO)',
+    'COMBUSTOLEO': 'FUEL OIL - COMBUSTOLEO',
+    'FUEL OIL COMBUSTOLEO': 'FUEL OIL - COMBUSTOLEO',
+    'DILUYENTE': 'DILUYENTE',
+    'DIESEL MARINO': 'DIESEL MARINO',
+    'CRUDO': 'CRUDO',
+    'MGO': 'MGO',
+    'FUEL OIL 6': 'FUEL OIL 6',
+    'FO6': 'FUEL OIL 6',
+    'F06': 'FUEL OIL 6',
+}
+
+PRODUCTO_COLORES_OFICIALES = {
+    'FUEL OIL 4': '#00A896',          # Verde Esmeralda Conquers
+    'DILUYENTE': '#F77F00',           # Naranja Ámbar Corporativo
+    'FUEL OIL (VLSFO)': '#06AED5',    # Azul Océano Eléctrico
+    'FUEL OIL 6': '#6366F1',          # Índigo Púrpura
+    'MGO': '#0EA5E9',                 # Cian Claro
+    'CRUDO': '#475569',               # Gris Pizarra Oscuro
+    'DIESEL MARINO': '#10B981',       # Verde Menta
+    'FUEL OIL - COMBUSTOLEO': '#8B5CF6' # Violeta Intenso
+}
+
+DICCIONARIO_CANONICO_CLIENTES = {
+    # MARKETING OIL COMPANY
+    'MARKETING OIL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+    'MARTEKING OIL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+    'MARJETING OIL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+    'MARKETIG OIL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+    'MARKETING IL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+    'MERKETING OIL COMPANY SAS': 'MARKETING OIL COMPANY SAS',
+
+    # CONQUERS WORLD TRADE
+    'CI CONQUERS WORLD TRADE SAS': 'C.I. CONQUERS WORLD TRADE SAS',
+
+    # DISOLVAN Y CIA
+    'DISOLVAN Y CIA SAS': 'DISOLVAN Y CIA SAS',
+    'DISOLVAN CIA SAS': 'DISOLVAN Y CIA SAS',
+    'DISOLVAN Y CA SAS': 'DISOLVAN Y CIA SAS',
+
+    # ALMA ENERGY
+    'ALMA ENERGY': 'ALMA ENERGY INVESTMENTS SAS',
+    'ALMA ENERGY INVESTMENTS SAS': 'ALMA ENERGY INVESTMENTS SAS',
+    'ALMA ENERGY INVESMENTS SAS': 'ALMA ENERGY INVESTMENTS SAS',
+
+    # PINTURAS EVERY
+    'PINTURAS EVERY': 'PINTURAS EVERY SAS',
+    'PINTURAS EVERY SAS': 'PINTURAS EVERY SAS',
+    'PINTURAS EVERY REEMPLAZA LA 49': 'PINTURAS EVERY SAS',
+
+    # ISM INGENIERIA
+    'ISM': 'ISM INGENIERIA SAS',
+    'ISM INGENIERIA': 'ISM INGENIERIA SAS',
+    'ISM INGENIERIA SAS': 'ISM INGENIERIA SAS',
+    'ISM INGENIERIA SERVICIO MONTAJE ESTACIONES DE SERVICIO SAS': 'ISM INGENIERIA SAS',
+    'ISM INGENIERIA SERVICIO MONTAJE ESTACIONES DE SERVICIO SA': 'ISM INGENIERIA SAS',
+
+    # QUIMICOS DEL CARIBE
+    'QUIMICOS DEL CARIBE': 'QUIMICOS DEL CARIBE SAS',
+    'QUIMICOS DEL CARIBE SAS': 'QUIMICOS DEL CARIBE SAS',
+
+    # ECO FUELS AGRO
+    'ECO FUELS AGRO SAS': 'ECO FUELS AGRO SAS',
+    'ECO FUELS AGRO SAS REEMPLAZO LA 80': 'ECO FUELS AGRO SAS',
+    'ECO FUELS AGRO SAS REEMPLAZO LA 81': 'ECO FUELS AGRO SAS',
+    'ECO FUELS AGRO SAS REEMPLAZO LA 82': 'ECO FUELS AGRO SAS',
+    'ECO FUELS AGRO SAS REEMPLAZO LA 83': 'ECO FUELS AGRO SAS',
+    'ECO FUELS AGRO SAS REEMPLAZO LA 86': 'ECO FUELS AGRO SAS',
+
+    # SOLVENTES QUIMICOS DE COLOMBIA
+    'SOLVENTES QUIMICOS DE COLOMBIA': 'SOLVENTES QUIMICOS DE COLOMBIA SAS',
+    'SOLVENTES QUIMICOS DE COLOMBIA SA': 'SOLVENTES QUIMICOS DE COLOMBIA SAS',
+    'SOLVENTES QUIMICOS DE COLOMBIA SAS': 'SOLVENTES QUIMICOS DE COLOMBIA SAS',
+    'SOLVENTES QUIMICOS SAS': 'SOLVENTES QUIMICOS DE COLOMBIA SAS',
+
+    # DIAMOND SUPPLIES & LOGISTICS
+    'DIAMOND SUPPLIES LOGISTICAS SAS': 'DIAMOND SUPPLIES & LOGISTICS SAS',
+    'DIAMOND SUPPLIES LOGISTICS SAS': 'DIAMOND SUPPLIES & LOGISTICS SAS',
+
+    # INVERSIONES QUIMICAS MEOR
+    'INVERSIONES QUIMICAS MEOR': 'INVERSIONES QUIMICAS MEOR SAS',
+    'INVERSIONES QUIMICAS MEOR SAS': 'INVERSIONES QUIMICAS MEOR SAS',
+    'INVERSIONES QUIMICAS MEOR SAS ANULADO REEMPLAZA RM 009 MARKETING': 'INVERSIONES QUIMICAS MEOR SAS',
+    'INVERSIONES QUIMICAS MEOR SAS REEMPLAZO LA 74': 'INVERSIONES QUIMICAS MEOR SAS',
+
+    # ESAPETROL
+    'ESAPETROL': 'ESAPETROL SA',
+    'ESAPETROL SA': 'ESAPETROL SA',
+
+    # BOLIVARIANA DE DISOLVENTES
+    'BOLIVARIANA DE DISOLVENTES': 'BOLIVARIANA DE DISOLVENTES SAS',
+    'BOLIVARIANA DE DISOLVENTES SAS': 'BOLIVARIANA DE DISOLVENTES SAS',
+
+    # CENTRAL DE DISOLVENTES
+    'CENTRAL DE DISOLVENTES': 'CENTRAL DE DISOLVENTES SAS',
+    'CENTRAL DE DISOLVENTES SAS': 'CENTRAL DE DISOLVENTES SAS',
+
+    # GRUPO CORAMA
+    'GRUPO CORAMA R A SAS': 'GRUPO CORAMA R.A SAS',
+    'GRUPO CORAMA RA SAS': 'GRUPO CORAMA R.A SAS',
+
+    # PINTURAS INDUPIN
+    'PINTURAS INDUPIN': 'PINTURAS INDUPIN SAS',
+    'PINTURAS INDUPIN SAS': 'PINTURAS INDUPIN SAS',
+
+    # QMAX SOLUTIONS COLOMBIA
+    'QMAX SOLUTIONS COLOMBIA': 'QMAX SOLUTIONS COLOMBIA',
+
+    # COMERCIALIZADORA INDUSTRIAL LIUTEX
+    'LIUTEX': 'COMERCIALIZADORA INDUSTRIAL LIUTEX SAS',
+    'LIUTEX SAS': 'COMERCIALIZADORA INDUSTRIAL LIUTEX SAS',
+    'COMERCIALIZADORA INDUSTRIAL LIUTEX SAS': 'COMERCIALIZADORA INDUSTRIAL LIUTEX SAS',
+
+    # OCCIDENTAL ENERGY OIL
+    'OCCIDENTAL ENERGY OIL SAS': 'OCCIDENTAL ENERGY OIL SAS',
+
+    # CI WAYOUT
+    'CI WAYOUT SAS': 'C.I. WAYOUT SAS',
+    'WAYOUT': 'C.I. WAYOUT SAS',
+
+    # CI COINDIS
+    'CI COINDIS SAS': 'C.I. COINDIS SAS',
+
+    # CI FUSION SUPPLY
+    'CI FUSION SUPLLY SAS': 'C.I. FUSION SUPPLY SAS',
+    'CI FUSION SUPPLY SAS': 'C.I. FUSION SUPPLY SAS',
+
+    # GRUPO QUIMAR
+    'GRUPO QUIMAR SAS': 'GRUPO QUIMAR SAS',
+
+    # INDUSOLVENT
+    'INDUSOLVENT SAS': 'INDUSOLVENT SAS',
+
+    # ACERIAS PAZ DEL RIO
+    'ACERIAS PAZ DEL RIO': 'ACERIAS PAZ DEL RIO',
+
+    # COMBUSTIBLES JUANCHITO
+    'COMBUSTIBLES JUANCHITO SAS': 'COMBUSTIBLES JUANCHITO SAS',
+
+    # EWAY FUEL
+    'EWAY FUEL LLC EXPORTACION': 'EWAY FUEL LLC - EXPORTACION',
+
+    # SURTIFRONTERAS ENERGY
+    'SURTIFRONTERAS ENERGY SAS': 'SURTIFRONTERAS ENERGY SAS',
+
+    # PRODISOL
+    'PRODISOL': 'PRODISOL',
+
+    # FBCOL
+    'FBCOL': 'FBCOL',
+
+    # CARGUES COMPARTIDOS / COMPUESTOS (8 registros reales en BD)
+    'CENTRAL DE DISOLVENTES / PINTURAS EVERY': 'CENTRAL DE DISOLVENTES / PINTURAS EVERY',
+    'LIUTEX / PINTURAS INDUPIN': 'LIUTEX / PINTURAS INDUPIN',
+    'MARKETING OIL COMPANY / ALMA ENERGY': 'MARKETING OIL COMPANY / ALMA ENERGY',
+    'MARKETING OIL COMPANY / PINTURAS EVERY': 'MARKETING OIL COMPANY / PINTURAS EVERY',
+    'PINTURAS EVERY / CENTRAL DE DISOLVENTES': 'PINTURAS EVERY / CENTRAL DE DISOLVENTES',
+}
+
+
+def _normalizar_producto_cargue(valor):
+    """Estandariza nombres de productos a su valor canónico mediante clave normalizada y diccionario estricto."""
+    if not valor:
+        return None
+    clave = _generar_clave_normalizada(valor)
+    return DICCIONARIO_CANONICO_PRODUCTOS.get(clave, str(valor).strip().upper())
+
+
+def _normalizar_cliente_cargue(valor):
+    """Estandariza nombres de clientes a su valor canónico mediante clave normalizada y diccionario estricto."""
+    if not valor:
+        return None
+    clave = _generar_clave_normalizada(valor)
+    return DICCIONARIO_CANONICO_CLIENTES.get(clave, str(valor).strip().upper())
+
 
 
 NOMBRES_COMUNES_CONDUCTOR = {
@@ -12640,23 +13086,10 @@ def update_programacion(id):
 
         # --- INICIO DE LA CORRECCIÓN ---
         campos_numericos = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido']
-        
-        # Diccionario de normalización de productos
-        normalizacion_productos = {
-            'F04': 'FUEL OIL 4',
-            'FO4': 'FUEL OIL 4',
-            'F06': 'FUEL OIL 6',
-            'FO6': 'FUEL OIL 6'
-        }
 
         for campo, valor in data.items():
             if campo in campos_permitidos:
                 campos_tocados.add(campo)
-                
-                # Normalización automática de productos
-                if campo == 'producto_a_cargar' and valor:
-                    valor_upper = str(valor).upper().strip()
-                    valor = normalizacion_productos.get(valor_upper, valor)
                 
                 # 1. Manejo específico para la fecha de programación
                 if campo == 'fecha_programacion'or campo == 'fecha_despacho':
@@ -12678,18 +13111,25 @@ def update_programacion(id):
                     except (ValueError, TypeError):
                         setattr(registro, campo, None) # Si la conversión falla, pone None
                 
-                # 4. Para todos los demás campos (strings), simplemente asigna el valor
+                # 4. Para todos los demás campos (strings), simplemente asigna el valor con normalización
                 else:
                     if campo == 'destino':
                         setattr(registro, campo, _normalizar_destino_ciudad(valor))
                     elif campo == 'nombre_conductor':
                         setattr(registro, campo, _formatear_nombre_conductor_apellido_nombre(valor))
+                    elif campo == 'producto_a_cargar':
+                        setattr(registro, campo, _normalizar_producto_cargue(valor))
+                    elif campo == 'cliente':
+                        setattr(registro, campo, _normalizar_cliente_cargue(valor))
                     elif campo in PROGRAMACION_MAYUSCULA_CAMPOS:
                         setattr(registro, campo, _a_mayuscula_guardado(valor) if valor not in (None, '') else None)
                     else:
                         setattr(registro, campo, valor)
 
         payload_conductor_sync = _sincronizar_conductor_en_programacion(registro, campos_tocados)
+
+        if 'precintos' in campos_tocados:
+            _sincronizar_precintos_manual(registro)
 
         # Regla de negocio: no permitir DESPACHADO con campos críticos incompletos.
         cambia_a_despachado = (
@@ -13097,6 +13537,8 @@ def delete_programacion(id):
         if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
             return jsonify(success=False, message='Registro bloqueado: no puede eliminarse después de 30 minutos de la edición de Refinería.'), 403
     try:
+        # Los precintos asignados no se pierden con la fila: vuelven a stock.
+        _liberar_precintos_de_programacion(registro)
         db.session.delete(registro)
         db.session.commit()
         return jsonify(success=True, message="Registro eliminado correctamente.")
@@ -13332,6 +13774,100 @@ def importar_guia_sharepoint(id):
         current_app.logger.error(f"Error importando desde SharePoint (ID: {id}): {e}")
         return jsonify(success=False, message=str(e)), 500
 
+@app.route('/api/programacion/auditoria-nombres-desconocidos', methods=['GET'])
+@login_required
+@permiso_requerido('programacion_cargue')
+def auditoria_nombres_desconocidos():
+    """Audita la base de datos detectando:
+    1. Valores pendientes de normalizar (valores conocidos pero que aún no tienen el formato canónico).
+    2. Valores desconocidos (valores cuya clave normalizada no existe en el diccionario)."""
+    try:
+        from collections import Counter
+        
+        # 1. Consultar cargues
+        cargues_cli = db.session.query(ProgramacionCargue.id, ProgramacionCargue.cliente).filter(ProgramacionCargue.cliente.isnot(None)).all()
+        cargues_prod = db.session.query(ProgramacionCargue.id, ProgramacionCargue.producto_a_cargar).filter(ProgramacionCargue.producto_a_cargar.isnot(None)).all()
+        
+        # 2. Consultar bases (usando la columna correcta: ProgramacionBase.producto)
+        base_cli, base_prod = [], []
+        try:
+            base_cli = db.session.query(ProgramacionBase.id, ProgramacionBase.cliente).filter(ProgramacionBase.cliente.isnot(None)).all()
+            base_prod = db.session.query(ProgramacionBase.id, ProgramacionBase.producto).filter(ProgramacionBase.producto.isnot(None)).all()
+        except Exception as e:
+            app.logger.warning(f"No se pudo consultar programacion_base para auditoría: {e}")
+
+        # Agrupar conteos
+        pendientes_cli_resumen = Counter()
+        pendientes_prod_resumen = Counter()
+        desconocidos_cli_resumen = Counter()
+        desconocidos_prod_resumen = Counter()
+
+        # Auditar clientes
+        for item_id, val in (cargues_cli + base_cli):
+            if not val or not str(val).strip():
+                continue
+            val_str = str(val).strip()
+            norm = _normalizar_cliente_cargue(val_str)
+            clave = _generar_clave_normalizada(val_str)
+            
+            if clave not in DICCIONARIO_CANONICO_CLIENTES:
+                desconocidos_cli_resumen[(val_str, clave)] += 1
+            elif val_str != norm:
+                pendientes_cli_resumen[(val_str, norm)] += 1
+
+        # Auditar productos
+        for item_id, val in (cargues_prod + base_prod):
+            if not val or not str(val).strip():
+                continue
+            val_str = str(val).strip()
+            norm = _normalizar_producto_cargue(val_str)
+            clave = _generar_clave_normalizada(val_str)
+            
+            if clave not in DICCIONARIO_CANONICO_PRODUCTOS:
+                desconocidos_prod_resumen[(val_str, clave)] += 1
+            elif val_str != norm:
+                pendientes_prod_resumen[(val_str, norm)] += 1
+
+        # Formatear resultados
+        pendientes_clientes = [
+            {'valor_actual': orig, 'valor_canonico': nuevo, 'ocurrencias': count}
+            for (orig, nuevo), count in pendientes_cli_resumen.most_common()
+        ]
+        pendientes_productos = [
+            {'valor_actual': orig, 'valor_canonico': nuevo, 'ocurrencias': count}
+            for (orig, nuevo), count in pendientes_prod_resumen.most_common()
+        ]
+        desconocidos_clientes = [
+            {'valor_bd': orig, 'clave_normalizada': clave, 'ocurrencias': count}
+            for (orig, clave), count in desconocidos_cli_resumen.most_common()
+        ]
+        desconocidos_productos = [
+            {'valor_bd': orig, 'clave_normalizada': clave, 'ocurrencias': count}
+            for (orig, clave), count in desconocidos_prod_resumen.most_common()
+        ]
+
+        total_pendientes = sum(pendientes_cli_resumen.values()) + sum(pendientes_prod_resumen.values())
+        total_desconocidos = sum(desconocidos_cli_resumen.values()) + sum(desconocidos_prod_resumen.values())
+
+        return jsonify(
+            success=True,
+            estado="LIMPIO" if (total_pendientes == 0 and total_desconocidos == 0) else "REQUIERE_ATENCION",
+            pendientes_normalizacion={
+                'total_filas': total_pendientes,
+                'clientes': pendientes_clientes,
+                'productos': pendientes_productos
+            },
+            nombres_desconocidos={
+                'total_filas': total_desconocidos,
+                'clientes': desconocidos_clientes,
+                'productos': desconocidos_productos
+            }
+        )
+    except Exception as e:
+        app.logger.exception('Error en auditoría de nombres')
+        return jsonify(success=False, message=str(e)), 500
+
+
 @app.route('/reporte_grafico_despachos')
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -13406,32 +13942,55 @@ def reporte_grafico_despachos():
         query = query.filter(ProgramacionCargue.cliente == cliente_filtro)
     datos_despacho = query.group_by(ProgramacionCargue.cliente).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
-    # Resumen por producto para el cliente seleccionado
-    resumen_productos = []
+    # Resumen por producto para la selección actual (global o con filtros)
+    resumen_query = db.session.query(
+        ProgramacionCargue.producto_a_cargar,
+        func.sum(ProgramacionCargue.barriles).label('total_barriles'),
+        func.count(ProgramacionCargue.id).label('total_despachos')
+    ).filter(
+        ProgramacionCargue.estado == 'DESPACHADO',
+        ProgramacionCargue.producto_a_cargar.isnot(None),
+        ProgramacionCargue.barriles.isnot(None)
+    )
+    if fecha_inicio:
+        resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+    if fecha_fin:
+        resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
     if cliente_filtro:
-        resumen_query = db.session.query(
-            ProgramacionCargue.producto_a_cargar,
-            func.sum(ProgramacionCargue.barriles).label('total_barriles')
-        ).filter(
-            ProgramacionCargue.estado == 'DESPACHADO',
-            ProgramacionCargue.cliente == cliente_filtro,
-            ProgramacionCargue.producto_a_cargar.isnot(None),
-            ProgramacionCargue.barriles.isnot(None)
-        )
-        if fecha_inicio:
-            resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-        if fecha_fin:
-            resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-        resumen_productos = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
+        resumen_query = resumen_query.filter(ProgramacionCargue.cliente == cliente_filtro)
+    if producto_filtro not in ['todos', 'ambos', '']:
+        resumen_query = resumen_query.filter(ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
+    resumen_productos_raw = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
+
+    total_barriles_general = sum(float(r[1]) for r in datos_despacho) if datos_despacho else 0
+
+    resumen_mix_productos = []
+    for r in resumen_productos_raw:
+        prod_nom = r[0]
+        bbl_val = float(r[1])
+        pct_val = (bbl_val / total_barriles_general * 100.0) if total_barriles_general > 0 else 0.0
+        color_val = PRODUCTO_COLORES_OFICIALES.get(prod_nom, '#64748B')
+        resumen_mix_productos.append({
+            'producto': prod_nom,
+            'barriles': bbl_val,
+            'despachos': int(r[2]),
+            'porcentaje': pct_val,
+            'color': color_val
+        })
+    resumen_productos = [(r[0], r[1]) for r in resumen_productos_raw]
 
     grafico_base64 = None
     grafico_div = None
     total_box_text = None  # Texto para tarjeta externa (solo barras)
-    total_barriles_general = 0
+    clientes_graf = []
+    barriles = []
+    product_maps = {}  # {producto_nombre: {cliente: barriles, ...}}
+    product_vals = {}  # {producto_nombre: [valores_por_cliente]}
+    product_totals = {}  # {producto_nombre: total}
+
     if datos_despacho:
         clientes_graf = [resultado[0] for resultado in datos_despacho]
         barriles = [float(resultado[1]) for resultado in datos_despacho]
-        total_barriles_general = sum(barriles)
         # Periodo para títulos
         if fecha_inicio and fecha_fin:
             periodo = f"{fecha_inicio.strftime('%d/%m/%Y')} - {fecha_fin.strftime('%d/%m/%Y')}"
@@ -13443,10 +14002,6 @@ def reporte_grafico_despachos():
             periodo = "Todo el periodo"
 
         # ---- Calcular desglose por producto por cliente (DINÁMICO) ----
-        product_maps = {}  # {producto_nombre: {cliente: barriles, ...}}
-        product_vals = {}  # {producto_nombre: [valores_por_cliente]}
-        product_totals = {}  # {producto_nombre: total}
-
         if producto_filtro in ['ambos', 'todos', '']:
             base_filters = [
                 ProgramacionCargue.estado == 'DESPACHADO',
@@ -13696,7 +14251,9 @@ def reporte_grafico_despachos():
         tipo=tipo_grafico,
         producto=producto_filtro,
         productos_disponibles=productos_disponibles,
-        shown_products=list(product_vals.keys()) if producto_filtro in ['ambos', 'todos', ''] else []
+        shown_products=list(product_vals.keys()) if producto_filtro in ['ambos', 'todos', ''] else [],
+        resumen_mix_productos=resumen_mix_productos,
+        producto_colores=PRODUCTO_COLORES_OFICIALES
     )
 
 @app.route('/descargar_reporte_grafico_despachos_pdf')
@@ -13744,14 +14301,8 @@ def descargar_reporte_grafico_despachos_pdf():
         ProgramacionCargue.barriles.isnot(None),
         ProgramacionCargue.producto_a_cargar.isnot(None)
     )
-    if producto_filtro == 'fo4':
-        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike('%FO4%'))
-    elif producto_filtro == 'diluyente':
-        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%'))
-    else:
-        base_query = base_query.filter(
-            ProgramacionCargue.producto_a_cargar.ilike('%FO4%') | ProgramacionCargue.producto_a_cargar.ilike('%DILUYENTE%')
-        )
+    if producto_filtro not in ['todos', 'ambos', '']:
+        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
     if fecha_inicio:
         base_query = base_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
     if fecha_fin:
@@ -14188,6 +14739,15 @@ def upload_programacion_excel():
                     datos['barriles'] = float(datos['galones'])/42.0
                 except Exception:
                     pass
+            if datos.get('producto_a_cargar'):
+                datos['producto_a_cargar'] = _normalizar_producto_cargue(datos.get('producto_a_cargar'))
+            if datos.get('cliente'):
+                datos['cliente'] = _normalizar_cliente_cargue(datos.get('cliente'))
+            if datos.get('destino'):
+                datos['destino'] = _normalizar_destino_ciudad(datos.get('destino'))
+            if datos.get('nombre_conductor'):
+                datos['nombre_conductor'] = _formatear_nombre_conductor_apellido_nombre(datos.get('nombre_conductor'))
+
             datos['ultimo_editor'] = session.get('nombre')
             # Normalizar estado
             if datos.get('estado'):
@@ -15639,6 +16199,17 @@ def debug_productos():
         "file_content": open("productos.json").read() if os.path.exists("productos.json") else None
     })
 
+def _contar_clientes_en_archivo():
+    """Cuántos clientes hay hoy en static/Clientes.json (0 si no existe o falla)."""
+    try:
+        ruta = os.path.join(BASE_DIR, 'static', 'Clientes.json')
+        with open(ruta, 'r', encoding='utf-8') as f:
+            datos = json.load(f)
+        return len(datos) if isinstance(datos, list) else 0
+    except Exception:
+        return 0
+
+
 def cargar_clientes():
     """Función auxiliar para cargar clientes. Prioriza DB -> Clientes.json.
     Si la DB tiene datos, sincroniza automáticamente al archivo Clientes.json
@@ -15666,8 +16237,23 @@ def cargar_clientes():
             if clientes_lista:
                 # AUTO-SYNC: Guardar los clientes de la DB al JSON para mantenerlos sincronizados
                 # Esto resuelve el problema de que un git pull sobrescriba el Clientes.json
+                #
+                # SALVAGUARDA: solo sincronizamos si la DB no trae MENOS clientes que
+                # los que ya hay en el archivo. Una DB con menos registros que el JSON
+                # significa que está incompleta (tabla recién sembrada, migración a
+                # medias, o un cliente agregado sobre una tabla vacía), y sincronizar
+                # en ese estado BORRA el catálogo bueno del archivo. Preferimos servir
+                # los datos de la DB y dejar el archivo intacto hasta que alguien lo
+                # revise.
                 try:
-                    guardar_clientes(clientes_lista)
+                    if len(clientes_lista) < _contar_clientes_en_archivo():
+                        print(
+                            f"Advertencia: la DB tiene {len(clientes_lista)} cliente(s) y "
+                            f"Clientes.json tiene {_contar_clientes_en_archivo()}. Se omite el "
+                            f"auto-sync para no perder el catálogo del archivo."
+                        )
+                    else:
+                        guardar_clientes(clientes_lista)
                 except Exception as sync_err:
                     print(f"Advertencia: No se pudo sincronizar Clientes.json desde DB: {sync_err}")
                 return clientes_lista
@@ -15764,13 +16350,16 @@ def _firma_cliente(nombre, direccion, ciudad):
 
 
 def _mismo_cliente_por_ubicacion(firma_a, firma_b):
-    """Considera duplicado cuando coincide la ubicación normalizada (dirección + ciudad)."""
+    """Considera duplicado cuando coincide el nombre normalizado Y la ubicación (dirección + ciudad).
+    Diferentes empresas pueden compartir un mismo parque industrial o predio sin ser duplicados."""
     if not firma_a or not firma_b:
         return False
 
     return (
-        bool(firma_a.get('direccion'))
+        bool(firma_a.get('nombre'))
+        and bool(firma_a.get('direccion'))
         and bool(firma_a.get('ciudad'))
+        and firma_a.get('nombre') == firma_b.get('nombre')
         and firma_a.get('direccion') == firma_b.get('direccion')
         and firma_a.get('ciudad') == firma_b.get('ciudad')
     )
@@ -15896,6 +16485,15 @@ class WhatsappMessage(db.Model):
 
 class Cliente(db.Model):
     __tablename__ = 'clientes'
+    # Una misma empresa puede tener varias sedes (C.I. INTERNATIONAL FUELS en
+    # Cartagena y en Barranquilla, INVERSIONES QUIMICAS x3). La identidad de un
+    # cliente es la sede completa, no el nombre: por eso el UNIQUE va sobre las
+    # tres columnas. La tabla arrastraba un UNIQUE(nombre) que impedía guardar
+    # sedes y que el modelo nunca declaró; lo corrige reparar_catalogo_clientes.py.
+    __table_args__ = (
+        db.UniqueConstraint('nombre', 'direccion', 'ciudad_departamento',
+                            name='uq_cliente_sede'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(255), nullable=False)
     direccion = db.Column(db.String(255), nullable=False)
@@ -20783,5 +21381,847 @@ def transito_ia_completar():
         "message": "N8N está configurado para ejecutarse en segundo plano al llegar correos. Refresca la página en unos minutos para ver actualizaciones automáticas."
     })
 
+# =============================================================================
+# INVENTARIO DE PRECINTOS - helpers, API y vista
+# =============================================================================
+# Ojo con el orden de los decoradores: `@app.route` va ARRIBA. Si se pone
+# debajo de `permiso_requerido`, Flask registra la funcion cruda y el permiso
+# nunca se evalua (es el error que arrastran las rutas viejas de este archivo).
+
+_PRECINTOS_ESQUEMA_LISTO = False
+
+
+def _precintos_asegurar_esquema():
+    """Indice unico parcial: un mismo numero no puede estar DISPONIBLE dos veces.
+
+    No se aplica a USADO/ANULADO porque el historico importado trae 39 numeros
+    repetidos por errores de digitacion que hay que conservar para auditoria.
+    """
+    global _PRECINTOS_ESQUEMA_LISTO
+    if _PRECINTOS_ESQUEMA_LISTO:
+        return
+    from sqlalchemy import text
+    try:
+        db.session.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_precinto_numero_disponible "
+            "ON inventario_precintos (numero) WHERE estado = 'DISPONIBLE'"
+        ))
+        db.session.commit()
+        _PRECINTOS_ESQUEMA_LISTO = True
+    except Exception as e:
+        db.session.rollback()
+        logging.warning("No se pudo crear el indice de precintos: %s", e)
+
+
+def _precintos_usuario():
+    return session.get('nombre') or session.get('email') or 'sistema'
+
+
+def _precintos_puede_registrar_lotes():
+    """Dar de alta stock es funcion de bodega/administracion, no de despacho."""
+    return session.get('rol') == 'admin' or session.get('email') in {
+        'ops@conquerstrading.com',
+        'logistic@conquerstrading.com',
+        'oci@conquerstrading.com',
+        'production@conquerstrading.com',
+    }
+
+
+def _precintos_bloqueo_refineria(registro):
+    """Mismo candado de 30 min que aplica update_programacion sobre `precintos`."""
+    if session.get('email') != 'refinery.control@conquerstrading.com':
+        return None
+    if (registro.estado or '').upper() == 'DESPACHADO':
+        return 'El registro ya esta DESPACHADO y refineria no puede modificarlo.'
+    if registro.refineria_completado_en:
+        if (datetime.utcnow() - registro.refineria_completado_en) > timedelta(minutes=30):
+            return ('Pasaron mas de 30 minutos desde que se completaron los campos '
+                    'de refineria. Ya no puedes cambiar los precintos.')
+    return None
+
+
+def _actualizar_reloj_refineria(registro):
+    """Arranca o reinicia el candado de 30 min de refineria.
+
+    update_programacion hace esto al guardar un campo; como los endpoints de
+    precintos escriben `precintos` por fuera de ese flujo, hay que repetirlo
+    aqui o el candado no se activa cuando precintos es el ultimo campo.
+    """
+    campos = ['estado', 'galones', 'barriles', 'temperatura',
+              'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
+    ahora = datetime.utcnow()
+    try:
+        completo = all(getattr(registro, f) not in (None, '') for f in campos)
+    except Exception:
+        completo = False
+
+    if completo and not registro.refineria_completado_en:
+        registro.refineria_completado_en = ahora
+    elif not completo and registro.refineria_completado_en:
+        # Solo se reinicia mientras el candado no haya vencido.
+        if (ahora - registro.refineria_completado_en) <= timedelta(minutes=30):
+            registro.refineria_completado_en = None
+
+
+def _recalcular_texto_precintos(registro):
+    """Reescribe la columna `precintos` desde los sellos vivos de ese cargue."""
+    vivos = (InventarioPrecinto.query
+             .filter(InventarioPrecinto.programacion_id == registro.id,
+                     InventarioPrecinto.estado == 'USADO')
+             .order_by(InventarioPrecinto.numero.asc())
+             .all())
+    registro.precintos = _texto_precintos([p.codigo for p in vivos]) or None
+    return registro.precintos
+
+
+def _tomar_precintos_disponibles(cantidad):
+    """Bloquea y devuelve los siguientes N sellos disponibles.
+
+    `skip_locked` evita que dos usuarios asignando a la vez se lleven el mismo
+    consecutivo: el segundo salta las filas que el primero ya tiene tomadas.
+    """
+    return (db.session.query(InventarioPrecinto)
+            .filter(InventarioPrecinto.estado == 'DISPONIBLE')
+            .order_by(InventarioPrecinto.numero.asc())
+            .limit(cantidad)
+            .with_for_update(skip_locked=True)
+            .all())
+
+
+def _marcar_precinto_usado(precinto, registro, usuario):
+    precinto.estado = 'USADO'
+    precinto.programacion_id = registro.id
+    precinto.placa = registro.placa
+    precinto.numero_guia = registro.numero_guia
+    precinto.cliente = registro.cliente
+    precinto.producto = registro.producto_a_cargar
+    precinto.conductor = registro.nombre_conductor
+    precinto.fecha_uso = registro.fecha_despacho or registro.fecha_programacion or date.today()
+    precinto.usuario_uso = usuario
+
+
+def _precinto_a_dict(p):
+    return {
+        'id': p.id,
+        'codigo': p.codigo,
+        'numero': p.numero,
+        'estado': p.estado,
+        'lote_id': p.lote_id,
+        'programacion_id': p.programacion_id,
+        'placa': p.placa or '',
+        'numero_guia': p.numero_guia or '',
+        'cliente': p.cliente or '',
+        'producto': p.producto or '',
+        'conductor': p.conductor or '',
+        'fecha_uso': p.fecha_uso.isoformat() if p.fecha_uso else '',
+        'usuario_uso': p.usuario_uso or '',
+        'motivo_anulacion': p.motivo_anulacion or '',
+        'fecha_anulacion': p.fecha_anulacion.isoformat() if p.fecha_anulacion else '',
+        'usuario_anulacion': p.usuario_anulacion or '',
+        'origen': p.origen or 'INVENTARIO',
+        'texto_original': p.texto_original or '',
+        'requiere_revision': bool(p.requiere_revision),
+        'nota_revision': p.nota_revision or '',
+    }
+
+
+def _precintos_resumen():
+    _precintos_asegurar_esquema()
+    conteos = dict(
+        db.session.query(InventarioPrecinto.estado, func.count(InventarioPrecinto.id))
+        .group_by(InventarioPrecinto.estado).all()
+    )
+    disponibles = conteos.get('DISPONIBLE', 0)
+    retirados = (InventarioPrecinto.query
+                 .filter(InventarioPrecinto.estado == 'ANULADO',
+                         InventarioPrecinto.usuario_anulacion == PRECINTOS_USUARIO_AJUSTE)
+                 .count())
+    proximos = (InventarioPrecinto.query
+                .filter(InventarioPrecinto.estado == 'DISPONIBLE')
+                .order_by(InventarioPrecinto.numero.asc())
+                .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
+    por_revisar = (InventarioPrecinto.query
+                   .filter(InventarioPrecinto.requiere_revision.is_(True)).count())
+    return {
+        'disponibles': disponibles,
+        'usados': conteos.get('USADO', 0),
+        'anulados': conteos.get('ANULADO', 0) - retirados,
+        'retirados': retirados,
+        'por_revisar': por_revisar,
+        'siguiente': proximos[0].codigo if proximos else None,
+        'proximos': [p.codigo for p in proximos],
+        'stock_minimo': PRECINTOS_STOCK_MINIMO,
+        'stock_bajo': disponibles < PRECINTOS_STOCK_MINIMO,
+        'cantidad_defecto': PRECINTOS_CANTIDAD_DEFECTO,
+        'cantidad_maxima': PRECINTOS_CANTIDAD_MAXIMA,
+    }
+
+
+def _sincronizar_precintos_manual(registro):
+    """Reconcilia el inventario cuando alguien reescribe la celda a mano.
+
+    Los sellos que ya no aparecen en el texto dejan de estar vinculados al
+    cargue y, si salieron del inventario, regresan a DISPONIBLE.
+    """
+    numeros_texto = {int(t) for t in re.split(r'\D+', registro.precintos or '') if t}
+    asignados = InventarioPrecinto.query.filter(
+        InventarioPrecinto.programacion_id == registro.id,
+        InventarioPrecinto.estado == 'USADO').all()
+    liberados = 0
+    for p in asignados:
+        if p.numero in numeros_texto:
+            continue
+        p.programacion_id = None
+        if p.origen == 'INVENTARIO':
+            p.estado = 'DISPONIBLE'
+            p.placa = p.numero_guia = p.cliente = None
+            p.producto = p.conductor = p.usuario_uso = None
+            p.fecha_uso = None
+            liberados += 1
+    return liberados
+
+
+def _liberar_precintos_de_programacion(registro):
+    """Los del inventario vuelven a stock; los del historico solo se desvinculan.
+
+    Un sello importado del historico ya se uso fisicamente: devolverlo a
+    DISPONIBLE lo pondria a disposicion de un cargue nuevo, que es justo el
+    error que este modulo existe para evitar.
+    """
+    asignados = InventarioPrecinto.query.filter(
+        InventarioPrecinto.programacion_id == registro.id,
+        InventarioPrecinto.estado == 'USADO').all()
+    liberados = 0
+    for p in asignados:
+        p.programacion_id = None
+        if p.origen == 'INVENTARIO':
+            p.estado = 'DISPONIBLE'
+            p.placa = p.numero_guia = p.cliente = None
+            p.producto = p.conductor = p.usuario_uso = None
+            p.fecha_uso = None
+            liberados += 1
+    return liberados
+
+
+def _auto_vincular_precintos_con_programacion():
+    """Auto-vincula precintos que hayan sido digitados en ProgramacionCargue para tener placa y viaje."""
+    try:
+        cargues = ProgramacionCargue.query.filter(ProgramacionCargue.precintos.isnot(None)).all()
+        for c in cargues:
+            if not c.precintos:
+                continue
+            numeros = [int(n) for n in re.findall(r'\d+', c.precintos) if len(n) >= 4]
+            if not numeros:
+                continue
+            precintos_bd = InventarioPrecinto.query.filter(InventarioPrecinto.numero.in_(numeros)).all()
+            for p in precintos_bd:
+                if p.estado != 'ANULADO' and (p.estado == 'DISPONIBLE' or p.programacion_id is None):
+                    p.estado = 'USADO'
+                    p.programacion_id = c.id
+                    p.placa = c.placa
+                    p.numero_guia = c.numero_guia
+                    p.cliente = c.cliente
+                    p.producto = c.producto_a_cargar
+                    p.conductor = c.nombre_conductor
+                    p.usuario_uso = c.ultimo_editor or 'Sistema'
+                    p.fecha_uso = p.fecha_uso or datetime.utcnow()
+                elif p.estado == 'ANULADO' and p.programacion_id is None:
+                    p.programacion_id = c.id
+                    p.placa = c.placa
+                    p.numero_guia = c.numero_guia
+                    p.cliente = c.cliente
+                    p.producto = c.producto_a_cargar
+                    p.conductor = c.nombre_conductor
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+@app.route('/inventario-precintos')
+@login_required
+@permiso_requerido('precintos')
+def inventario_precintos():
+    """Vista de stock, trazabilidad y registro de lotes de precintos."""
+    _precintos_asegurar_esquema()
+    _auto_vincular_precintos_con_programacion()
+    return render_template(
+        'inventario_precintos.html',
+        rol_usuario=session.get('rol'),
+        email_usuario=session.get('email'),
+        nombre=session.get('nombre'),
+        puede_registrar_lotes=_precintos_puede_registrar_lotes(),
+    )
+
+
+@app.route('/api/precintos/resumen', methods=['GET'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_resumen():
+    _auto_vincular_precintos_con_programacion()
+    return jsonify(success=True, **_precintos_resumen())
+
+
+@app.route('/api/precintos/listado', methods=['GET'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_listado():
+    _precintos_asegurar_esquema()
+    _auto_vincular_precintos_con_programacion()
+    estado = (request.args.get('estado') or '').upper().strip()
+    q = (request.args.get('q') or '').strip()
+    solo_revision = request.args.get('revision') == '1'
+    lote_id = request.args.get('lote_id', type=int)
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 100, type=int), 1), 500)
+
+    query = InventarioPrecinto.query
+    if estado in PRECINTOS_ESTADOS:
+        query = query.filter(InventarioPrecinto.estado == estado)
+    if solo_revision:
+        query = query.filter(InventarioPrecinto.requiere_revision.is_(True))
+    if lote_id:
+        query = query.filter(InventarioPrecinto.lote_id == lote_id)
+    if q:
+        like = '%' + q.upper() + '%'
+        solo_digitos = re.sub(r'\D', '', q)
+        filtros = [
+            func.upper(InventarioPrecinto.codigo).like(like),
+            func.upper(func.coalesce(InventarioPrecinto.placa, '')).like(like),
+            func.upper(func.coalesce(InventarioPrecinto.numero_guia, '')).like(like),
+            func.upper(func.coalesce(InventarioPrecinto.cliente, '')).like(like),
+            func.upper(func.coalesce(InventarioPrecinto.conductor, '')).like(like),
+        ]
+        if solo_digitos:
+            # 4346 debe encontrar 004346 sin obligar a escribir los ceros.
+            try:
+                filtros.append(InventarioPrecinto.numero == int(solo_digitos))
+            except ValueError:
+                pass
+        query = query.filter(or_(*filtros))
+
+    total = query.count()
+    filas = (query.order_by(InventarioPrecinto.numero.desc())
+             .offset((page - 1) * per_page).limit(per_page).all())
+    return jsonify(
+        success=True,
+        total=total,
+        page=page,
+        per_page=per_page,
+        paginas=max((total + per_page - 1) // per_page, 1),
+        precintos=[_precinto_a_dict(p) for p in filas],
+    )
+
+
+@app.route('/api/precintos/lotes', methods=['GET'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_lotes():
+    _precintos_asegurar_esquema()
+    lotes = LotePrecintos.query.order_by(LotePrecintos.created_at.desc()).all()
+    disponibles_por_lote = dict(
+        db.session.query(InventarioPrecinto.lote_id, func.count(InventarioPrecinto.id))
+        .filter(InventarioPrecinto.estado == 'DISPONIBLE')
+        .group_by(InventarioPrecinto.lote_id).all()
+    )
+    creados_por_lote = dict(
+        db.session.query(InventarioPrecinto.lote_id, func.count(InventarioPrecinto.id))
+        .group_by(InventarioPrecinto.lote_id).all()
+    )
+    data = []
+    for l in lotes:
+        total = creados_por_lote.get(l.id, 0)
+        disp = disponibles_por_lote.get(l.id, 0)
+        data.append({
+            'id': l.id,
+            'nombre': l.nombre or '',
+            'rango_inicial': _formatear_codigo_precinto(l.rango_inicial, l.numero_digitos),
+            'rango_final': _formatear_codigo_precinto(l.rango_final, l.numero_digitos),
+            'color': l.color or '',
+            'proveedor': l.proveedor or '',
+            'documento_remision': l.documento_remision or '',
+            'fecha_ingreso': l.fecha_ingreso.isoformat() if l.fecha_ingreso else '',
+            'total': total,
+            'disponibles': disp,
+            'consumidos': total - disp,
+            'pct_consumido': round(((total - disp) / total * 100), 1) if total else 0,
+            'usuario_registro': l.usuario_registro or '',
+            'observaciones': l.observaciones or '',
+            'es_historico': bool(l.es_historico),
+        })
+    return jsonify(success=True, lotes=data)
+
+
+@app.route('/api/precintos/lotes', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_crear_lote():
+    """Da de alta un rango completo de sellos en estado DISPONIBLE."""
+    if not _precintos_puede_registrar_lotes():
+        return jsonify(success=False, message='No tienes permiso para registrar lotes de precintos.'), 403
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    try:
+        inicial = int(re.sub(r'\D', '', str(data.get('rango_inicial', ''))) or 0)
+        final = int(re.sub(r'\D', '', str(data.get('rango_final', ''))) or 0)
+    except ValueError:
+        return jsonify(success=False, message='Los rangos deben ser numericos.'), 400
+
+    if inicial <= 0 or final <= 0:
+        return jsonify(success=False, message='Debes indicar el rango inicial y el final.'), 400
+    if final < inicial:
+        return jsonify(success=False, message='El rango final no puede ser menor al inicial.'), 400
+    cantidad = final - inicial + 1
+    if cantidad > 20000:
+        return jsonify(success=False,
+                       message='El rango genera {:,} precintos. El maximo por lote es 20.000.'.format(cantidad)), 400
+
+    digitos = int(data.get('numero_digitos') or PRECINTOS_DIGITOS)
+
+    try:
+        # Un numero que ya existe (usado o disponible) no se vuelve a crear.
+        existentes = {
+            n for (n,) in db.session.query(InventarioPrecinto.numero)
+            .filter(InventarioPrecinto.numero >= inicial,
+                    InventarioPrecinto.numero <= final).all()
+        }
+        nuevos = [n for n in range(inicial, final + 1) if n not in existentes]
+        if not nuevos:
+            return jsonify(
+                success=False,
+                message='Todo el rango ya existe en el inventario. No se creo ningun precinto.'
+            ), 400
+
+        lote = LotePrecintos(
+            nombre=(data.get('nombre') or '').strip() or None,
+            rango_inicial=inicial,
+            rango_final=final,
+            numero_digitos=digitos,
+            color=(data.get('color') or 'Verde').strip(),
+            proveedor=(data.get('proveedor') or '').strip() or None,
+            documento_remision=(data.get('documento_remision') or '').strip() or None,
+            fecha_ingreso=date.fromisoformat(data['fecha_ingreso']) if data.get('fecha_ingreso') else date.today(),
+            total_precintos=len(nuevos),
+            usuario_registro=_precintos_usuario(),
+            observaciones=(data.get('observaciones') or '').strip() or None,
+        )
+        db.session.add(lote)
+        db.session.flush()
+
+        db.session.bulk_save_objects([
+            InventarioPrecinto(
+                lote_id=lote.id,
+                numero=n,
+                codigo=_formatear_codigo_precinto(n, digitos),
+                estado='DISPONIBLE',
+                origen='INVENTARIO',
+            ) for n in nuevos
+        ])
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error creando lote de precintos")
+        return jsonify(success=False, message='Error al crear el lote: {}'.format(e)), 500
+
+    omitidos = cantidad - len(nuevos)
+    msg = 'Lote creado: {:,} precintos disponibles.'.format(len(nuevos))
+    if omitidos:
+        msg += ' Se omitieron {:,} numeros que ya existian en el inventario.'.format(omitidos)
+    return jsonify(success=True, message=msg, lote_id=lote.id,
+                   creados=len(nuevos), omitidos=omitidos, resumen=_precintos_resumen())
+
+
+@app.route('/api/precintos/lotes/<int:lote_id>', methods=['DELETE'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_eliminar_lote(lote_id):
+    """Elimina un lote de precintos y sus registros asociados."""
+    if not _precintos_puede_registrar_lotes():
+        return jsonify(success=False, message='No tienes permiso para eliminar lotes.'), 403
+    _precintos_asegurar_esquema()
+    lote = db.session.get(LotePrecintos, lote_id)
+    if not lote:
+        return jsonify(success=False, message='Lote no encontrado.'), 404
+
+    forzar = request.args.get('forzar') == '1'
+    usados = InventarioPrecinto.query.filter_by(lote_id=lote_id, estado='USADO').count()
+    if usados > 0 and not forzar:
+        return jsonify(
+            success=False,
+            message=f'El lote tiene {usados} precinto(s) usados en despachos. ¿Deseas eliminarlo de todas formas?',
+            requiere_confirmacion=True,
+            usados=usados
+        ), 400
+
+    try:
+        total_borrados = InventarioPrecinto.query.filter_by(lote_id=lote_id).delete()
+        db.session.delete(lote)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error eliminando lote de precintos")
+        return jsonify(success=False, message='Error al eliminar el lote: {}'.format(e)), 500
+
+    return jsonify(
+        success=True,
+        message='Lote {} eliminado ({:,} precintos removidos).'.format(lote_id, total_borrados),
+        resumen=_precintos_resumen()
+    )
+
+
+@app.route('/api/precintos/asignar', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_asignar():
+    """Toma los siguientes N consecutivos y los escribe en la fila de cargue."""
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    prog_id = data.get('programacion_id')
+    if not prog_id:
+        return jsonify(success=False, message='Falta el registro de programacion.'), 400
+
+    try:
+        cantidad = int(data.get('cantidad') or PRECINTOS_CANTIDAD_DEFECTO)
+    except (TypeError, ValueError):
+        return jsonify(success=False, message='Cantidad invalida.'), 400
+    if not 1 <= cantidad <= PRECINTOS_CANTIDAD_MAXIMA:
+        return jsonify(success=False,
+                       message='La cantidad debe estar entre 1 y {}.'.format(PRECINTOS_CANTIDAD_MAXIMA)), 400
+
+    registro = ProgramacionCargue.query.get(prog_id)
+    if not registro:
+        return jsonify(success=False, message='El registro de programacion no existe.'), 404
+
+    bloqueo = _precintos_bloqueo_refineria(registro)
+    if bloqueo:
+        return jsonify(success=False, message=bloqueo), 403
+
+    ya_asignados = InventarioPrecinto.query.filter(
+        InventarioPrecinto.programacion_id == registro.id,
+        InventarioPrecinto.estado == 'USADO').count()
+    if ya_asignados and not data.get('forzar'):
+        return jsonify(
+            success=False,
+            requiere_confirmacion=True,
+            message='Esta fila ya tiene {} precintos asignados. '
+                    'Liberalos primero o confirma para agregar mas.'.format(ya_asignados)
+        ), 409
+
+    try:
+        tomados = _tomar_precintos_disponibles(cantidad)
+        if len(tomados) < cantidad:
+            db.session.rollback()
+            return jsonify(
+                success=False,
+                message='Stock insuficiente: solo hay {} precintos disponibles y se pidieron {}. '
+                        'Registra un lote nuevo.'.format(len(tomados), cantidad)
+            ), 409
+
+        usuario = _precintos_usuario()
+        for p in tomados:
+            _marcar_precinto_usado(p, registro, usuario)
+
+        texto = _recalcular_texto_precintos(registro)
+        _actualizar_reloj_refineria(registro)
+        registro.ultimo_editor = usuario
+        codigos = [p.codigo for p in tomados]
+        numeros = [p.numero for p in tomados]
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error asignando precintos")
+        return jsonify(success=False, message='Error al asignar precintos: {}'.format(e)), 500
+
+    consecutivos = numeros == list(range(numeros[0], numeros[0] + len(numeros)))
+    return jsonify(
+        success=True,
+        message='{} precintos asignados: {}'.format(len(codigos), _texto_precintos(codigos)),
+        precintos=texto,
+        asignados=codigos,
+        consecutivos=consecutivos,
+        resumen=_precintos_resumen(),
+    )
+
+
+@app.route('/api/precintos/anular', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_anular():
+    """Marca un sello como roto/anulado y opcionalmente toma el siguiente."""
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    motivo = (data.get('motivo') or '').strip()
+    if not motivo:
+        return jsonify(success=False, message='Debes indicar el motivo de la anulacion.'), 400
+
+    precinto = None
+    if data.get('precinto_id'):
+        precinto = db.session.get(InventarioPrecinto, data['precinto_id'])
+    elif data.get('codigo'):
+        digitos = re.sub(r'\D', '', str(data['codigo']))
+        if digitos:
+            precinto = (InventarioPrecinto.query
+                        .filter(InventarioPrecinto.numero == int(digitos))
+                        .order_by(InventarioPrecinto.estado.desc()).first())
+    if not precinto:
+        return jsonify(success=False, message='No se encontro ese precinto en el inventario.'), 404
+    if precinto.estado == 'ANULADO':
+        return jsonify(success=False,
+                       message='El precinto {} ya esta anulado.'.format(precinto.codigo)), 400
+
+    registro = db.session.get(ProgramacionCargue, precinto.programacion_id) if precinto.programacion_id else None
+    if not registro:
+        # Buscar si este precinto está escrito en alguna programación de cargue
+        candidatos_prog = (ProgramacionCargue.query
+                           .filter(or_(
+                               ProgramacionCargue.precintos.like(f'%{precinto.codigo}%'),
+                               ProgramacionCargue.precintos.like(f'%{precinto.numero}%')
+                           ))
+                           .order_by(ProgramacionCargue.id.desc())
+                           .all())
+        if candidatos_prog:
+            registro = candidatos_prog[0]
+            precinto.programacion_id = registro.id
+            precinto.placa = registro.placa
+            precinto.numero_guia = registro.numero_guia
+            precinto.cliente = registro.cliente
+            precinto.producto = registro.producto_a_cargar
+            precinto.conductor = registro.nombre_conductor
+
+    if registro:
+        bloqueo = _precintos_bloqueo_refineria(registro)
+        if bloqueo:
+            return jsonify(success=False, message=bloqueo), 403
+
+    reemplazar = bool(data.get('reemplazar', True)) and registro is not None
+    usuario = _precintos_usuario()
+    reemplazo_codigo = None
+    try:
+        precinto.estado = 'ANULADO'
+        precinto.motivo_anulacion = motivo
+        precinto.fecha_anulacion = datetime.utcnow()
+        precinto.usuario_anulacion = usuario
+
+        if reemplazar:
+            candidatos = _tomar_precintos_disponibles(1)
+            if not candidatos:
+                db.session.rollback()
+                return jsonify(success=False, message='No hay precintos disponibles para reemplazar.'), 409
+            _marcar_precinto_usado(candidatos[0], registro, usuario)
+            reemplazo_codigo = candidatos[0].codigo
+
+            # Reemplazar directamente en el texto de la programación
+            if registro.precintos and precinto.codigo in registro.precintos:
+                registro.precintos = re.sub(r'\b' + re.escape(precinto.codigo) + r'\b', reemplazo_codigo, registro.precintos)
+            elif registro.precintos and str(precinto.numero) in registro.precintos:
+                registro.precintos = re.sub(r'\b' + str(precinto.numero) + r'\b', reemplazo_codigo, registro.precintos)
+            else:
+                _recalcular_texto_precintos(registro)
+        else:
+            if registro and registro.precintos:
+                nuevo_texto = re.sub(r'\b(?:' + re.escape(precinto.codigo) + r'|' + str(precinto.numero) + r')\b', '', registro.precintos)
+                nuevo_texto = re.sub(r'-+', '-', nuevo_texto).strip('-')
+                registro.precintos = nuevo_texto or None
+
+        texto = registro.precintos if registro else None
+        if registro:
+            _actualizar_reloj_refineria(registro)
+            registro.ultimo_editor = usuario
+        anulado_codigo = precinto.codigo
+        prog_id = registro.id if registro else None
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error anulando precinto")
+        return jsonify(success=False, message='Error al anular: {}'.format(e)), 500
+
+    msg = 'Precinto {} anulado.'.format(anulado_codigo)
+    if reemplazo_codigo:
+        msg += ' Se asigno {} en su lugar.'.format(reemplazo_codigo)
+    return jsonify(success=True, message=msg, precintos=texto,
+                   anulado=anulado_codigo,
+                   reemplazo=reemplazo_codigo,
+                   programacion_id=prog_id,
+                   resumen=_precintos_resumen())
+
+
+@app.route('/api/precintos/reactivar', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_reactivar():
+    """Devuelve un precinto anulado por error a su estado original.
+
+    Si estaba asignado a un cargue y se generó un reemplazo, devuelve el reemplazo
+    a DISPONIBLE y restaura el precinto original en la programación.
+    """
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    precinto_id = data.get('precinto_id')
+    if not precinto_id:
+        return jsonify(success=False, message='Falta el ID del precinto.'), 400
+    precinto = db.session.get(InventarioPrecinto, precinto_id)
+    if not precinto:
+        return jsonify(success=False, message='Precinto no encontrado.'), 404
+    if precinto.estado != 'ANULADO':
+        return jsonify(success=False, message=f'El precinto {precinto.codigo} no está anulado.'), 400
+
+    registro = db.session.get(ProgramacionCargue, precinto.programacion_id) if precinto.programacion_id else None
+    restaurado_a_cargue = False
+    reemplazo_liberado = None
+
+    try:
+        if registro:
+            # Buscar si en este cargue hay un sello posterior USADO que fue asignado como reemplazo
+            sellos_usados = (InventarioPrecinto.query
+                             .filter(InventarioPrecinto.programacion_id == registro.id,
+                                     InventarioPrecinto.estado == 'USADO',
+                                     InventarioPrecinto.numero > precinto.numero)
+                             .order_by(InventarioPrecinto.numero.desc())
+                             .all())
+            if sellos_usados:
+                sello_reemplazo = sellos_usados[0]
+                reemplazo_codigo = sello_reemplazo.codigo
+
+                # 1. Devolver el sello de reemplazo a DISPONIBLE en bodega
+                sello_reemplazo.estado = 'DISPONIBLE'
+                sello_reemplazo.programacion_id = None
+                sello_reemplazo.placa = None
+                sello_reemplazo.numero_guia = None
+                sello_reemplazo.cliente = None
+                sello_reemplazo.producto = None
+                sello_reemplazo.conductor = None
+                sello_reemplazo.usuario_uso = None
+                sello_reemplazo.fecha_uso = None
+
+                # 2. Restaurar el precinto original como USADO en el cargue
+                precinto.estado = 'USADO'
+                precinto.motivo_anulacion = None
+                precinto.fecha_anulacion = None
+                precinto.usuario_anulacion = None
+
+                # 3. Reemplazar en el texto de la programación (ej: 004361 -> 004360)
+                if registro.precintos and reemplazo_codigo in registro.precintos:
+                    registro.precintos = re.sub(r'\b' + re.escape(reemplazo_codigo) + r'\b', precinto.codigo, registro.precintos)
+                else:
+                    _recalcular_texto_precintos(registro)
+
+                _actualizar_reloj_refineria(registro)
+                restaurado_a_cargue = True
+                reemplazo_liberado = reemplazo_codigo
+            else:
+                # Si no había reemplazo posterior, se restaura al cargue
+                precinto.estado = 'USADO'
+                precinto.motivo_anulacion = None
+                precinto.fecha_anulacion = None
+                precinto.usuario_anulacion = None
+                _recalcular_texto_precintos(registro)
+                _actualizar_reloj_refineria(registro)
+                restaurado_a_cargue = True
+        else:
+            # Precinto suelto en bodega
+            precinto.estado = 'DISPONIBLE'
+            precinto.motivo_anulacion = None
+            precinto.fecha_anulacion = None
+            precinto.usuario_anulacion = None
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error reactivando precinto")
+        return jsonify(success=False, message=f'Error al reactivar: {e}'), 500
+
+    if restaurado_a_cargue:
+        msg = f'Precinto {precinto.codigo} restaurado al cargue ({registro.placa}).'
+        if reemplazo_liberado:
+            msg += f' El precinto {reemplazo_liberado} fue devuelto a DISPONIBLE en bodega.'
+    else:
+        msg = f'Precinto {precinto.codigo} devuelto a DISPONIBLE en bodega.'
+
+    return jsonify(
+        success=True,
+        message=msg,
+        restaurado_a_cargue=restaurado_a_cargue,
+        precintos=registro.precintos if registro else None,
+        resumen=_precintos_resumen()
+    )
+
+
+@app.route('/api/precintos/liberar', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_liberar():
+    """Devuelve a DISPONIBLE los sellos de un cargue que se desprogramo."""
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    prog_id = data.get('programacion_id')
+    if not prog_id:
+        return jsonify(success=False, message='Falta el registro de programacion.'), 400
+
+    registro = ProgramacionCargue.query.get(prog_id)
+    if not registro:
+        return jsonify(success=False, message='El registro de programacion no existe.'), 404
+
+    bloqueo = _precintos_bloqueo_refineria(registro)
+    if bloqueo:
+        return jsonify(success=False, message=bloqueo), 403
+
+    try:
+        liberados = _liberar_precintos_de_programacion(registro)
+        _recalcular_texto_precintos(registro)
+        _actualizar_reloj_refineria(registro)
+        registro.ultimo_editor = _precintos_usuario()
+        texto = registro.precintos
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error liberando precintos")
+        return jsonify(success=False, message='Error al liberar: {}'.format(e)), 500
+
+    mensaje = ('{} precintos devueltos al stock.'.format(liberados) if liberados
+               else 'Esta fila no tenia precintos del inventario.')
+    return jsonify(success=True, message=mensaje, precintos=texto,
+                   liberados=liberados, resumen=_precintos_resumen())
+
+
+@app.route('/api/precintos/exportar', methods=['GET'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_exportar():
+    """Exporta el inventario a Excel respetando el filtro de estado."""
+    _precintos_asegurar_esquema()
+    estado = (request.args.get('estado') or '').upper().strip()
+    query = InventarioPrecinto.query
+    if estado in PRECINTOS_ESTADOS:
+        query = query.filter(InventarioPrecinto.estado == estado)
+    if request.args.get('revision') == '1':
+        query = query.filter(InventarioPrecinto.requiere_revision.is_(True))
+
+    filas = query.order_by(InventarioPrecinto.numero.asc()).all()
+    df = pd.DataFrame([{
+        'PRECINTO': p.codigo,
+        'ESTADO': p.estado,
+        'PLACA': p.placa or '',
+        'GUIA': p.numero_guia or '',
+        'CLIENTE': p.cliente or '',
+        'PRODUCTO': p.producto or '',
+        'CONDUCTOR': p.conductor or '',
+        'FECHA USO': p.fecha_uso.strftime('%Y-%m-%d') if p.fecha_uso else '',
+        'ASIGNADO POR': p.usuario_uso or '',
+        'MOTIVO ANULACION': p.motivo_anulacion or '',
+        'ORIGEN': p.origen or '',
+        'DIGITADO ORIGINAL': p.texto_original or '',
+        'REQUIERE REVISION': 'SI' if p.requiere_revision else '',
+        'NOTA REVISION': p.nota_revision or '',
+    } for p in filas])
+
+    salida = BytesIO()
+    with pd.ExcelWriter(salida, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Precintos')
+    salida.seek(0)
+    nombre = 'inventario_precintos_{}.xlsx'.format(datetime.now().strftime('%Y%m%d_%H%M'))
+    return send_file(salida, as_attachment=True, download_name=nombre,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
+

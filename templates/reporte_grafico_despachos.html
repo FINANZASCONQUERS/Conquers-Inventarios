@@ -1,967 +1,1030 @@
 {% extends 'base.html' %}
 
-{% block title %}Reporte Analítico de Despachos | Conquers{% endblock %}
+{% block title %}Analítica de Despachos | Conquers Executive Dashboard{% endblock %}
 {% block container_class %}container-fluid p-0{% endblock %}
 
 {% block content %}
-<!-- Estilos Premium Mejorados v2.0 -->
+<!-- ESTILOS DASHBOARD EJECUTIVO CONQUERS v3.0 -->
 <style>
     :root {
-        --conquers-primary: #00A896;
-        --conquers-primary-dark: #008577;
-        --conquers-secondary: #2C3E50;
-        --conquers-accent: #F77F00;
-        --conquers-purple: #667eea;
-        --conquers-blue: #06AED5;
-        --conquers-bg: #f8fafc;
-        --card-bg: #ffffff;
-        --card-border: #e2e8f0;
-        --text-primary: #1e293b;
-        --text-secondary: #64748b;
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        /* Paleta Institucional Conquers */
+        --cq-primary: #00A896;
+        --cq-primary-dark: #028073;
+        --cq-primary-light: rgba(0, 168, 150, 0.12);
+        --cq-navy: #0F172A;
+        --cq-navy-light: #1E293B;
+        --cq-amber: #F77F00;
+        --cq-blue: #06AED5;
+        --cq-indigo: #6366F1;
+        --cq-violet: #8B5CF6;
+        --cq-slate: #475569;
+        
+        /* Superficies y Bordes (Modo Claro) */
+        --cq-bg: #F1F5F9;
+        --card-bg: #FFFFFF;
+        --card-bg-subtle: #F8FAFC;
+        --card-border: #E2E8F0;
+        --card-hover-border: #CBD5E1;
+        --input-bg: #F8FAFC;
+        --grid-line: #F1F5F9;
+        
+        /* Tipografía (Modo Claro) */
+        --text-heading: #0F172A;
+        --text-body: #334155;
+        --text-muted: #64748B;
+        
+        /* Sombras Refinadas */
+        --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-sm: 0 2px 4px 0 rgba(15, 23, 42, 0.06);
+        --shadow-md: 0 8px 16px -4px rgba(15, 23, 42, 0.08), 0 2px 6px -2px rgba(15, 23, 42, 0.04);
+        --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+        --shadow-glow: 0 0 20px rgba(0, 168, 150, 0.18);
+    }
+
+    /* ==========================================================================
+       ADAPTACIÓN NATIVA MODO OSCURO (Dark Mode Conquers)
+       ========================================================================== */
+    html.dark-mode,
+    [data-bs-theme="dark"] {
+        --cq-bg: #0B131B;
+        --card-bg: #14212D;
+        --card-bg-subtle: #1A2A38;
+        --card-border: #243547;
+        --card-hover-border: #334B63;
+        --input-bg: #0F1A23;
+        --grid-line: #1E2D3D;
+        
+        --text-heading: #F8FAFC;
+        --text-body: #CBD5E1;
+        --text-muted: #94A3B8;
     }
 
     body {
-        background-color: var(--conquers-bg);
-        color: var(--text-primary);
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: var(--cq-bg);
+        color: var(--text-body);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        transition: background-color 0.25s ease, color 0.25s ease;
     }
 
-    /* Animaciones Personalizadas */
-    @keyframes slideInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
     }
 
-    @keyframes shimmer {
-        0% {
-            background-position: -1000px 0;
-        }
-
-        100% {
-            background-position: 1000px 0;
-        }
+    /* Animaciones sutiles */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+        animation: fadeIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
-    .animate-slide-up {
-        animation: slideInUp 0.6s ease-out forwards;
-    }
-
-    /* Header Section Mejorado */
-    .dashboard-header {
-        background: linear-gradient(135deg, var(--conquers-secondary) 0%, #1a252f 100%);
-        border-radius: 20px;
-        padding: 2.5rem;
-        margin-bottom: 2rem;
-        color: white;
-        box-shadow: var(--shadow-xl);
+    /* ==========================================================================
+       HEADER EJECUTIVO (Dark Glassmorphism)
+       ========================================================================== */
+    .exec-header {
+        background: linear-gradient(135deg, #0F172A 0%, #1E293B 70%, #0d2331 100%);
+        border-radius: 18px;
+        padding: 2.25rem 2.5rem;
+        margin-bottom: 1.75rem;
+        color: #ffffff;
+        box-shadow: var(--shadow-lg);
         position: relative;
         overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
     }
-
-    .dashboard-header::before {
+    .exec-header::before {
         content: '';
         position: absolute;
-        top: -50%;
-        right: -10%;
-        width: 500px;
-        height: 500px;
-        background: radial-gradient(circle, rgba(0, 168, 150, 0.2) 0%, transparent 70%);
+        top: -60px;
+        right: -60px;
+        width: 320px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(0, 168, 150, 0.35) 0%, rgba(6, 174, 213, 0.1) 50%, transparent 70%);
         border-radius: 50%;
+        pointer-events: none;
     }
-
-    .dashboard-header::after {
+    .exec-header::after {
         content: '';
         position: absolute;
         bottom: 0;
         left: 0;
-        width: 100%;
+        right: 0;
         height: 4px;
-        background: linear-gradient(90deg, var(--conquers-primary), var(--conquers-accent), var(--conquers-blue));
+        background: linear-gradient(90deg, var(--cq-primary) 0%, var(--cq-blue) 50%, var(--cq-amber) 100%);
+    }
+    .header-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(0, 168, 150, 0.18);
+        border: 1px solid rgba(0, 168, 150, 0.4);
+        color: #5eead4;
+        padding: 0.3rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        margin-bottom: 0.6rem;
+    }
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #2dd4bf;
+        border-radius: 50%;
+        box-shadow: 0 0 8px #2dd4bf;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .btn-exec-action {
+        background: rgba(255, 255, 255, 0.1);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.65rem 1.25rem;
+        border-radius: 10px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        backdrop-filter: blur(8px);
+    }
+    .btn-exec-action:hover {
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.35);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .btn-exec-action.btn-pdf {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border: none;
+        color: white;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .btn-exec-action.btn-pdf:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        box-shadow: 0 6px 16px rgba(220, 38, 38, 0.45);
     }
 
-    .header-icon {
-        background: rgba(255, 255, 255, 0.15);
-        width: 72px;
-        height: 72px;
+    /* ==========================================================================
+       PRODUCT MIX STRIP (Pastillas de Productos con Colores Fijos)
+       ========================================================================== */
+    .product-mix-strip {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
         border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+    .mix-strip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .mix-strip-title {
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        backdrop-filter: blur(10px);
-        border: 2px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        gap: 0.5rem;
     }
-
-    /* Stats Section Mejorado */
-    .stat-card {
-        background: var(--card-bg);
-        border-radius: 16px;
-        padding: 1.75rem;
+    .product-pill {
+        background: var(--card-bg-subtle);
         border: 1px solid var(--card-border);
-        box-shadow: var(--shadow-sm);
-        transition: all 0.3s ease;
+        border-radius: 12px;
+        padding: 0.85rem 1.1rem;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
         position: relative;
         overflow: hidden;
     }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: var(--conquers-primary);
-        transform: scaleY(0);
-        transition: transform 0.3s ease;
+    .product-pill:hover {
+        border-color: var(--card-hover-border);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-sm);
     }
-
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: var(--shadow-lg);
-        border-color: var(--conquers-primary);
+    .pill-color-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 6px currentColor;
     }
-
-    .stat-card:hover::before {
-        transform: scaleY(1);
-    }
-
-    .stat-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+    .pill-name {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-heading);
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
+        gap: 0.45rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-
-    .stat-icon.primary {
-        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
-        color: white;
+    .pill-volume {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--text-heading);
     }
-
-    .stat-icon.secondary {
-        background: linear-gradient(135deg, var(--conquers-accent), #e56b00);
-        color: white;
-    }
-
-    .stat-icon.tertiary {
-        background: linear-gradient(135deg, var(--conquers-purple), #764ba2);
-        color: white;
-    }
-
-    .stat-icon.quaternary {
-        background: linear-gradient(135deg, var(--conquers-blue), #0396b8);
-        color: white;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--conquers-secondary);
-        margin-bottom: 0.5rem;
-        line-height: 1;
-    }
-
-    .stat-label {
-        color: var(--text-secondary);
-        font-size: 0.8125rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.25rem;
-    }
-
-    .stat-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
+    .pill-pct {
         font-size: 0.75rem;
         font-weight: 600;
-        margin-top: 0.5rem;
+        color: var(--text-muted);
     }
-
-    .stat-badge.success {
-        background: rgba(16, 185, 129, 0.1);
-        color: #059669;
-    }
-
-    .stat-badge.info {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563eb;
-    }
-
-    /* Filtros Mejorados */
-    .filter-card {
-        background: var(--card-bg);
-        border-radius: 20px;
-        border: 1px solid var(--card-border);
-        box-shadow: var(--shadow-md);
-        margin-bottom: 2rem;
-    }
-
-    .filter-header {
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--card-border);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: linear-gradient(to right, #fafbfc, #ffffff);
-    }
-
-    .filter-header-title {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .filter-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.1rem;
-    }
-
-    .filter-body {
-        padding: 2rem;
-    }
-
-    .form-label {
-        font-weight: 600;
-        font-size: 0.8125rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.025em;
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .form-select,
-    .form-control {
-        border-radius: 10px;
-        border: 2px solid #e2e8f0;
-        padding: 0.75rem 1rem;
-        font-size: 0.9375rem;
-        transition: all 0.2s ease;
-        background-color: #fafbfc;
-    }
-
-    .form-select:focus,
-    .form-control:focus {
-        border-color: var(--conquers-primary);
-        box-shadow: 0 0 0 4px rgba(0, 168, 150, 0.1);
-        background-color: white;
-    }
-
-    .btn-search {
-        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        box-shadow: 0 4px 12px rgba(0, 168, 150, 0.3);
-    }
-
-    .btn-search:hover {
-        background: linear-gradient(135deg, var(--conquers-primary-dark), #006b5f);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(0, 168, 150, 0.4);
-        color: white;
-    }
-
-    .btn-search:active {
-        transform: translateY(0);
-    }
-
-    .btn-export {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .btn-export:hover {
-        background: white;
-        color: var(--conquers-secondary);
-        border-color: white;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
-    }
-
-    .btn-reset {
-        background: #f1f5f9;
-        color: var(--text-secondary);
-        border: 2px solid #e2e8f0;
-        padding: 0.75rem 1.5rem;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.2s ease;
-    }
-
-    .btn-reset:hover {
-        background: #e2e8f0;
-        color: var(--text-primary);
-        border-color: #cbd5e1;
-    }
-
-    /* Chart Section Mejorado */
-    .chart-main-card {
-        background: var(--card-bg);
-        border-radius: 20px;
-        border: 1px solid var(--card-border);
-        box-shadow: var(--shadow-lg);
+    .pill-progress {
+        height: 4px;
+        background: var(--card-border);
+        border-radius: 2px;
         overflow: hidden;
-        margin-bottom: 2rem;
+        margin-top: 0.2rem;
+    }
+    .pill-progress-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.6s ease;
     }
 
-    .chart-header {
-        padding: 1.75rem 2rem;
-        border-bottom: 1px solid var(--card-border);
-        background: linear-gradient(to right, #fafbfc, #ffffff);
+    /* ==========================================================================
+       TARJETAS KPI (Stats Cards Ejecutivas Adaptativas)
+       ========================================================================== */
+    .kpi-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 1.6rem 1.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: all 0.25s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+    }
+    .kpi-card:hover {
+        border-color: var(--card-hover-border);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+    .kpi-top {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 1rem;
+        align-items: flex-start;
+        margin-bottom: 0.85rem;
     }
-
-    .chart-title-section {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
+    .kpi-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
     }
-
-    .chart-icon {
-        width: 48px;
-        height: 48px;
+    .kpi-icon-wrapper {
+        width: 46px;
+        height: 46px;
         border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 1.25rem;
-    }
-
-    .chart-icon.bar {
-        background: linear-gradient(135deg, var(--conquers-primary), var(--conquers-primary-dark));
-        color: white;
-    }
-
-    .chart-icon.pie {
-        background: linear-gradient(135deg, var(--conquers-accent), #e56b00);
-        color: white;
-    }
-
-    .chart-body {
-        padding: 2.5rem;
-        min-height: 500px;
-        position: relative;
-    }
-
-    .chart-type-selector {
-        background: #f1f5f9;
-        padding: 6px;
-        border-radius: 12px;
-        display: flex;
-        gap: 6px;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    .type-btn {
-        padding: 0.625rem 1.25rem;
-        border-radius: 8px;
-        border: none;
-        font-size: 0.875rem;
-        font-weight: 600;
-        color: var(--text-secondary);
-        background: transparent;
         transition: all 0.2s ease;
-        text-decoration: none;
+    }
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-heading);
+        line-height: 1.1;
+        margin-bottom: 0.4rem;
+        letter-spacing: -0.02em;
+    }
+    .kpi-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-    }
-
-    .type-btn:hover {
-        color: var(--text-primary);
-        background: rgba(255, 255, 255, 0.5);
-    }
-
-    .type-btn.active {
-        background: white;
-        color: var(--conquers-primary);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Loading State */
-    .chart-loader {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-    }
-
-    .spinner {
-        width: 48px;
-        height: 48px;
-        border: 4px solid #e2e8f0;
-        border-top-color: var(--conquers-primary);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Table Section Mejorado */
-    .table-card {
-        background: var(--card-bg);
-        border-radius: 20px;
-        border: 1px solid var(--card-border);
-        box-shadow: var(--shadow-md);
-        overflow: hidden;
-    }
-
-    .dashboard-table {
-        margin-bottom: 0;
-    }
-
-    .dashboard-table th {
-        background: linear-gradient(to right, #fafbfc, #ffffff);
-        border-top: none;
-        border-bottom: 2px solid var(--card-border);
-        text-transform: uppercase;
+        gap: 0.35rem;
         font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--text-secondary);
-        letter-spacing: 0.05em;
-        padding: 1.25rem 1.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        width: fit-content;
     }
 
-    .dashboard-table td {
-        padding: 1.25rem 1.75rem;
-        vertical-align: middle;
-        font-size: 0.9375rem;
-        border-bottom: 1px solid #f1f5f9;
+    /* Estilos temáticos de badges e iconos KPI */
+    .kpi-icon-primary {
+        background: rgba(0, 168, 150, 0.12);
+        color: var(--cq-primary);
+    }
+    .kpi-badge-primary {
+        background: rgba(0, 168, 150, 0.12);
+        color: var(--cq-primary-dark);
+    }
+    html.dark-mode .kpi-badge-primary,
+    [data-bs-theme="dark"] .kpi-badge-primary {
+        background: rgba(0, 168, 150, 0.25);
+        color: #2DD4BF;
     }
 
-    .dashboard-table tbody tr {
+    .kpi-icon-navy {
+        background: rgba(15, 23, 42, 0.08);
+        color: #0F172A;
+    }
+    .kpi-badge-navy {
+        background: rgba(15, 23, 42, 0.08);
+        color: #0F172A;
+    }
+    html.dark-mode .kpi-icon-navy,
+    [data-bs-theme="dark"] .kpi-icon-navy {
+        background: rgba(56, 189, 248, 0.16);
+        color: #38BDF8;
+    }
+    html.dark-mode .kpi-badge-navy,
+    [data-bs-theme="dark"] .kpi-badge-navy {
+        background: rgba(56, 189, 248, 0.16);
+        color: #38BDF8;
+    }
+
+    .kpi-icon-amber {
+        background: rgba(247, 127, 0, 0.12);
+        color: var(--cq-amber);
+    }
+    .kpi-badge-amber {
+        background: rgba(247, 127, 0, 0.12);
+        color: #C2410C;
+    }
+    html.dark-mode .kpi-badge-amber,
+    [data-bs-theme="dark"] .kpi-badge-amber {
+        background: rgba(247, 127, 0, 0.25);
+        color: #FB923C;
+    }
+
+    .kpi-icon-leader {
+        background: rgba(15, 23, 42, 0.06);
+    }
+    html.dark-mode .kpi-icon-leader,
+    [data-bs-theme="dark"] .kpi-icon-leader {
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    /* ==========================================================================
+       BARRA DE FILTROS INTELIGENTE (Control Bar)
+       ========================================================================== */
+    .filter-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 1.5rem 1.75rem;
+        margin-bottom: 1.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: background-color 0.25s ease, border-color 0.25s ease;
+    }
+    .filter-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+        padding-bottom: 0.85rem;
+        border-bottom: 1px solid var(--card-border);
+    }
+    .preset-pills {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .btn-preset {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.35rem 0.85rem;
+        border-radius: 8px;
+        border: 1px solid var(--card-border);
+        background: var(--card-bg-subtle);
+        color: var(--text-body);
+        transition: all 0.15s ease;
+        cursor: pointer;
+    }
+    .btn-preset:hover, .btn-preset.active {
+        background: var(--cq-primary);
+        color: #ffffff;
+        border-color: var(--cq-primary);
+    }
+    .form-control-dash, .form-select-dash {
+        border: 1px solid var(--card-border);
+        background-color: var(--input-bg);
+        border-radius: 10px;
+        padding: 0.65rem 0.95rem;
+        font-size: 0.875rem;
+        color: var(--text-heading);
+        font-weight: 500;
         transition: all 0.2s ease;
     }
-
-    .dashboard-table tbody tr:hover {
-        background-color: #fafbfc;
-        transform: scale(1.01);
+    .form-control-dash:focus, .form-select-dash:focus {
+        background-color: var(--card-bg);
+        border-color: var(--cq-primary);
+        box-shadow: 0 0 0 3px rgba(0, 168, 150, 0.18);
+        outline: none;
+        color: var(--text-heading);
     }
-
-    .rank-badge {
+    .btn-submit-filter {
+        background: linear-gradient(135deg, var(--cq-primary) 0%, var(--cq-primary-dark) 100%);
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 0.65rem 1.4rem;
+        font-weight: 600;
+        font-size: 0.875rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.875rem;
-    }
-
-    .rank-badge.top-1 {
-        background: linear-gradient(135deg, #ffd700, #ffed4e);
-        color: #7c6700;
-    }
-
-    .rank-badge.top-2 {
-        background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
-        color: #5a5a5a;
-    }
-
-    .rank-badge.top-3 {
-        background: linear-gradient(135deg, #cd7f32, #e69850);
-        color: #6b4423;
-    }
-
-    .rank-badge.other {
-        background: #f1f5f9;
-        color: var(--text-secondary);
-    }
-
-    .client-badge {
-        font-weight: 600;
-        color: var(--conquers-secondary);
-        display: flex;
-        align-items: center;
         gap: 0.5rem;
-    }
-
-    .volume-cell {
-        font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-        font-weight: 700;
-        color: var(--conquers-primary);
-        font-size: 1rem;
-    }
-
-    .percentage-bar {
-        height: 6px;
-        background: #e2e8f0;
-        border-radius: 3px;
-        overflow: hidden;
-        margin-top: 0.5rem;
-    }
-
-    .percentage-fill {
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0, 168, 150, 0.25);
         height: 100%;
-        background: linear-gradient(90deg, var(--conquers-primary), var(--conquers-blue));
-        border-radius: 3px;
-        transition: width 0.6s ease;
+        width: 100%;
+    }
+    .btn-submit-filter:hover {
+        box-shadow: 0 4px 14px rgba(0, 168, 150, 0.4);
+        transform: translateY(-1px);
+        color: #ffffff;
     }
 
-    /* Empty State Mejorado */
-    .empty-state {
-        padding: 6rem 2rem;
-        text-align: center;
+    /* ==========================================================================
+       TARJETA DE VISUALIZACIÓN PRINCIPAL (ApexCharts)
+       ========================================================================== */
+    .chart-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        padding: 1.75rem 2rem;
+        margin-bottom: 1.75rem;
+        box-shadow: var(--shadow-sm);
+        transition: background-color 0.25s ease, border-color 0.25s ease;
     }
-
-    .empty-icon {
-        font-size: 5rem;
-        color: #cbd5e1;
+    .chart-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
         margin-bottom: 1.5rem;
-        opacity: 0.5;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--card-border);
     }
-
-    .empty-state h5 {
-        color: var(--text-primary);
+    .chart-type-pill {
+        display: inline-flex;
+        background: var(--card-bg-subtle);
+        padding: 0.25rem;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+    }
+    .chart-type-btn {
+        padding: 0.45rem 1rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
         font-weight: 600;
-        margin-bottom: 0.75rem;
-    }
-
-    .empty-state p {
-        color: var(--text-secondary);
-        margin-bottom: 1.5rem;
-    }
-
-    /* Información adicional para gráficos */
-    .chart-info-badge {
+        color: var(--text-muted);
+        text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        font-size: 0.8125rem;
+        gap: 0.45rem;
+        transition: all 0.15s ease;
+    }
+    .chart-type-btn.active {
+        background: var(--card-bg);
+        color: var(--text-heading);
+        box-shadow: var(--shadow-sm);
+    }
+    .chart-legend-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        background: rgba(0, 168, 150, 0.1);
-        color: var(--conquers-primary);
-        margin-top: 0.5rem;
+        padding: 0.3rem 0.65rem;
+        border-radius: 6px;
+        background: var(--card-bg-subtle);
+        border: 1px solid var(--card-border);
+        color: var(--text-body);
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-        .dashboard-header {
-            padding: 2rem 1.5rem;
-        }
-
-        .stat-card {
-            margin-bottom: 1rem;
-        }
-
-        .filter-body {
-            padding: 1.5rem;
-        }
-
-        .chart-body {
-            padding: 1.5rem;
-        }
-
-        .chart-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
+    /* ==========================================================================
+       APEXCHARTS UNIVERSAL TOOLTIP (Alto Contraste y Nitidez Garantizada)
+       ========================================================================== */
+    .apexcharts-tooltip,
+    .apexcharts-tooltip.apexcharts-theme-light,
+    .apexcharts-tooltip.apexcharts-theme-dark,
+    .apexcharts-tooltip.apex-theme-custom {
+        background: rgba(15, 23, 42, 0.96) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+        border-radius: 12px !important;
+        backdrop-filter: blur(12px) !important;
+        color: #F8FAFC !important;
+        overflow: hidden !important;
+    }
+    .apexcharts-tooltip-title {
+        background: #1E293B !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+        font-weight: 700 !important;
+        font-size: 0.85rem !important;
+        padding: 8px 14px !important;
+        margin-bottom: 4px !important;
+        color: #FFFFFF !important;
+        letter-spacing: 0.02em !important;
+    }
+    .apexcharts-tooltip-series-group {
+        padding: 4px 14px !important;
+        color: #E2E8F0 !important;
+    }
+    .apexcharts-tooltip-text {
+        font-size: 0.8rem !important;
+        color: #E2E8F0 !important;
+    }
+    .apexcharts-tooltip-text-y-value,
+    .apexcharts-tooltip-text-goals-value {
+        font-weight: 700 !important;
+        color: #38BDF8 !important;
+        margin-left: 6px !important;
+    }
+    .apexcharts-xaxistooltip,
+    .apexcharts-yaxistooltip {
+        background: #1E293B !important;
+        color: #F8FAFC !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 6px !important;
     }
 
-    /* Tooltip personalizado */
-    .info-tooltip {
-        position: relative;
-        display: inline-block;
-        cursor: help;
-        color: var(--text-secondary);
-        margin-left: 0.25rem;
+    /* ==========================================================================
+       TABLA EJECUTIVA CON DATA-BARS
+       ========================================================================== */
+    .table-panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 18px;
+        padding: 1.75rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-sm);
+        transition: background-color 0.25s ease, border-color 0.25s ease;
     }
-
-    /* Accessibility improvements */
-    .visually-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
+    .dash-table {
+        margin-bottom: 0;
+    }
+    .dash-table thead th {
+        background-color: var(--card-bg-subtle);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--card-border);
+        padding: 0.95rem 1rem;
+    }
+    .dash-table tbody td {
+        padding: 1.05rem 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--card-border);
+        font-size: 0.875rem;
+        color: var(--text-body);
+    }
+    .dash-table tbody tr:hover td {
+        background-color: var(--card-bg-subtle);
+    }
+    .rank-circle {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+    .rank-1 { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+    .rank-2 { background: #E2E8F0; color: #475569; border: 1px solid #CBD5E1; }
+    .rank-3 { background: #FFEDD5; color: #C2410C; border: 1px solid #FED7AA; }
+    .rank-default { background: var(--card-bg-subtle); color: var(--text-muted); }
+    
+    .data-bar-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .data-bar-bg {
+        flex: 1;
+        height: 6px;
+        background: var(--card-bg-subtle);
+        border-radius: 9999px;
         overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border-width: 0;
+    }
+    .data-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--cq-primary) 0%, var(--cq-blue) 100%);
+        border-radius: 9999px;
     }
 
-    /* Print styles */
-    @media print {
+    #tablaSearchInput {
+        background-color: var(--input-bg) !important;
+        color: var(--text-heading) !important;
+        border-color: var(--card-border) !important;
+    }
+    #tablaSearchInput::placeholder {
+        color: var(--text-muted) !important;
+    }
+    .table-panel .input-group-text {
+        background-color: var(--input-bg) !important;
+        border-color: var(--card-border) !important;
+        color: var(--text-muted) !important;
+    }
 
-        .filter-card,
-        .btn-export,
-        .chart-type-selector {
-            display: none;
-        }
+    /* Empty state elegante */
+    .empty-state-box {
+        text-align: center;
+        padding: 4.5rem 2rem;
+    }
+    .empty-icon-circle {
+        width: 76px;
+        height: 76px;
+        border-radius: 50%;
+        background: var(--card-bg-subtle);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto 1.25rem auto;
     }
 </style>
 
 <div class="container-fluid px-4 py-4">
-    <!-- Header Principal -->
-    <div class="dashboard-header animate-slide-up">
-        <div
-            class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4">
-            <div class="d-flex align-items-center gap-4">
-                <div class="header-icon">
-                    <i class="fas fa-chart-line"></i>
+    <!-- ========================================================================
+         HEADER EJECUTIVO CONQUERS
+         ======================================================================== -->
+    <div class="exec-header animate-in">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center gap-4">
+            <div>
+                <div class="header-tag">
+                    <span class="pulse-dot"></span>
+                    <span>Trazabilidad en Tiempo Real</span>
                 </div>
-                <div>
-                    <h1 class="h2 fw-bold mb-1">Analítica de Despachos</h1>
-                    <p class="mb-0 text-white-50">Monitoreo dinámico de volúmenes por cliente y producto</p>
-                </div>
+                <h1 class="h2 fw-bolder mb-1 text-white">Analítica de Despachos</h1>
+                <p class="mb-0 text-white-50" style="font-size: 0.95rem;">
+                    Consolidado de distribución de hidrocarburos, volúmenes certificados y participación de clientes
+                </p>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, producto=filtros.producto, cliente=filtros.cliente, tipo='bar') }}"
-                    class="btn btn-export" target="_blank" aria-label="Exportar informe a PDF">
+                <button type="button" class="btn-exec-action" onclick="resetFilters()">
+                    <i class="fas fa-history"></i>
+                    <span>Ver Todo el Histórico</span>
+                </button>
+                <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, producto=filtros.producto, cliente=filtros.cliente, tipo=tipo) }}"
+                   class="btn-exec-action btn-pdf" target="_blank" aria-label="Exportar a PDF">
                     <i class="fas fa-file-pdf"></i>
-                    <span>Exportar PDF</span>
+                    <span>Exportar Informe PDF</span>
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Stats Flash Mejorado -->
-    <div class="row g-4 mb-4">
-        <div class="col-md-3">
-            <div class="stat-card animate-slide-up" style="animation-delay: 0.1s" role="region"
-                aria-label="Total de barriles despachados">
-                <div class="stat-icon primary">
-                    <i class="fas fa-drum-oil"></i>
-                </div>
-                <div class="stat-label">Total Barriles</div>
-                <div class="stat-value">{{ "{:,.2f}".format(total_barriles) }}</div>
-                <div class="stat-badge success">
-                    <i class="fas fa-check-circle"></i>
-                    <span>Período Completo</span>
-                </div>
+    <!-- ========================================================================
+         PRODUCT MIX STRIP (Pastillas de Productos con Colores Fijos Inmutables)
+         ======================================================================== -->
+    {% if resumen_mix_productos %}
+    <div class="product-mix-strip animate-in">
+        <div class="mix-strip-header">
+            <div class="mix-strip-title">
+                <i class="fas fa-layer-group text-muted"></i>
+                <span>Mix de Productos Despachados (Colores Oficiales Inmutables)</span>
             </div>
+            <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.75rem;">
+                {{ resumen_mix_productos|length }} Categorías Activas
+            </span>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card animate-slide-up" style="animation-delay: 0.2s" role="region"
-                aria-label="Clientes activos">
-                <div class="stat-icon secondary">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-label">Clientes Activos</div>
-                <div class="stat-value">{{ datos_tabla|length }}</div>
-                <div class="stat-badge info">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>En Distribución</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card animate-slide-up" style="animation-delay: 0.3s" role="region"
-                aria-label="Promedio por cliente">
-                <div class="stat-icon tertiary">
-                    <i class="fas fa-balance-scale"></i>
-                </div>
-                <div class="stat-label">Promedio / Cliente</div>
-                <div class="stat-value">{{ "{:,.2f}".format(total_barriles / datos_tabla|length if datos_tabla|length >
-                    0 else 0) }}</div>
-                <div class="stat-badge info">
-                    <i class="fas fa-calculator"></i>
-                    <span>BBL por Entidad</span>
+        <div class="row g-3">
+            {% for pm in resumen_mix_productos %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                <div class="product-pill" style="border-left: 3px solid {{ pm.color }};">
+                    <div class="pill-name" title="{{ pm.producto }}">
+                        <span class="pill-color-indicator" style="background-color: {{ pm.color }}; color: {{ pm.color }};"></span>
+                        <span>{{ pm.producto }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-baseline">
+                        <div class="pill-volume tabular-nums">{{ "{:,.0f}".format(pm.barriles) }} <small class="text-muted" style="font-size: 0.7rem;">BBL</small></div>
+                        <div class="pill-pct tabular-nums">{{ "{:,.1f}%".format(pm.porcentaje) }}</div>
+                    </div>
+                    <div class="pill-progress">
+                        <div class="pill-progress-fill" style="width: {{ pm.porcentaje }}%; background-color: {{ pm.color }};"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="stat-card animate-slide-up" style="animation-delay: 0.4s" role="region"
-                aria-label="Producto líder">
-                <div class="stat-icon quaternary">
-                    <i class="fas fa-trophy"></i>
-                </div>
-                <div class="stat-label">Producto Líder</div>
-                <div class="stat-value text-uppercase" style="font-size: 1.5rem;">
-                    {% if resumen_productos %}
-                    {{ resumen_productos[0][0] }}
-                    {% else %}
-                    N/A
-                    {% endif %}
-                </div>
-                <div class="stat-badge success">
-                    <i class="fas fa-crown"></i>
-                    <span>Mayor Volumen</span>
-                </div>
-            </div>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
 
-    <!-- Filtros Inteligentes Mejorados -->
-    <div class="filter-card animate-slide-up">
-        <div class="filter-header">
-            <div class="filter-header-title">
-                <div class="filter-icon">
-                    <i class="fas fa-filter"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 fw-bold">Filtros de Análisis</h6>
-                    <small class="text-muted">Personaliza tu reporte</small>
-                </div>
-            </div>
-            <button type="button" class="btn btn-reset btn-sm" onclick="resetFilters()"
-                aria-label="Restablecer filtros">
-                <i class="fas fa-redo me-1"></i>
-                Restablecer
-            </button>
-        </div>
-        <div class="filter-body">
-            <form method="GET" id="filterForm" aria-label="Formulario de filtros">
-                <div class="row g-3">
-                    <div class="col-md-3">
-                        <label for="smartDateSelector" class="form-label">
-                            <i class="fas fa-calendar-alt"></i>
-                            Rango Predefinido
-                        </label>
-                        <select class="form-select" id="smartDateSelector" onchange="handleDateRange(this.value)"
-                            aria-label="Seleccionar rango de fechas predefinido">
-                            <option value="custom">Personalizado</option>
-                            <option value="today">Hoy</option>
-                            <option value="this_week">Esta semana</option>
-                            <option value="this_month">Este mes</option>
-                            <option value="last_month">Mes pasado</option>
-                            <option value="this_year">Este año</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label for="fecha_inicio" class="form-label">
-                            <i class="fas fa-calendar-day"></i>
-                            Desde
-                        </label>
-                        <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio"
-                            value="{{ filtros.fecha_inicio }}" aria-label="Fecha de inicio" required>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label for="fecha_fin" class="form-label">
-                            <i class="fas fa-calendar-check"></i>
-                            Hasta
-                        </label>
-                        <input type="date" class="form-control" name="fecha_fin" id="fecha_fin"
-                            value="{{ filtros.fecha_fin }}" aria-label="Fecha de fin" required>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label for="cliente" class="form-label">
-                            <i class="fas fa-building"></i>
-                            Cliente
-                        </label>
-                        <select class="form-select" name="cliente" id="cliente" aria-label="Seleccionar cliente">
-                            <option value="">Todos los Clientes</option>
-                            {% for cli in clientes %}
-                            <option value="{{ cli }}" {% if filtros.cliente==cli %}selected{% endif %}>{{ cli }}
-                            </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label for="producto" class="form-label">
-                            <i class="fas fa-flask"></i>
-                            Producto
-                        </label>
-                        <select class="form-select" name="producto" id="producto" aria-label="Seleccionar producto">
-                            <option value="todos" {% if filtros.producto in ['todos', 'ambos' ] %}selected{% endif %}>
-                                Todos</option>
-                            {% for p in productos_disponibles %}
-                            <option value="{{ p }}" {% if filtros.producto==p %}selected{% endif %}>{{ p }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <input type="hidden" name="tipo" value="{{ tipo }}">
-
-                    <div class="col-md-1 d-flex align-items-end">
-                        <button type="submit" class="btn btn-search w-100" aria-label="Aplicar filtros">
-                            <i class="fas fa-search"></i>
-                        </button>
+    <!-- ========================================================================
+         TARJETAS KPI (Stats Cards Ejecutivas)
+         ======================================================================== -->
+    <div class="row g-3 mb-4 animate-in">
+        <!-- 1. Total Barriles -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card" style="border-top: 3px solid var(--cq-primary);">
+                <div class="kpi-top">
+                    <div class="kpi-label">Volumen Total</div>
+                    <div class="kpi-icon-wrapper kpi-icon-primary">
+                        <i class="fas fa-gas-pump"></i>
                     </div>
                 </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Gráfico Principal Mejorado -->
-    <div class="chart-main-card animate-slide-up">
-        <div class="chart-header">
-            <div class="chart-title-section">
-                <div class="chart-icon {% if tipo == 'pie' %}pie{% else %}bar{% endif %}">
-                    <i class="fas fa-chart-{% if tipo == 'pie' %}pie{% else %}bar{% endif %}"></i>
-                </div>
-                <div>
-                    <h5 class="mb-0 fw-bold">
-                        {% if tipo == 'pie' %}
-                        Distribución Porcentual
-                        {% else %}
-                        Comparativa de Volúmenes
-                        {% endif %}
-                    </h5>
-                    <span class="text-muted small">
-                        {% if tipo == 'pie' %}
-                        Participación relativa de cada cliente en el total
-                        {% else %}
-                        Volúmenes absolutos acumulados por cliente
-                        {% endif %}
+                <div class="kpi-value tabular-nums">{{ "{:,.2f}".format(total_barriles) }}</div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">Barriles Netos (BBL)</span>
+                    <span class="kpi-badge kpi-badge-primary">
+                        <i class="fas fa-check-circle"></i> Certificado
                     </span>
-                    {% if tipo != 'pie' and filtros.producto in ['todos', 'ambos'] %}
-                    <div class="chart-info-badge">
-                        <i class="fas fa-layer-group"></i>
-                        Vista apilada por producto
-                    </div>
-                    {% endif %}
                 </div>
             </div>
-            <div class="chart-type-selector">
-                <a href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, cliente=filtros.cliente, producto=filtros.producto, tipo='bar') }}"
-                    class="type-btn {% if tipo != 'pie' %}active{% endif %}" aria-label="Ver gráfico de barras">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Barras</span>
-                </a>
-                <a href="{{ url_for('reporte_grafico_despachos', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, cliente=filtros.cliente, producto=filtros.producto, tipo='pie') }}"
-                    class="type-btn {% if tipo == 'pie' %}active{% endif %}" aria-label="Ver gráfico de donut">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>Donut</span>
-                </a>
+        </div>
+
+        <!-- 2. Clientes Atendidos -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card" style="border-top: 3px solid var(--cq-navy);">
+                <div class="kpi-top">
+                    <div class="kpi-label">Clientes Atendidos</div>
+                    <div class="kpi-icon-wrapper kpi-icon-navy">
+                        <i class="fas fa-building"></i>
+                    </div>
+                </div>
+                <div class="kpi-value tabular-nums">{{ datos_tabla|length }}</div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">Entidades Receptoras</span>
+                    <span class="kpi-badge kpi-badge-navy">
+                        <i class="fas fa-handshake"></i> Activas
+                    </span>
+                </div>
             </div>
         </div>
-        <div class="chart-body">
-            <!-- Loading State -->
-            <div id="chartLoader" class="chart-loader" style="display: none;" role="status" aria-live="polite">
-                <div class="spinner" aria-hidden="true"></div>
-                <p class="mt-3 text-muted">Cargando gráfico...</p>
-                <span class="visually-hidden">Cargando visualización de datos</span>
+
+        <!-- 3. Promedio por Cliente -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card" style="border-top: 3px solid var(--cq-amber);">
+                <div class="kpi-top">
+                    <div class="kpi-label">Promedio / Cliente</div>
+                    <div class="kpi-icon-wrapper kpi-icon-amber">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
+                </div>
+                <div class="kpi-value tabular-nums">
+                    {{ "{:,.1f}".format(total_barriles / datos_tabla|length if datos_tabla|length > 0 else 0) }}
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">BBL / Destinatario</span>
+                    <span class="kpi-badge kpi-badge-amber">
+                        <i class="fas fa-chart-pie"></i> Promedio
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Producto Líder -->
+        <div class="col-sm-6 col-xl-3">
+            {% set lider_prod = resumen_mix_productos[0].producto if resumen_mix_productos else 'N/A' %}
+            {% set lider_color = resumen_mix_productos[0].color if resumen_mix_productos else '#64748B' %}
+            {% set lider_pct = resumen_mix_productos[0].porcentaje if resumen_mix_productos else 0 %}
+            <div class="kpi-card" style="border-top: 3px solid {{ lider_color }};">
+                <div class="kpi-top">
+                    <div class="kpi-label">Producto Líder</div>
+                    <div class="kpi-icon-wrapper kpi-icon-leader" style="color: {{ lider_color }};">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                </div>
+                <div class="kpi-value text-truncate" style="font-size: 1.35rem;" title="{{ lider_prod }}">{{ lider_prod }}</div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">{{ "{:,.1f}% del total".format(lider_pct) }}</span>
+                    <span class="kpi-badge" style="background-color: {{ lider_color }}; color: #ffffff;">
+                        <i class="fas fa-award"></i> Mayor Demanda
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================
+         BARRA DE FILTROS INTELIGENTE (Control Bar)
+         ======================================================================== -->
+    <div class="filter-panel animate-in">
+        <div class="filter-panel-header">
+            <div class="d-flex align-items-center gap-2">
+                <i class="fas fa-sliders-h text-primary"></i>
+                <span class="fw-bold" style="font-size: 0.9rem;">Filtros de Análisis</span>
+            </div>
+            <div class="preset-pills">
+                <span class="text-muted me-1 small align-self-center">Accesos rápidos:</span>
+                <button type="button" class="btn-preset" onclick="setQuickRange('all')">Histórico Completo</button>
+                <button type="button" class="btn-preset" onclick="setQuickRange('last_month')">Mes Pasado (Ago)</button>
+                <button type="button" class="btn-preset" onclick="setQuickRange('this_year')">Año 2026</button>
+                <button type="button" class="btn-preset" onclick="setQuickRange('last_30')">Últimos 30 Días</button>
+            </div>
+        </div>
+        <form method="GET" id="filterForm">
+            <input type="hidden" name="tipo" id="tipoGraficoInput" value="{{ tipo }}">
+            <div class="row g-3 align-items-end">
+                <!-- Desde -->
+                <div class="col-6 col-md-2">
+                    <label for="fecha_inicio" class="form-label text-muted small fw-bold mb-1">
+                        <i class="fas fa-calendar-day me-1"></i>Desde
+                    </label>
+                    <input type="date" class="form-control form-control-dash" name="fecha_inicio" id="fecha_inicio"
+                           value="{{ filtros.fecha_inicio }}" aria-label="Fecha inicio">
+                </div>
+
+                <!-- Hasta -->
+                <div class="col-6 col-md-2">
+                    <label for="fecha_fin" class="form-label text-muted small fw-bold mb-1">
+                        <i class="fas fa-calendar-check me-1"></i>Hasta
+                    </label>
+                    <input type="date" class="form-control form-control-dash" name="fecha_fin" id="fecha_fin"
+                           value="{{ filtros.fecha_fin }}" aria-label="Fecha fin">
+                </div>
+
+                <!-- Cliente -->
+                <div class="col-12 col-md-3">
+                    <label for="cliente" class="form-label text-muted small fw-bold mb-1">
+                        <i class="fas fa-building me-1"></i>Cliente Destinatario
+                    </label>
+                    <select class="form-select form-select-dash" name="cliente" id="cliente">
+                        <option value="">Todos los Clientes ({{ clientes|length }})</option>
+                        {% for cli in clientes %}
+                        <option value="{{ cli }}" {% if filtros.cliente == cli %}selected{% endif %}>{{ cli }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Producto -->
+                <div class="col-12 col-md-3">
+                    <label for="producto" class="form-label text-muted small fw-bold mb-1">
+                        <i class="fas fa-flask me-1"></i>Producto
+                    </label>
+                    <select class="form-select form-select-dash" name="producto" id="producto">
+                        <option value="todos" {% if filtros.producto in ['todos', 'ambos', ''] %}selected{% endif %}>
+                            Todos los Productos
+                        </option>
+                        {% for p in productos_disponibles %}
+                        <option value="{{ p }}" {% if filtros.producto == p %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Botón Buscar -->
+                <div class="col-12 col-md-2">
+                    <button type="submit" class="btn-submit-filter">
+                        <i class="fas fa-filter"></i>
+                        <span>Aplicar Filtros</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- ========================================================================
+         PANEL DE GRÁFICOS (ApexCharts con Colores Fijos Inmutables)
+         ======================================================================== -->
+    <div class="chart-panel animate-in">
+        <div class="chart-panel-header">
+            <div>
+                <h5 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                    <i class="fas {% if tipo == 'pie' %}fa-chart-pie text-primary{% else %}fa-chart-bar text-primary{% endif %}"></i>
+                    {% if tipo == 'pie' %}
+                    Distribución Porcentual por Cliente
+                    {% else %}
+                    Volúmenes de Despacho por Cliente (BBL)
+                    {% endif %}
+                </h5>
+                <span class="text-muted small">
+                    {% if tipo == 'pie' %}
+                    Participación relativa de clientes sobre el total de barriles certificados
+                    {% else %}
+                    Desglose apilado de cada producto con su color corporativo inmutable
+                    {% endif %}
+                </span>
             </div>
 
+            <!-- Selector de Vista (Barras / Donut) -->
+            <div class="d-flex align-items-center gap-3">
+                <div class="chart-type-pill">
+                    <a href="javascript:void(0)" onclick="cambiarTipoGrafico('bar')"
+                       class="chart-type-btn {% if tipo != 'pie' %}active{% endif %}">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Barras Apiladas</span>
+                    </a>
+                    <a href="javascript:void(0)" onclick="cambiarTipoGrafico('pie')"
+                       class="chart-type-btn {% if tipo == 'pie' %}active{% endif %}">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Donut</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Gráfico o Empty State -->
+        <div class="position-relative">
             {% if apex_data %}
-            <div id="apexDispatchChart" style="width: 100%;" role="img" aria-label="Gráfico de despachos"></div>
+            <div id="apexDispatchChart" style="width: 100%; min-height: 400px;"></div>
             {% else %}
-            <div class="empty-state" role="status">
-                <div class="empty-icon">
+            <div class="empty-state-box">
+                <div class="empty-icon-circle">
                     <i class="fas fa-chart-line"></i>
                 </div>
-                <h5>Sin datos para mostrar</h5>
-                <p class="text-muted">No se encontraron despachos para los filtros seleccionados.<br>Intenta ajustar el
-                    rango de fechas o los criterios de búsqueda.</p>
-                <button type="button" class="btn btn-primary" onclick="resetFilters()">
-                    <i class="fas fa-redo me-2"></i>
-                    Restablecer Filtros
+                <h5 class="fw-bold text-dark mb-1">Sin despachos en este rango</h5>
+                <p class="text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
+                    No se encontraron registros despachados para el periodo o cliente seleccionado. Pulsa el botón inferior para ver todo el histórico.
+                </p>
+                <button type="button" class="btn btn-primary px-4 py-2" onclick="resetFilters()" style="background: var(--cq-primary); border: none; border-radius: 8px;">
+                    <i class="fas fa-history me-2"></i>Ver Histórico Completo
                 </button>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Detalle en Tabla Mejorado -->
+    <!-- ========================================================================
+         TABLA DETALLE DE CLIENTES (Ranking + Data-Bars Visuales)
+         ======================================================================== -->
     {% if datos_tabla %}
-    <div class="table-card animate-slide-up">
-        <div class="filter-header">
-            <div class="filter-header-title">
-                <div class="filter-icon" style="background: linear-gradient(135deg, var(--conquers-accent), #e56b00);">
-                    <i class="fas fa-list-ol"></i>
-                </div>
-                <div>
-                    <h6 class="mb-0 fw-bold">Ranking de Despachos</h6>
-                    <small class="text-muted">Clasificación por volumen total</small>
-                </div>
+    <div class="table-panel animate-in">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4 pb-3 border-bottom">
+            <div>
+                <h6 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
+                    <i class="fas fa-trophy text-warning"></i>
+                    <span>Ranking y Clasificación de Clientes</span>
+                </h6>
+                <small class="text-muted">Desglose de volúmenes despachados y porcentaje de concentración</small>
             </div>
-            <div class="stat-badge info">
-                <i class="fas fa-table"></i>
-                {{ datos_tabla|length }} registros
+            <div class="d-flex align-items-center gap-2 w-100 w-md-auto" style="max-width: 320px;">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="tablaSearchInput" class="form-control bg-light border-start-0"
+                           placeholder="Filtrar cliente en tiempo real..." onkeyup="filtrarTablaClientes()">
+                </div>
             </div>
         </div>
+
         <div class="table-responsive">
-            <table class="table dashboard-table table-hover" role="table">
+            <table class="table dash-table table-hover" id="tablaClientesDetalle">
                 <thead>
                     <tr>
-                        <th scope="col">Posición</th>
-                        <th scope="col">Cliente Destinatario</th>
-                        <th scope="col" class="text-end">Total Barriles</th>
-                        <th scope="col" class="text-end">% Participación</th>
-                        <th scope="col">Distribución</th>
+                        <th style="width: 70px;">Puesto</th>
+                        <th>Cliente Destinatario</th>
+                        <th style="width: 280px;">Volumen Gráfico</th>
+                        <th class="text-end" style="width: 160px;">Total BBL</th>
+                        <th class="text-end" style="width: 140px;">% Cuota</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% set max_bbl = datos_tabla[0][1] if datos_tabla else 1 %}
                     {% for row in datos_tabla %}
+                    {% set bbl_val = row[1] %}
+                    {% set pct_val = (bbl_val / total_barriles * 100.0) if total_barriles > 0 else 0 %}
+                    {% set bar_pct = (bbl_val / max_bbl * 100.0) if max_bbl > 0 else 0 %}
                     <tr>
                         <td>
-                            <div
-                                class="rank-badge {% if loop.index == 1 %}top-1{% elif loop.index == 2 %}top-2{% elif loop.index == 3 %}top-3{% else %}other{% endif %}">
-                                {% if loop.index <= 3 %}<i class="fas fa-medal"></i>{% else %}{{ loop.index }}{% endif
-                                    %}
+                            <div class="rank-circle {% if loop.index == 1 %}rank-1{% elif loop.index == 2 %}rank-2{% elif loop.index == 3 %}rank-3{% else %}rank-default{% endif %}">
+                                {% if loop.index == 1 %}🥇
+                                {% elif loop.index == 2 %}🥈
+                                {% elif loop.index == 3 %}🥉
+                                {% else %}{{ loop.index }}
+                                {% endif %}
                             </div>
                         </td>
                         <td>
-                            <div class="client-badge">
-                                <i class="fas fa-building text-primary"></i>
-                                <span>{{ row[0] }}</span>
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                                <i class="fas fa-building text-muted small"></i>
+                                <span class="cliente-nombre-celda">{{ row[0] }}</span>
                             </div>
                         </td>
-                        <td class="text-end volume-cell">{{ "{:,.2f}".format(row[1]) }} <small
-                                class="text-muted">BBL</small></td>
-                        <td class="text-end">
-                            <span class="fw-bold" style="color: var(--conquers-primary);">
-                                {{ "{:,.2f}%".format((row[1] / total_barriles) * 100) }}
-                            </span>
-                        </td>
                         <td>
-                            <div class="percentage-bar">
-                                <div class="percentage-fill" style="width: {{ (row[1] / total_barriles) * 100 }}%">
+                            <div class="data-bar-wrapper">
+                                <div class="data-bar-bg">
+                                    <div class="data-bar-fill" style="width: {{ bar_pct }}%;"></div>
                                 </div>
+                                <small class="text-muted tabular-nums" style="width: 45px; font-size: 0.75rem;">{{ "{:,.1f}%".format(pct_val) }}</small>
                             </div>
+                        </td>
+                        <td class="text-end tabular-nums fw-bold text-dark" style="font-size: 0.95rem;">
+                            {{ "{:,.2f}".format(bbl_val) }} <small class="text-muted fw-normal" style="font-size: 0.75rem;">BBL</small>
+                        </td>
+                        <td class="text-end tabular-nums fw-bolder" style="color: var(--cq-primary);">
+                            {{ "{:,.2f}%".format(pct_val) }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -972,321 +1035,462 @@
     {% endif %}
 </div>
 
-<!-- Scripts de Visualización Mejorados -->
+<!-- ========================================================================
+     APEXCHARTS CON PALETA FIJA INMUTABLE
+     ======================================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-    // Variables globales
+    // PALETA OFICIAL INMUTABLE: Los productos conservan su color SIEMPRE
+    const PRODUCT_COLOR_MAP = {
+        'FUEL OIL 4': '#00A896',          // Verde Esmeralda Conquers
+        'DILUYENTE': '#F77F00',           // Naranja Ámbar Corporativo
+        'FUEL OIL (VLSFO)': '#06AED5',    // Azul Océano Eléctrico
+        'VLSFO': '#06AED5',               // Alias Océano
+        'FUEL OIL 6': '#6366F1',          // Índigo Púrpura
+        'MGO': '#0EA5E9',                 // Cian Claro
+        'CRUDO': '#475569',               // Pizarra Oscuro
+        'DIESEL MARINO': '#10B981',       // Verde Menta
+        'FUEL OIL - COMBUSTOLEO': '#8B5CF6' // Violeta Intenso
+    };
+
+    function obtenerColorProducto(nombre, index = 0) {
+        if (!nombre) return '#64748B';
+        const key = nombre.toUpperCase().trim();
+        if (PRODUCT_COLOR_MAP[key]) return PRODUCT_COLOR_MAP[key];
+        for (const [k, v] of Object.entries(PRODUCT_COLOR_MAP)) {
+            if (key.includes(k) || k.includes(key)) return v;
+        }
+        const fallbacks = ['#64748B', '#EC4899', '#14B8A6', '#F59E0B', '#3B82F6', '#8B5CF6'];
+        return fallbacks[index % fallbacks.length];
+    }
+
+    function isDarkModeActive() {
+        return document.documentElement.classList.contains('dark-mode') || 
+               document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    }
+
     let chartInstance = null;
-    const chartElement = document.querySelector("#apexDispatchChart");
-    const chartLoader = document.getElementById('chartLoader');
 
-    // Función para mostrar/ocultar loader
-    function toggleLoader(show) {
-        if (chartLoader) {
-            chartLoader.style.display = show ? 'block' : 'none';
-        }
-    }
-
-    // Función para destruir chart anterior
-    function destroyChart() {
-        if (chartInstance) {
-            chartInstance.destroy();
-            chartInstance = null;
-        }
-    }
-
-    // Validación de fechas
-    function validateDates() {
-        const startDate = document.getElementById('fecha_inicio');
-        const endDate = document.getElementById('fecha_fin');
-
-        if (startDate && endDate) {
-            if (new Date(startDate.value) > new Date(endDate.value)) {
-                alert('⚠️ La fecha de inicio no puede ser mayor que la fecha fin');
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // Manejar envío del formulario
-    document.getElementById('filterForm')?.addEventListener('submit', function (e) {
-        if (!validateDates()) {
-            e.preventDefault();
-            return false;
-        }
-        toggleLoader(true);
-    });
-
-    // Función para resetear filtros
-    function resetFilters() {
-        const form = document.getElementById('filterForm');
-        if (form) {
-            // Resetear todos los campos
-            form.reset();
-
-            // Establecer valores por defecto
-            const today = new Date();
-            const firstDayMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            const lastDayMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-            document.getElementById('fecha_inicio').value = formatDate(firstDayMonth);
-            document.getElementById('fecha_fin').value = formatDate(lastDayMonth);
-            document.getElementById('smartDateSelector').value = 'this_month';
-
-            form.submit();
-        }
-    }
-
-    // Función auxiliar para formatear fechas
-    function formatDate(date) {
-        return date.toISOString().split('T')[0];
-    }
-
-    // Renderizado del gráfico
     document.addEventListener('DOMContentLoaded', function () {
-        const apexData = {{ apex_data | tojson | safe
-    }};
-    const chartType = "{{ tipo }}";
-    const isStacked = {{ (filtros.producto in ['todos', 'ambos', '']) | tojson }};
-    const shownProducts = {{ shown_products | default ([], true) | tojson | safe }};
+        const chartElement = document.querySelector("#apexDispatchChart");
+        if (!chartElement) return;
 
-    if (!chartElement || apexData.length === 0) {
-        toggleLoader(false);
-        return;
-    }
+        const apexData = {{ apex_data | tojson | safe }};
+        const chartType = "{{ tipo }}";
+        const shownProducts = {{ shown_products | tojson | safe }};
+        const isStacked = shownProducts.length > 0;
+        const selectedProd = "{{ filtros.producto }}";
 
-    toggleLoader(true);
+        if (!apexData || apexData.length === 0) return;
 
-    // Destruir chart anterior si existe
-    destroyChart();
+        const isDark = isDarkModeActive();
+        const textHeadingColor = isDark ? '#F8FAFC' : '#0F172A';
+        const textMutedColor = isDark ? '#94A3B8' : '#64748B';
+        const gridBorderColor = isDark ? '#243547' : '#F1F5F9';
+        const strokeColor = isDark ? '#14212D' : '#ffffff';
 
-    let options = {};
+        let options = {};
 
-    // Colores base para series dinámicas
-    const baseColors = ['#00A896', '#F77F00', '#06AED5', '#667eea', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#e17055', '#2d3436'];
-
-    if (chartType === 'pie') {
-        // ... (Lógica de Pie Chart - Si está en 'todos' mostrará por cliente, no se toca esto por ahora ya que es por cliente)
-        options = {
-            series: apexData.map(d => d.total),
-            chart: {
-                type: 'donut',
-                height: 600,
-                fontFamily: 'Inter, sans-serif',
-            },
-            labels: apexData.map(d => d.cliente),
-            colors: baseColors,
-            // ... (resto sin cambios significativos, se mantiene la estructura visual)
-            legend: { position: 'bottom' },
-            tooltip: {
-                y: {
-                    formatter: function (val) {
-                        return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
-                    }
-                }
-            }
-        };
-
-    } else {
-        // ============================================
-        // GRÁFICO DE BARRAS - Para comparar volúmenes absolutos
-        // ============================================
-        const categories = apexData.map(d => d.cliente);
-
-        if (isStacked) {
-            // Barras apiladas por producto (DINÁMICO)
-            const dynamicSeries = shownProducts.map((prodName, index) => {
-                return {
-                    name: prodName,
-                    data: apexData.map(d => d[prodName] || 0),
-                    color: baseColors[index % baseColors.length]
-                };
-            });
+        if (chartType === 'pie') {
+            // ================================================================
+            // MODO DONUT (Distribución Porcentual con Centro y Tooltip Limpios)
+            // ================================================================
+            const clientColors = [
+                '#00A896', '#F77F00', '#06AED5', '#6366F1', '#8B5CF6',
+                '#10B981', '#0EA5E9', '#F59E0B', '#EC4899', '#475569',
+                '#14B8A6', '#64748B', '#D97706', '#9333EA', '#2563EB'
+            ];
 
             options = {
-                series: dynamicSeries,
+                series: apexData.map(d => d.total),
+                labels: apexData.map(d => d.cliente),
                 chart: {
-                    type: 'bar',
-                    height: Math.max(350, apexData.length * 45), // Altura dinámica "inteligente"
-                    stacked: true,
-                    fontFamily: 'Inter, sans-serif',
-                    toolbar: { show: true },
-                    animations: { enabled: true }
+                    type: 'donut',
+                    height: 520,
+                    fontFamily: 'Inter, sans-serif'
+                },
+                theme: {
+                    mode: isDark ? 'dark' : 'light'
+                },
+                colors: clientColors,
+                stroke: {
+                    width: 2,
+                    colors: [strokeColor]
                 },
                 plotOptions: {
-                    bar: {
-                        horizontal: true,
-                        barHeight: '70%', // Barras un poco más delgadas para mejor estética
-                        borderRadius: 4,
-                        dataLabels: {
-                            total: {
-                                enabled: true,
-                                offsetX: 10,
-                                style: {
+                    pie: {
+                        donut: {
+                            size: '64%',
+                            labels: {
+                                show: true,
+                                name: {
+                                    show: true,
                                     fontSize: '13px',
-                                    fontWeight: 700
+                                    fontWeight: 600,
+                                    color: textMutedColor,
+                                    offsetY: -6
                                 },
-                                formatter: function (val) {
-                                    return val.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                                value: {
+                                    show: true,
+                                    fontSize: '20px',
+                                    fontWeight: 800,
+                                    color: textHeadingColor,
+                                    offsetY: 6,
+                                    formatter: function (val) {
+                                        return Number(val).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' BBL';
+                                    }
+                                },
+                                total: {
+                                    show: true,
+                                    label: 'TOTAL BBL',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    color: textMutedColor,
+                                    formatter: function (w) {
+                                        const sum = w.globals.seriesTotals.reduce((a, b) => a + b, 0);
+                                        return sum.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' BBL';
+                                    }
                                 }
                             }
                         }
                     }
                 },
                 dataLabels: {
-                    enabled: true, // Mostrar datos dentro de las barras
-                    style: {
-                        fontSize: '11px',
-                        colors: ['#fff']
-                    },
+                    enabled: true,
                     formatter: function (val) {
-                        // Solo mostrar si el valor es significativo para que quepa
-                        return val > 0 ? val.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '';
-                    }
-                },
-                xaxis: {
-                    categories: categories,
-                    labels: {
-                        style: {
-                            fontSize: '12px'
-                        },
-                        formatter: function (val) {
-                            return val.toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-                        }
+                        return val > 3 ? val.toFixed(1) + '%' : '';
                     },
-                    title: { text: 'Barriles (BBL)' }
+                    style: {
+                        fontSize: '12px',
+                        fontWeight: '600'
+                    },
+                    dropShadow: { enabled: false }
                 },
-                legend: { position: 'top', horizontalAlign: 'left' },
+                legend: {
+                    position: 'bottom',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    markers: { radius: 6 },
+                    labels: {
+                        colors: isDark ? '#CBD5E1' : '#334155'
+                    },
+                    itemMargin: { horizontal: 8, vertical: 4 },
+                    maxHeight: 120
+                },
                 tooltip: {
-                    shared: true,
-                    intersect: false,
+                    enabled: true,
+                    theme: 'dark',
                     y: {
                         formatter: function (val) {
-                            return val ? val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL' : '';
+                            const sum = apexData.reduce((acc, d) => acc + (Number(d.total) || 0), 0);
+                            const pct = sum > 0 ? ((val / sum) * 100).toFixed(1) : '0.0';
+                            return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL (' + pct + '%)';
                         }
                     }
                 }
             };
         } else {
-            // Barras simples (Individual) - Se mantiene igual
-            options = {
-                series: [{
-                    name: 'Barriles',
-                    data: apexData.map(d => d.total)
-                }],
-                chart: {
-                    type: 'bar',
-                    height: Math.max(350, apexData.length * 45), // Altura dinámica consistente
-                    fontFamily: 'Inter, sans-serif'
-                },
-                colors: ['#00A896'],
-                plotOptions: {
-                    bar: {
-                        horizontal: true,
-                        barHeight: '70%',
-                        borderRadius: 4,
-                        borderRadiusApplication: 'end',
-                        distributed: false,
-                        dataLabels: { position: 'top' } // Etiquetas al final de la barra
-                    }
-                },
-                dataLabels: {
-                    enabled: true,
-                    formatter: function (val) {
-                        return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                    },
-                    offsetX: 20, // Desplazar un poco a la derecha para que no quede pegado
-                    style: {
-                        fontSize: '12px',
-                        colors: ['#2C3E50'] // Color oscuro para que se lea fuera de la barra
-                    }
-                },
-                xaxis: {
-                    categories: categories,
-                    labels: {
-                        style: {
-                            fontSize: '12px'
-                        },
-                        formatter: function (val) { return val.toLocaleString('es-ES', { minimumFractionDigits: 0 }); }
-                    }
-                },
-                tooltip: {
-                    y: { formatter: function (val) { return val.toLocaleString('es-ES', { minimumFractionDigits: 2 }) + ' BBL'; } }
-                }
-            };
-        }
-    }
+            // ================================================================
+            // MODO BARRAS (Apiladas con Paleta Inmutable y Tooltips Enriquecidos)
+            // ================================================================
+            const categories = apexData.map(d => d.cliente);
 
-    // Renderizar el gráfico
-    try {
-        chartInstance = new ApexCharts(chartElement, options);
-        chartInstance.render().then(() => {
-            toggleLoader(false);
-        }).catch(error => {
-            console.error('Error al renderizar el gráfico:', error);
-            toggleLoader(false);
+            if (isStacked) {
+                const dynamicSeries = shownProducts.map((prodName, index) => {
+                    const colorFijo = obtenerColorProducto(prodName, index);
+                    return {
+                        name: prodName,
+                        data: apexData.map(d => d[prodName] || 0),
+                        color: colorFijo
+                    };
+                });
+
+                options = {
+                    series: dynamicSeries,
+                    chart: {
+                        type: 'bar',
+                        height: Math.max(420, apexData.length * 42),
+                        stacked: true,
+                        fontFamily: 'Inter, sans-serif',
+                        toolbar: { show: true },
+                        animations: { enabled: true }
+                    },
+                    theme: {
+                        mode: isDark ? 'dark' : 'light'
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            barHeight: '72%',
+                            borderRadius: 4,
+                            dataLabels: {
+                                total: {
+                                    enabled: true,
+                                    offsetX: 10,
+                                    style: {
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        color: textHeadingColor
+                                    },
+                                    formatter: function (val) {
+                                        return val ? val.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' BBL' : '';
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        style: {
+                            fontSize: '10px',
+                            fontWeight: '600',
+                            colors: ['#ffffff']
+                        },
+                        formatter: function (val) {
+                            return val > 50 ? val.toLocaleString('es-ES', { maximumFractionDigits: 0 }) : '';
+                        }
+                    },
+                    xaxis: {
+                        categories: categories,
+                        labels: {
+                            style: { fontSize: '11px', fontWeight: 500, colors: textMutedColor },
+                            formatter: function (val) { return val.toLocaleString('es-ES', { maximumFractionDigits: 0 }); }
+                        },
+                        title: { text: 'Barriles Despachados (BBL)', style: { fontWeight: 600, color: textMutedColor } },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: { fontSize: '12px', fontWeight: 600, colors: textHeadingColor }
+                        }
+                    },
+                    grid: {
+                        borderColor: gridBorderColor,
+                        strokeDashArray: 4,
+                        xaxis: { lines: { show: true } }
+                    },
+                    legend: {
+                        position: 'top',
+                        horizontalAlign: 'left',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        markers: { radius: 6 },
+                        labels: {
+                            colors: isDark ? '#CBD5E1' : '#334155'
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        shared: true,
+                        intersect: false,
+                        theme: 'dark',
+                        x: {
+                            show: true
+                        },
+                        y: {
+                            formatter: function (val) {
+                                if (val === undefined || val === null) return '0 BBL';
+                                return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
+                            }
+                        }
+                    }
+                };
+            } else {
+                // Producto Individual Seleccionado
+                const colorFijo = obtenerColorProducto(selectedProd, 0);
+
+                options = {
+                    series: [{
+                        name: selectedProd.toUpperCase(),
+                        data: apexData.map(d => d.total),
+                        color: colorFijo
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: Math.max(400, apexData.length * 40),
+                        fontFamily: 'Inter, sans-serif'
+                    },
+                    theme: {
+                        mode: isDark ? 'dark' : 'light'
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            barHeight: '68%',
+                            borderRadius: 6,
+                            dataLabels: { position: 'top' }
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function (val) {
+                            return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
+                        },
+                        offsetX: 20,
+                        style: { fontSize: '12px', fontWeight: 700, colors: [textHeadingColor] }
+                    },
+                    xaxis: {
+                        categories: categories,
+                        labels: {
+                            style: { fontSize: '11px', fontWeight: 500, colors: textMutedColor },
+                            formatter: function (val) { return val.toLocaleString('es-ES', { maximumFractionDigits: 0 }); }
+                        }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: { fontSize: '12px', fontWeight: 600, colors: textHeadingColor }
+                        }
+                    },
+                    grid: {
+                        borderColor: gridBorderColor,
+                        strokeDashArray: 4
+                    },
+                    tooltip: {
+                        enabled: true,
+                        shared: true,
+                        intersect: false,
+                        theme: 'dark',
+                        x: {
+                            show: true
+                        },
+                        y: {
+                            formatter: function (val) {
+                                if (val === undefined || val === null) return '0 BBL';
+                                return val.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' BBL';
+                            }
+                        }
+                    }
+                };
+            }
+        }
+
+        try {
+            chartInstance = new ApexCharts(chartElement, options);
+            chartInstance.render();
+        } catch (e) {
+            console.error('Error renderizando gráfico:', e);
+        }
+
+        // Sincronizador en caliente de Dark Mode
+        function sincronizarTemaGrafico() {
+            if (!chartInstance) return;
+            const isDarkNow = isDarkModeActive();
+            const textHeading = isDarkNow ? '#F8FAFC' : '#0F172A';
+            const textMuted = isDarkNow ? '#94A3B8' : '#64748B';
+            const gridBorder = isDarkNow ? '#243547' : '#F1F5F9';
+            const strokeVal = isDarkNow ? '#14212D' : '#ffffff';
+
+            if (chartType === 'pie') {
+                chartInstance.updateOptions({
+                    theme: { mode: isDarkNow ? 'dark' : 'light' },
+                    stroke: { colors: [strokeVal] },
+                    legend: { labels: { colors: isDarkNow ? '#CBD5E1' : '#334155' } },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                labels: {
+                                    name: { color: textMuted },
+                                    value: { color: textHeading },
+                                    total: { color: textMuted }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                chartInstance.updateOptions({
+                    theme: { mode: isDarkNow ? 'dark' : 'light' },
+                    grid: { borderColor: gridBorder },
+                    yaxis: { labels: { style: { colors: textHeading } } },
+                    xaxis: {
+                        labels: { style: { colors: textMuted } },
+                        title: { style: { color: textMuted } }
+                    },
+                    legend: { labels: { colors: isDarkNow ? '#CBD5E1' : '#334155' } },
+                    plotOptions: {
+                        bar: {
+                            dataLabels: {
+                                total: { style: { color: textHeading } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Observar cambios dinámicos en la clase y tema de html
+        const observer = new MutationObserver(function (mutations) {
+            for (const m of mutations) {
+                if (m.attributeName === 'class' || m.attributeName === 'data-bs-theme') {
+                    sincronizarTemaGrafico();
+                    break;
+                }
+            }
         });
-    } catch (error) {
-        console.error('Error al crear el gráfico:', error);
-        toggleLoader(false);
-    }
+        observer.observe(document.documentElement, { attributes: true });
     });
 
-    // Manejo de rangos de fecha predefinidos
-    function handleDateRange(selection) {
+    // Cambiar tipo de gráfico (Barras / Donut)
+    function cambiarTipoGrafico(tipo) {
+        document.getElementById('tipoGraficoInput').value = tipo;
+        document.getElementById('filterForm').submit();
+    }
+
+    // Rangos Rápidos
+    function setQuickRange(rango) {
         const fi = document.getElementById('fecha_inicio');
         const ff = document.getElementById('fecha_fin');
-
-        if (!fi || !ff) return;
-
         const today = new Date();
-        let start = new Date();
-        let end = new Date();
 
-        switch (selection) {
-            case 'today':
-                start = today;
-                end = today;
-                break;
-            case 'this_week':
-                const day = today.getDay() || 7;
-                start.setDate(today.getDate() - (day - 1));
-                end = today;
-                break;
-            case 'this_month':
-                start = new Date(today.getFullYear(), today.getMonth(), 1);
-                end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                break;
-            case 'last_month':
-                start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-                end = new Date(today.getFullYear(), today.getMonth(), 0);
-                break;
-            case 'this_year':
-                start = new Date(today.getFullYear(), 0, 1);
-                end = new Date(today.getFullYear(), 11, 31);
-                break;
-            default:
-                return;
+        function fmt(d) { return d.toISOString().split('T')[0]; }
+
+        if (rango === 'all') {
+            fi.value = '';
+            ff.value = '';
+        } else if (rango === 'last_month') {
+            const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            const end = new Date(today.getFullYear(), today.getMonth(), 0);
+            fi.value = fmt(start);
+            ff.value = fmt(end);
+        } else if (rango === 'this_year') {
+            const start = new Date(today.getFullYear(), 0, 1);
+            const end = new Date(today.getFullYear(), 11, 31);
+            fi.value = fmt(start);
+            ff.value = fmt(end);
+        } else if (rango === 'last_30') {
+            const start = new Date(today);
+            start.setDate(today.getDate() - 30);
+            fi.value = fmt(start);
+            ff.value = fmt(today);
         }
-
-        fi.value = formatDate(start);
-        ff.value = formatDate(end);
-
-        if (validateDates()) {
-            document.getElementById('filterForm').submit();
-        }
+        document.getElementById('filterForm').submit();
     }
 
-    // Animación de las barras de porcentaje en la tabla
-    document.addEventListener('DOMContentLoaded', function () {
-        const percentageFills = document.querySelectorAll('.percentage-fill');
-        percentageFills.forEach((fill, index) => {
-            setTimeout(() => {
-                fill.style.width = fill.style.width; // Trigger animation
-            }, index * 100);
-        });
-    });
-</script>
+    // Restablecer a histórico completo
+    function resetFilters() {
+        window.location.href = "{{ url_for('reporte_grafico_despachos') }}";
+    }
 
+    // Filtro en vivo de la tabla de clientes
+    function filtrarTablaClientes() {
+        const input = document.getElementById('tablaSearchInput');
+        const filter = (input ? input.value : '').toUpperCase();
+        const table = document.getElementById('tablaClientesDetalle');
+        if (!table) return;
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].querySelector('.cliente-nombre-celda');
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                    tr[i].style.display = '';
+                } else {
+                    tr[i].style.display = 'none';
+                }
+            }
+        }
+    }
+</script>
 {% endblock %}

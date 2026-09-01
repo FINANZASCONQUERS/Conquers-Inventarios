@@ -208,6 +208,9 @@ defecto seguros. #}
                     {% if 'programacion_cargue' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Despachos', 'calendar-check')) %}
                     {% endif %}
+                    {% if 'precintos' in session.get('area', []) %}
+                    {% set _ = user_planillas.append(('inventario_precintos', 'Inventario de Precintos', 'shield-lock-fill')) %}
+                    {% endif %}
                     {% if 'programacion_base' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('programacion_base', 'Pedidos', 'table')) %}
                     {% endif %}
@@ -288,6 +291,12 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'programacion_cargue' %}active{% endif %}"
                                     href="{{ url_for('programacion_cargue') }}"><i
                                         class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos</a>
+                            </li>
+                            {% endif %}
+                            {% if 'precintos' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'inventario_precintos' %}active{% endif %}"
+                                    href="{{ url_for('inventario_precintos') }}"><i
+                                        class="bi bi-shield-lock-fill me-2 text-warning"></i>Inventario de Precintos</a>
                             </li>
                             {% endif %}
                             {% if session.get('email', '').lower() in panel_allowed %}
