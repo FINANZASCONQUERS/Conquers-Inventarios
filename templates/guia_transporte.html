@@ -653,14 +653,41 @@
             color: #333;
             text-align: left;
             display: flex;
-            /* Flex para alinear botón eliminar */
+            /* Flex para alinear botones de editar y eliminar */
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
 
         .dropdown-item-client .client-info-wrap {
             flex-grow: 1;
-            /* Ocupa el espacio restante */
+            min-width: 0;
+        }
+
+        .client-actions-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .btn-edit-client {
+            background: none;
+            border: none;
+            color: #0d6efd;
+            cursor: pointer;
+            padding: 5px 8px;
+            font-size: 1.15em;
+            opacity: 0.7;
+            transition: all 0.2s ease;
+            border-radius: 4px;
+        }
+
+        .btn-edit-client:hover {
+            opacity: 1;
+            color: #0a58ca;
+            background-color: rgba(13, 110, 253, 0.1);
+            transform: scale(1.15);
         }
 
         .btn-delete-client {
@@ -668,15 +695,17 @@
             border: none;
             color: #dc3545;
             cursor: pointer;
-            padding: 5px 10px;
-            font-size: 1.2em;
+            padding: 5px 8px;
+            font-size: 1.15em;
             opacity: 0.6;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
+            border-radius: 4px;
         }
 
         .btn-delete-client:hover {
             opacity: 1;
-            transform: scale(1.1);
+            background-color: rgba(220, 53, 69, 0.1);
+            transform: scale(1.15);
         }
 
         .dropdown-item-client:hover {
@@ -1652,8 +1681,69 @@
                     <input id="destinoDireccion" placeholder="DESTINO">
                     <div class="destino-wrap" aria-hidden="true"></div>
                 </div>
-                <div class="campo horas-vigencia sin-borde" data-campo="horasVigencia"><input
-                        placeholder="HORAS DE VIGENCIA"></div>
+                <div class="campo horas-vigencia sin-borde" data-campo="horasVigencia" style="position: relative;">
+                    <input id="horasVigenciaInput" list="listaHorasVigencia" placeholder="HORAS DE VIGENCIA" autocomplete="off">
+                    
+                    <!-- Botones interactivos de ayuda y selector (solo pantalla) -->
+                    <div class="dropdown no-print" style="position: absolute; right: 6px; top: calc(50% + 5px); transform: translateY(-50%); z-index: 10; display: flex; align-items: center; gap: 4px;">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle py-0 px-2 shadow-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Seleccionar horas según destino" style="font-size: 11px; height: 24px; line-height: 22px; border-radius: 6px; background: rgba(255,255,255,0.95); font-weight: 600;">
+                            <i class="bi bi-clock-history me-1"></i><span class="d-none d-sm-inline">Horas</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info py-0 px-1 border-0 shadow-sm" onclick="mostrarModalGuiaHoras()" title="Ver regla oficial de horas por región" style="font-size: 13px; height: 24px; line-height: 22px; border-radius: 6px; background: rgba(255,255,255,0.95);">
+                            <i class="bi bi-question-circle-fill text-primary"></i>
+                        </button>
+                        
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg" style="font-size: 13px; min-width: 290px; border-radius: 10px; padding: 10px;">
+                            <!-- Banner explicativo en el menú -->
+                            <div class="p-2 mb-2 rounded" style="background: #eef5ff; border-left: 4px solid #0d6efd;">
+                                <div class="fw-bold text-primary mb-1" style="font-size: 11.5px;">
+                                    <i class="bi bi-geo-alt-fill text-danger me-1"></i>Regla de Horas según Destino:
+                                </div>
+                                <div style="font-size: 11px; color: #333; line-height: 1.45;">
+                                    <div>🌊 <strong>Costa</strong> (nuestra región): <span class="text-primary fw-bold">24 a 36 horas</span></div>
+                                    <div>🌾 <strong>Valle del Cauca</strong>: <span class="text-success fw-bold">72 horas</span></div>
+                                    <div>🏔️ <strong>Interior del país</strong>: <span class="text-danger fw-bold">96 a 120 horas</span></div>
+                                </div>
+                            </div>
+
+                            <li><h6 class="dropdown-header text-primary fw-bold px-1" style="font-size: 11px;">1. COSTA (Donde nos encontramos: 24 - 36h)</h6></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('24 HORAS')"><span class="badge bg-primary me-1">24h</span> 24 HORAS <small class="text-muted ms-1">(Costa local)</small></a></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('32 HORAS')"><span class="badge bg-primary me-1">32h</span> 32 HORAS <small class="text-muted ms-1">(Costa media)</small></a></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('36 HORAS')"><span class="badge bg-primary me-1">36h</span> 36 HORAS <small class="text-muted ms-1">(Costa límite)</small></a></li>
+
+                            <li><hr class="dropdown-divider my-1"></li>
+
+                            <li><h6 class="dropdown-header text-success fw-bold px-1" style="font-size: 11px;">2. VALLE (72h)</h6></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('72 HORAS')"><span class="badge bg-success me-1">72h</span> 72 HORAS <small class="text-muted ms-1">(Valle del Cauca)</small></a></li>
+
+                            <li><hr class="dropdown-divider my-1"></li>
+
+                            <li><h6 class="dropdown-header text-danger fw-bold px-1" style="font-size: 11px;">3. INTERIOR (96 - 120h)</h6></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('96 HORAS')"><span class="badge bg-danger me-1">96h</span> 96 HORAS <small class="text-muted ms-1">(Interior)</small></a></li>
+                            <li><a class="dropdown-item fw-semibold py-1 rounded" href="javascript:void(0)" onclick="seleccionarHorasVigencia('120 HORAS')"><span class="badge bg-danger me-1">120h</span> 120 HORAS <small class="text-muted ms-1">(Interior lejano)</small></a></li>
+
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li><span class="dropdown-item-text text-muted" style="font-size: 10.5px; line-height: 1.3;"><i class="bi bi-pencil me-1"></i> <em>¿Caso especial? Digita libremente cualquier otra hora (ej: 125 HORAS).</em></span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Banner flotante de ayuda al hacer clic/foco en la casilla (no-print) -->
+                    <div id="bannerVigenciaTip" class="no-print" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #084298; color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 11.5px; z-index: 1050; box-shadow: 0 4px 14px rgba(0,0,0,0.25); text-align: left; line-height: 1.35; pointer-events: none;">
+                        <div style="font-weight: bold; margin-bottom: 2px;">
+                            <i class="bi bi-info-circle-fill text-warning me-1"></i>Tener en cuenta según destino:
+                        </div>
+                        <div>🌊 <strong>Costa</strong> (nuestra ubicación): <span class="badge bg-light text-dark fw-bold">24 a 36 h</span> &nbsp;|&nbsp; 🌾 <strong>Valle</strong>: <span class="badge bg-light text-dark fw-bold">72 h</span> &nbsp;|&nbsp; 🏔️ <strong>Interior</strong>: <span class="badge bg-light text-dark fw-bold">96 a 120 h</span></div>
+                    </div>
+
+                    <datalist id="listaHorasVigencia">
+                        <option value="24 HORAS">24 HORAS - Costa</option>
+                        <option value="32 HORAS">32 HORAS - Costa</option>
+                        <option value="36 HORAS">36 HORAS - Costa</option>
+                        <option value="72 HORAS">72 HORAS - Valle del Cauca</option>
+                        <option value="96 HORAS">96 HORAS - Interior</option>
+                        <option value="120 HORAS">120 HORAS - Interior</option>
+                    </datalist>
+                </div>
             </div>
             <div class="fila muy-pequeno">
                 <div class="campo descripcion-producto sin-borde" data-campo="producto">
@@ -1728,31 +1818,41 @@
         aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalLabelEditarCliente">Editar Cliente</h5>
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold" id="modalLabelEditarCliente">
+                        <i class="bi bi-pencil-square text-primary me-2"></i>Editar Cliente / Sede
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size: 0.85rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Misma Empresa, Diferentes Sedes:</strong> Si la empresa tiene varias plantas (ej. <em>C.I. CONQUERS WORLD TRADE SAS</em>), cada sede se diferencia por su dirección y ciudad.
+                    </div>
                     <form id="formEditarCliente">
+                        <input type="hidden" id="editarIndexCliente">
                         <input type="hidden" id="originalNombreCliente">
                         <input type="hidden" id="originalDireccionCliente">
+                        <input type="hidden" id="originalCiudadCliente">
                         <div class="mb-3">
-                            <label for="editarNombreCliente" class="form-label">Nombre del Cliente</label>
+                            <label for="editarNombreCliente" class="form-label fw-bold">Razón Social / Nombre</label>
                             <input type="text" class="form-control" id="editarNombreCliente" required>
                         </div>
                         <div class="mb-3">
-                            <label for="editarDireccionCliente" class="form-label">Dirección</label>
+                            <label for="editarDireccionCliente" class="form-label fw-bold">Dirección de la Sede / Planta</label>
                             <input type="text" class="form-control" id="editarDireccionCliente" required>
                         </div>
                         <div class="mb-3">
-                            <label for="editarCiudadCliente" class="form-label">Ciudad y Departamento</label>
+                            <label for="editarCiudadCliente" class="form-label fw-bold">Ciudad y Departamento</label>
                             <input type="text" class="form-control" id="editarCiudadCliente" required>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="btnActualizarCliente">Guardar Cambios</button>
+                    <button type="button" class="btn btn-primary" id="btnActualizarCliente">
+                        <i class="bi bi-check-circle me-1"></i>Guardar Cambios
+                    </button>
                 </div>
             </div>
         </div>
@@ -2181,24 +2281,28 @@
 
             listaDiv.innerHTML = '';
 
-            // Opción reset / placeholder (opcional, aqui no necesaria porque input tiene placeholder)
-
             clientes.forEach((c, index) => {
                 const item = document.createElement('div');
                 item.className = 'dropdown-item-client';
                 // El clic principal selecciona al cliente
                 item.onclick = () => seleccionarCliente(index);
 
-                // Estructura: Info izquierda + Botón eliminar derecha
+                // Estructura: Info izquierda + Botones de editar y eliminar derecha
                 item.innerHTML = `
                     <div class="client-info-wrap">
                         <span class="client-name">${c.NOMBRE_CLIENTE}</span>
                         <span class="client-details">${c.CIUDAD_DEPARTAMENTO || 'Sin ciudad'} — ${c.DIRECCION || 'Sin dirección'}</span>
                     </div>
-                    <button class="btn-delete-client" title="Eliminar Cliente" 
-                            onclick="event.stopPropagation(); eliminarCliente('${index}')">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="client-actions-wrap" onclick="event.stopPropagation();">
+                        <button type="button" class="btn-edit-client" title="Editar este cliente / sede" 
+                                onclick="event.stopPropagation(); abrirModalEditarClientePorIndice(${index});">
+                            <i class="bi bi-pencil-square"></i>
+                        </button>
+                        <button type="button" class="btn-delete-client" title="Eliminar este cliente" 
+                                onclick="event.stopPropagation(); eliminarCliente('${index}');">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
                 `;
                 listaDiv.appendChild(item);
             });
@@ -2361,6 +2465,12 @@
                 document.getElementById('selloInput').value = datosGuia.precintos || '';
                 // Factura/Remisión desde Programación de Cargue
                 document.getElementById('facturaRemision').value = datosGuia.factura_remision || '';
+                // Horas de vigencia desde Programación si existen
+                const vigenciaProg = datosGuia.horas_vigencia || datosGuia.vigencia || datosGuia.HORAS_VIGENCIA;
+                if (vigenciaProg) {
+                    const elVig = document.getElementById('horasVigenciaInput');
+                    if (elVig) elVig.value = vigenciaProg;
+                }
 
                 // --- Cliente y Dirección ---
                 // Reemplazo para funcionar con el Dropdown Personalizado
@@ -2423,34 +2533,34 @@
             const btnEditarCliente = document.getElementById('btnEditarCliente');
             if (btnEditarCliente && modalEditarCliente) {
                 btnEditarCliente.addEventListener('click', () => {
-                    // Para editar, necesitamos saber qué cliente está seleccionado actualmente.
-                    // Como quitamos el select, usamos el valor del input display para buscarlo.
                     const nombreActual = document.getElementById('clienteNombreDisplay').value;
+                    const dirActual = document.getElementById('direccionCliente').value;
                     if (!nombreActual) {
                         Swal.fire({ icon: 'info', title: 'Selecciona un cliente', text: 'Elige un cliente de la lista para poder editarlo.' });
                         return;
                     }
 
-                    // Buscar el cliente por nombre exacto (y dirección si fuera posible, pero aqui asumimos nombre display)
-                    // OJO: Si hay duplicados de nombre, esto podría editar el primero. 
-                    // Idealmente deberíamos guardar el INDEX seleccionado en una variable global.
-                    const index = clientes.findIndex(c => c.NOMBRE_CLIENTE === nombreActual);
+                    // Intentar usar clienteSeleccionadoIndex si coincide con los datos actuales
+                    let index = clienteSeleccionadoIndex;
+                    if (index === null || index === undefined || index < 0 || index >= clientes.length ||
+                        (clientes[index] && (clientes[index].NOMBRE_CLIENTE || '').trim().toUpperCase() !== nombreActual.trim().toUpperCase())) {
+                        // Buscar por coincidencia compuesta (nombre + dirección)
+                        index = clientes.findIndex(c =>
+                            (c.NOMBRE_CLIENTE || '').trim().toUpperCase() === nombreActual.trim().toUpperCase() &&
+                            (!dirActual || (c.DIRECCION || '').trim().toUpperCase() === dirActual.trim().toUpperCase())
+                        );
+                        if (index === -1) {
+                            index = clientes.findIndex(c =>
+                                (c.NOMBRE_CLIENTE || '').trim().toUpperCase() === nombreActual.trim().toUpperCase()
+                            );
+                        }
+                    }
 
                     if (index === -1) {
                         Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'No se encontró el cliente en la lista.' });
                         return;
                     }
-                    const clienteActual = clientes[index];
-                    if (!clienteActual) {
-                        Swal.fire({ icon: 'error', title: 'Cliente no encontrado', text: 'Datos irrelevantes.' });
-                        return;
-                    }
-                    document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-                    document.getElementById('originalDireccionCliente').value = clienteActual.DIRECCION || '';
-                    document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
-                    document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
-                    document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
-                    modalEditarCliente.show();
+                    abrirModalEditarClientePorIndice(index);
                 });
             }
             // El evento change del select ya no existe porque el select se eliminó.
@@ -2485,8 +2595,10 @@
             const btnActualizarCliente = document.getElementById('btnActualizarCliente');
             if (btnActualizarCliente && modalEditarCliente) {
                 btnActualizarCliente.addEventListener('click', async () => {
+                    const indexVal = document.getElementById('editarIndexCliente').value;
                     const original = document.getElementById('originalNombreCliente').value.trim();
                     const originalDireccion = document.getElementById('originalDireccionCliente').value.trim();
+                    const originalCiudad = (document.getElementById('originalCiudadCliente') ? document.getElementById('originalCiudadCliente').value : '').trim();
                     const nombre = document.getElementById('editarNombreCliente').value.trim();
                     const direccion = document.getElementById('editarDireccionCliente').value.trim();
                     const ciudad = document.getElementById('editarCiudadCliente').value.trim();
@@ -2499,8 +2611,10 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
+                                index: indexVal !== '' ? parseInt(indexVal, 10) : null,
                                 original_nombre: original,
                                 original_direccion: originalDireccion,
+                                original_ciudad: originalCiudad,
                                 nombre,
                                 direccion,
                                 ciudad
@@ -2512,11 +2626,20 @@
                             actualizarDropdownClientes();
                             // Encontrar el indice del cliente actualizado
                             const newIdx = clientes.findIndex(c =>
-                                c.NOMBRE_CLIENTE === result.cliente.NOMBRE_CLIENTE &&
-                                c.DIRECCION === result.cliente.DIRECCION
+                                (c.NOMBRE_CLIENTE || '').trim().toUpperCase() === (result.cliente.NOMBRE_CLIENTE || nombre).trim().toUpperCase() &&
+                                (c.DIRECCION || '').trim().toUpperCase() === (result.cliente.DIRECCION || direccion).trim().toUpperCase()
                             );
                             if (newIdx !== -1) {
                                 seleccionarCliente(newIdx);
+                            } else {
+                                document.getElementById('clienteNombreDisplay').value = nombre;
+                                document.getElementById('direccionCliente').value = direccion;
+                                document.getElementById('ciudadCliente').value = ciudad;
+                                document.getElementById('destinoDireccion').value = ciudad;
+                                if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+                                if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+                                if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+                                if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
                             }
                             modalEditarCliente.hide();
                             Swal.fire({ icon: 'success', title: '¡Actualizado!', text: result.message, timer: 2500, showConfirmButton: false });
@@ -2726,6 +2849,31 @@
             const ciuInp = document.getElementById('ciudadCliente');
             if (ciuInp) { ciuInp.addEventListener('input', syncCiudadWrap); ciuInp.addEventListener('change', syncCiudadWrap); }
 
+            // Formateo inteligente y recordatorio visual para Horas de Vigencia
+            const vigenciaInp = document.getElementById('horasVigenciaInput');
+            const bannerTip = document.getElementById('bannerVigenciaTip');
+            if (vigenciaInp) {
+                vigenciaInp.addEventListener('focus', function () {
+                    if (bannerTip) bannerTip.style.display = 'block';
+                });
+
+                vigenciaInp.addEventListener('blur', function () {
+                    if (bannerTip) {
+                        setTimeout(() => { bannerTip.style.display = 'none'; }, 250);
+                    }
+                    let val = (this.value || '').trim().toUpperCase();
+                    if (!val) return;
+                    // Si el usuario escribe solo un número (ej. "125" o "24"), le agregamos " HORAS"
+                    if (/^\d+$/.test(val)) {
+                        this.value = `${val} HORAS`;
+                    } else if (/^\d+\s*H(ORAS)?$/i.test(val)) {
+                        // Si escribió "125h" o "125 H", estandarizar a "125 HORAS"
+                        const match = val.match(/\d+/);
+                        if (match) this.value = `${match[0]} HORAS`;
+                    }
+                });
+            }
+
         }); // Fin del primer DOMContentLoaded
 
         // Otro listener para asegurar que la inicialización de Fecha/Hora corra sin depender del async anterior
@@ -2905,8 +3053,99 @@
             };
             listaDiv.appendChild(btnNew);
         }
+        let clienteSeleccionadoIndex = null;
+
+        function abrirModalEditarClientePorIndice(index) {
+            index = parseInt(index, 10);
+            if (isNaN(index) || index < 0 || index >= clientes.length) return;
+            const clienteActual = clientes[index];
+            if (!clienteActual) return;
+
+            // Cerrar menú si está desplegado
+            const menu = document.getElementById('dropdownClientesList');
+            if (menu) menu.classList.remove('show');
+
+            // Guardar index en campo oculto
+            const idxInput = document.getElementById('editarIndexCliente');
+            if (idxInput) idxInput.value = index;
+
+            document.getElementById('originalNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+            document.getElementById('originalDireccionCliente').value = clienteActual.DIRECCION || '';
+            const origCiudadInput = document.getElementById('originalCiudadCliente');
+            if (origCiudadInput) origCiudadInput.value = clienteActual.CIUDAD_DEPARTAMENTO || '';
+
+            document.getElementById('editarNombreCliente').value = clienteActual.NOMBRE_CLIENTE || '';
+            document.getElementById('editarDireccionCliente').value = clienteActual.DIRECCION || '';
+            document.getElementById('editarCiudadCliente').value = clienteActual.CIUDAD_DEPARTAMENTO || '';
+
+            const modalEl = document.getElementById('modalEditarCliente');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                modal.show();
+            }
+        }
+
+        function seleccionarHorasVigencia(valor) {
+            const input = document.getElementById('horasVigenciaInput');
+            if (input) {
+                input.value = valor;
+                input.style.backgroundColor = '';
+                input.style.border = '';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+
+        function mostrarModalGuiaHoras() {
+            Swal.fire({
+                title: '<span style="color:#0d6efd;"><i class="bi bi-clock-history me-1"></i> Horas de Vigencia según Destino</span>',
+                icon: 'info',
+                html: `
+                    <div style="text-align: left; font-size: 13.5px; line-height: 1.6;">
+                        <p class="mb-3 text-secondary">Estimado operador, tenga en cuenta las siguientes horas de vigencia recomendadas al emitir la Guía Única de Transporte:</p>
+                        
+                        <div class="card mb-2 border-primary" style="background: #f0f7ff;">
+                            <div class="card-body p-2">
+                                <strong class="text-primary"><i class="bi bi-water me-1"></i> 1. COSTA (Donde nos encontramos):</strong>
+                                <div class="ms-3 mt-1 text-dark">
+                                    • Rango recomendado: <strong>24 a 36 horas</strong><br>
+                                    <small class="text-muted">Frecuentes: <strong>24h</strong> (local), <strong>32h</strong> o <strong>36h</strong> (Costa límite).</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-2 border-success" style="background: #f0fff4;">
+                            <div class="card-body p-2">
+                                <strong class="text-success"><i class="bi bi-truck me-1"></i> 2. VALLE DEL CAUCA / OCCIDENTE:</strong>
+                                <div class="ms-3 mt-1 text-dark">
+                                    • Tiempo estándar: <strong>72 horas</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card mb-2 border-danger" style="background: #fff8f8;">
+                            <div class="card-body p-2">
+                                <strong class="text-danger"><i class="bi bi-buildings me-1"></i> 3. INTERIOR DEL PAÍS:</strong>
+                                <div class="ms-3 mt-1 text-dark">
+                                    • Rango estándar: <strong>96 a 120 horas</strong><br>
+                                    <small class="text-muted">Aplica para Bogotá, Cundinamarca, Santanderes, etc.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-secondary py-1 px-2 mb-0" style="font-size: 11.5px; background: #f8f9fa;">
+                            <i class="bi bi-pencil-fill me-1 text-primary"></i> <strong>Casos Especiales:</strong> Si la operación requiere un tiempo atípico, puede digitar cualquier número de horas libremente en la casilla (ej: <strong>125 HORAS</strong>).
+                        </div>
+                    </div>
+                `,
+                confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Entendido',
+                confirmButtonColor: '#0d6efd'
+            });
+        }
+
         function seleccionarCliente(index) {
-            const cli = clientes[index];
+            clienteSeleccionadoIndex = parseInt(index, 10);
+            const cli = clientes[clienteSeleccionadoIndex];
             if (!cli) return;
 
             // Actualizar input visible
@@ -2927,15 +3166,15 @@
             if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
         }
 
-        // DEPRECATED: autocompletarCliente (se reemplaza por seleccionarCliente y la lógica UI nueva)
         // Función para eliminar cliente
         function eliminarCliente(index) {
+            index = parseInt(index, 10);
             const cli = clientes[index];
             if (!cli) return;
 
             Swal.fire({
                 title: '¿Estás seguro?',
-                text: `Vas a eliminar a "${cli.NOMBRE_CLIENTE}". Esta acción no se puede deshacer.`,
+                html: `Vas a eliminar a <strong>${cli.NOMBRE_CLIENTE}</strong><br><small class="text-muted">${cli.DIRECCION || ''} — ${cli.CIUDAD_DEPARTAMENTO || ''}</small>.<br>Esta acción no se puede deshacer.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -2949,8 +3188,10 @@
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
+                                index: index,
                                 nombre: cli.NOMBRE_CLIENTE,
-                                direccion: cli.DIRECCION
+                                direccion: cli.DIRECCION,
+                                ciudad: cli.CIUDAD_DEPARTAMENTO
                             })
                         });
                         const data = await response.json();
@@ -2963,11 +3204,13 @@
 
                             // Limpiar selección si era el eliminado
                             const currentDisplay = document.getElementById('clienteNombreDisplay').value;
-                            if (currentDisplay === cli.NOMBRE_CLIENTE) {
+                            const currentDir = document.getElementById('direccionCliente').value;
+                            if (currentDisplay === cli.NOMBRE_CLIENTE && (!currentDir || currentDir === cli.DIRECCION)) {
                                 document.getElementById('clienteNombreDisplay').value = '';
                                 document.getElementById('direccionCliente').value = '';
                                 document.getElementById('ciudadCliente').value = '';
                                 document.getElementById('destinoDireccion').value = '';
+                                clienteSeleccionadoIndex = null;
                             }
                         } else {
                             Swal.fire('Error', data.message || 'No se pudo eliminar.', 'error');
@@ -3215,7 +3458,7 @@
                 { selector: '#fechaHoraSalida', nombre: 'Fecha de Salida' },
                 { selector: '#horaSalida', nombre: 'Hora de Salida' },
                 { selector: '#destinoDireccion', nombre: 'Destino' },
-                { selector: '.horas-vigencia input', nombre: 'Horas de Vigencia' },
+                { selector: '#horasVigenciaInput', nombre: 'Horas de Vigencia' },
                 // Producto
                 { selector: '#productoSelect', nombre: 'Selección de Producto' },
                 { selector: '#tempF', nombre: 'Temperatura F' },

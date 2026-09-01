@@ -966,23 +966,44 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Agregar Nuevo Cliente</h5>
+                <h5 class="modal-title" id="tituloModalCliente">Agregar Nuevo Cliente</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Badge informativo del modo actual -->
+                <div id="infoBadgeCliente" class="alert alert-info py-2 px-3 mb-3 d-none" role="alert"
+                    style="font-size: 0.85rem;">
+                    <i class="bi bi-info-circle"></i> <span id="infoBadgeClienteText"></span>
+                </div>
+
+                <!-- Selector de Sede si el cliente tiene múltiples ubicaciones (ej: C.I. CONQUERS Cartagena y Madrid) -->
+                <div id="selectorSedeClienteGroup" class="mb-3 d-none">
+                    <label for="selectSedeClienteModal" class="form-label fw-bold text-primary">
+                        <i class="bi bi-geo-alt-fill me-1"></i> Seleccionar Sede / Planta a Editar:
+                    </label>
+                    <select class="form-select border-primary" id="selectSedeClienteModal">
+                    </select>
+                    <small class="text-muted">Esta empresa tiene varias plantas registradas. Elige cuál deseas modificar.</small>
+                </div>
+
                 <form id="formAgregarCliente">
+                    <input type="hidden" id="editarClienteIndex" value="">
+                    <input type="hidden" id="originalClienteNombre" value="">
+                    <input type="hidden" id="originalClienteDireccion" value="">
+                    <input type="hidden" id="originalClienteCiudad" value="">
+
                     <div class="mb-3">
-                        <label for="nombreNuevoCliente" class="form-label">Nombre del Cliente</label>
-                        <input type="text" class="form-control" id="nombreNuevoCliente" required>
+                        <label for="nombreNuevoCliente" class="form-label fw-bold">Nombre del Cliente <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nombreNuevoCliente" required placeholder="Ej: C.I. CONQUERS TRADING SAS">
                     </div>
                     <div class="mb-3">
-                        <label for="direccionNuevoCliente" class="form-label">Dirección</label>
-                        <input type="text" class="form-control" id="direccionNuevoCliente" required>
+                        <label for="direccionNuevoCliente" class="form-label fw-bold">Dirección de Entrega <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="direccionNuevoCliente" required placeholder="Ej: ZONA FRANCA KM 13 VIA MAMONAL">
                     </div>
                     <div class="mb-3">
-                        <label for="ciudadNuevoCliente" class="form-label">Ciudad y Departamento</label>
-                        <input type="text" class="form-control" id="ciudadNuevoCliente" required>
+                        <label for="ciudadNuevoCliente" class="form-label fw-bold">Ciudad y Departamento <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="ciudadNuevoCliente" required placeholder="Ej: CARTAGENA BOLIVAR">
                     </div>
                 </form>
             </div>
@@ -1376,6 +1397,26 @@
         }
     }
 
+    function mostrarInfoBadgeCliente(tipo, mensaje) {
+        const badge = document.getElementById('infoBadgeCliente');
+        const text = document.getElementById('infoBadgeClienteText');
+        if (!badge || !text) return;
+
+        badge.className = `alert alert-${tipo} py-2 px-3 mb-3`;
+        text.textContent = mensaje;
+        badge.classList.remove('d-none');
+    }
+
+    function ocultarInfoBadgeCliente() {
+        const badge = document.getElementById('infoBadgeCliente');
+        if (badge) badge.classList.add('d-none');
+    }
+
+    function ocultarSelectorSedeCliente() {
+        const selectorGroup = document.getElementById('selectorSedeClienteGroup');
+        if (selectorGroup) selectorGroup.classList.add('d-none');
+    }
+
     if (btnGuardarCliente) {
         btnGuardarCliente.addEventListener('click', async function () {
             const nombreInput = document.getElementById('nombreNuevoCliente');
@@ -1391,42 +1432,67 @@
                 return;
             }
 
+            const indexVal = document.getElementById('editarClienteIndex')?.value;
+            const originalNombre = document.getElementById('originalClienteNombre')?.value;
+            const originalDireccion = document.getElementById('originalClienteDireccion')?.value;
+            const originalCiudad = document.getElementById('originalClienteCiudad')?.value;
+            const esEdicion = Boolean(originalNombre && originalNombre.trim().length > 0);
+
             this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+            this.innerHTML = `<span class="spinner-border spinner-border-sm"></span> ${esEdicion ? 'Actualizando...' : 'Guardando...'}`;
+
+            const endpoint = esEdicion ? '/actualizar_cliente_ajax' : '/agregar_cliente_ajax';
+            const payload = esEdicion ? {
+                index: indexVal !== '' ? parseInt(indexVal, 10) : null,
+                original_nombre: originalNombre,
+                original_direccion: originalDireccion,
+                original_ciudad: originalCiudad,
+                nombre,
+                direccion,
+                ciudad
+            } : { nombre, direccion, ciudad };
 
             try {
-                const response = await fetch('/agregar_cliente_ajax', {
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre, direccion, ciudad })
+                    body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (response.ok && result.success) {
-                    const nuevoCliente = result.nuevo_cliente || {
+                    const clienteActualizado = result.cliente || result.nuevo_cliente || {
                         NOMBRE_CLIENTE: nombre,
                         DIRECCION: direccion,
                         CIUDAD_DEPARTAMENTO: ciudad
                     };
 
-                    const idx = clientes.findIndex(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === (nuevoCliente.NOMBRE_CLIENTE || '').toUpperCase());
-                    if (idx >= 0) {
-                        clientes[idx] = nuevoCliente;
+                    // Actualizar o insertar en array local clientes
+                    if (esEdicion && indexVal !== '' && clientes[parseInt(indexVal, 10)]) {
+                        clientes[parseInt(indexVal, 10)] = clienteActualizado;
                     } else {
-                        clientes.push(nuevoCliente);
+                        const idx = clientes.findIndex(c => 
+                            (c.NOMBRE_CLIENTE || '').toUpperCase() === (originalNombre || nombre).toUpperCase() &&
+                            (!originalDireccion || (c.DIRECCION || '').toUpperCase() === originalDireccion.toUpperCase())
+                        );
+                        if (idx >= 0) {
+                            clientes[idx] = clienteActualizado;
+                        } else {
+                            clientes.push(clienteActualizado);
+                        }
                     }
 
                     actualizarDatalistClientes();
                     actualizarDatalistCiudades();
 
-                    await sincronizarFilaProgramacionDesdeCliente(nuevoCliente);
+                    await sincronizarFilaProgramacionDesdeCliente(clienteActualizado);
 
                     const modalEl = document.getElementById('modalAgregarCliente');
                     const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                     modalInstance.hide();
 
-                    showToast('success', `Cliente '${nuevoCliente.NOMBRE_CLIENTE}' guardado con éxito.`);
+                    showToast('success', result.message || `Cliente '${clienteActualizado.NOMBRE_CLIENTE}' ${esEdicion ? 'actualizado' : 'guardado'} con éxito.`);
                 } else {
                     showToast('danger', result.message || 'No se pudo guardar el cliente.');
                 }
@@ -1435,7 +1501,7 @@
                 showToast('danger', 'Error de comunicación con el servidor al guardar el cliente.');
             } finally {
                 this.disabled = false;
-                this.textContent = 'Guardar Cliente';
+                this.textContent = esEdicion ? 'Actualizar Cliente' : 'Guardar Cliente';
             }
         });
     }
@@ -2006,6 +2072,93 @@
         }
     });
 
+    // Evaluar visibilidad de botones al interactuar o enfocar cualquier celda
+    tbody.addEventListener('focusin', function (e) {
+        const input = e.target;
+        if (input && input.classList.contains('editable-input')) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+
+    // Función para abrir modal en Modo Editar Cliente con soporte multi-sede
+    function abrirModalEditarCliente(val, rowContext) {
+        const valUpper = (val || '').trim().toUpperCase();
+        const matchesWithIndex = [];
+        clientes.forEach((c, idx) => {
+            if ((c.NOMBRE_CLIENTE || '').trim().toUpperCase() === valUpper) {
+                matchesWithIndex.push({ ...c, originalIndex: idx });
+            }
+        });
+
+        if (matchesWithIndex.length === 0) {
+            showToast('warning', 'No se encontró la información del cliente en la lista local.');
+            return;
+        }
+
+        contextoModalCliente.rowId = rowContext ? rowContext.dataset.id : null;
+        const modalEl = document.getElementById('modalAgregarCliente');
+        const form = document.getElementById('formAgregarCliente');
+        form.reset();
+
+        document.getElementById('tituloModalCliente').textContent = 'Editar Cliente';
+        document.getElementById('btnGuardarCliente').textContent = 'Actualizar Cliente';
+
+        const selectorSedeContainer = document.getElementById('selectorSedeClienteGroup');
+        const selectSede = document.getElementById('selectSedeClienteModal');
+
+        function cargarDatosSede(item) {
+            document.getElementById('editarClienteIndex').value = item.originalIndex !== undefined ? item.originalIndex : '';
+            document.getElementById('originalClienteNombre').value = item.NOMBRE_CLIENTE || '';
+            document.getElementById('originalClienteDireccion').value = item.DIRECCION || '';
+            document.getElementById('originalClienteCiudad').value = item.CIUDAD_DEPARTAMENTO || '';
+
+            document.getElementById('nombreNuevoCliente').value = item.NOMBRE_CLIENTE || '';
+            document.getElementById('direccionNuevoCliente').value = item.DIRECCION || '';
+            document.getElementById('ciudadNuevoCliente').value = item.CIUDAD_DEPARTAMENTO || '';
+        }
+
+        if (matchesWithIndex.length === 1) {
+            if (selectorSedeContainer) selectorSedeContainer.classList.add('d-none');
+            mostrarInfoBadgeCliente('info', 'Editando datos de la planta o sede seleccionada.');
+            cargarDatosSede(matchesWithIndex[0]);
+        } else {
+            // Empresa con múltiples plantas (ej: C.I. CONQUERS Cartagena y Madrid)
+            if (selectorSedeContainer && selectSede) {
+                selectorSedeContainer.classList.remove('d-none');
+                selectSede.innerHTML = '';
+
+                // Preseleccionar si coincide con el destino de la fila actual
+                const destinoFila = (rowContext?.querySelector('td[data-field="destino"] input')?.value || 
+                                     rowContext?.querySelector('td[data-field="destino"]')?.textContent || '').trim().toUpperCase();
+
+                let selectedIdx = 0;
+                matchesWithIndex.forEach((m, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `${m.CIUDAD_DEPARTAMENTO || 'Sin Ciudad'} — ${m.DIRECCION || 'Sin Dirección'}`;
+                    if (destinoFila && (m.CIUDAD_DEPARTAMENTO || '').toUpperCase().includes(destinoFila)) {
+                        selectedIdx = idx;
+                    }
+                    selectSede.appendChild(opt);
+                });
+                selectSede.value = selectedIdx;
+
+                selectSede.onchange = function() {
+                    const chosen = matchesWithIndex[parseInt(this.value, 10)] || matchesWithIndex[0];
+                    cargarDatosSede(chosen);
+                };
+
+                mostrarInfoBadgeCliente('info', `Esta empresa tiene ${matchesWithIndex.length} sedes registradas. Selecciona cuál deseas modificar.`);
+                cargarDatosSede(matchesWithIndex[selectedIdx]);
+            } else {
+                cargarDatosSede(matchesWithIndex[0]);
+            }
+        }
+
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
     // --- Click en el botón '+' o 'Editar' ---
     tbody.addEventListener('click', function (e) {
         const btnAdd = e.target.closest('.btn-add-new-item');
@@ -2026,6 +2179,14 @@
                 const modalEl = document.getElementById('modalAgregarCliente');
                 const form = document.getElementById('formAgregarCliente');
                 form.reset();
+                document.getElementById('editarClienteIndex').value = '';
+                document.getElementById('originalClienteNombre').value = '';
+                document.getElementById('originalClienteDireccion').value = '';
+                document.getElementById('originalClienteCiudad').value = '';
+                document.getElementById('tituloModalCliente').textContent = 'Agregar Nuevo Cliente';
+                document.getElementById('btnGuardarCliente').textContent = 'Guardar Cliente';
+                ocultarInfoBadgeCliente();
+                ocultarSelectorSedeCliente();
                 document.getElementById('nombreNuevoCliente').value = val;
                 const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
                 modal.show();
@@ -2058,6 +2219,11 @@
                 modal.show();
             }
         } else if (btnEdit) {
+            if (field === 'cliente') {
+                abrirModalEditarCliente(val, rowContext);
+                return;
+            }
+
             // ABRIR MODAL EN MODO EDITAR CONDUCTOR
             let conductorMatch = null;
             const valUpper = val.toUpperCase();
@@ -2437,6 +2603,7 @@
                                     <div class="input-group input-group-sm border-0">
                                         <input list="datalist-clientes" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar cliente...">
                                         <button class="btn btn-outline-success btn-xs btn-add-new-item" style="display:none; z-index: 5;" type="button" title="Agregar Nuevo Cliente"><i class="fas fa-plus"></i></button>
+                                        <button class="btn btn-outline-warning btn-xs btn-edit-item" style="display:none; z-index: 5;" type="button" title="Editar Cliente"><i class="fas fa-edit"></i></button>
                                     </div>
                                 </td>`;
                 } else if (col === 'nombre_conductor' && finalEditable) {
@@ -2541,6 +2708,13 @@
 
         Array.from(tbody.querySelectorAll('tr')).forEach(initializeDespachadoLock);
         Array.from(tbody.querySelectorAll('tr')).forEach(refreshPrintButtonState);
+
+        // Inicializar visibilidad de botones add/edit en celdas con datos existentes
+        tbody.querySelectorAll('.editable-input').forEach(input => {
+            if (input.value && input.value.trim().length > 0) {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
     }
 
     // --- INVENTARIO DE PRECINTOS ---
