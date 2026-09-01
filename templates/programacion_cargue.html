@@ -1101,7 +1101,7 @@
             // Ignacio ahora con todos los campos como Samantha/logistic
             'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos'],
-            'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'estado', 'numero_guia']
+            'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'estado', 'numero_guia', 'fecha_despacho']
         };
 
         const columnsConfig = {
@@ -2306,6 +2306,19 @@
             const oa = estadoOrder.hasOwnProperty(ea) ? estadoOrder[ea] : 3;
             const ob = estadoOrder.hasOwnProperty(eb) ? estadoOrder[eb] : 3;
             if (oa !== ob) return oa - ob;
+
+            // En DESPACHADO: ordenar por fecha (más reciente arriba) y por momento de creación (el más viejo arriba)
+            if (ea === 'DESPACHADO' && eb === 'DESPACHADO') {
+                const fda = a._row.fecha_despacho || a._row.fecha_programacion || '';
+                const fdb = b._row.fecha_despacho || b._row.fecha_programacion || '';
+                if (fda !== fdb) {
+                    return fda > fdb ? -1 : 1; // Fechas más recientes arriba
+                }
+                const idA = Number(a._row.id) || 0;
+                const idB = Number(b._row.id) || 0;
+                return idA - idB; // Menor ID (creado primero) arriba: 1º, 2º, 3º...
+            }
+
             // Mantener orden original entre mismos estados
             return a._origIndex - b._origIndex;
         }).map(x => x._row);
@@ -2353,7 +2366,7 @@
                 });
             }
 
-            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" data-missing-required="${camposObligatoriosFaltantes.join(',')}" class="align-middle">`;
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-fecha-despacho="${row.fecha_despacho || ''}" data-fecha-programacion="${row.fecha_programacion || ''}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" data-missing-required="${camposObligatoriosFaltantes.join(',')}" class="align-middle">`;
 
             // Agregar número de fila con badge discreto de Refinery
             let refineryBadge = '';
@@ -2406,14 +2419,6 @@
                     let options = config.options || [];
                     if (col === 'estado' && userEmail === 'refinery.control@conquerstrading.com') {
                         options = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
-                    } else if (col === 'estado' && userEmail === 'logistics.assistant@conquerstrading.com') {
-                        const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'CARGADO': 2, 'DESPACHADO': 3 };
-                        const currentVal = String(value || row.estado || 'PROGRAMADO').toUpperCase();
-                        const currentIdx = estadoOrder[currentVal] !== undefined ? estadoOrder[currentVal] : 0;
-                        options = options.filter(opt => (estadoOrder[opt] !== undefined ? estadoOrder[opt] : 0) <= currentIdx);
-                        if (!options.includes(currentVal)) {
-                            options.push(currentVal);
-                        }
                     }
                     let selectHtml = `<select class="form-select form-select-sm border-0 bg-transparent editable-select" data-col="${col}">`;
                     selectHtml += `<option value="">Seleccionar...</option>`;
@@ -3450,14 +3455,6 @@
             let opts = config.options || [];
             if (userEmail === 'refinery.control@conquerstrading.com') {
                 opts = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
-            } else if (userEmail === 'logistics.assistant@conquerstrading.com') {
-                const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'CARGADO': 2, 'DESPACHADO': 3 };
-                const currentVal = String(originalValue || 'PROGRAMADO').toUpperCase();
-                const currentIdx = estadoOrder[currentVal] !== undefined ? estadoOrder[currentVal] : 0;
-                opts = opts.filter(opt => (estadoOrder[opt] !== undefined ? estadoOrder[opt] : 0) <= currentIdx);
-                if (!opts.includes(currentVal)) {
-                    opts.push(currentVal);
-                }
             }
             opts.forEach(opt => {
                 const option = document.createElement('option');
@@ -3545,22 +3542,6 @@
             const estadoAnterior = String(row.dataset.estado || 'PROGRAMADO').toUpperCase();
             const estadoNuevo = String(value || '').toUpperCase();
 
-            if (userEmail === 'logistics.assistant@conquerstrading.com' && estadoNuevo) {
-                const estadoOrder = { 'PROGRAMADO': 0, 'CARGANDO': 1, 'CARGADO': 2, 'DESPACHADO': 3 };
-                const idxAnterior = estadoOrder[estadoAnterior] !== undefined ? estadoOrder[estadoAnterior] : 0;
-                const idxNuevo = estadoOrder[estadoNuevo] !== undefined ? estadoOrder[estadoNuevo] : 0;
-                if (idxNuevo > idxAnterior) {
-                    showToast('warning', 'Permiso denegado: Solo puedes retroceder o mantener el estado (hacia atrás).');
-                    if (select) {
-                        select.value = estadoAnterior;
-                    } else if (span) {
-                        span.textContent = estadoAnterior;
-                    } else {
-                        cell.textContent = estadoAnterior;
-                    }
-                    return;
-                }
-            }
 
             if (estadoNuevo === 'DESPACHADO') {
                 const faltantes = obtenerCamposObligatoriosFaltantesDesdeDom(row);
@@ -3653,6 +3634,19 @@
                             releaseRowBlock(row);
                         }
                         initializeDespachadoLock(row);
+                        // Reordenar automáticamente para ubicar el despachado en su orden cronológico
+                        sortTableRows();
+                    }
+
+                    if (field === 'fecha_despacho') {
+                        row.dataset.fechaDespacho = value || '';
+                        if ((row.dataset.estado || '').toUpperCase() === 'DESPACHADO') {
+                            sortTableRows();
+                        }
+                    }
+
+                    if (field === 'fecha_programacion') {
+                        row.dataset.fechaProgramacion = value || '';
                     }
 
                     const faltantesActuales = obtenerCamposObligatoriosFaltantesDesdeDom(row);
@@ -3900,6 +3894,16 @@
         });
     }
 
+    function renumberTableRows() {
+        const rows = tbody.querySelectorAll('tr[data-id]');
+        rows.forEach((row, index) => {
+            const numSpan = row.querySelector('.number-cell span.text-primary');
+            if (numSpan && !row.dataset.numeroHistorial) {
+                numSpan.textContent = index + 1;
+            }
+        });
+    }
+
     // Función para ordenar las filas ya cargadas en el DOM por estado (sin re-fetch)
     function sortTableRows() {
         const rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
@@ -3911,11 +3915,25 @@
             const oa = estadoOrder.hasOwnProperty(ea) ? estadoOrder[ea] : 3;
             const ob = estadoOrder.hasOwnProperty(eb) ? estadoOrder[eb] : 3;
             if (oa !== ob) return oa - ob;
-            // fallback: conservar orden actual
-            return 0;
+
+            // En DESPACHADO: ordenar por fecha (más reciente arriba) y por momento de creación (el más viejo arriba)
+            if (ea === 'DESPACHADO' && eb === 'DESPACHADO') {
+                const fda = a.dataset.fechaDespacho || a.dataset.fechaProgramacion || '';
+                const fdb = b.dataset.fechaDespacho || b.dataset.fechaProgramacion || '';
+                if (fda !== fdb) {
+                    return fda > fdb ? -1 : 1; // Fechas más recientes arriba
+                }
+                const idA = Number(a.dataset.id) || 0;
+                const idB = Number(b.dataset.id) || 0;
+                return idA - idB; // Menor ID (creado primero) arriba: 1º, 2º, 3º...
+            }
+
+            // Para otros estados (PROGRAMADO, CARGANDO, CARGADO), mantener orden de creación
+            return (Number(a.dataset.id) || 0) - (Number(b.dataset.id) || 0);
         });
         // Reinserta en el tbody en el nuevo orden
         rows.forEach(r => tbody.appendChild(r));
+        renumberTableRows();
         // Quitar indicador de pendiente
         const sortBtn = document.getElementById('btn-sort-estado');
         if (sortBtn) sortBtn.classList.remove('btn-warning');

@@ -693,6 +693,12 @@
                     <i class="fas fa-file-pdf"></i>
                     <span>Exportar Informe PDF</span>
                 </a>
+                {% if rol_usuario == 'admin' or email_usuario in ['carlos.baron@conquerstrading.com', 'finance@conquerstrading.com', 'german.galvis@conquerstrading.com', 'felipe.ayala@conquerstrading.com', 'logistic@conquerstrading.com', 'ops@conquerstrading.com'] %}
+                <button type="button" class="btn-exec-action" id="btnLimpiarDuplicadosBD" onclick="ejecutarLimpiezaDuplicadosBD()" style="border: 1px solid rgba(245, 158, 11, 0.4); color: #f59e0b;" title="Unifica y normaliza nombres de clientes y productos duplicados en la base de datos">
+                    <i class="fas fa-broom"></i>
+                    <span>Limpiar Duplicados BD</span>
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -1489,6 +1495,39 @@
                 } else {
                     tr[i].style.display = 'none';
                 }
+            }
+        }
+    }
+
+    // Unificación y normalización de la base de datos de producción
+    async function ejecutarLimpiezaDuplicadosBD() {
+        if (!confirm('¿Deseas ejecutar la unificación y limpieza de nombres duplicados (clientes y productos) en la base de datos de producción?\n\nEsta acción estandarizará todos los registros históricos en la base de datos de forma permanente.')) {
+            return;
+        }
+        const btn = document.getElementById('btnLimpiarDuplicadosBD');
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Normalizando BD...';
+        }
+        try {
+            const resp = await fetch('/api/admin/limpiar-duplicados-bd', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await resp.json();
+            if (data.success) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert('Aviso: ' + (data.message || 'No se pudo completar la limpieza.'));
+            }
+        } catch (e) {
+            alert('Error de conexión con el servidor: ' + e);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
             }
         }
     }

@@ -519,7 +519,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad"]
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion"]
     },
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -528,6 +528,12 @@ USUARIOS = {
         "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
     },
     "finance@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "German Galvis",
+        "rol": "viewer",
+        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+    },
+    "german.galvis@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
@@ -5670,12 +5676,37 @@ def _apply_premium_overrides_to_excel(excel_path: str, premium_overrides: list, 
     return out_path, applied
 
 
+MODELO_OPTIMIZACION_ALLOWED_EMAILS = {
+    "felipe.delavega@conquerstrading.com",
+    "finance@conquerstrading.com",
+    "german.galvis@conquerstrading.com",
+    "omar.morales@conquerstrading.com"
+}
+
+
+def _mo_acceso_permitido():
+    email = (session.get('email') or '').strip().lower()
+    return (session.get('rol') == 'admin' or 
+            email in MODELO_OPTIMIZACION_ALLOWED_EMAILS or 
+            'modelo_optimizacion' in session.get('area', []))
+
+
+@app.route('/modelo-optimizacion/limpiar-sesion', methods=['POST'])
+@login_required
+@permiso_requerido('modelo_optimizacion')
+def modelo_optimizacion_limpiar_sesion():
+    if not _mo_acceso_permitido():
+        return jsonify(success=False, error="No tienes permiso para este módulo."), 403
+    session.pop('modelo_result_id', None)
+    session.pop('modelo_escenario_nombre', None)
+    return jsonify(success=True, message="Modelo y sesión limpiados correctamente.")
+
+
 @app.route('/modelo-optimizacion', methods=['GET'])
 @login_required
 @permiso_requerido('modelo_optimizacion')
 def modelo_optimizacion_page():
-    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
-    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+    if not _mo_acceso_permitido():
         flash('No tienes permiso para este módulo.', 'danger')
         return redirect(url_for('home'))
         
@@ -5703,8 +5734,7 @@ def modelo_optimizacion_page():
 @login_required
 @permiso_requerido('modelo_optimizacion')
 def modelo_optimizacion_ejecutar():
-    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
-    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+    if not _mo_acceso_permitido():
         return jsonify(success=False, error="No tienes permiso para este módulo."), 403
         
     try:
@@ -5820,8 +5850,7 @@ def modelo_optimizacion_ejecutar():
 @login_required
 @permiso_requerido('modelo_optimizacion')
 def modelo_optimizacion_descargar_reporte():
-    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
-    if session.get('rol') != 'admin' and session.get('email') not in allowed:
+    if not _mo_acceso_permitido():
         flash('No tienes permiso para este módulo.', 'danger')
         return redirect(url_for('home'))
         
@@ -5869,10 +5898,6 @@ def modelo_optimizacion_descargar_reporte():
 # ===================== Parametros editables del Modelo LP =====================
 # Permiten capturar/editar los parametros del modelo directamente en la pagina
 # (persistidos en BD) sin depender de editar el archivo Excel maestro.
-
-def _mo_acceso_permitido():
-    allowed = {"felipe.delavega@conquerstrading.com", "finance@conquerstrading.com"}
-    return session.get('rol') == 'admin' or session.get('email') in allowed
 
 
 @app.route('/modelo-optimizacion/parametros/listar', methods=['GET'])
@@ -8669,8 +8694,7 @@ def dashboard_reportes():
         })
 
     # 15. Modelo de Optimizacion LP
-    if is_admin or 'modelo_optimizacion' in user_areas or user_email in (
-            'felipe.delavega@conquerstrading.com', 'finance@conquerstrading.com'):
+    if is_admin or 'modelo_optimizacion' in user_areas or user_email in MODELO_OPTIMIZACION_ALLOWED_EMAILS:
         modulos_usuario.append({
             'id': 'modelo_optimizacion',
             'categoria': 'Planeación',
@@ -12484,7 +12508,10 @@ def handle_programacion():
     
     # Lógica GET
     mostrar_todas = request.args.get('all', '0') == '1'
-    query = ProgramacionCargue.query.order_by(ProgramacionCargue.fecha_programacion.desc())
+    query = ProgramacionCargue.query.order_by(
+        ProgramacionCargue.fecha_programacion.desc(),
+        ProgramacionCargue.id.desc()
+    )
     if not mostrar_todas:
         registros = query.limit(20).all()
     else:
@@ -13037,7 +13064,7 @@ def update_programacion(id):
     permisos = {
         'ops@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'logistic@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'numero_guia', 'estado'],
+        'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'numero_guia', 'estado', 'fecha_despacho'],
         'production@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'oci@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -13058,16 +13085,6 @@ def update_programacion(id):
         mensaje_api_corregido_invalido = None
         payload_conductor_sync = None
         campos_tocados = set()
-
-        # Validación específica para asistente logístico: solo cambios de estado hacia atrás
-        if session.get('email') == 'logistics.assistant@conquerstrading.com' and 'estado' in data:
-            nuevo_est = (data.get('estado') or '').upper().strip()
-            est_actual = (registro.estado or 'PROGRAMADO').upper().strip()
-            niveles_estado = {'PROGRAMADO': 1, 'CARGANDO': 2, 'CARGADO': 3, 'DESPACHADO': 4}
-            nivel_actual = niveles_estado.get(est_actual, 1)
-            nivel_nuevo = niveles_estado.get(nuevo_est, 1)
-            if nivel_nuevo > nivel_actual:
-                return jsonify(success=False, message="El asistente logístico solo puede regresar el estado hacia atrás o mantenerlo."), 403
 
         # Bloqueo: si el registro ya está DESPACHADO o si refinería intenta seleccionar un estado no permitido
         if session.get('email') == 'refinery.control@conquerstrading.com':
@@ -13909,71 +13926,77 @@ def reporte_grafico_despachos():
             except (ValueError, TypeError):
                 fecha_fin = None
 
-    # Obtener lista de clientes únicos
-    clientes = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
-    clientes = sorted(clientes)
+    # Obtener lista de clientes únicos normalizados para el selector
+    clientes_raw = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
+    clientes = sorted(list({_normalizar_cliente_cargue(c) or c.strip().upper() for c in clientes_raw if c and str(c).strip()}))
 
-    # Obtener lista de productos únicos (despachados, con barriles)
-    productos_disponibles = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(
+    # Obtener lista de productos únicos normalizados (despachados, con barriles)
+    productos_raw = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(
         ProgramacionCargue.producto_a_cargar.isnot(None),
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.barriles.isnot(None)
-    ).all() if p[0] and p[0].strip()]
-    productos_disponibles = sorted(productos_disponibles)
+    ).all() if p[0] and str(p[0]).strip()]
+    productos_disponibles = sorted(list({_normalizar_producto_cargue(p) or p.strip().upper() for p in productos_raw if p and str(p).strip()}))
 
-    # Consulta agrupada por cliente (para el gráfico principal)
-    query = db.session.query(
+    # Consulta de registros despachados para consolidar con normalización canónica
+    base_query = db.session.query(
         ProgramacionCargue.cliente,
-        func.sum(ProgramacionCargue.barriles).label('total_barriles')
+        ProgramacionCargue.producto_a_cargar,
+        ProgramacionCargue.barriles
     ).filter(
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.cliente.isnot(None),
-        ProgramacionCargue.barriles.isnot(None)
-    )
-    # Filtro por producto (dinámico)
-    if producto_filtro not in ['todos', 'ambos', '']:
-        query = query.filter(ProgramacionCargue.producto_a_cargar.isnot(None), 
-                             ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
-    if fecha_inicio:
-        query = query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-    if fecha_fin:
-        query = query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-    if cliente_filtro:
-        query = query.filter(ProgramacionCargue.cliente == cliente_filtro)
-    datos_despacho = query.group_by(ProgramacionCargue.cliente).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
-
-    # Resumen por producto para la selección actual (global o con filtros)
-    resumen_query = db.session.query(
-        ProgramacionCargue.producto_a_cargar,
-        func.sum(ProgramacionCargue.barriles).label('total_barriles'),
-        func.count(ProgramacionCargue.id).label('total_despachos')
-    ).filter(
-        ProgramacionCargue.estado == 'DESPACHADO',
-        ProgramacionCargue.producto_a_cargar.isnot(None),
-        ProgramacionCargue.barriles.isnot(None)
+        ProgramacionCargue.barriles.isnot(None),
+        ProgramacionCargue.producto_a_cargar.isnot(None)
     )
     if fecha_inicio:
-        resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
+        base_query = base_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
     if fecha_fin:
-        resumen_query = resumen_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-    if cliente_filtro:
-        resumen_query = resumen_query.filter(ProgramacionCargue.cliente == cliente_filtro)
-    if producto_filtro not in ['todos', 'ambos', '']:
-        resumen_query = resumen_query.filter(ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
-    resumen_productos_raw = resumen_query.group_by(ProgramacionCargue.producto_a_cargar).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
+        base_query = base_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
 
-    total_barriles_general = sum(float(r[1]) for r in datos_despacho) if datos_despacho else 0
+    registros_raw = base_query.all()
 
+    from collections import defaultdict
+    cliente_totales = defaultdict(float)
+    cliente_prod_map = defaultdict(lambda: defaultdict(float))
+    prod_totales = defaultdict(float)
+    prod_conteo = defaultdict(int)
+
+    for cli_orig, prod_orig, bbl_val in registros_raw:
+        cli = _normalizar_cliente_cargue(cli_orig) or str(cli_orig).strip().upper()
+        prod = _normalizar_producto_cargue(prod_orig) or str(prod_orig).strip().upper()
+        bbl = float(bbl_val or 0.0)
+
+        if cliente_filtro and cli != cliente_filtro:
+            continue
+        if producto_filtro not in ['todos', 'ambos', '']:
+            if producto_filtro not in prod.lower():
+                continue
+
+        cliente_totales[cli] += bbl
+        cliente_prod_map[cli][prod] += bbl
+        prod_totales[prod] += bbl
+        prod_conteo[prod] += 1
+
+    # Ordenar clientes por volumen total descendente
+    clientes_ordenados = sorted(cliente_totales.items(), key=lambda x: x[1], reverse=True)
+    datos_despacho = [(cli, tot) for cli, tot in clientes_ordenados]
+    total_barriles_general = sum(cliente_totales.values())
+
+    # Resumen mix productos ordenado por volumen descendente
+    resumen_productos_raw = sorted(
+        [(p, prod_totales[p], prod_conteo[p]) for p in prod_totales],
+        key=lambda x: x[1],
+        reverse=True
+    )
     resumen_mix_productos = []
-    for r in resumen_productos_raw:
-        prod_nom = r[0]
-        bbl_val = float(r[1])
+    for prod_nom, bbl_val, cnt in resumen_productos_raw:
         pct_val = (bbl_val / total_barriles_general * 100.0) if total_barriles_general > 0 else 0.0
         color_val = PRODUCTO_COLORES_OFICIALES.get(prod_nom, '#64748B')
         resumen_mix_productos.append({
             'producto': prod_nom,
             'barriles': bbl_val,
-            'despachos': int(r[2]),
+            'despachos': cnt,
             'porcentaje': pct_val,
             'color': color_val
         })
@@ -14001,40 +14024,19 @@ def reporte_grafico_despachos():
         else:
             periodo = "Todo el periodo"
 
-        # ---- Calcular desglose por producto por cliente (DINÁMICO) ----
+        # Calcular desglose por producto por cliente (DINÁMICO)
         if producto_filtro in ['ambos', 'todos', '']:
-            base_filters = [
-                ProgramacionCargue.estado == 'DESPACHADO',
-                ProgramacionCargue.cliente.isnot(None),
-                ProgramacionCargue.barriles.isnot(None),
-                ProgramacionCargue.producto_a_cargar.isnot(None)
-            ]
-            
-            def get_product_data(product_name):
-                q = db.session.query(
-                    ProgramacionCargue.cliente,
-                    func.sum(ProgramacionCargue.barriles).label('barriles')
-                ).filter(*base_filters, ProgramacionCargue.producto_a_cargar == product_name)
-                
-                if fecha_inicio:
-                    q = q.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-                if fecha_fin:
-                    q = q.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-                if cliente_filtro:
-                    q = q.filter(ProgramacionCargue.cliente == cliente_filtro)
-                return {c: float(v) for c, v in q.group_by(ProgramacionCargue.cliente).all()}
-
             for prod in productos_disponibles:
-                pmap = get_product_data(prod)
-                if any(pmap.values()):  # solo incluir si tiene datos
+                pmap = {c: cliente_prod_map[c].get(prod, 0.0) for c in clientes_graf}
+                if any(v > 0 for v in pmap.values()):
                     product_maps[prod] = pmap
                     product_vals[prod] = [pmap.get(c, 0.0) for c in clientes_graf]
                     product_totals[prod] = sum(product_vals[prod])
 
-        # Variables de compatibilidad (para matplotlib pie que aún puede usar estos)
+        # Variables de compatibilidad
         fo4_vals = product_vals.get('FUEL OIL 4', [0.0] * len(clientes_graf))
         diluyente_vals = product_vals.get('DILUYENTE', [0.0] * len(clientes_graf))
-        vlsfo_vals = product_vals.get('VLSFO', [0.0] * len(clientes_graf))
+        vlsfo_vals = product_vals.get('FUEL OIL (VLSFO)', [0.0] * len(clientes_graf))
         fo4_total_general = sum(fo4_vals)
         diluyente_total_general = sum(diluyente_vals)
         vlsfo_total_general = sum(vlsfo_vals)
@@ -14256,6 +14258,75 @@ def reporte_grafico_despachos():
         producto_colores=PRODUCTO_COLORES_OFICIALES
     )
 
+@app.route('/api/admin/limpiar-duplicados-bd', methods=['POST'])
+@login_required
+def api_admin_limpiar_duplicados_bd():
+    """Ejecuta la unificación y normalización de clientes y productos directamente en la base de datos."""
+    user_email = session.get('email', '')
+    user_rol = session.get('rol', '')
+    ALLOWED_CLEANUP = [
+        'carlos.baron@conquerstrading.com',
+        'finance@conquerstrading.com',
+        'german.galvis@conquerstrading.com',
+        'felipe.ayala@conquerstrading.com',
+        'logistic@conquerstrading.com',
+        'ops@conquerstrading.com'
+    ]
+    if user_rol != 'admin' and user_email not in ALLOWED_CLEANUP:
+        return jsonify(success=False, message='No tienes permisos de administrador para ejecutar esta acción.'), 403
+
+    try:
+        cargues = ProgramacionCargue.query.all()
+        modificados_cargue = 0
+        for r in cargues:
+            cambio = False
+            if r.cliente:
+                cli_norm = _normalizar_cliente_cargue(r.cliente)
+                if cli_norm and cli_norm != r.cliente:
+                    r.cliente = cli_norm
+                    cambio = True
+            if r.producto_a_cargar:
+                prod_norm = _normalizar_producto_cargue(r.producto_a_cargar)
+                if prod_norm and prod_norm != r.producto_a_cargar:
+                    r.producto_a_cargar = prod_norm
+                    cambio = True
+            if cambio:
+                modificados_cargue += 1
+
+        modificados_base = 0
+        try:
+            from app import ProgramacionBase
+            bases = ProgramacionBase.query.all()
+            for b in bases:
+                cambio_b = False
+                if hasattr(b, 'cliente') and b.cliente:
+                    cli_norm = _normalizar_cliente_cargue(b.cliente)
+                    if cli_norm and cli_norm != b.cliente:
+                        b.cliente = cli_norm
+                        cambio_b = True
+                if hasattr(b, 'producto') and b.producto:
+                    prod_norm = _normalizar_producto_cargue(b.producto)
+                    if prod_norm and prod_norm != b.producto:
+                        b.producto = prod_norm
+                        cambio_b = True
+                if cambio_b:
+                    modificados_base += 1
+        except Exception:
+            pass
+
+        db.session.commit()
+        return jsonify(
+            success=True,
+            message=f'Limpieza completada con éxito. Se actualizaron {modificados_cargue} cargues y {modificados_base} pedidos base en la base de datos.',
+            modificados_cargue=modificados_cargue,
+            modificados_base=modificados_base
+        )
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error ejecutando limpieza de duplicados en BD")
+        return jsonify(success=False, message=f'Error al ejecutar la limpieza: {str(e)}'), 500
+
+
 @app.route('/descargar_reporte_grafico_despachos_pdf')
 @login_required
 @permiso_requerido('programacion_cargue')
@@ -14294,24 +14365,42 @@ def descargar_reporte_grafico_despachos_pdf():
 
     base_query = db.session.query(
         ProgramacionCargue.cliente,
-        func.sum(ProgramacionCargue.barriles).label('total_barriles')
+        ProgramacionCargue.producto_a_cargar,
+        ProgramacionCargue.barriles
     ).filter(
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None),
         ProgramacionCargue.producto_a_cargar.isnot(None)
     )
-    if producto_filtro not in ['todos', 'ambos', '']:
-        base_query = base_query.filter(ProgramacionCargue.producto_a_cargar.ilike(f'%{producto_filtro}%'))
     if fecha_inicio:
         base_query = base_query.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
     if fecha_fin:
         base_query = base_query.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-    if cliente_filtro:
-        base_query = base_query.filter(ProgramacionCargue.cliente == cliente_filtro)
-    datos_despacho = base_query.group_by(ProgramacionCargue.cliente).order_by(func.sum(ProgramacionCargue.barriles).desc()).all()
 
-    total_barriles_general = sum(float(r[1]) for r in datos_despacho) if datos_despacho else 0
+    registros_raw = base_query.all()
+
+    from collections import defaultdict
+    cliente_totales = defaultdict(float)
+    cliente_prod_map = defaultdict(lambda: defaultdict(float))
+
+    for cli_orig, prod_orig, bbl_val in registros_raw:
+        cli = _normalizar_cliente_cargue(cli_orig) or str(cli_orig).strip().upper()
+        prod = _normalizar_producto_cargue(prod_orig) or str(prod_orig).strip().upper()
+        bbl = float(bbl_val or 0.0)
+
+        if cliente_filtro and cli != cliente_filtro:
+            continue
+        if producto_filtro not in ['todos', 'ambos', '']:
+            if producto_filtro not in prod.lower():
+                continue
+
+        cliente_totales[cli] += bbl
+        cliente_prod_map[cli][prod] += bbl
+
+    clientes_ordenados = sorted(cliente_totales.items(), key=lambda x: x[1], reverse=True)
+    datos_despacho = [(cli, tot) for cli, tot in clientes_ordenados]
+    total_barriles_general = sum(cliente_totales.values())
 
     grafico_base64 = None
     total_box_text = None
@@ -14322,25 +14411,8 @@ def descargar_reporte_grafico_despachos_pdf():
     if datos_despacho:
         clientes_graf = [r[0] for r in datos_despacho]
         barriles = [float(r[1]) for r in datos_despacho]
-        # Mapas por producto (calculamos siempre para poder mostrar columnas aun si se filtró uno)
-        def build_product_map(pattern):
-            q = db.session.query(ProgramacionCargue.cliente, func.sum(ProgramacionCargue.barriles).label('val')).filter(
-                ProgramacionCargue.estado=='DESPACHADO',
-                ProgramacionCargue.barriles.isnot(None),
-                ProgramacionCargue.producto_a_cargar.isnot(None),
-                ProgramacionCargue.producto_a_cargar.ilike(pattern)
-            )
-            if fecha_inicio:
-                q = q.filter(ProgramacionCargue.fecha_despacho >= fecha_inicio)
-            if fecha_fin:
-                q = q.filter(ProgramacionCargue.fecha_despacho <= fecha_fin)
-            if cliente_filtro:
-                q = q.filter(ProgramacionCargue.cliente==cliente_filtro)
-            return {c: float(v) for c,v in q.group_by(ProgramacionCargue.cliente).all()}
-        fo4_map = build_product_map('%FO4%')
-        dil_map = build_product_map('%DILUYENTE%')
-        fo4_vals = [fo4_map.get(c,0.0) for c in clientes_graf]
-        dil_vals = [dil_map.get(c,0.0) for c in clientes_graf]
+        fo4_vals = [cliente_prod_map[c].get('FUEL OIL 4', 0.0) for c in clientes_graf]
+        dil_vals = [cliente_prod_map[c].get('DILUYENTE', 0.0) for c in clientes_graf]
         total_fo4 = sum(fo4_vals)
         total_dil = sum(dil_vals)
         # Construir tabla detalle
