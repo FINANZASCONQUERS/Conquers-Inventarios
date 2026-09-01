@@ -6481,19 +6481,20 @@ def _extraer_folio_diluyente(texto):
     if not texto:
         return None
     texto = str(texto).strip()
-    # 1. Patrón oficial 303400000XXXX o 30340000XXXX
-    m = re.search(r'30340000*(\d{3,5})', texto)
+    # 1. Patrón oficial de guía física: 303400000XXXX (con o sin sufijo DV)
+    m = re.search(r'303400000?(\d{3,4})', texto)
     if m:
         try:
             return int(m.group(1))
         except (ValueError, TypeError):
             pass
-    # 2. Patrón de 3 a 5 dígitos puros o con sufijo -DV (ej: 0600, 0600-4, 600)
-    m = re.match(r'^0*(\d{3,5})(?:-\d+)?$', texto)
+    # 2. Folio escrito como 3 o 4 dígitos (ej: 0600, 600, 0600-4)
+    # Debe estar en el rango real de folios de guías físicas (entre 100 y 1999) para evitar tomar facturas o años
+    m = re.match(r'^(?:0*)(\d{3,4})(?:-\d+)?$', texto)
     if m:
         try:
             val = int(m.group(1))
-            if val < 2000 or val > 2099:
+            if 100 <= val <= 1999:
                 return val
         except (ValueError, TypeError):
             pass
@@ -6503,7 +6504,7 @@ def _extraer_folio_diluyente(texto):
 def _obtener_siguiente_consecutivo_guia_fisica():
     """
     Busca en los registros históricos de ProgramacionCargue de guías FÍSICAS (o con serie 3034000...)
-    el último folio utilizado, y retorna el siguiente folio formateado a 4 dígitos (ej: '0601').
+    el último folio utilizado en la columna `numero_guia`, y retorna el siguiente folio formateado a 4 dígitos (ej: '0601').
     """
     try:
         registros = (ProgramacionCargue.query
@@ -6513,7 +6514,8 @@ def _obtener_siguiente_consecutivo_guia_fisica():
                      .all())
         folios = []
         for r in registros:
-            num = (r.numero_guia or '').strip() or (r.factura or '').strip()
+            # Solo consultar la columna numero_guia (NUNCA la factura comercial de venta)
+            num = (r.numero_guia or '').strip()
             folio = _extraer_folio_diluyente(num)
             if folio is not None:
                 folios.append(folio)
