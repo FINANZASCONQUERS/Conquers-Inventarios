@@ -3234,6 +3234,23 @@
             } else {
                 document.getElementById('unidadProducto').value = '';
             }
+
+            // Si el tipo de guía es FÍSICA o el producto seleccionado es DILUYENTE (y no digital), sugerir el próximo consecutivo
+            const tipoGuiaActual = (datosGuia.tipo_guia || '').toLowerCase();
+            const esFisica = tipoGuiaActual.includes('fis') || tipoGuiaActual.includes('fís') || (nom && nom.toUpperCase().includes('DILUYENTE') && !tipoGuiaActual.includes('dig'));
+            if (esFisica) {
+                const facRem = document.getElementById('facturaRemision');
+                if (facRem && (!facRem.value || facRem.value.trim() === '')) {
+                    fetch('/api/programacion/siguiente_guia_fisica')
+                        .then(r => r.json())
+                        .then(resp => {
+                            if (resp && resp.success && resp.siguiente_folio && (!facRem.value || facRem.value.trim() === '')) {
+                                facRem.value = resp.siguiente_folio;
+                            }
+                        })
+                        .catch(() => {});
+                }
+            }
         }
 
         function convertirABarriles() {

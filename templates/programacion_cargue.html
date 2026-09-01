@@ -3403,6 +3403,9 @@
                 return;
             }
             const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
+            if (row.dataset.id) {
+                url.searchParams.append('programacion_id', row.dataset.id);
+            }
             row.querySelectorAll('td[data-field]').forEach(cell => {
                 const field = cell.dataset.field;
                 let value;

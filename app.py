@@ -6476,6 +6476,75 @@ def barcaza_bita():
                            today_iso=date.today().isoformat(),
                            fecha_display=fecha_display) 
 
+def _extraer_folio_diluyente(texto):
+    """Extrae el número entero de folio de diluyente (ej: '303400000600-4' -> 600, '0600' -> 600)."""
+    if not texto:
+        return None
+    texto = str(texto).strip()
+    # 1. Patrón oficial 303400000XXXX o 30340000XXXX
+    m = re.search(r'30340000*(\d{3,5})', texto)
+    if m:
+        try:
+            return int(m.group(1))
+        except (ValueError, TypeError):
+            pass
+    # 2. Patrón de 3 a 5 dígitos puros o con sufijo -DV (ej: 0600, 0600-4, 600)
+    m = re.match(r'^0*(\d{3,5})(?:-\d+)?$', texto)
+    if m:
+        try:
+            val = int(m.group(1))
+            if val < 2000 or val > 2099:
+                return val
+        except (ValueError, TypeError):
+            pass
+    return None
+
+
+def _obtener_siguiente_consecutivo_guia_fisica():
+    """
+    Busca en los registros históricos de ProgramacionCargue de guías FÍSICAS (o con serie 3034000...)
+    el último folio utilizado, y retorna el siguiente folio formateado a 4 dígitos (ej: '0601').
+    """
+    try:
+        registros = (ProgramacionCargue.query
+                     .filter(ProgramacionCargue.numero_guia.isnot(None))
+                     .order_by(ProgramacionCargue.id.desc())
+                     .limit(300)
+                     .all())
+        folios = []
+        for r in registros:
+            num = (r.numero_guia or '').strip() or (r.factura or '').strip()
+            folio = _extraer_folio_diluyente(num)
+            if folio is not None:
+                folios.append(folio)
+        
+        if folios:
+            siguiente = max(folios) + 1
+            return f"{siguiente:04d}"
+        return "0601"
+    except Exception as e:
+        app.logger.warning(f"Error calculando siguiente consecutivo guía física: {e}")
+        return "0601"
+
+
+# Mantener alias de compatibilidad
+_obtener_siguiente_consecutivo_guia_diluyente = _obtener_siguiente_consecutivo_guia_fisica
+
+
+@app.route('/api/programacion/siguiente_guia_diluyente', methods=['GET'])
+@app.route('/api/programacion/siguiente_guia_fisica', methods=['GET'])
+@login_required
+@permiso_requerido('programacion_cargue')
+def api_siguiente_guia_diluyente():
+    """Retorna el siguiente consecutivo de 4 dígitos para guía física."""
+    siguiente = _obtener_siguiente_consecutivo_guia_fisica()
+    return jsonify(
+        success=True,
+        siguiente_folio=siguiente,
+        siguiente_guia_base=f"303400000{siguiente}"
+    )
+
+
 @app.route('/guia_transporte')
 @login_required
 @permiso_requerido('guia_transporte') 
@@ -6484,6 +6553,32 @@ def guia_transporte():
     Muestra la guía de transporte. Si recibe datos en la URL, los pasa a la plantilla
     para autocompletar el formulario. Si no, pasa datos vacíos.
     """
+    tipo_guia_raw = (request.args.get('tipo_guia') or '').strip().lower()
+    producto_raw = (request.args.get('producto_a_cargar') or request.args.get('producto') or '').strip().upper()
+    
+    # Determinar si es guía física:
+    # 1. Si tipo_guia dice 'Física' o contiene 'fis'
+    # 2. Si no especifica tipo_guia pero el producto es Diluyente (y no dice digital)
+    es_fisica = 'fis' in tipo_guia_raw or 'fís' in tipo_guia_raw or ('DILUYENTE' in producto_raw and 'dig' not in tipo_guia_raw)
+    
+    num_guia_req = (request.args.get('numero_guia') or request.args.get('factura') or request.args.get('factura_remision') or '').strip()
+
+    if num_guia_req:
+        # Si la fila ya tenía un número registrado:
+        folio = _extraer_folio_diluyente(num_guia_req)
+        if folio is not None and es_fisica:
+            # En la guía física solo se colocan los 4 dígitos (ej: 0600)
+            factura_remision = f"{folio:04d}"
+        else:
+            factura_remision = num_guia_req
+    else:
+        # La fila NO tiene número de guía todavía (se coloca después de imprimir):
+        if es_fisica:
+            # Tomar el consecutivo a partir de la última guía física pasada registrada (ej: 0601)
+            factura_remision = _obtener_siguiente_consecutivo_guia_fisica()
+        else:
+            factura_remision = ''
+
     # Creamos un diccionario para guardar los datos que vienen de la URL.
     # Usamos .get('nombre_parametro', '') para que, si un dato no llega, no de error.
     datos_guia = {
@@ -6491,7 +6586,8 @@ def guia_transporte():
         'conductor': request.args.get('nombre_conductor', ''),
         'cedula': request.args.get('cedula_conductor', ''),
         'destino': request.args.get('destino', ''),
-        'producto': request.args.get('producto_a_cargar', ''),
+        'producto': request.args.get('producto_a_cargar', '') or request.args.get('producto', ''),
+        'tipo_guia': request.args.get('tipo_guia', ''),
         'galones': request.args.get('galones', ''),
         'transportadora': request.args.get('empresa_transportadora', ''),
         'cliente': request.args.get('cliente', ''),
@@ -6502,8 +6598,9 @@ def guia_transporte():
         # Campos adicionales para poblar "PLACA DEL TANQUE" desde Programación
         'tanque': request.args.get('tanque', ''),
         'placa_tanque': request.args.get('placa_tanque', ''),
-        # Campo de factura/remisión desde Programación
-        'factura_remision': request.args.get('factura', '')
+        # Campo de factura/remisión (consecutivo 4 dígitos para guía física o número asignado para digital/otros)
+        'factura_remision': factura_remision,
+        'programacion_id': request.args.get('programacion_id', '')
     }
     
     # Pasamos el diccionario 'datos_guia' a la plantilla HTML.
@@ -18592,15 +18689,17 @@ def actualizar_cliente_ajax():
     direccion = (data.get('direccion') or '').strip()
     ciudad = (data.get('ciudad') or '').strip()
     
-    # Nuevos campos para identificar unívocamente al original
+    # Campos para identificar unívocamente la sede original
     original_direccion = (data.get('original_direccion') or '').strip()
-    # Si no llega original_direccion (frontend viejo), usamos comportamiento fallback (buscar solo nombre)
+    original_ciudad = (data.get('original_ciudad') or '').strip()
+    cliente_idx = data.get('index')
 
     if not original_nombre or not nombre or not direccion or not ciudad:
         return jsonify(success=False, message='Todos los campos son obligatorios.'), 400
 
     original_upper = original_nombre.upper()
     original_dir_upper = original_direccion.upper()
+    original_ciu_upper = original_ciudad.upper()
 
     cliente_actualizado = _construir_cliente_dict(nombre, direccion, ciudad)
     nombre_upper = cliente_actualizado['NOMBRE_CLIENTE']
@@ -18610,19 +18709,51 @@ def actualizar_cliente_ajax():
     clientes = cargar_clientes()
     coincidencia = None
     
-    # Buscar coincidencia exacta por Nombre AND Dirección
-    for c in clientes:
-        c_nombre = (c.get('NOMBRE_CLIENTE') or '').upper()
-        c_direccion = (c.get('DIRECCION') or '').upper()
-        
-        if c_nombre == original_upper:
-            # Si tenemos direccion original, la usamos para desempatar
-            if original_dir_upper:
-                if c_direccion == original_dir_upper:
+    # 1. Búsqueda por índice directo si es válido y compatible
+    if cliente_idx is not None:
+        try:
+            idx = int(cliente_idx)
+            if 0 <= idx < len(clientes):
+                c_cand = clientes[idx]
+                c_nom = (c_cand.get('NOMBRE_CLIENTE') or '').upper().strip()
+                c_dir = (c_cand.get('DIRECCION') or '').upper().strip()
+                if c_nom == original_upper or (original_dir_upper and c_dir == original_dir_upper):
+                    coincidencia = c_cand
+        except (ValueError, TypeError):
+            pass
+
+    # 2. Búsqueda por coincidencia de Nombre + Dirección (+ Ciudad)
+    if not coincidencia:
+        for c in clientes:
+            c_nom = (c.get('NOMBRE_CLIENTE') or '').upper().strip()
+            c_dir = (c.get('DIRECCION') or '').upper().strip()
+            c_ciu = (c.get('CIUDAD_DEPARTAMENTO') or c.get('CIUDAD_Y_DPTO') or '').upper().strip()
+
+            if c_nom == original_upper:
+                if original_dir_upper and original_ciu_upper:
+                    if c_dir == original_dir_upper and c_ciu == original_ciu_upper:
+                        coincidencia = c
+                        break
+                elif original_dir_upper:
+                    if c_dir == original_dir_upper:
+                        coincidencia = c
+                        break
+                else:
                     coincidencia = c
                     break
-            else:
-                # Fallback: primer nombre que coincida
+
+    # 3. Fallback: buscar por dirección si el nombre cambió
+    if not coincidencia and original_dir_upper:
+        for c in clientes:
+            c_dir = (c.get('DIRECCION') or '').upper().strip()
+            if c_dir == original_dir_upper:
+                coincidencia = c
+                break
+
+    # 4. Fallback final: primer cliente con nombre coincidente
+    if not coincidencia:
+        for c in clientes:
+            if (c.get('NOMBRE_CLIENTE') or '').upper().strip() == original_upper:
                 coincidencia = c
                 break
 
@@ -18640,7 +18771,7 @@ def actualizar_cliente_ajax():
         nombre_existente = (duplicado.get('NOMBRE_CLIENTE') or nombre_upper).strip()
         return jsonify(
             success=False,
-            message=f"Ya existe un cliente en esa misma dirección y ciudad ({nombre_existente})."
+            message=f"Ya existe un cliente con esa misma dirección y ciudad ({nombre_existente})."
         ), 409
 
     # Actualizar valores
@@ -18653,7 +18784,6 @@ def actualizar_cliente_ajax():
     
     # Actualizar DB (Intentar buscar por original y actualizar)
     try:
-        # DB requiere ID o criterio único. Como no tenemos ID en frontend, intentamos best-effort.
         q = Cliente.query.filter(func.upper(Cliente.nombre) == original_upper)
         if original_dir_upper:
             q = q.filter(func.upper(Cliente.direccion) == original_dir_upper)
@@ -18666,21 +18796,30 @@ def actualizar_cliente_ajax():
                 ciudad_upper,
                 excluir_id=cliente_db.id
             )
-            if duplicado_db:
-                return jsonify(
-                    success=False,
-                    message='Ya existe en base de datos otro cliente con esa misma dirección y ciudad.'
-                ), 409
-
-            cliente_db.nombre = nombre_upper
-            cliente_db.direccion = direccion_upper
-            cliente_db.ciudad_departamento = ciudad_upper
-            db.session.commit()
+            if not duplicado_db:
+                cliente_db.nombre = nombre_upper
+                cliente_db.direccion = direccion_upper
+                cliente_db.ciudad_departamento = ciudad_upper
+                db.session.commit()
+        else:
+            duplicado_db = _buscar_cliente_duplicado_db(
+                nombre_upper,
+                direccion_upper,
+                ciudad_upper
+            )
+            if not duplicado_db:
+                nuevo_db = Cliente(
+                    nombre=nombre_upper,
+                    direccion=direccion_upper,
+                    ciudad_departamento=ciudad_upper
+                )
+                db.session.add(nuevo_db)
+                db.session.commit()
     except Exception as e:
         db.session.rollback()
         app.logger.warning(f"Error al actualizar cliente DB (JSON actualizado): {e}")
 
-    return jsonify(success=True, message='Cliente actualizado correctamente.', cliente=coincidencia)
+    return jsonify(success=True, message='Cliente/sede actualizado correctamente.', cliente=coincidencia)
 
 @app.route('/eliminar_cliente_ajax', methods=['POST'])
 @login_required
@@ -18688,37 +18827,66 @@ def eliminar_cliente_ajax():
     data = request.get_json() or {}
     nombre = (data.get('nombre') or '').strip()
     direccion = (data.get('direccion') or '').strip()
+    ciudad = (data.get('ciudad') or '').strip()
+    cliente_idx = data.get('index')
 
     if not nombre:
         return jsonify(success=False, message='El nombre del cliente es obligatorio.'), 400
 
     nombre_upper = nombre.upper()
     direccion_upper = direccion.upper()
+    ciudad_upper = ciudad.upper()
 
     clientes = cargar_clientes()
-    
-    # 1. Eliminar de la lista en memoria (JSON)
-    # Filtramos para quitar TODOS los que coincidan (por si hay duplicados exactos)
-    clientes_filtrados = [
-        c for c in clientes 
-        if not (
-            (c.get('NOMBRE_CLIENTE') or '').upper() == nombre_upper and 
-            (c.get('DIRECCION') or '').upper() == direccion_upper
-        )
-    ]
-    
-    deleted_count = len(clientes) - len(clientes_filtrados)
-    
+    deleted_count = 0
+
+    # 1. Si viene índice y coincide, eliminar ese específico
+    if cliente_idx is not None:
+        try:
+            idx = int(cliente_idx)
+            if 0 <= idx < len(clientes):
+                c_target = clientes[idx]
+                c_nom = (c_target.get('NOMBRE_CLIENTE') or '').upper().strip()
+                c_dir = (c_target.get('DIRECCION') or '').upper().strip()
+                if c_nom == nombre_upper and (not direccion_upper or c_dir == direccion_upper):
+                    clientes.pop(idx)
+                    deleted_count = 1
+        except (ValueError, TypeError):
+            pass
+
+    # 2. Si no se eliminó por índice, filtrar por coincidencia exacta
+    if deleted_count == 0:
+        clientes_filtrados = []
+        for c in clientes:
+            c_nom = (c.get('NOMBRE_CLIENTE') or '').upper().strip()
+            c_dir = (c.get('DIRECCION') or '').upper().strip()
+            c_ciu = (c.get('CIUDAD_DEPARTAMENTO') or c.get('CIUDAD_Y_DPTO') or '').upper().strip()
+
+            es_el_mismo = (c_nom == nombre_upper)
+            if direccion_upper:
+                es_el_mismo = es_el_mismo and (c_dir == direccion_upper)
+            if ciudad_upper:
+                es_el_mismo = es_el_mismo and (c_ciu == ciudad_upper)
+
+            if es_el_mismo:
+                deleted_count += 1
+            else:
+                clientes_filtrados.append(c)
+
+        clientes = clientes_filtrados
+
     if deleted_count == 0:
         return jsonify(success=False, message='No se encontró el cliente para eliminar.'), 404
 
-    guardar_clientes(clientes_filtrados)
+    guardar_clientes(clientes)
 
     # 2. Eliminar de la Base de Datos
     try:
         q = Cliente.query.filter(func.upper(Cliente.nombre) == nombre_upper)
         if direccion_upper:
             q = q.filter(func.upper(Cliente.direccion) == direccion_upper)
+        if ciudad_upper:
+            q = q.filter(func.upper(Cliente.ciudad_departamento) == ciudad_upper)
         
         registros = q.all()
         for r in registros:
