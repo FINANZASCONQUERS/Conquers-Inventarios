@@ -4942,11 +4942,67 @@
             });
     });
 
+    // --- UTILIDAD PARA COMPRIMIR IMÁGENES AUTOMÁTICAMENTE ---
+    async function comprimirImagenSiEsNecesario(file, maxDimension = 2048, quality = 0.82) {
+        if (!file) return file;
+        const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp)$/i.test(file.name);
+        if (!isImage) return file; // Si es PDF u otro, no procesar con Canvas
+
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onerror = () => resolve(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onerror = () => resolve(file);
+                img.onload = () => {
+                    let { width, height } = img;
+                    // Si ya es pequeña tanto en dimensiones como en peso (< 1.5MB), dejarla como está
+                    if (file.size <= 1.5 * 1024 * 1024 && width <= maxDimension && height <= maxDimension) {
+                        return resolve(file);
+                    }
+
+                    if (width > maxDimension || height > maxDimension) {
+                        if (width > height) {
+                            height = Math.round((height * maxDimension) / width);
+                            width = maxDimension;
+                        } else {
+                            width = Math.round((width * maxDimension) / height);
+                            height = maxDimension;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(0, 0, width, height);
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob && blob.size < file.size) {
+                            const baseName = file.name.includes('.') ? file.name.substring(0, file.name.lastIndexOf('.')) : file.name;
+                            const compressedFile = new File([blob], `${baseName || 'guia'}.jpg`, {
+                                type: 'image/jpeg',
+                                lastModified: Date.now()
+                            });
+                            resolve(compressedFile);
+                        } else {
+                            resolve(file);
+                        }
+                    }, 'image/jpeg', quality);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     // --- EVENT LISTENER PARA SUBIR IMAGEN ---
     const hiddenImageInput = document.getElementById('hidden-image-input');
-    hiddenImageInput.addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
+    hiddenImageInput.addEventListener('change', async function (e) {
+        const originalFile = e.target.files[0];
+        if (!originalFile) return;
 
         const registroId = this.dataset.registroId;
         if (!registroId) {
@@ -4954,19 +5010,43 @@
             return;
         }
 
-        // Validar tamaño (máximo 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            showToast('danger', 'El archivo es demasiado grande. Máximo 5MB');
-            this.value = ''; // Limpiar el input
+        const isImage = originalFile.type.startsWith('image/') || /\.(jpe?g|png|webp|bmp)$/i.test(originalFile.name);
+        const isPdf = originalFile.type === 'application/pdf' || /\.pdf$/i.test(originalFile.name);
+        const MAX_PDF_BYTES = 25 * 1024 * 1024; // 25MB
+
+        // Si es PDF y supera 25MB
+        if (isPdf && originalFile.size > MAX_PDF_BYTES) {
+            showToast('danger', 'El PDF es demasiado grande (máximo 25MB). Intenta comprimirlo antes de subirlo.');
+            this.value = '';
+            return;
+        }
+
+        let fileToUpload = originalFile;
+        if (isImage) {
+            if (originalFile.size > 1.5 * 1024 * 1024) {
+                showToast('info', 'Comprimiendo imagen automáticamente...');
+            }
+            try {
+                fileToUpload = await comprimirImagenSiEsNecesario(originalFile);
+            } catch (err) {
+                console.warn('Error en compresión automática, usando original:', err);
+                fileToUpload = originalFile;
+            }
+        }
+
+        // Validación de seguridad final (25MB)
+        if (fileToUpload.size > 25 * 1024 * 1024) {
+            showToast('danger', 'El archivo supera el límite de 25MB incluso tras la compresión.');
+            this.value = '';
             return;
         }
 
         // Crear FormData para enviar la imagen
         const formData = new FormData();
-        formData.append('imagen', file);
+        formData.append('imagen', fileToUpload);
 
         // Mostrar indicador de carga
-        showToast('info', 'Subiendo imagen...');
+        showToast('info', isPdf ? 'Subiendo documento PDF...' : 'Subiendo imagen...');
 
         // Enviar al servidor
         fetch(`/api/programacion/${registroId}/upload_image`, {
@@ -4976,7 +5056,7 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    showToast('success', 'Imagen subida correctamente');
+                    showToast('success', isPdf ? 'Guía PDF subida correctamente' : 'Imagen subida correctamente');
                     // Recargar la tabla para mostrar el botón de ver imagen
                     fetchAndRender();
                     // Si se subió desde el historial, recargar también el historial
@@ -4987,7 +5067,7 @@
                     showToast('danger', 'Error al subir: ' + (data.message || ''));
                 }
             })
-            .catch(() => showToast('danger', 'Error de conexión al subir imagen'))
+            .catch(() => showToast('danger', 'Error de conexión al subir archivo'))
             .finally(() => {
                 // Limpiar el input para permitir subir la misma imagen de nuevo
                 this.value = '';

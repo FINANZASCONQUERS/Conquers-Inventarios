@@ -13677,7 +13677,7 @@ def upload_programacion_image(id):
             return jsonify(success=False, message='Archivo sin nombre'), 400
 
         # Validar extensión
-        extensiones_permitidas = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+        extensiones_permitidas = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'webp'}
         ext = archivo.filename.rsplit('.', 1)[1].lower() if '.' in archivo.filename else ''
         if ext not in extensiones_permitidas:
             return jsonify(success=False, message=f'Formato no permitido. Use: {", ".join(extensiones_permitidas)}'), 400
@@ -13691,6 +13691,23 @@ def upload_programacion_image(id):
         os.makedirs(folder, exist_ok=True)
         abs_path = os.path.join(folder, fname)
         archivo.save(abs_path)
+
+        # Optimizar imagen en el servidor si es formato gráfico (no PDF)
+        if ext in {'png', 'jpg', 'jpeg', 'webp'}:
+            try:
+                from PIL import Image, ImageOps
+                with Image.open(abs_path) as im:
+                    im = ImageOps.exif_transpose(im)
+                    is_jpeg = ext in ('jpg', 'jpeg')
+                    if im.mode in ('RGBA', 'P', 'LA') and is_jpeg:
+                        im = im.convert('RGB')
+                    max_dim = 2048
+                    if im.width > max_dim or im.height > max_dim:
+                        im.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+                    save_format = 'JPEG' if is_jpeg else ('PNG' if ext == 'png' else 'WEBP')
+                    im.save(abs_path, format=save_format, optimize=True, quality=82 if save_format in ('JPEG', 'WEBP') else None)
+            except Exception as e_opt:
+                current_app.logger.warning(f"No se pudo optimizar imagen con PIL: {e_opt}")
 
         # Eliminar archivo anterior si existía (ruta en disco)
         if registro.imagen_guia and not str(registro.imagen_guia).startswith('data:'):
@@ -17995,9 +18012,47 @@ def save_uploaded_file(file, prefix='file'):
     else:
         with open(file_path, 'wb') as f:
             f.write(file.read())
+
+    # Optimizar imagen en disco si es formato gráfico (no PDF)
+    if mime_type.startswith('image/') or ext.lower() in ('.jpg', '.jpeg', '.png', '.webp'):
+        try:
+            from PIL import Image, ImageOps
+            with Image.open(file_path) as im:
+                im = ImageOps.exif_transpose(im)
+                is_jpeg = ext.lower() in ('.jpg', '.jpeg')
+                if im.mode in ('RGBA', 'P', 'LA') and is_jpeg:
+                    im = im.convert('RGB')
+                max_dim = 2048
+                if im.width > max_dim or im.height > max_dim:
+                    im.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+                save_format = 'JPEG' if is_jpeg else ('PNG' if ext.lower() == '.png' else 'WEBP')
+                im.save(file_path, format=save_format, optimize=True, quality=82 if save_format in ('JPEG', 'WEBP') else None)
+        except Exception:
+            pass
     
     # Retornar ruta relativa para acceder desde web
     return _normalize_guia_relative_path(unique_filename)
+
+@app.route('/api/enturnamiento/<int:id>/upload_guia', methods=['POST'])
+@login_required
+def upload_enturnamiento_guia(id):
+    """Sube un archivo de guía (PDF/imagen) desde el panel de enturnamiento."""
+    try:
+        solicitud = SolicitudCita.query.get_or_404(id)
+        if 'imagen' not in request.files:
+            return jsonify(success=False, message='No se recibió ningún archivo'), 400
+        file = request.files['imagen']
+        if not file or not file.filename:
+            return jsonify(success=False, message='Archivo sin nombre'), 400
+        ruta_guardada = save_uploaded_file(file, 'guia')
+        if ruta_guardada:
+            solicitud.imagen_guia = ruta_guardada
+            db.session.commit()
+            return jsonify(success=True, url=f"/guias/{ruta_guardada}")
+        return jsonify(success=False, message='No se pudo guardar el archivo'), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
 
 @app.route('/api/solicitud_cita/<int:id>', methods=['GET'])
 @login_required

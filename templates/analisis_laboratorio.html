@@ -1023,9 +1023,10 @@
                 return;
             }
 
-            // Validar tamaño (máximo 10MB para PDFs de análisis)
-            if (file.size > 10 * 1024 * 1024) {
-                showToast('danger', 'El archivo supera el límite permitido de 10MB.');
+            // Validar tamaño (máximo 25MB para PDFs de análisis)
+            const MAX_PDF_BYTES = 25 * 1024 * 1024;
+            if (file.size > MAX_PDF_BYTES) {
+                showToast('danger', 'El archivo supera el límite permitido de 25MB. Intenta comprimirlo antes de subirlo.');
                 this.value = '';
                 return;
             }
