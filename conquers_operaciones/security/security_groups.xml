@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <record id="module_category_operaciones" model="ir.module.category">
+            <field name="name">Operaciones Conquers</field>
+            <field name="description">Pedidos, cargue, precintos y guias de transporte.</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- Todo el mundo que entra al modulo ve la sabana. Lo que cambia entre
+             areas es que columnas puede editar, no que puede mirar. -->
+        <record id="group_usuario" model="res.groups">
+            <field name="name">Consulta</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="comment">Ve la sabana de cargue, los pedidos y el inventario de precintos, sin editar.</field>
+        </record>
+
+        <record id="group_logistica" model="res.groups">
+            <field name="name">Logistica</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_usuario'))]"/>
+            <field name="comment">Transporte: transportadora, placa, tanque, conductor, hora estimada y producto.</field>
+        </record>
+
+        <record id="group_comercial" model="res.groups">
+            <field name="name">Comercial</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_usuario'))]"/>
+            <field name="comment">Pedidos, cliente y destino.</field>
+        </record>
+
+        <record id="group_refineria" model="res.groups">
+            <field name="name">Refineria</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_usuario'))]"/>
+            <field name="comment">Aforos de planta: galones, temperatura, API, precintos y fecha de despacho. Sus datos quedan en firme 30 minutos despues de completar el viaje.</field>
+        </record>
+
+        <record id="group_guias" model="res.groups">
+            <field name="name">Guias</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_usuario'))]"/>
+            <field name="comment">Numero de guia, tipo y la imagen del remito firmado.</field>
+        </record>
+
+        <record id="group_facturacion" model="res.groups">
+            <field name="name">Facturacion</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_usuario'))]"/>
+            <field name="comment">SICOM, fecha de factura, mes facturado y codigo de transporte.</field>
+        </record>
+
+        <record id="group_admin" model="res.groups">
+            <field name="name">Administrador</field>
+            <field name="category_id" ref="module_category_operaciones"/>
+            <field name="implied_ids" eval="[(4, ref('group_logistica')),
+                                             (4, ref('group_comercial')),
+                                             (4, ref('group_refineria')),
+                                             (4, ref('group_guias')),
+                                             (4, ref('group_facturacion'))]"/>
+            <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+            <field name="comment">Control total. Es el unico que puede invalidar el candado de 30 minutos de refineria.</field>
+        </record>
+
+    </data>
+</odoo>

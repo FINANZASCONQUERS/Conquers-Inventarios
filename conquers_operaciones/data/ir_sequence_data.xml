@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_lote_precintos" model="ir.sequence">
+            <field name="name">Lote de precintos</field>
+            <field name="code">operaciones.lote.precintos</field>
+            <field name="prefix">LP-</field>
+            <field name="padding">4</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <!-- La guia fisica NO usa secuencia: su folio sale del historico de la
+             sabana (ver siguiente_folio_guia_fisica) porque los talonarios
+             impresos mandan sobre el consecutivo. Esta secuencia es solo para
+             la guia digital. -->
+        <record id="seq_guia_digital" model="ir.sequence">
+            <field name="name">Guia digital</field>
+            <field name="code">operaciones.guia.digital</field>
+            <field name="prefix">GD-%(year)s-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="param_stock_minimo_precintos" model="ir.config_parameter">
+            <field name="key">operaciones.precintos_stock_minimo</field>
+            <field name="value">100</field>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Mismo formato que la plantilla actual: A4 vertical, margenes de 15mm. -->
+    <record id="paperformat_conquers" model="report.paperformat">
+        <field name="name">Conquers A4 vertical</field>
+        <field name="format">A4</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">15</field>
+        <field name="margin_bottom">18</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_spacing">10</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_programacion_cargue" model="ir.actions.report">
+        <field name="name">Programacion de cargue</field>
+        <field name="model">operaciones.cargue</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">conquers_operaciones.report_programacion_cargue</field>
+        <field name="report_file">conquers_operaciones.report_programacion_cargue</field>
+        <field name="binding_model_id" ref="model_operaciones_cargue"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_conquers"/>
+        <field name="print_report_name">'Programacion %s' % (context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d'))</field>
+    </record>
+
+    <record id="action_report_guia_transporte" model="ir.actions.report">
+        <field name="name">Guia de transporte</field>
+        <field name="model">operaciones.cargue</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">conquers_operaciones.report_guia_transporte</field>
+        <field name="report_file">conquers_operaciones.report_guia_transporte</field>
+        <field name="binding_model_id" ref="model_operaciones_cargue"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="paperformat_conquers"/>
+        <field name="print_report_name">'Guia %s' % (object.numero_guia or object.placa or '')</field>
+    </record>
+
+</odoo>

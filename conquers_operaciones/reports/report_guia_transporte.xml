@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Guia de transporte con los datos del viaje.
+         OJO: la guia fisica actual (templates/guia_transporte.html) es un
+         formulario preimpreso de 3.625 lineas que se llena a mano por JS y solo
+         recibe factura_remision del servidor. Esta plantilla trae los datos
+         correctos y una maqueta limpia, pero el calce milimetrico contra el
+         talonario impreso hay que ajustarlo con un ejemplar fisico delante
+         antes de usarla en produccion. -->
+    <template id="report_guia_transporte_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.basic_layout">
+                    <div class="page">
+                        <style>
+                            .g-body { font-family:'Segoe UI', Arial, sans-serif;
+                                      font-size:10px; color:#2d3436; }
+                            .g-head { border-bottom:3px solid #1b4f72;
+                                      padding-bottom:8px; margin-bottom:12px; }
+                            .g-head h1 { font-size:18px; color:#1b4f72;
+                                         margin:0; }
+                            .g-serie { font-family:monospace; font-size:16px;
+                                       font-weight:700; color:#c0392b;
+                                       letter-spacing:1px; }
+                            .g-tipo { font-size:9px; font-weight:600;
+                                      padding:3px 9px; border-radius:12px;
+                                      background:#1b4f72; color:#fff; }
+                            .g-bloque { border:1px solid #d9e2ea;
+                                        border-radius:8px; margin-bottom:10px;
+                                        page-break-inside:avoid; }
+                            .g-bloque-titulo { background:#f4f7fb;
+                                               border-bottom:1px solid #d9e2ea;
+                                               padding:5px 10px; font-size:10px;
+                                               font-weight:700; color:#1b4f72;
+                                               letter-spacing:.4px; }
+                            table.g-datos { width:100%; border-collapse:collapse; }
+                            table.g-datos td { padding:5px 10px;
+                                               border-bottom:1px solid #eef2f5;
+                                               vertical-align:top; }
+                            table.g-datos td.g-label { width:24%;
+                                                       font-weight:600;
+                                                       color:#5b6b76;
+                                                       font-size:9px;
+                                                       text-transform:uppercase;
+                                                       letter-spacing:.3px; }
+                            .g-precintos { font-family:monospace; font-size:11px;
+                                           letter-spacing:1px; padding:8px 10px;
+                                           background:#f4f8fa;
+                                           border:1px dashed #b6c8d6;
+                                           border-radius:6px;
+                                           word-break:break-all; }
+                            .g-cifra { font-size:14px; font-weight:700;
+                                       color:#1b4f72; }
+                            .g-firmas { margin-top:26px; width:100%; }
+                            .g-firma { border-top:1px solid #2d3436;
+                                       padding-top:5px; font-size:9px;
+                                       text-align:center; width:30%; }
+                            .g-nota { margin-top:14px; font-size:8px;
+                                      color:#7d8a97; }
+                        </style>
+
+                        <div class="g-body">
+                            <table class="g-head" style="width:100%;">
+                                <tr>
+                                    <td style="width:60%;">
+                                        <img t-if="res_company.logo"
+                                             t-att-src="image_data_uri(res_company.logo)"
+                                             style="height:44px;" alt="Logo"/>
+                                        <h1>Guia de Transporte</h1>
+                                        <div t-esc="res_company.name"/>
+                                    </td>
+                                    <td style="width:40%; text-align:right;">
+                                        <span t-attf-class="g-tipo"
+                                              t-esc="dict(doc._fields['tipo_guia'].selection).get(doc.tipo_guia, '')"/>
+                                        <div style="margin-top:6px;">
+                                            <div style="font-size:8px; color:#7d8a97;">NUMERO DE GUIA</div>
+                                            <div class="g-serie"
+                                                 t-esc="doc.numero_guia or 'SIN ASIGNAR'"/>
+                                        </div>
+                                        <div style="margin-top:5px; font-size:9px;">
+                                            Despacho:
+                                            <span t-esc="doc.fecha_despacho or doc.fecha_programacion"
+                                                  t-options='{"widget": "date"}'/>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="g-bloque">
+                                <div class="g-bloque-titulo">Destinatario</div>
+                                <table class="g-datos">
+                                    <tr>
+                                        <td class="g-label">Cliente</td>
+                                        <td t-esc="doc.cliente_id.name or ''"/>
+                                        <td class="g-label">NIT</td>
+                                        <td t-esc="doc.cliente_id.vat or ''"/>
+                                    </tr>
+                                    <tr>
+                                        <td class="g-label">Destino</td>
+                                        <td colspan="3" t-esc="doc.destino or ''"/>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="g-bloque">
+                                <div class="g-bloque-titulo">Transporte</div>
+                                <table class="g-datos">
+                                    <tr>
+                                        <td class="g-label">Transportadora</td>
+                                        <td t-esc="doc.empresa_transportadora_id.name or ''"/>
+                                        <td class="g-label">Placa</td>
+                                        <td><strong t-esc="doc.placa or ''"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="g-label">Conductor</td>
+                                        <td t-esc="doc.conductor_id.nombre or ''"/>
+                                        <td class="g-label">Cedula</td>
+                                        <td t-esc="doc.cedula_conductor or ''"/>
+                                    </tr>
+                                    <tr>
+                                        <td class="g-label">Tanque</td>
+                                        <td t-esc="doc.tanque or ''"/>
+                                        <td class="g-label">Celular</td>
+                                        <td t-esc="doc.celular_conductor or ''"/>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="g-bloque">
+                                <div class="g-bloque-titulo">Producto y cantidad</div>
+                                <table class="g-datos">
+                                    <tr>
+                                        <td class="g-label">Producto</td>
+                                        <td colspan="3">
+                                            <strong t-esc="doc.producto_id.name or ''"/>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="g-label">Galones</td>
+                                        <td><span class="g-cifra" t-esc="doc.galones"
+                                                  t-options='{"widget": "float", "precision": 2}'/></td>
+                                        <td class="g-label">Barriles</td>
+                                        <td><span class="g-cifra" t-esc="doc.barriles"
+                                                  t-options='{"widget": "float", "precision": 2}'/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="g-label">Temperatura (F)</td>
+                                        <td t-esc="doc.temperatura"
+                                            t-options='{"widget": "float", "precision": 2}'/>
+                                        <td class="g-label">API corregido</td>
+                                        <td t-esc="doc.api_corregido"
+                                            t-options='{"widget": "float", "precision": 2}'/>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="g-bloque">
+                                <div class="g-bloque-titulo">Precintos de seguridad</div>
+                                <div style="padding:8px 10px;">
+                                    <div class="g-precintos"
+                                         t-esc="doc.precintos_texto or 'SIN PRECINTOS'"/>
+                                </div>
+                            </div>
+
+                            <div t-if="doc.factura_sicom" class="g-bloque">
+                                <div class="g-bloque-titulo">Trazabilidad SICOM</div>
+                                <table class="g-datos">
+                                    <tr>
+                                        <td class="g-label">Factura SICOM</td>
+                                        <td t-esc="doc.factura_sicom"/>
+                                        <td class="g-label">Codigo transporte</td>
+                                        <td t-esc="doc.codigo_transporte or ''"/>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <table class="g-firmas">
+                                <tr>
+                                    <td class="g-firma">Despachado por</td>
+                                    <td style="width:5%;"/>
+                                    <td class="g-firma">Conductor</td>
+                                    <td style="width:5%;"/>
+                                    <td class="g-firma">Recibido por</td>
+                                </tr>
+                            </table>
+
+                            <div class="g-nota">
+                                Documento generado el
+                                <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M')"/>
+                                por <span t-esc="user.name"/>.
+                            </div>
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_guia_transporte">
+        <t t-call="conquers_operaciones.report_guia_transporte_document"/>
+    </template>
+
+</odoo>

@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_precinto_tree" model="ir.ui.view">
+        <field name="name">operaciones.precinto.tree</field>
+        <field name="model">operaciones.precinto</field>
+        <field name="arch" type="xml">
+            <tree string="Precintos" create="0"
+                  decoration-success="estado == 'DISPONIBLE'"
+                  decoration-muted="estado == 'USADO'"
+                  decoration-danger="estado == 'ANULADO'">
+                <field name="codigo"/>
+                <field name="estado" widget="badge"
+                       decoration-success="estado == 'DISPONIBLE'"
+                       decoration-info="estado == 'USADO'"
+                       decoration-danger="estado == 'ANULADO'"/>
+                <field name="lote_id" optional="show"/>
+                <field name="placa" optional="show"/>
+                <field name="numero_guia" optional="show"/>
+                <field name="cliente_id" optional="show"/>
+                <field name="producto_id" optional="hide"/>
+                <field name="conductor" optional="hide"/>
+                <field name="fecha_uso" optional="show"/>
+                <field name="usuario_uso_id" optional="hide"/>
+                <field name="tipo_anulacion" optional="hide"/>
+                <field name="motivo_anulacion" optional="hide"/>
+                <field name="requiere_revision" optional="hide"
+                       widget="boolean_toggle"/>
+                <button name="action_abrir_anular" type="object"
+                        string="Anular" icon="fa-ban"
+                        invisible="estado == 'ANULADO'"/>
+                <button name="action_reactivar" type="object"
+                        string="Reactivar" icon="fa-undo"
+                        invisible="estado != 'ANULADO'"
+                        confirm="El sello vuelve al stock como disponible. Continuar?"/>
+                <field name="numero" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_precinto_form" model="ir.ui.view">
+        <field name="name">operaciones.precinto.form</field>
+        <field name="model">operaciones.precinto</field>
+        <field name="arch" type="xml">
+            <form string="Precinto" create="0">
+                <header>
+                    <button name="action_abrir_anular" type="object"
+                            string="Anular" class="btn-danger"
+                            invisible="estado == 'ANULADO'"/>
+                    <button name="action_reactivar" type="object"
+                            string="Reactivar" class="btn-secondary"
+                            invisible="estado != 'ANULADO'"/>
+                    <field name="estado" widget="statusbar"
+                           statusbar_visible="DISPONIBLE,USADO,ANULADO"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="codigo" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Origen">
+                            <field name="lote_id" readonly="1"/>
+                            <field name="numero" readonly="1"/>
+                            <field name="origen" readonly="1"/>
+                            <field name="texto_original" readonly="1"
+                                   invisible="not texto_original"/>
+                        </group>
+                        <group string="Revision"
+                               invisible="not requiere_revision">
+                            <field name="requiere_revision"/>
+                            <field name="nota_revision"/>
+                        </group>
+                    </group>
+                    <group string="A que viaje se fue"
+                           invisible="estado == 'DISPONIBLE'">
+                        <group>
+                            <field name="cargue_id" readonly="1"/>
+                            <field name="placa" readonly="1"/>
+                            <field name="numero_guia" readonly="1"/>
+                            <field name="conductor" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="cliente_id" readonly="1"/>
+                            <field name="producto_id" readonly="1"/>
+                            <field name="fecha_uso" readonly="1"/>
+                            <field name="usuario_uso_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="Anulacion" invisible="estado != 'ANULADO'">
+                        <group>
+                            <field name="tipo_anulacion" readonly="1"/>
+                            <field name="motivo_anulacion" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="fecha_anulacion" readonly="1"/>
+                            <field name="usuario_anulacion_id" readonly="1"/>
+                            <field name="precinto_reemplazo_id" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_precinto_search" model="ir.ui.view">
+        <field name="name">operaciones.precinto.search</field>
+        <field name="model">operaciones.precinto</field>
+        <field name="arch" type="xml">
+            <search string="Precintos">
+                <field name="codigo"/>
+                <field name="placa"/>
+                <field name="numero_guia"/>
+                <field name="cliente_id"/>
+                <field name="lote_id"/>
+                <filter name="f_disponible" string="Disponibles"
+                        domain="[('estado', '=', 'DISPONIBLE')]"/>
+                <filter name="f_usado" string="Usados"
+                        domain="[('estado', '=', 'USADO')]"/>
+                <filter name="f_anulado" string="Anulados"
+                        domain="[('estado', '=', 'ANULADO')]"/>
+                <separator/>
+                <filter name="f_merma" string="Merma (rotos)"
+                        domain="[('tipo_anulacion', '=', 'ROTO')]"/>
+                <filter name="f_ajuste" string="Ajustes de inventario"
+                        domain="[('tipo_anulacion', '=', 'AJUSTE')]"/>
+                <separator/>
+                <filter name="f_revision" string="Requieren revision"
+                        domain="[('requiere_revision', '=', True)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_estado" string="Estado"
+                            context="{'group_by': 'estado'}"/>
+                    <filter name="g_lote" string="Lote"
+                            context="{'group_by': 'lote_id'}"/>
+                    <filter name="g_fecha" string="Fecha de uso"
+                            context="{'group_by': 'fecha_uso:month'}"/>
+                    <filter name="g_cliente" string="Cliente"
+                            context="{'group_by': 'cliente_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_precinto" model="ir.actions.act_window">
+        <field name="name">Inventario de precintos</field>
+        <field name="res_model">operaciones.precinto</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_f_disponible': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aun no hay sellos</p>
+            <p>Los sellos se crean generandolos desde un lote, no uno por uno.
+               Ve a Precintos / Lotes y registra el paquete que entro a bodega.</p>
+        </field>
+    </record>
+
+</odoo>

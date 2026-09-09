@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_asignar_precintos_wizard_form" model="ir.ui.view">
+        <field name="name">operaciones.asignar.precintos.wizard.form</field>
+        <field name="model">operaciones.asignar.precintos.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Asignar precintos">
+                <field name="cargue_id" invisible="1"/>
+                <div class="alert alert-warning" role="alert"
+                     invisible="not aviso_stock">
+                    <field name="aviso_stock" nolabel="1" readonly="1"/>
+                </div>
+                <div class="alert alert-info" role="alert"
+                     invisible="ya_asignados == 0">
+                    Esta fila ya tiene <field name="ya_asignados" nolabel="1"
+                    readonly="1" class="oe_inline"/> precintos asignados.
+                    Si lo que quieres es corregir, cierra y usa Liberar.
+                </div>
+                <group>
+                    <field name="cantidad"/>
+                    <field name="disponibles" readonly="1"/>
+                    <field name="forzar" invisible="ya_asignados == 0"/>
+                </group>
+                <footer>
+                    <button name="action_asignar" type="object" string="Asignar"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_anular_precinto_wizard_form" model="ir.ui.view">
+        <field name="name">operaciones.anular.precinto.wizard.form</field>
+        <field name="model">operaciones.anular.precinto.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Anular precinto">
+                <field name="precinto_id" invisible="1"/>
+                <field name="cargue_id" invisible="1"/>
+                <group>
+                    <field name="codigo" readonly="1"/>
+                    <field name="tipo"/>
+                    <field name="motivo" placeholder="Se rompio al cerrar la valvula"/>
+                    <field name="reemplazar" invisible="not cargue_id"/>
+                </group>
+                <div class="alert alert-info" role="alert" invisible="not aviso">
+                    <field name="aviso" nolabel="1" readonly="1"/>
+                </div>
+                <footer>
+                    <button name="action_anular" type="object" string="Anular"
+                            class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+</odoo>

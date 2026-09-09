@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Equivalente en QWeb de templates/reportes_pdf/programacion_cargue_pdf.html.
+         Se conservan la marca de agua, las fichas por viaje, los badges de
+         estado y el cuadro de precintos en monoespaciada. -->
+    <template id="report_programacion_cargue_document">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <style>
+                        .cq-body { font-family:'Segoe UI', Arial, sans-serif;
+                                   font-size:10px; color:#2d3436; }
+                        .cq-watermark { position:fixed; top:40%; left:18%;
+                                        font-size:110px; color:#1b4f7214;
+                                        transform:rotate(-25deg); z-index:0; }
+                        .cq-header { text-align:center; margin-bottom:10px;
+                                     position:relative; z-index:2; }
+                        .cq-header h1 { font-size:20px; margin:2px 0 0 0;
+                                        color:#1b4f72; }
+                        .cq-header img { height:54px; }
+                        .cq-badge-fecha { background:#1b4f72; color:#fff;
+                                          padding:6px 14px; border-radius:20px;
+                                          font-size:11px; display:inline-block;
+                                          font-weight:600; letter-spacing:.5px; }
+                        .cq-layout { border:1px solid #d9e2ea; background:#fff;
+                                     border-radius:12px; padding:14px 18px 12px;
+                                     position:relative; z-index:1; }
+                        .cq-chip { background:#e8f1f8; color:#1b4f72;
+                                   padding:4px 10px; border-radius:16px;
+                                   font-size:10px; font-weight:600; }
+                        .cq-record { border:1px solid #e1e7ec; border-radius:10px;
+                                     padding:10px 12px 8px; margin-bottom:12px;
+                                     background:#fbfdff; page-break-inside:avoid; }
+                        .cq-record-header { margin-bottom:6px; font-size:12px;
+                                            font-weight:600; color:#1b4f72; }
+                        .cq-estado { font-size:10px; padding:4px 8px;
+                                     border-radius:14px; font-weight:600;
+                                     background:#607d8b; color:#fff; }
+                        .cq-estado-CARGANDO { background:#fbc02d; color:#2d3436; }
+                        .cq-estado-CARGADO { background:#fd7e14; }
+                        .cq-estado-DESPACHADO { background:#0b8552; }
+                        .cq-producto { background:#1b4f72; color:#fff;
+                                       padding:4px 10px; border-radius:14px;
+                                       font-size:10px; font-weight:600; }
+                        .cq-placa { background:#17a2b8; color:#fff;
+                                    padding:4px 10px; border-radius:14px;
+                                    font-size:10px; font-weight:600;
+                                    letter-spacing:.5px; }
+                        .cq-col { width:50%; vertical-align:top; }
+                        table.cq-meta { width:100%; border-collapse:collapse; }
+                        table.cq-meta td { padding:4px 6px;
+                                           border-bottom:1px solid #ecf0f1;
+                                           vertical-align:top; }
+                        table.cq-meta td.cq-label { width:42%; font-weight:600;
+                                                    font-size:10px;
+                                                    background:#f4f7fb;
+                                                    color:#1b4f72;
+                                                    border-right:1px solid #e5eaef; }
+                        .cq-precintos { margin-top:6px; background:#f4f8fa;
+                                        border:1px dashed #b6c8d6;
+                                        padding:6px 8px; font-family:monospace;
+                                        font-size:9px; border-radius:6px;
+                                        word-break:break-all; }
+                        .cq-seccion { font-size:13px; color:#1b4f72;
+                                      margin:14px 0 6px; text-align:center; }
+                        .cq-footer { margin-top:6px; font-size:9px;
+                                     color:#7d8a97; text-align:right; }
+                    </style>
+
+                    <div class="cq-body">
+                        <div class="cq-watermark">CONQUERS</div>
+
+                        <div class="cq-header">
+                            <img t-if="res_company.logo"
+                                 t-att-src="image_data_uri(res_company.logo)"
+                                 alt="Logo"/>
+                            <h1>Programacion de Vehiculos</h1>
+                            <div class="cq-badge-fecha">
+                                Generado: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M')"/>
+                            </div>
+                        </div>
+
+                        <div class="cq-layout">
+                            <div class="cq-seccion">Detalle de Programaciones</div>
+
+                            <t t-foreach="docs" t-as="doc">
+                                <div class="cq-record">
+                                    <div class="cq-record-header">
+                                        <span t-attf-class="cq-estado cq-estado-#{doc.estado}"
+                                              t-esc="doc.estado"/>
+                                        <span class="cq-placa" t-esc="doc.placa or 'SIN PLACA'"/>
+                                        <span t-if="doc.producto_id" class="cq-producto"
+                                              t-esc="doc.producto_id.name"/>
+                                        <span t-if="doc.destino" class="cq-chip">
+                                            Destino: <span t-esc="doc.destino"/>
+                                        </span>
+                                        <span t-if="doc.cliente_id" class="cq-chip">
+                                            Cliente: <span t-esc="doc.cliente_id.name"/>
+                                        </span>
+                                    </div>
+
+                                    <table style="width:100%;">
+                                        <tr>
+                                            <td class="cq-col">
+                                                <table class="cq-meta">
+                                                    <tr><td class="cq-label">Fecha Programacion</td>
+                                                        <td t-esc="doc.fecha_programacion"
+                                                            t-options='{"widget": "date"}'/></tr>
+                                                    <tr><td class="cq-label">Hora Estimada</td>
+                                                        <td t-esc="doc.hora_llegada_estimada"
+                                                            t-options='{"widget": "float_time"}'/></tr>
+                                                    <tr><td class="cq-label">Transportadora</td>
+                                                        <td t-esc="doc.empresa_transportadora_id.name or ''"/></tr>
+                                                    <tr><td class="cq-label">Tanque</td>
+                                                        <td t-esc="doc.tanque or ''"/></tr>
+                                                    <tr><td class="cq-label">Conductor</td>
+                                                        <td t-esc="doc.conductor_id.nombre or ''"/></tr>
+                                                    <tr><td class="cq-label">Cedula</td>
+                                                        <td t-esc="doc.cedula_conductor or ''"/></tr>
+                                                    <tr><td class="cq-label">Celular</td>
+                                                        <td t-esc="doc.celular_conductor or ''"/></tr>
+                                                    <tr><td class="cq-label">Numero Guia</td>
+                                                        <td t-esc="doc.numero_guia or ''"/></tr>
+                                                    <tr><td class="cq-label">Fecha Despacho</td>
+                                                        <td t-esc="doc.fecha_despacho or ''"/></tr>
+                                                </table>
+                                            </td>
+                                            <td class="cq-col">
+                                                <table class="cq-meta">
+                                                    <tr><td class="cq-label">Galones</td>
+                                                        <td t-esc="doc.galones"
+                                                            t-options='{"widget": "float", "precision": 2}'/></tr>
+                                                    <tr><td class="cq-label">Barriles</td>
+                                                        <td t-esc="doc.barriles"
+                                                            t-options='{"widget": "float", "precision": 2}'/></tr>
+                                                    <tr><td class="cq-label">Temperatura (F)</td>
+                                                        <td t-esc="doc.temperatura"
+                                                            t-options='{"widget": "float", "precision": 2}'/></tr>
+                                                    <tr><td class="cq-label">API Observado</td>
+                                                        <td t-esc="doc.api_obs"
+                                                            t-options='{"widget": "float", "precision": 2}'/></tr>
+                                                    <tr><td class="cq-label">API Corregido</td>
+                                                        <td t-esc="doc.api_corregido"
+                                                            t-options='{"widget": "float", "precision": 2}'/></tr>
+                                                </table>
+                                                <div class="cq-precintos"
+                                                     t-esc="doc.precintos_texto or 'Sin precintos'"/>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </t>
+
+                            <div class="cq-footer">Reporte interno</div>
+                        </div>
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_programacion_cargue">
+        <t t-call="conquers_operaciones.report_programacion_cargue_document"/>
+    </template>
+
+</odoo>

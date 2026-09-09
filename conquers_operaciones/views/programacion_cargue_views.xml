@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- La sabana. Cada area ve todas las columnas pero solo puede escribir en
+         las suyas: el readonly sale de los campos calculados puede_editar_*, y
+         el servidor lo vuelve a validar en write() para que no se salte por RPC. -->
+    <record id="view_cargue_tree" model="ir.ui.view">
+        <field name="name">operaciones.cargue.tree</field>
+        <field name="model">operaciones.cargue</field>
+        <field name="arch" type="xml">
+            <tree string="Programacion de cargue" editable="bottom"
+                  decoration-success="estado == 'DESPACHADO'"
+                  decoration-info="estado == 'CARGANDO'"
+                  decoration-warning="estado == 'CARGADO'"
+                  decoration-muted="refineria_bloqueado">
+                <field name="puede_editar_logistica" column_invisible="1"/>
+                <field name="puede_editar_comercial" column_invisible="1"/>
+                <field name="puede_editar_refineria" column_invisible="1"/>
+                <field name="puede_editar_guias" column_invisible="1"/>
+                <field name="puede_editar_facturacion" column_invisible="1"/>
+                <field name="refineria_bloqueado" column_invisible="1"/>
+
+                <field name="fecha_programacion"
+                       readonly="not puede_editar_logistica"/>
+                <field name="factura" optional="show"
+                       readonly="not puede_editar_logistica"/>
+                <field name="empresa_transportadora_id" string="Transportadora"
+                       options="{'no_create_edit': True}"
+                       readonly="not puede_editar_logistica"/>
+                <field name="placa" readonly="not puede_editar_logistica"/>
+                <field name="tanque" optional="show"
+                       readonly="not puede_editar_logistica"/>
+                <field name="conductor_id" string="Conductor"
+                       readonly="not puede_editar_logistica"/>
+                <field name="celular_conductor" optional="hide"
+                       readonly="not puede_editar_logistica"/>
+                <field name="hora_llegada_estimada" widget="float_time"
+                       optional="show" readonly="not puede_editar_logistica"/>
+                <field name="producto_id" options="{'no_create_edit': True}"
+                       readonly="not puede_editar_logistica"/>
+
+                <field name="cliente_id" options="{'no_create_edit': True}"
+                       readonly="not puede_editar_comercial"/>
+                <field name="destino" readonly="not puede_editar_comercial"/>
+
+                <field name="galones" sum="Galones"
+                       readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                <field name="barriles" sum="Barriles" readonly="1"/>
+                <field name="temperatura" optional="show"
+                       readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                <field name="api_obs" optional="show"
+                       readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                <field name="api_corregido" optional="show"
+                       readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                <field name="precintos_texto" readonly="1" optional="show"/>
+                <field name="fecha_despacho" optional="show"
+                       readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                <field name="estado" widget="badge"
+                       readonly="not puede_editar_refineria"/>
+
+                <field name="numero_guia" optional="show"
+                       readonly="not puede_editar_guias"/>
+                <field name="tipo_guia" optional="hide"
+                       readonly="not puede_editar_guias"/>
+
+                <field name="factura_sicom" optional="hide"
+                       readonly="not puede_editar_facturacion"/>
+                <field name="fecha_factura" optional="hide"
+                       readonly="not puede_editar_facturacion"/>
+                <field name="codigo_transporte" optional="hide"
+                       readonly="not puede_editar_facturacion"/>
+
+                <button name="action_asignar_precintos" type="object"
+                        string="Asignar 5 precintos" icon="fa-bolt"
+                        invisible="not puede_editar_refineria or refineria_bloqueado"/>
+                <button name="action_liberar_precintos" type="object"
+                        string="Liberar precintos" icon="fa-undo"
+                        invisible="not precintos_texto or not puede_editar_refineria or refineria_bloqueado"
+                        confirm="Los sellos vuelven al stock como disponibles. Continuar?"/>
+                <button name="action_generar_guia" type="object"
+                        string="Generar guia" icon="fa-file-text-o"
+                        invisible="not puede_editar_guias"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_cargue_form" model="ir.ui.view">
+        <field name="name">operaciones.cargue.form</field>
+        <field name="model">operaciones.cargue</field>
+        <field name="arch" type="xml">
+            <form string="Viaje">
+                <header>
+                    <button name="action_abrir_asignar_precintos" type="object"
+                            string="Asignar precintos" class="btn-primary"
+                            invisible="not puede_editar_refineria or refineria_bloqueado"/>
+                    <button name="action_liberar_precintos" type="object"
+                            string="Liberar precintos" class="btn-secondary"
+                            invisible="not precintos_texto or not puede_editar_refineria or refineria_bloqueado"
+                            confirm="Los sellos vuelven al stock. Continuar?"/>
+                    <button name="action_generar_guia" type="object"
+                            string="Generar guia" class="btn-secondary"
+                            invisible="not puede_editar_guias"/>
+                    <button name="action_desbloquear_refineria" type="object"
+                            string="Desbloquear refineria" class="btn-warning"
+                            groups="conquers_operaciones.group_admin"
+                            invisible="not refineria_bloqueado"
+                            confirm="Se reabre la edicion de los aforos. Queda registrado en el historial. Continuar?"/>
+                    <field name="estado" widget="statusbar"
+                           statusbar_visible="PROGRAMADO,CARGANDO,CARGADO,DESPACHADO"
+                           readonly="not puede_editar_refineria"/>
+                </header>
+                <sheet>
+                    <field name="puede_editar_logistica" invisible="1"/>
+                    <field name="puede_editar_comercial" invisible="1"/>
+                    <field name="puede_editar_refineria" invisible="1"/>
+                    <field name="puede_editar_guias" invisible="1"/>
+                    <field name="puede_editar_facturacion" invisible="1"/>
+                    <field name="refineria_bloqueado" invisible="1"/>
+
+                    <div class="alert alert-warning" role="alert"
+                         invisible="not refineria_bloqueado">
+                        Pasaron mas de 30 minutos desde que refineria completo
+                        este viaje. Los aforos quedaron en firme; solo un
+                        administrador puede reabrirlos.
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="placa" string="Placa"/>
+                        <h1><field name="placa" placeholder="ABC123"
+                                   readonly="not puede_editar_logistica"/></h1>
+                    </div>
+
+                    <group>
+                        <group string="Cliente y destino">
+                            <field name="cliente_id"
+                                   readonly="not puede_editar_comercial"/>
+                            <field name="destino"
+                                   readonly="not puede_editar_comercial"/>
+                            <field name="producto_id"
+                                   readonly="not puede_editar_logistica"/>
+                            <field name="programacion_base_id" readonly="1"
+                                   invisible="not programacion_base_id"/>
+                        </group>
+                        <group string="Programacion">
+                            <field name="fecha_programacion"
+                                   readonly="not puede_editar_logistica"/>
+                            <field name="hora_llegada_estimada" widget="float_time"
+                                   readonly="not puede_editar_logistica"/>
+                            <field name="factura"
+                                   readonly="not puede_editar_logistica"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Transporte" name="logistica">
+                            <group>
+                                <group>
+                                    <field name="empresa_transportadora_id"
+                                           readonly="not puede_editar_logistica"/>
+                                    <field name="tanque"
+                                           readonly="not puede_editar_logistica"/>
+                                </group>
+                                <group>
+                                    <field name="conductor_id"
+                                           readonly="not puede_editar_logistica"/>
+                                    <field name="cedula_conductor"
+                                           readonly="not puede_editar_logistica"/>
+                                    <field name="celular_conductor"
+                                           readonly="not puede_editar_logistica"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Refineria" name="refineria">
+                            <group>
+                                <group string="Aforo">
+                                    <field name="galones"
+                                           readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                                    <field name="barriles" readonly="1"/>
+                                    <field name="temperatura"
+                                           readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                                </group>
+                                <group string="Gravedad API">
+                                    <field name="api_obs"
+                                           readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                                    <field name="api_corregido"
+                                           readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                                    <field name="fecha_despacho"
+                                           readonly="not puede_editar_refineria or refineria_bloqueado"/>
+                                    <field name="refineria_completado_en" readonly="1"
+                                           invisible="not refineria_completado_en"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Precintos" name="precintos">
+                            <group>
+                                <field name="precintos_texto" readonly="1"/>
+                            </group>
+                            <field name="precinto_ids" readonly="1">
+                                <tree>
+                                    <field name="codigo"/>
+                                    <field name="estado" widget="badge"
+                                           decoration-info="estado == 'USADO'"
+                                           decoration-danger="estado == 'ANULADO'"/>
+                                    <field name="lote_id"/>
+                                    <field name="fecha_uso"/>
+                                    <field name="usuario_uso_id"/>
+                                    <field name="motivo_anulacion"/>
+                                    <button name="action_abrir_anular" type="object"
+                                            string="Anular" icon="fa-ban"
+                                            invisible="estado == 'ANULADO'"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="Guia" name="guia">
+                            <group>
+                                <group>
+                                    <field name="numero_guia"
+                                           readonly="not puede_editar_guias"/>
+                                    <field name="tipo_guia"
+                                           readonly="not puede_editar_guias"/>
+                                </group>
+                                <group>
+                                    <field name="nombre_imagen_guia" invisible="1"/>
+                                    <field name="imagen_guia" widget="image"
+                                           filename="nombre_imagen_guia"
+                                           readonly="not puede_editar_guias"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Facturacion" name="facturacion">
+                            <group>
+                                <group>
+                                    <field name="factura_sicom"
+                                           readonly="not puede_editar_facturacion"/>
+                                    <field name="fecha_factura"
+                                           readonly="not puede_editar_facturacion"/>
+                                </group>
+                                <group>
+                                    <field name="mes_facturado"
+                                           readonly="not puede_editar_facturacion"/>
+                                    <field name="codigo_transporte"
+                                           readonly="not puede_editar_facturacion"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="Observaciones" name="observaciones">
+                            <field name="observaciones"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_cargue_search" model="ir.ui.view">
+        <field name="name">operaciones.cargue.search</field>
+        <field name="model">operaciones.cargue</field>
+        <field name="arch" type="xml">
+            <search string="Programacion de cargue">
+                <field name="placa"/>
+                <field name="cliente_id"/>
+                <field name="producto_id"/>
+                <field name="numero_guia"/>
+                <field name="conductor_id"/>
+                <field name="empresa_transportadora_id"/>
+                <filter name="f_hoy" string="De hoy"
+                        domain="[('fecha_programacion', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="f_programado" string="Programados"
+                        domain="[('estado', '=', 'PROGRAMADO')]"/>
+                <filter name="f_cargando" string="Cargando"
+                        domain="[('estado', '=', 'CARGANDO')]"/>
+                <filter name="f_despachado" string="Despachados"
+                        domain="[('estado', '=', 'DESPACHADO')]"/>
+                <separator/>
+                <filter name="f_sin_precintos" string="Sin precintos"
+                        domain="[('precintos_texto', '=', False)]"/>
+                <filter name="f_sin_guia" string="Sin guia"
+                        domain="[('numero_guia', '=', False)]"/>
+                <filter name="f_sin_sicom" string="Sin SICOM"
+                        domain="[('factura_sicom', '=', False),
+                                 ('estado', '=', 'DESPACHADO')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_fecha" string="Fecha de programacion"
+                            context="{'group_by': 'fecha_programacion'}"/>
+                    <filter name="g_estado" string="Estado"
+                            context="{'group_by': 'estado'}"/>
+                    <filter name="g_cliente" string="Cliente"
+                            context="{'group_by': 'cliente_id'}"/>
+                    <filter name="g_producto" string="Producto"
+                            context="{'group_by': 'producto_id'}"/>
+                    <filter name="g_transportadora" string="Transportadora"
+                            context="{'group_by': 'empresa_transportadora_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_cargue" model="ir.actions.act_window">
+        <field name="name">Programacion de cargue</field>
+        <field name="res_model">operaciones.cargue</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_f_hoy': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">La sabana esta vacia</p>
+            <p>Crea la fila aqui, o mandala desde Pedidos con el boton
+               Enviar a programacion.</p>
+        </field>
+    </record>
+
+</odoo>

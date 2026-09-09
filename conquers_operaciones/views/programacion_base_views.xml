@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_programacion_base_tree" model="ir.ui.view">
+        <field name="name">operaciones.programacion.base.tree</field>
+        <field name="model">operaciones.programacion.base</field>
+        <field name="arch" type="xml">
+            <tree string="Pedidos" editable="bottom"
+                  decoration-muted="estado == 'DESPACHADO'"
+                  decoration-info="estado == 'PROGRAMADO'">
+                <field name="fecha_cargue"/>
+                <field name="fecha_cargue_confirmada" optional="show"/>
+                <field name="cliente_id" options="{'no_create_edit': True}"/>
+                <field name="producto_id" options="{'no_create_edit': True}"/>
+                <field name="destino"/>
+                <field name="calidad" optional="show"/>
+                <field name="galones" sum="Galones"/>
+                <field name="barriles" sum="Barriles" readonly="1"/>
+                <field name="estado" widget="badge" readonly="1"
+                       decoration-info="estado == 'PROGRAMADO'"
+                       decoration-success="estado == 'DESPACHADO'"/>
+                <button name="action_enviar_a_programacion" type="object"
+                        string="Enviar a programacion" icon="fa-truck"
+                        invisible="cargue_id"/>
+                <button name="action_ver_cargue" type="object"
+                        string="Ver viaje" icon="fa-external-link"
+                        invisible="not cargue_id"/>
+                <field name="cargue_id" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_programacion_base_form" model="ir.ui.view">
+        <field name="name">operaciones.programacion.base.form</field>
+        <field name="model">operaciones.programacion.base</field>
+        <field name="arch" type="xml">
+            <form string="Pedido">
+                <header>
+                    <button name="action_enviar_a_programacion" type="object"
+                            string="Enviar a programacion de cargue"
+                            class="btn-primary" invisible="cargue_id"/>
+                    <field name="estado" widget="statusbar"
+                           statusbar_visible="PENDIENTE,PROGRAMADO,DESPACHADO"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_cargue" type="object"
+                                class="oe_stat_button" icon="fa-truck"
+                                string="Viaje" invisible="not cargue_id"/>
+                    </div>
+                    <group>
+                        <group string="Pedido">
+                            <field name="cliente_id"/>
+                            <field name="producto_id"/>
+                            <field name="destino"/>
+                            <field name="calidad"/>
+                        </group>
+                        <group string="Cantidad y fecha">
+                            <field name="galones"/>
+                            <field name="barriles" readonly="1"/>
+                            <field name="fecha_cargue"/>
+                            <field name="fecha_cargue_confirmada"/>
+                        </group>
+                    </group>
+                    <field name="cargue_id" invisible="1"/>
+                    <notebook>
+                        <page string="Observaciones" name="observaciones">
+                            <field name="observaciones"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_programacion_base_search" model="ir.ui.view">
+        <field name="name">operaciones.programacion.base.search</field>
+        <field name="model">operaciones.programacion.base</field>
+        <field name="arch" type="xml">
+            <search string="Pedidos">
+                <field name="cliente_id"/>
+                <field name="producto_id"/>
+                <field name="destino"/>
+                <filter name="f_pendiente" string="Pendientes"
+                        domain="[('estado', '=', 'PENDIENTE')]"/>
+                <filter name="f_programado" string="Programados"
+                        domain="[('estado', '=', 'PROGRAMADO')]"/>
+                <separator/>
+                <filter name="f_hoy" string="De hoy"
+                        domain="[('fecha_cargue', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_cliente" string="Cliente"
+                            context="{'group_by': 'cliente_id'}"/>
+                    <filter name="g_producto" string="Producto"
+                            context="{'group_by': 'producto_id'}"/>
+                    <filter name="g_fecha" string="Fecha"
+                            context="{'group_by': 'fecha_cargue'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_programacion_base" model="ir.actions.act_window">
+        <field name="name">Pedidos</field>
+        <field name="res_model">operaciones.programacion.base</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_f_pendiente': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra el primer pedido</p>
+            <p>Aqui se anota lo que pide el cliente antes de tener camion.
+               Cuando haya transporte, el boton Enviar a programacion crea la
+               fila en la sabana de cargue.</p>
+        </field>
+    </record>
+
+</odoo>

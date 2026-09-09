@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_conductor_tree" model="ir.ui.view">
+        <field name="name">operaciones.conductor.tree</field>
+        <field name="model">operaciones.conductor</field>
+        <field name="arch" type="xml">
+            <tree string="Conductores" editable="bottom">
+                <field name="placa"/>
+                <field name="nombre"/>
+                <field name="cedula"/>
+                <field name="celular"/>
+                <field name="tanque"/>
+                <field name="transportadora_id" options="{'no_create': True}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_conductor_form" model="ir.ui.view">
+        <field name="name">operaciones.conductor.form</field>
+        <field name="model">operaciones.conductor</field>
+        <field name="arch" type="xml">
+            <form string="Conductor">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="nombre"/>
+                        <h1><field name="nombre" placeholder="Nombre completo"/></h1>
+                    </div>
+                    <group>
+                        <group string="Documento">
+                            <field name="cedula"/>
+                            <field name="celular"/>
+                        </group>
+                        <group string="Vehiculo">
+                            <field name="placa" placeholder="ABC123"/>
+                            <field name="tanque"/>
+                            <field name="transportadora_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_conductor_search" model="ir.ui.view">
+        <field name="name">operaciones.conductor.search</field>
+        <field name="model">operaciones.conductor</field>
+        <field name="arch" type="xml">
+            <search string="Conductores">
+                <field name="nombre"/>
+                <field name="placa"/>
+                <field name="cedula"/>
+                <field name="transportadora_id"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_transportadora" string="Transportadora"
+                            context="{'group_by': 'transportadora_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_conductor" model="ir.actions.act_window">
+        <field name="name">Conductores y vehiculos</field>
+        <field name="res_model">operaciones.conductor</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra el primer conductor</p>
+            <p>Al digitar la placa en la sabana de cargue se traen solos el
+               conductor, la cedula, el celular, el tanque y la transportadora.</p>
+        </field>
+    </record>
+
+</odoo>

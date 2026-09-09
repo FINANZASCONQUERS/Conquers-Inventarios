@@ -1,0 +1,25 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_cargue_usuario,operaciones.cargue consulta,model_operaciones_cargue,group_usuario,1,0,0,0
+access_cargue_logistica,operaciones.cargue logistica,model_operaciones_cargue,group_logistica,1,1,1,0
+access_cargue_comercial,operaciones.cargue comercial,model_operaciones_cargue,group_comercial,1,1,1,0
+access_cargue_refineria,operaciones.cargue refineria,model_operaciones_cargue,group_refineria,1,1,0,0
+access_cargue_guias,operaciones.cargue guias,model_operaciones_cargue,group_guias,1,1,0,0
+access_cargue_facturacion,operaciones.cargue facturacion,model_operaciones_cargue,group_facturacion,1,1,0,0
+access_cargue_admin,operaciones.cargue admin,model_operaciones_cargue,group_admin,1,1,1,1
+access_base_usuario,operaciones.programacion.base consulta,model_operaciones_programacion_base,group_usuario,1,0,0,0
+access_base_comercial,operaciones.programacion.base comercial,model_operaciones_programacion_base,group_comercial,1,1,1,0
+access_base_logistica,operaciones.programacion.base logistica,model_operaciones_programacion_base,group_logistica,1,1,1,0
+access_base_admin,operaciones.programacion.base admin,model_operaciones_programacion_base,group_admin,1,1,1,1
+access_lote_usuario,operaciones.lote.precintos consulta,model_operaciones_lote_precintos,group_usuario,1,0,0,0
+access_lote_refineria,operaciones.lote.precintos refineria,model_operaciones_lote_precintos,group_refineria,1,1,1,0
+access_lote_admin,operaciones.lote.precintos admin,model_operaciones_lote_precintos,group_admin,1,1,1,1
+access_precinto_usuario,operaciones.precinto consulta,model_operaciones_precinto,group_usuario,1,0,0,0
+access_precinto_refineria,operaciones.precinto refineria,model_operaciones_precinto,group_refineria,1,1,1,0
+access_precinto_guias,operaciones.precinto guias,model_operaciones_precinto,group_guias,1,1,0,0
+access_precinto_admin,operaciones.precinto admin,model_operaciones_precinto,group_admin,1,1,1,1
+access_conductor_usuario,operaciones.conductor consulta,model_operaciones_conductor,group_usuario,1,0,0,0
+access_conductor_logistica,operaciones.conductor logistica,model_operaciones_conductor,group_logistica,1,1,1,0
+access_conductor_admin,operaciones.conductor admin,model_operaciones_conductor,group_admin,1,1,1,1
+access_lock_usuario,operaciones.cargue.lock usuario,model_operaciones_cargue_lock,group_usuario,1,1,1,1
+access_wiz_asignar,wizard asignar precintos,model_operaciones_asignar_precintos_wizard,group_usuario,1,1,1,1
+access_wiz_anular,wizard anular precinto,model_operaciones_anular_precinto_wizard,group_usuario,1,1,1,1

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <menuitem id="menu_operaciones_root"
+              name="Operaciones"
+              web_icon="conquers_operaciones,static/description/icon.png"
+              sequence="15"
+              groups="group_usuario"/>
+
+    <menuitem id="menu_pedidos"
+              name="Pedidos"
+              parent="menu_operaciones_root"
+              action="action_programacion_base"
+              sequence="10"/>
+
+    <menuitem id="menu_cargue"
+              name="Programacion de cargue"
+              parent="menu_operaciones_root"
+              action="action_cargue"
+              sequence="20"/>
+
+    <menuitem id="menu_precintos"
+              name="Precintos"
+              parent="menu_operaciones_root"
+              sequence="30"/>
+
+    <menuitem id="menu_precintos_inventario"
+              name="Inventario"
+              parent="menu_precintos"
+              action="action_precinto"
+              sequence="10"/>
+
+    <menuitem id="menu_precintos_lotes"
+              name="Lotes"
+              parent="menu_precintos"
+              action="action_lote_precintos"
+              sequence="20"/>
+
+    <menuitem id="menu_configuracion"
+              name="Configuracion"
+              parent="menu_operaciones_root"
+              sequence="90"
+              groups="group_logistica"/>
+
+    <menuitem id="menu_conductores"
+              name="Conductores y vehiculos"
+              parent="menu_configuracion"
+              action="action_conductor"
+              sequence="10"/>
+
+</odoo>

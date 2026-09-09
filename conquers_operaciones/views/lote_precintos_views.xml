@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_lote_precintos_tree" model="ir.ui.view">
+        <field name="name">operaciones.lote.precintos.tree</field>
+        <field name="model">operaciones.lote.precintos</field>
+        <field name="arch" type="xml">
+            <tree string="Lotes de precintos" decoration-muted="disponibles == 0">
+                <field name="name"/>
+                <field name="fecha_ingreso"/>
+                <field name="rango_inicial"/>
+                <field name="rango_final"/>
+                <field name="color"/>
+                <field name="proveedor_id" optional="show"/>
+                <field name="documento_remision" optional="hide"/>
+                <field name="total_precintos" sum="Total"/>
+                <field name="disponibles" sum="Disponibles"
+                       decoration-success="disponibles > 0"/>
+                <field name="usados" sum="Usados"/>
+                <field name="anulados" sum="Anulados"
+                       decoration-danger="anulados > 0"/>
+                <field name="sellos_generados" widget="boolean_toggle" readonly="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_lote_precintos_form" model="ir.ui.view">
+        <field name="name">operaciones.lote.precintos.form</field>
+        <field name="model">operaciones.lote.precintos</field>
+        <field name="arch" type="xml">
+            <form string="Lote de precintos">
+                <header>
+                    <button name="action_generar_sellos" type="object"
+                            string="Generar sellos" class="btn-primary"
+                            invisible="sellos_generados"
+                            confirm="Se creara un registro por cada numero del rango. Revisa que el rango este bien antes de continuar."/>
+                    <button name="action_ver_sellos" type="object"
+                            string="Ver sellos" class="btn-secondary"
+                            invisible="not sellos_generados"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_sellos" type="object"
+                                class="oe_stat_button" icon="fa-tags"
+                                invisible="not sellos_generados">
+                            <field name="disponibles" widget="statinfo"
+                                   string="Disponibles"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Rango">
+                            <field name="rango_inicial"
+                                   readonly="sellos_generados"/>
+                            <field name="rango_final"
+                                   readonly="sellos_generados"/>
+                            <field name="numero_digitos"
+                                   readonly="sellos_generados"/>
+                            <field name="sellos_generados" invisible="1"/>
+                        </group>
+                        <group string="Entrada a bodega">
+                            <field name="fecha_ingreso"/>
+                            <field name="color"/>
+                            <field name="proveedor_id"/>
+                            <field name="documento_remision"/>
+                        </group>
+                    </group>
+                    <group string="Estado del lote" invisible="not sellos_generados">
+                        <group>
+                            <field name="total_precintos"/>
+                            <field name="disponibles"/>
+                        </group>
+                        <group>
+                            <field name="usados"/>
+                            <field name="anulados"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Observaciones" name="observaciones">
+                            <field name="observaciones" placeholder="Notas del lote"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_lote_precintos" model="ir.actions.act_window">
+        <field name="name">Lotes de precintos</field>
+        <field name="res_model">operaciones.lote.precintos</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registra el primer lote</p>
+            <p>Un lote es el paquete de sellos que entra a bodega. Al generarlo
+               se crea un registro por cada numero del rango, en estado
+               disponible.</p>
+        </field>
+    </record>
+
+</odoo>
