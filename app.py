@@ -489,7 +489,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad",  "analisis_laboratorio",]
     },
     "carlos.baron@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
