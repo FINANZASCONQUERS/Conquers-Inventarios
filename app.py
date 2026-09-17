@@ -17183,25 +17183,18 @@ def cargar_clientes():
                 clientes_lista, _ = _deduplicar_clientes_lista(clientes_lista)
 
             if clientes_lista:
-                # AUTO-SYNC: Guardar los clientes de la DB al JSON para mantenerlos sincronizados
-                # Esto resuelve el problema de que un git pull sobrescriba el Clientes.json
-                #
-                # SALVAGUARDA: solo sincronizamos si la DB no trae MENOS clientes que
-                # los que ya hay en el archivo. Una DB con menos registros que el JSON
-                # significa que está incompleta (tabla recién sembrada, migración a
-                # medias, o un cliente agregado sobre una tabla vacía), y sincronizar
-                # en ese estado BORRA el catálogo bueno del archivo. Preferimos servir
-                # los datos de la DB y dejar el archivo intacto hasta que alguien lo
-                # revise.
                 try:
-                    if len(clientes_lista) < _contar_clientes_en_archivo():
-                        print(
-                            f"Advertencia: la DB tiene {len(clientes_lista)} cliente(s) y "
-                            f"Clientes.json tiene {_contar_clientes_en_archivo()}. Se omite el "
-                            f"auto-sync para no perder el catálogo del archivo."
-                        )
-                    else:
-                        guardar_clientes(clientes_lista)
+                    ruta_clientes = os.path.join(BASE_DIR, 'static', 'Clientes.json')
+                    if os.path.exists(ruta_clientes):
+                        with open(ruta_clientes, 'r', encoding='utf-8') as f:
+                            clientes_json = json.load(f)
+                        todos = clientes_lista + clientes_json
+                        clientes_lista, _ = _deduplicar_clientes_lista(todos)
+                except Exception as merge_err:
+                    print(f"Advertencia: No se pudo fusionar Clientes.json: {merge_err}")
+
+                try:
+                    guardar_clientes(clientes_lista)
                 except Exception as sync_err:
                     print(f"Advertencia: No se pudo sincronizar Clientes.json desde DB: {sync_err}")
                 return clientes_lista
@@ -21533,7 +21526,13 @@ def init_db_command():
     print("Base de datos inicializada y tablas creadas.")
 
 with app.app_context():
- db.create_all()
+    db.create_all()
+    try:
+        from sqlalchemy import text
+        db.session.execute(text("ALTER TABLE clientes DROP CONSTRAINT IF EXISTS clientes_nombre_key;"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 # Registrar el Blueprint de WhatsApp
 # TEMPORALMENTE DESHABILITADO por error de spacy
