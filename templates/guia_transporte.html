@@ -990,6 +990,115 @@
                 line-height: 1.1em;
                 margin-top: 10px;
             }
+
+            /* Hora de Salida: número en campo HO:RA (16pt bold centrado) y A.M./P.M. en su casilla */
+            .campo.hora {
+                padding: 0 !important;
+                margin: 0 !important;
+                border: none !important;
+                background: transparent !important;
+                box-sizing: border-box !important;
+                overflow: visible !important;
+                position: relative !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: flex-end !important;
+            }
+
+            .hora input {
+                display: none !important;
+            }
+
+            .hora .hora-print-wrap {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: flex-end !important;
+                width: 2.8cm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+                margin-left: -0.8cm !important;
+                margin-bottom: -3mm !important;
+            }
+
+            .hora .hora-print-numero {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: baseline !important;
+                justify-content: center !important;
+                flex: 0 0 2.00cm !important;
+                width: 2.00cm !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* Cada slot: display BLOCK (no flex) y SIN height:100%
+               para que quede al fondo del campo, sobre las letras HO:RA */
+            .hora .hora-slot {
+                display: block !important;
+                text-align: center !important;
+                font-size: 16pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                line-height: 1 !important;
+            }
+
+            /* Slot para la HORA (HH): cae exactamente sobre las letras H O en la parte inferior */
+            .hora .hora-hh {
+                flex: 0 0 0.90cm !important;
+                width: 0.90cm !important;
+            }
+
+            /* Slot para los dos puntos (:): cae exactamente sobre los dos puntos : en la parte inferior */
+            .hora .hora-sep {
+                flex: 0 0 0.20cm !important;
+                width: 0.20cm !important;
+            }
+
+            /* Slot para los MINUTOS (MM): cae exactamente sobre las letras R A en la parte inferior */
+            .hora .hora-mm {
+                flex: 0 0 0.90cm !important;
+                width: 0.90cm !important;
+            }
+
+            /* Columna AM/PM: ocupa TODA la altura para cubrir los 2 recuadros preimpresos */
+            .hora .hora-print-ampm-col {
+                display: flex !important;
+                flex-direction: column !important;
+                flex: 0 0 0.75cm !important;
+                width: 0.75cm !important;
+                height: 0.95cm !important;
+                position: absolute !important;
+                top: 0.15cm !important;
+                right: 0.12cm !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .hora .hora-print-cell {
+                height: 50% !important;
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 8pt !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                border: none !important;
+                background: transparent !important;
+                box-sizing: border-box !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
         }
 
         /* Estilos cuando la validación falla (para prevenir impresión por menú del navegador) */
@@ -1253,7 +1362,12 @@
             left: -95px;
             width: 10.5cm;
             height: 1.1cm;
-            font-size: 14pt
+            font-size: 14pt;
+        }
+
+        .lugar-fecha input {
+            text-align: right;
+            padding-right: 5px;
         }
 
         .planta-productor {
@@ -1330,7 +1444,8 @@
         .lugar-destino .destino-wrap,
         .despacho .despacho-wrap,
         .direccion .direccion-wrap,
-        .ciudad .ciudad-wrap {
+        .ciudad .ciudad-wrap,
+        .hora .hora-print-wrap {
             display: none;
         }
 
@@ -1674,7 +1789,20 @@
                         value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
                 <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida"
                         readonly></div>
-                <div class="campo hora sin-borde" data-campo="horaSalida"><input id="horaSalida"></div>
+                <div class="campo hora sin-borde" data-campo="horaSalida">
+                    <input id="horaSalida">
+                    <div class="hora-print-wrap" aria-hidden="true">
+                        <div class="hora-print-numero" id="horaPrintNumero">
+                            <span class="hora-slot hora-hh" id="horaPrintHh"></span>
+                            <span class="hora-slot hora-sep" id="horaPrintSep">:</span>
+                            <span class="hora-slot hora-mm" id="horaPrintMm"></span>
+                        </div>
+                        <div class="hora-print-ampm-col">
+                            <div class="hora-print-cell hora-print-am" id="horaPrintAm">A.M.</div>
+                            <div class="hora-print-cell hora-print-pm" id="horaPrintPm">P.M.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="fila">
                 <div class="campo lugar-destino sin-borde" data-campo="destino">
@@ -1986,7 +2114,29 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script>
-        let conductores = [], clientes = [], productos = [], empresas = [];
+        let clientes = {{ lista_clientes | default ([]) | tojson | safe }};
+        let conductores = [], productos = [], empresas = [];
+
+        async function refrescarListaClientes() {
+            try {
+                const resp = await fetch('/api/clientes');
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.success && Array.isArray(data.clientes) && data.clientes.length > 0) {
+                        clientes = data.clientes;
+                        return clientes;
+                    }
+                }
+            } catch (e) { }
+            try {
+                const resp = await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now());
+                if (resp.ok) {
+                    clientes = await resp.json();
+                    return clientes;
+                }
+            } catch (e) { }
+            return clientes;
+        }
 
         // --- FUNCIONES DE CARGA Y ACTUALIZACIÓN ---
 
@@ -2007,9 +2157,16 @@
                 }
             };
 
+            const obtenerClientes = async () => {
+                if (Array.isArray(clientes) && clientes.length > 0) {
+                    return clientes;
+                }
+                return await refrescarListaClientes();
+            };
+
             [conductores, clientes, productos, empresas] = await Promise.all([
                 cargarJson("{{ url_for('static', filename='Conductores.json') }}"),
-                cargarJson("{{ url_for('static', filename='Clientes.json') }}"),
+                obtenerClientes(),
                 cargarJson("{{ url_for('static', filename='Producto.json') }}"),
                 cargarJson("{{ url_for('static', filename='EmpresasTransportadoras.json') }}")
             ]);
@@ -2473,14 +2630,52 @@
                 }
 
                 // --- Cliente y Dirección ---
-                // Reemplazo para funcionar con el Dropdown Personalizado
+                // Reemplazo para funcionar con el Dropdown Personalizado con soporte multi-sede y destino
                 if (datosGuia.cliente) {
-                    // Buscamos el indice por nombre (flexible: trim + case insensitive)
-                    const searchName = datosGuia.cliente.trim().toUpperCase();
-                    const idx = clientes.findIndex(c => (c.NOMBRE_CLIENTE || '').trim().toUpperCase() === searchName);
+                    const searchName = (datosGuia.cliente || '').trim();
+                    const searchDestino = (datosGuia.destino || '').trim();
+
+                    const normalizar = (txt) => (txt || '').toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+                    const normSearchName = normalizar(searchName);
+                    const normDestino = normalizar(searchDestino);
+
+                    let idx = -1;
+
+                    // 1. Prioridad: Coincidencia de NOMBRE y DESTINO (Sede correspondiente a la ciudad)
+                    if (normDestino) {
+                        idx = clientes.findIndex(c => {
+                            const nom = normalizar(c.NOMBRE_CLIENTE);
+                            const ciu = normalizar(c.CIUDAD_DEPARTAMENTO);
+                            const dir = normalizar(c.DIRECCION);
+                            const coincideNombre = (nom === normSearchName || nom.includes(normSearchName) || normSearchName.includes(nom));
+                            const coincideDestino = ciu.includes(normDestino) || normDestino.includes(ciu) || dir.includes(normDestino);
+                            return coincideNombre && coincideDestino;
+                        });
+                    }
+
+                    // 2. Si no encontró una sede con esa ciudad, buscar por NOMBRE exacto
+                    if (idx === -1) {
+                        idx = clientes.findIndex(c => normalizar(c.NOMBRE_CLIENTE) === normSearchName);
+                    }
+
+                    // 3. Si no hay nombre exacto, buscar por coincidencia parcial de nombre
+                    if (idx === -1) {
+                        idx = clientes.findIndex(c => {
+                            const nom = normalizar(c.NOMBRE_CLIENTE);
+                            return nom.includes(normSearchName) || normSearchName.includes(nom);
+                        });
+                    }
+
+                    // 4. Si aún no hay match y viene un destino, buscar si existe un cliente registrado en esa ciudad
+                    if (idx === -1 && normDestino) {
+                        idx = clientes.findIndex(c => {
+                            const ciu = normalizar(c.CIUDAD_DEPARTAMENTO);
+                            return ciu.includes(normDestino) || normDestino.includes(ciu);
+                        });
+                    }
 
                     if (idx !== -1) {
-                        seleccionarCliente(idx);
+                        seleccionarCliente(idx, Boolean(datosGuia.destino));
                     } else {
                         // Fallback: Si no existe en la BD, al menos mostrar el nombre que viene de la programación
                         const displayInput = document.getElementById('clienteNombreDisplay');
@@ -2490,6 +2685,12 @@
                             if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
                         }
                     }
+                }
+
+                // Asegurar que el destino que vino de la programación se mantenga intacto
+                if (datosGuia.destino) {
+                    document.getElementById('destinoDireccion').value = datosGuia.destino;
+                    syncDestinoWrap();
                 }
 
                 // --- Producto, Temperatura y APIs ---
@@ -2575,7 +2776,7 @@
                     const response = await fetch("{{ url_for('agregar_cliente_ajax') }}", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, direccion, ciudad }) });
                     const result = await response.json();
                     if (response.ok) {
-                        clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                        await refrescarListaClientes();
                         actualizarDropdownClientes();
                         // Encontrar el indice del nuevo cliente (por nombre y dirección para ser exactos)
                         const newIdx = clientes.findIndex(c =>
@@ -2622,7 +2823,7 @@
                         });
                         const result = await response.json();
                         if (response.ok) {
-                            clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                            await refrescarListaClientes();
                             actualizarDropdownClientes();
                             // Encontrar el indice del cliente actualizado
                             const newIdx = clientes.findIndex(c =>
@@ -2820,6 +3021,8 @@
                 syncDespachoWrap();
                 syncDireccionWrap();
                 syncCiudadWrap();
+                if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
+                if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
                 // LIMPIAR ZOOM INLINE para que el @media print con offset de calibración actúe
                 const contenedor = document.getElementById('contenedor-guia');
                 if (contenedor) {
@@ -2848,6 +3051,9 @@
 
             const ciuInp = document.getElementById('ciudadCliente');
             if (ciuInp) { ciuInp.addEventListener('input', syncCiudadWrap); ciuInp.addEventListener('change', syncCiudadWrap); }
+
+            const horaInp = document.getElementById('horaSalida');
+            if (horaInp) { horaInp.addEventListener('input', syncHoraPrintWrap); horaInp.addEventListener('change', syncHoraPrintWrap); }
 
             // Formateo inteligente y recordatorio visual para Horas de Vigencia
             const vigenciaInp = document.getElementById('horasVigenciaInput');
@@ -2893,6 +3099,9 @@
                 const sedeGuardada = localStorage.getItem('sede_guia') || 'cartagena';
                 const nombreSede = sedeGuardada === 'madrid' ? 'MADRID' : 'CARTAGENA';
                 fechaInput.value = `${nombreSede}, ${fechaActual}`;
+                ajustarTamanoFecha();
+                fechaInput.addEventListener('input', ajustarTamanoFecha);
+                fechaInput.addEventListener('change', ajustarTamanoFecha);
             }
 
             // Lógica para actualizar la hora de salida automáticamente
@@ -2909,6 +3118,20 @@
             const sedeInicial = localStorage.getItem('sede_guia') || 'cartagena';
             aplicarSede(sedeInicial);
         });
+
+        // Ajuste inteligente del tamaño de fuente en Fecha de Expedición:
+        // En meses largos (>32 caracteres como Septiembre) usa 13pt para no invadir el recuadro siguiente.
+        // En meses normales/cortos (<=32 caracteres) mantiene 14pt.
+        function ajustarTamanoFecha() {
+            const fechaInput = document.getElementById('fechaExpEDICION');
+            if (!fechaInput) return;
+            const texto = (fechaInput.value || '').trim();
+            if (texto.length > 32) {
+                fechaInput.style.fontSize = '13pt';
+            } else {
+                fechaInput.style.fontSize = '14pt';
+            }
+        }
 
         // ═══════════════════════════════════════════════════
         // SELECTOR DE SEDE: CARTAGENA / MADRID
@@ -2941,6 +3164,7 @@
                 const dOpt = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
                 const fechaActual = now.toLocaleDateString('es-CO', dOpt).toUpperCase();
                 fechaInput.value = `${config.nombre}, ${fechaActual}`;
+                ajustarTamanoFecha();
             }
 
             // 2. Actualizar campo Planta Productor (fila superior)
@@ -3143,7 +3367,7 @@
             });
         }
 
-        function seleccionarCliente(index) {
+        function seleccionarCliente(index, preservarDestino = false) {
             clienteSeleccionadoIndex = parseInt(index, 10);
             const cli = clientes[clienteSeleccionadoIndex];
             if (!cli) return;
@@ -3154,7 +3378,11 @@
             // Llenar otros campos
             document.getElementById('direccionCliente').value = cli.DIRECCION || '';
             document.getElementById('ciudadCliente').value = cli.CIUDAD_DEPARTAMENTO || '';
-            document.getElementById('destinoDireccion').value = cli.CIUDAD_DEPARTAMENTO || '';
+            
+            const destinoActual = (document.getElementById('destinoDireccion').value || '').trim();
+            if (!preservarDestino || !destinoActual) {
+                document.getElementById('destinoDireccion').value = cli.CIUDAD_DEPARTAMENTO || '';
+            }
 
             // Cerrar menú
             document.getElementById('dropdownClientesList').classList.remove('show');
@@ -3199,7 +3427,7 @@
                         if (response.ok) {
                             Swal.fire('¡Eliminado!', data.message, 'success');
                             // Recargar lista de clientes
-                            clientes = await (await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now())).json();
+                            await refrescarListaClientes();
                             actualizarDropdownClientes();
 
                             // Limpiar selección si era el eliminado
@@ -3270,6 +3498,49 @@
             }).from(document.getElementById('contenedor-guia')).save();
         }
 
+        // Sincronizar capa de impresión estructurada de Hora (HH en HO, : en :, MM en RA y casilla A.M./P.M.)
+        function syncHoraPrintWrap() {
+            const input = document.getElementById('horaSalida');
+            const hhEl = document.getElementById('horaPrintHh');
+            const sepEl = document.getElementById('horaPrintSep');
+            const mmEl = document.getElementById('horaPrintMm');
+            const amEl = document.getElementById('horaPrintAm');
+            const pmEl = document.getElementById('horaPrintPm');
+            if (!input || !hhEl || !sepEl || !mmEl || !amEl || !pmEl) return;
+
+            const val = (input.value || '').trim();
+            if (!val) {
+                hhEl.textContent = '';
+                sepEl.textContent = '';
+                mmEl.textContent = '';
+                amEl.style.visibility = 'hidden';
+                pmEl.style.visibility = 'hidden';
+                return;
+            }
+
+            const esPm = /P\.?M\.?/i.test(val);
+            // Extraer hora y minutos (ej. "11:04", "11 : 04", "1:30")
+            const match = val.match(/(\d{1,2})\s*:\s*(\d{2})/);
+            if (match) {
+                hhEl.textContent = match[1];
+                sepEl.textContent = ':';
+                mmEl.textContent = match[2];
+            } else {
+                const soloNum = val.replace(/[A-Za-z\.\s]/g, '');
+                hhEl.textContent = soloNum;
+                sepEl.textContent = '';
+                mmEl.textContent = '';
+            }
+
+            if (esPm) {
+                amEl.style.visibility = 'hidden';
+                pmEl.style.visibility = 'visible';
+            } else {
+                amEl.style.visibility = 'visible';
+                pmEl.style.visibility = 'hidden';
+            }
+        }
+
         function actualizarHoraAutomaticamente() {
             const ahora = new Date();
             const opcionesFecha = { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Bogota' };
@@ -3278,6 +3549,7 @@
             const horaTexto = ahora.toLocaleTimeString('es-CO', opcionesHora).toUpperCase();
             document.getElementById('fechaHoraSalida').value = fechaTexto;
             document.getElementById('horaSalida').value = horaTexto;
+            syncHoraPrintWrap();
         }
 
         // Configura el input de sellos: solo dígitos, máximo 100 y guiones cada 6 dígitos
@@ -3441,6 +3713,15 @@
             // Cerrar panel
             cerrarImpresionParcial();
 
+            // Sincronizar todos los campos envolventes antes de imprimir
+            if (typeof syncEmpresaTransportadoraWrap === 'function') syncEmpresaTransportadoraWrap();
+            if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+            if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+            if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+            if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+            if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
+            if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+
             // Imprimir
             setTimeout(() => {
                 window.print();
@@ -3531,6 +3812,15 @@
                 return; // Cancelar impresión
             }
 
+            // Sincronizar todos los campos envolventes antes de imprimir
+            if (typeof syncEmpresaTransportadoraWrap === 'function') syncEmpresaTransportadoraWrap();
+            if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+            if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+            if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+            if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+            if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
+            if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+
             // Si todo está bien, imprimir
             window.print();
         }
@@ -3556,6 +3846,8 @@
                 if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
                 if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
                 if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+                if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
+                if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
                 const contenedor = document.getElementById('contenedor-guia');
                 // IMPORTANTE: Limpiar el estilo inline para permitir que actúe el !important del @media print con el offset
                 if (contenedor) contenedor.style.transform = '';
