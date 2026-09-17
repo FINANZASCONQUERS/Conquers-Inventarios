@@ -2158,10 +2158,14 @@
             };
 
             const obtenerClientes = async () => {
+                const frescos = await refrescarListaClientes();
+                if (Array.isArray(frescos) && frescos.length > 0) {
+                    return frescos;
+                }
                 if (Array.isArray(clientes) && clientes.length > 0) {
                     return clientes;
                 }
-                return await refrescarListaClientes();
+                return [];
             };
 
             [conductores, clientes, productos, empresas] = await Promise.all([
@@ -2594,6 +2598,9 @@
 
             // Pasa los datos de Flask a una variable de JavaScript de forma segura.
             const datosGuia = JSON.parse('{{ (datos_guia | default ({})) | tojson | safe }}');
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!datosGuia.cliente && urlParams.get('cliente')) datosGuia.cliente = urlParams.get('cliente');
+            if (!datosGuia.destino && urlParams.get('destino')) datosGuia.destino = urlParams.get('destino');
 
             // Asegurarse de llamar a las funciones de sync una vez cargados los datos
             syncEmpresaTransportadoraWrap();

@@ -1807,6 +1807,18 @@
     // --- FUNCIÓN: Refrescar clientes desde el servidor ---
     async function refrescarClientesDesdeServidor() {
         try {
+            const resp = await fetch('/api/clientes');
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.success && Array.isArray(data.clientes) && data.clientes.length > 0) {
+                    clientes = data.clientes;
+                    actualizarDatalistClientes();
+                    actualizarDatalistCiudades();
+                    return;
+                }
+            }
+        } catch (e) { }
+        try {
             const resp = await fetch("{{ url_for('static', filename='Clientes.json') }}?v=" + Date.now());
             if (resp.ok) {
                 const data = await resp.json();
@@ -1894,12 +1906,29 @@
 
     function actualizarDatalistClientes() {
         const dl = document.getElementById('datalist-clientes');
-        if (dl) {
-            const options = clientes.map(c => {
-                return `<option value="${c.NOMBRE_CLIENTE}">${c.CIUDAD_DEPARTAMENTO || ''} - ${c.DIRECCION || ''}</option>`;
-            });
-            dl.innerHTML = options.join('');
-        }
+        if (!dl) return;
+
+        // Identificar qué empresas tienen múltiples sedes
+        const conteoClientes = {};
+        clientes.forEach(c => {
+            const nom = (c.NOMBRE_CLIENTE || '').trim().toUpperCase();
+            if (nom) conteoClientes[nom] = (conteoClientes[nom] || 0) + 1;
+        });
+
+        const options = clientes.map(c => {
+            const nom = (c.NOMBRE_CLIENTE || '').trim();
+            const ciu = (c.CIUDAD_DEPARTAMENTO || '').trim();
+            const dir = (c.DIRECCION || '').trim();
+            const esMultiSede = (conteoClientes[nom.toUpperCase()] || 0) > 1;
+
+            if (esMultiSede && ciu) {
+                // Formato compuesto que identifica unívocamente la sede elegida
+                return `<option value="${nom} | ${ciu}">${dir ? dir : ciu}</option>`;
+            } else {
+                return `<option value="${nom}">${ciu ? ciu + (dir ? ' - ' + dir : '') : dir}</option>`;
+            }
+        });
+        dl.innerHTML = options.join('');
     }
 
     function extraerCiudadSolo(valor) {
@@ -2044,7 +2073,8 @@
         let exists = false;
 
         if (field === 'cliente') {
-            exists = clientes.some(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
+            const cleanVal = val.split('|')[0].trim();
+            exists = clientes.some(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === cleanVal || (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
         } else if (field === 'nombre_conductor') {
             exists = conductores.some(c =>
                 (c["NOMBRE CONDUCTOR"] || '').toUpperCase() === val ||
@@ -2082,7 +2112,8 @@
 
     // Función para abrir modal en Modo Editar Cliente con soporte multi-sede
     function abrirModalEditarCliente(val, rowContext) {
-        const valUpper = (val || '').trim().toUpperCase();
+        const cleanVal = (val || '').split('|')[0].trim();
+        const valUpper = cleanVal.toUpperCase();
         const matchesWithIndex = [];
         clientes.forEach((c, idx) => {
             if ((c.NOMBRE_CLIENTE || '').trim().toUpperCase() === valUpper) {
@@ -2385,10 +2416,64 @@
                 if (match.EMPRESA) updateAndSave('empresa_transportadora', match.EMPRESA);
             }
         } else if (field === 'cliente') {
-            const cliente = clientes.find(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
-            if (cliente) {
-                // Sugerir destino si está disponible
-                if (cliente.CIUDAD_DEPARTAMENTO) updateAndSave('destino', cliente.CIUDAD_DEPARTAMENTO);
+            let sedeCiudad = '';
+
+            // 1. Limpieza de valor compuesto (si viene del datalist con formato "CLIENTE | CIUDAD")
+            if (val.includes('|')) {
+                const parts = val.split('|');
+                const cleanName = parts[0].trim();
+                sedeCiudad = parts[1].trim();
+
+                input.value = cleanName; // Visualmente solo el nombre limpio en la celda
+                val = cleanName.toUpperCase(); // Actualizar variable val para autosave y búsqueda
+
+                // Guardar el nombre limpio en la celda
+                const td = input.closest('td');
+                if (td) autosaveCell(td);
+            }
+
+            // 2. Buscar cliente y sede específica
+            let clienteMatch = null;
+            if (sedeCiudad) {
+                const normSede = extraerCiudadSolo(sedeCiudad);
+                clienteMatch = clientes.find(c => {
+                    const nom = (c.NOMBRE_CLIENTE || '').trim().toUpperCase();
+                    const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
+                    return nom === val && (ciu.includes(normSede) || normSede.includes(ciu));
+                });
+            }
+
+            if (!clienteMatch) {
+                // Si ya había un destino en la fila, preferir la sede que coincida con ese destino
+                const tdDestino = tr.querySelector('td[data-field="destino"]');
+                const destinoActual = extraerCiudadSolo(
+                    tdDestino?.querySelector('input')?.value || tdDestino?.textContent || ''
+                );
+                if (destinoActual) {
+                    clienteMatch = clientes.find(c => {
+                        const nom = (c.NOMBRE_CLIENTE || '').trim().toUpperCase();
+                        const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
+                        return nom === val && (ciu.includes(destinoActual) || destinoActual.includes(ciu));
+                    });
+                }
+            }
+
+            if (!clienteMatch) {
+                clienteMatch = clientes.find(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
+            }
+
+            if (clienteMatch) {
+                const tdDestino = tr.querySelector('td[data-field="destino"]');
+                const destinoActual = extraerCiudadSolo(
+                    tdDestino?.querySelector('input')?.value || tdDestino?.textContent || ''
+                );
+
+                // Si se seleccionó explícitamente una sede compuesta, o si la celda destino está vacía:
+                if (sedeCiudad) {
+                    updateAndSave('destino', clienteMatch.CIUDAD_DEPARTAMENTO || sedeCiudad);
+                } else if (!destinoActual && clienteMatch.CIUDAD_DEPARTAMENTO) {
+                    updateAndSave('destino', clienteMatch.CIUDAD_DEPARTAMENTO);
+                }
             }
         }
     });

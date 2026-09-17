@@ -717,6 +717,8 @@ MODULE_ROUTE_MAP = [
     (r'^/api/barcaza_orion', ['barcaza_orion']),
     (r'^/barcaza_bita', ['barcaza_bita']),
     (r'^/api/barcaza_bita', ['barcaza_bita']),
+    (r'^/reporte_planta_madrid', ['reportes', 'planta', 'planta_madrid']),
+    (r'^/descargar-reporte-planta-madrid-pdf', ['reportes', 'planta', 'planta_madrid']),
     (r'^/reporte_planta', ['reportes', 'planta']),
     (r'^/descargar-reporte-planta-pdf', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
@@ -733,6 +735,9 @@ MODULE_ROUTE_MAP = [
     (r'^/api/trasiegos', ['planta', 'trasiegos']),
     (r'^/reporte_trasiegos', ['planta', 'trasiegos']),
     (r'^/guardar_trasiegos_masivo', ['planta', 'trasiegos']),
+    (r'^/planta_madrid', ['planta', 'planta_madrid']),
+    (r'^/guardar-registro-planta-madrid', ['planta', 'planta_madrid']),
+    (r'^/api/tanques_madrid', ['planta', 'planta_madrid', 'admin']),
     (r'^/planta', ['planta']),
     (r'^/reporte_variaciones_tanques', ['planta']),
     (r'^/api/tanques', ['planta']),
@@ -1119,6 +1124,109 @@ def _init_tanques_planta():
 
 
 _init_tanques_planta()
+
+class RegistroPlantaMadrid(db.Model):
+    __tablename__ = 'registros_planta_madrid'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    usuario = db.Column(db.String(100), nullable=False)
+    
+    tk = db.Column(db.String(50))
+    producto = db.Column(db.String(100))
+    max_cap = db.Column(db.Float)
+    fill_cap = db.Column(db.Float)
+    bls_60 = db.Column(db.Float)
+    api = db.Column(db.Float)
+    bsw = db.Column(db.Float)
+    s = db.Column(db.Float)
+
+    def __repr__(self):
+        return f'<RegistroPlantaMadrid ID: {self.id}, TK: {self.tk}>'
+
+class TanquePlantaMadrid(db.Model):
+    __tablename__ = 'configuracion_tanques_madrid'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False)
+    producto_actual = db.Column(db.String(100), nullable=False)
+    capacidad_maxima = db.Column(db.Float, default=0.0)
+    capacidad_llenado = db.Column(db.Float, default=0.0)
+    
+    # Opciones: 'BBL_TO_TON' (Estándar), 'BBL_TO_GAL' (Combustible/Galones)
+    tipo_conversion = db.Column(db.String(50), default='BBL_TO_TON') 
+    conversion_valor = db.Column(db.Float, nullable=True) # Valor fijo opcional
+    
+    activo = db.Column(db.Boolean, default=True)
+    orden = db.Column(db.Integer, default=99)
+
+    def __repr__(self):
+        return f'<TanquePlantaMadrid {self.nombre}>'
+
+def _init_tanques_madrid():
+    from sqlalchemy import inspect
+    with app.app_context():
+        try:
+            insp = inspect(db.engine)
+            table_names = insp.get_table_names()
+            if 'registros_planta_madrid' not in table_names:
+                RegistroPlantaMadrid.__table__.create(db.engine, checkfirst=True)
+                print("[INIT] Tabla registros_planta_madrid creada.")
+            if 'configuracion_tanques_madrid' not in table_names:
+                TanquePlantaMadrid.__table__.create(db.engine, checkfirst=True)
+                print("[INIT] Tabla configuracion_tanques_madrid creada.")
+
+            # Poblar o sincronizar tanques con el orden y conversión requeridos
+            defaults_madrid = [
+                {"nombre": "TK-21", "producto": "CRUDO", "cap": 6000.0, "fill": 5400.0, "conv": "NONE", "conv_val": None, "orden": 1},
+                {"nombre": "TK-22", "producto": "CRUDO", "cap": 6000.0, "fill": 5400.0, "conv": "NONE", "conv_val": None, "orden": 2},
+                {"nombre": "TK-19", "producto": "MGO",   "cap": 3000.0, "fill": 2880.0, "conv": "BBL_TO_TON", "conv_val": 7.4, "orden": 3},
+                {"nombre": "TK-14", "producto": "MGO-FO4", "cap": 1300.0, "fill": 1170.0, "conv": "BBL_TO_TON", "conv_val": 7.4, "orden": 4},
+                {"nombre": "TK-20", "producto": "FO6",   "cap": 3000.0, "fill": 2880.0, "conv": "BBL_TO_TON", "conv_val": 6.4, "orden": 5},
+                {"nombre": "TK-15", "producto": "FO6",   "cap": 1500.0, "fill": 1350.0, "conv": "BBL_TO_TON", "conv_val": 6.4, "orden": 6},
+                {"nombre": "TK-11", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1350.0, "conv": "NONE", "conv_val": None, "orden": 7},
+                {"nombre": "TK-12", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1350.0, "conv": "NONE", "conv_val": None, "orden": 8},
+                {"nombre": "TK-13", "producto": "DILUYENTE", "cap": 1300.0, "fill": 1170.0, "conv": "NONE", "conv_val": None, "orden": 9},
+                {"nombre": "TK-24", "producto": "COMBUSTIBLE", "cap": 1200.0, "fill": 1100.0, "conv": "NONE", "conv_val": None, "orden": 10},
+            ]
+            for d in defaults_madrid:
+                t = TanquePlantaMadrid.query.filter_by(nombre=d['nombre']).first()
+                if not t:
+                    t = TanquePlantaMadrid(
+                        nombre=d['nombre'],
+                        producto_actual=d['producto'],
+                        capacidad_maxima=d['cap'],
+                        capacidad_llenado=d['fill'],
+                        tipo_conversion=d['conv'],
+                        conversion_valor=d['conv_val'],
+                        activo=True,
+                        orden=d['orden']
+                    )
+                    db.session.add(t)
+                else:
+                    t.orden = d['orden']
+                    t.tipo_conversion = d['conv']
+                    t.conversion_valor = d['conv_val']
+                    t.capacidad_maxima = d['cap']
+                    t.capacidad_llenado = d['fill']
+                    t.producto_actual = d['producto']
+            db.session.commit()
+            
+            # Limpiar registros de prueba generados durante el desarrollo
+            try:
+                db.session.query(RegistroPlantaMadrid).filter(
+                    RegistroPlantaMadrid.bls_60.in_([5200.0, 4800.0, 2500.0, 2700.0, 1300.0, 1200.0, 1100.0, 1000.0, 950.0, 800.0])
+                ).delete(synchronize_session=False)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+            print("[INIT] Tanques Madrid sincronizados y actualizados con factores específicos (MGO: 7.4, FO6: 6.4).")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[INIT] Error inicializando tanques Madrid: {e}")
+
+_init_tanques_madrid()
     
 class RegistroBarcazaOrion(db.Model):
     __tablename__ = 'registros_barcaza_orion' # Nombre de la nueva tabla
@@ -2812,6 +2920,19 @@ PLANILLA_PLANTA = [
     {"TK": "TK-102", "PRODUCTO": "IFO",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
+
+PLANILLA_PLANTA_MADRID = [
+    {"TK": "TK-21", "PRODUCTO": "CRUDO", "MAX_CAP": 6000.0, "FILL_CAP": 5400.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-22", "PRODUCTO": "CRUDO", "MAX_CAP": 6000.0, "FILL_CAP": 5400.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-19", "PRODUCTO": "MGO",   "MAX_CAP": 3000.0, "FILL_CAP": 2880.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 7.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-14", "PRODUCTO": "MGO-FO4", "MAX_CAP": 1300.0, "FILL_CAP": 1170.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 7.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-20", "PRODUCTO": "FO6",   "MAX_CAP": 3000.0, "FILL_CAP": 2880.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 6.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-15", "PRODUCTO": "FO6",   "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 6.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-11", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-12", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-13", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1300.0, "FILL_CAP": 1170.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-24", "PRODUCTO": "COMBUSTIBLE", "MAX_CAP": 1200.0, "FILL_CAP": 1100.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""}
+]
 PLANILLA_BARCAZA_ORION = [
     # Sección MANZANILLO (MGO)
     {"TK": "1", "PRODUCTO": "MGO", "MAX_CAP": 709, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "MANZANILLO"},
@@ -3011,6 +3132,8 @@ def tiene_permiso(permiso_requerido):
     if session.get('rol') == 'admin':
         return True
     areas_del_usuario = session.get('area', [])
+    if isinstance(permiso_requerido, (list, tuple, set)):
+        return any(p in areas_del_usuario for p in permiso_requerido)
     return permiso_requerido in areas_del_usuario
 
 
@@ -3018,6 +3141,7 @@ def permiso_requerido(area_requerida):
     """
     Decorador que verifica si un usuario tiene permiso para un área específica.
     El rol 'admin' siempre tiene acceso.
+    Soporta un área única (str) o múltiples alternativas (list/tuple/set).
     """
     def decorator(f):
         @wraps(f)
@@ -3028,7 +3152,13 @@ def permiso_requerido(area_requerida):
             
             # 2. Revisa si el área requerida está en la lista de áreas del usuario
             areas_del_usuario = session.get('area', [])
-            if area_requerida in areas_del_usuario:
+            tiene_acceso = False
+            if isinstance(area_requerida, (list, tuple, set)):
+                tiene_acceso = any(a in areas_del_usuario for a in area_requerida)
+            else:
+                tiene_acceso = area_requerida in areas_del_usuario
+
+            if tiene_acceso:
                 return f(*args, **kwargs)
             
             # 3. Si no cumple ninguna condición, denegar acceso
@@ -3441,6 +3571,79 @@ def tanques_delete():
         # o si el usuario quiere eliminarlo por completo, podemos hacerlo.
         # Por seguridad de datos históricos, mejor desactivar.
         t.activo = not t.activo # Toggle activo
+        estado = "activado" if t.activo else "desactivado"
+        
+        db.session.commit()
+        return jsonify(success=True, message=f"Tanque {estado} correctamente")
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+@app.route('/api/tanques_madrid/save', methods=['POST'])
+@login_required
+def tanques_madrid_save():
+    try:
+        data = request.get_json()
+        tk_id = data.get('id')
+        nombre = data.get('nombre', '').strip()
+        producto = data.get('producto', '').strip()
+        capacidad = float(data.get('capacidad') or 0.0)
+        capacidad_llenado = float(data.get('capacidad_llenado') or 0.0)
+        conversion = data.get('conversion', 'BBL_TO_TON')
+        conversion_valor = data.get('conversion_valor')
+        
+        try:
+            conversion_valor = float(conversion_valor) if conversion_valor not in (None, '') else None
+        except ValueError:
+            conversion_valor = None
+        
+        if not nombre or not producto:
+            return jsonify(success=False, message="Nombre y Producto son obligatorios"), 400
+
+        if tk_id:
+            t = TanquePlantaMadrid.query.get(tk_id)
+            if not t:
+                return jsonify(success=False, message="Tanque no encontrado"), 404
+            t.nombre = nombre
+            t.producto_actual = producto
+            t.capacidad_maxima = capacidad
+            t.capacidad_llenado = capacidad_llenado
+            t.tipo_conversion = conversion
+            t.conversion_valor = conversion_valor
+        else:
+            existing = TanquePlantaMadrid.query.filter_by(nombre=nombre).first()
+            if existing:
+                return jsonify(success=False, message="Ya existe un tanque con ese nombre"), 400
+                
+            max_orden = db.session.query(func.max(TanquePlantaMadrid.orden)).scalar() or 0
+            t = TanquePlantaMadrid(
+                nombre=nombre,
+                producto_actual=producto,
+                capacidad_maxima=capacidad,
+                capacidad_llenado=capacidad_llenado,
+                tipo_conversion=conversion,
+                conversion_valor=conversion_valor,
+                activo=True,
+                orden=max_orden + 1
+            )
+            db.session.add(t)
+            
+        db.session.commit()
+        return jsonify(success=True, message="Tanque Madrid guardado correctamente")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
+@app.route('/api/tanques_madrid/delete', methods=['POST'])
+@login_required
+def tanques_madrid_delete():
+    try:
+        data = request.get_json()
+        tk_id = data.get('id')
+        t = TanquePlantaMadrid.query.get(tk_id)
+        if not t:
+            return jsonify(success=False, message="Tanque no encontrado"), 404
+            
+        t.activo = not t.activo
         estado = "activado" if t.activo else "desactivado"
         
         db.session.commit()
@@ -4819,6 +5022,127 @@ def planta():
                            fechas_con_registro=fechas_con_registro,
                            tanques_conf=tanques_conf) # Pasamos config para el modal
 
+@app.route('/planta_madrid')
+@login_required
+@permiso_requerido(['planta', 'planta_madrid'])
+def planta_madrid():
+    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, se inicia en blanco (vacío)
+    fecha_str = request.args.get('fecha')
+
+    registros_recientes = []
+    if fecha_str:
+        try:
+            fecha_seleccionada = date.fromisoformat(fecha_str)
+            start_dia = datetime.combine(fecha_seleccionada, time.min)
+            end_dia = datetime.combine(fecha_seleccionada, time.max)
+
+            # Consulta para obtener los registros del día consultado
+            subquery = db.session.query(
+                RegistroPlantaMadrid.tk,
+                func.max(RegistroPlantaMadrid.timestamp).label('max_timestamp')
+            ).filter(
+                RegistroPlantaMadrid.timestamp >= start_dia,
+                RegistroPlantaMadrid.timestamp <= end_dia
+            ).group_by(RegistroPlantaMadrid.tk).subquery()
+
+            registros_recientes = db.session.query(RegistroPlantaMadrid).join(
+                subquery,
+                (RegistroPlantaMadrid.tk == subquery.c.tk) & (RegistroPlantaMadrid.timestamp == subquery.c.max_timestamp)
+            ).all()
+        except (ValueError, TypeError):
+            fecha_seleccionada = date.today()
+    else:
+        # Por defecto la planilla inicia completamente vacía para nueva captura
+        fecha_seleccionada = date.today()
+        registros_recientes = []
+    
+    # 3. Preparar y ORDENAR los datos usando la configuración de TanquePlantaMadrid
+    try:
+        tanques_conf_objs = TanquePlantaMadrid.query.filter_by(activo=True).order_by(TanquePlantaMadrid.orden).all()
+        tanques_conf = [
+            {
+                "id": t.id,
+                "nombre": t.nombre,
+                "producto_actual": t.producto_actual,
+                "capacidad_maxima": t.capacidad_maxima,
+                "capacidad_llenado": t.capacidad_llenado,
+                "tipo_conversion": t.tipo_conversion,
+                "conversion_valor": t.conversion_valor,
+                "orden": t.orden,
+                "activo": t.activo
+            }
+            for t in tanques_conf_objs
+        ]
+    except Exception as e:
+        print(f"Error cargando config de tanques Madrid: {e}")
+        tanques_conf = []
+         
+    datos_por_tk = {}
+    orden_map = {}
+    
+    if not tanques_conf:
+        orden_deseado = [fila["TK"] for fila in PLANILLA_PLANTA_MADRID]
+        orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+        datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA_MADRID}
+        for k, v in datos_por_tk.items():
+            v['TIPO_CONVERSION'] = v.get('TIPO_CONVERSION', 'NONE')
+            v['capacidad_llenado'] = v.get('FILL_CAP', 0)
+    else:
+        for i, t in enumerate(tanques_conf):
+            datos_por_tk[t['nombre']] = {
+                "TK": t['nombre'],
+                "PRODUCTO": t['producto_actual'],
+                "MAX_CAP": t['capacidad_maxima'],
+                "FILL_CAP": t.get('capacidad_llenado') or t['capacidad_maxima'],
+                "capacidad_llenado": t.get('capacidad_llenado') or t['capacidad_maxima'],
+                "TIPO_CONVERSION": t['tipo_conversion'],
+                "CONVERSION_VALOR": t.get('conversion_valor'),
+                "BLS_60": "", 
+                "API": "", 
+                "BSW": "", 
+                "S": ""
+            }
+            orden_map[t['nombre']] = t['orden'] if t.get('orden') is not None else (i + 100)
+
+    # Mezclar con registros recientes
+    if registros_recientes:
+        for registro in registros_recientes:
+            if registro.tk in datos_por_tk:
+                d = datos_por_tk[registro.tk]
+                d["BLS_60"] = registro.bls_60 if registro.bls_60 is not None else ""
+                d["API"] = registro.api if registro.api is not None else ""
+                d["BSW"] = registro.bsw if registro.bsw is not None else ""
+                d["S"] = registro.s if registro.s is not None else ""
+
+    datos_para_plantilla = list(datos_por_tk.values())
+    datos_para_plantilla = sorted(
+        datos_para_plantilla,
+        key=lambda fila: orden_map.get(fila["TK"], 999)
+    )
+
+    # 4. Listado de días con registros
+    try:
+        dias_rows = (db.session
+            .query(func.date(RegistroPlantaMadrid.timestamp).label('dia'))
+            .group_by(func.date(RegistroPlantaMadrid.timestamp))
+            .all())
+        fechas_con_registro = []
+        for (dia,) in dias_rows:
+            try:
+                fechas_con_registro.append(dia.isoformat())
+            except AttributeError:
+                fechas_con_registro.append(str(dia))
+    except Exception:
+        fechas_con_registro = []
+
+    return render_template("planta_madrid.html", 
+                           planilla=datos_para_plantilla, 
+                           nombre=session.get("nombre", "Usuario"),
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat(),
+                           fechas_con_registro=fechas_con_registro,
+                           tanques_conf=tanques_conf)
+
 @app.route('/reporte_variaciones_tanques')
 @login_required
 @permiso_requerido('planta')
@@ -5039,6 +5363,121 @@ def reporte_planta():
                            today_iso=date.today().isoformat(),
                            fechas_con_registro=fechas_con_registro)
 
+@app.route('/reporte_planta_madrid')
+@login_required
+@permiso_requerido(['reportes', 'planta', 'planta_madrid'])
+def reporte_planta_madrid():
+    fecha_str = request.args.get('fecha')
+    try:
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
+        fecha_seleccionada = date.today()
+    
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+
+    subquery = (db.session.query(
+        func.max(RegistroPlantaMadrid.id)
+    ).filter(
+        RegistroPlantaMadrid.timestamp <= timestamp_limite
+    ).group_by(RegistroPlantaMadrid.tk))
+
+    registros_recientes = (db.session.query(RegistroPlantaMadrid)
+        .filter(RegistroPlantaMadrid.id.in_(subquery))
+        .all())
+    
+    datos_planta_js = []
+    fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
+
+    try:
+        tanques_db = TanquePlantaMadrid.query.filter_by(activo=True).order_by(TanquePlantaMadrid.orden).all()
+    except Exception:
+        tanques_db = []
+        
+    if tanques_db:
+        orden_deseado = [t.nombre for t in tanques_db]
+        defaults_map = {t.nombre: {
+            "TK": t.nombre, 
+            "PRODUCTO": t.producto_actual, 
+            "MAX_CAP": t.capacidad_maxima,
+            "FILL_CAP": t.capacidad_llenado or t.capacidad_maxima,
+            "TIPO_CONVERSION": t.tipo_conversion or "NONE",
+            "CONVERSION_VALOR": t.conversion_valor
+        } for t in tanques_db}
+        lista_definiciones = defaults_map.values()
+    else:
+        orden_deseado = [fila["TK"] for fila in PLANILLA_PLANTA_MADRID]
+        defaults_map = {fila["TK"]: fila for fila in PLANILLA_PLANTA_MADRID}
+        lista_definiciones = PLANILLA_PLANTA_MADRID
+
+    orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
+    
+    registros_ordenados = sorted(
+        registros_recientes, 
+        key=lambda r: orden_map.get(r.tk, 99) 
+    )
+
+    mapa_js = {r.tk: {
+        "TK": r.tk,
+        "PRODUCTO": defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto,
+        "MAX_CAP": r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP"),
+        "FILL_CAP": r.fill_cap or defaults_map.get(r.tk, {}).get("FILL_CAP") or defaults_map.get(r.tk, {}).get("MAX_CAP"),
+        "TIPO_CONVERSION": defaults_map.get(r.tk, {}).get("TIPO_CONVERSION") or "NONE",
+        "CONVERSION_VALOR": defaults_map.get(r.tk, {}).get("CONVERSION_VALOR"),
+        "BLS_60": r.bls_60,
+        "API": r.api,
+        "BSW": r.bsw,
+        "S": r.s
+    } for r in registros_ordenados if r.tk}
+
+    for fila in lista_definiciones:
+        tk = fila.get("TK")
+        if tk and tk not in mapa_js:
+            mapa_js[tk] = {
+                "TK": tk,
+                "PRODUCTO": fila.get("PRODUCTO"),
+                "MAX_CAP": fila.get("MAX_CAP"),
+                "FILL_CAP": fila.get("FILL_CAP", fila.get("MAX_CAP")),
+                "TIPO_CONVERSION": fila.get("TIPO_CONVERSION") or "NONE",
+                "CONVERSION_VALOR": fila.get("CONVERSION_VALOR"),
+                "BLS_60": None,
+                "API": None,
+                "BSW": None,
+                "S": None
+            }
+
+    allowed_set = set(orden_deseado)
+    datos_planta_js = sorted(
+        [v for k, v in mapa_js.items() if k in allowed_set],
+        key=lambda d: orden_map.get(d.get("TK"), 99)
+    )
+        
+    if registros_recientes:
+        ultimo_registro_general = max(registros_recientes, key=lambda r: r.timestamp)
+        fecha_actualizacion_info = formatear_info_actualizacion(
+            ultimo_registro_general.timestamp, 
+            ultimo_registro_general.usuario
+        )
+
+    try:
+        dias_rows = (db.session
+            .query(func.date(RegistroPlantaMadrid.timestamp).label('dia'))
+            .group_by(func.date(RegistroPlantaMadrid.timestamp))
+            .all())
+        fechas_con_registro = []
+        for (dia,) in dias_rows:
+            try:
+                fechas_con_registro.append(dia.isoformat())
+            except AttributeError:
+                fechas_con_registro.append(str(dia))
+    except Exception:
+        fechas_con_registro = []
+
+    return render_template("reporte_planta_madrid.html", 
+                           datos_planta_para_js=datos_planta_js,
+                           fecha_actualizacion_info=fecha_actualizacion_info,
+                           fecha_seleccionada=fecha_seleccionada.isoformat(),
+                           today_iso=date.today().isoformat(),
+                           fechas_con_registro=fechas_con_registro)
 
 @app.route('/guardar-config-transito', methods=['POST'])
 @login_required
@@ -6605,11 +7044,13 @@ def guia_transporte():
         'programacion_id': request.args.get('programacion_id', '')
     }
     
-    # Pasamos el diccionario 'datos_guia' a la plantilla HTML.
+    # Pasamos el diccionario 'datos_guia' y la lista de clientes fresca a la plantilla HTML.
+    clientes = cargar_clientes()
     return render_template(
         "guia_transporte.html", 
         nombre=session.get("nombre"),
-        datos_guia=datos_guia
+        datos_guia=datos_guia,
+        lista_clientes=clientes
     )
 
 @app.route('/dashboard-siza')
@@ -8671,6 +9112,65 @@ def dashboard_reportes():
             'sub_links': []
         })
 
+    # 7b. Barcaza Orion
+    if is_admin or 'barcaza_orion' in user_areas:
+        modulos_usuario.append({
+            'id': 'barcaza_orion',
+            'categoria': 'Barcazas',
+            'titulo': 'Barcaza Orion',
+            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza Orion (Manzanillo, CR, Margoth, Odisea).',
+            'icono': 'bi-water',
+            'color': 'primary',
+            'bg_gradient': 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)',
+            'color_hex': '#2563EB',
+            'badge': 'Barcazas',
+            'url_principal': url_for('barcaza_orion'),
+            'nombre_btn': 'Planilla Orion',
+            'sub_links': [
+                {'nombre': 'Reporte Orion', 'url': url_for('reporte_barcaza'), 'icono': 'bi-file-earmark-bar-graph'}
+            ]
+        })
+
+    # 7c. Barcaza BITA
+    if is_admin or 'barcaza_bita' in user_areas:
+        modulos_usuario.append({
+            'id': 'barcaza_bita',
+            'categoria': 'Barcazas',
+            'titulo': 'Barcaza BITA',
+            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza BITA (Marinse, Oidech).',
+            'icono': 'bi-tsunami',
+            'color': 'info',
+            'bg_gradient': 'linear-gradient(135deg, #CFFAFE 0%, #A5F3FC 100%)',
+            'color_hex': '#0891B2',
+            'badge': 'Barcazas',
+            'url_principal': url_for('barcaza_bita'),
+            'nombre_btn': 'Planilla BITA',
+            'sub_links': [
+                {'nombre': 'Reporte BITA', 'url': url_for('reporte_barcaza_bita'), 'icono': 'bi-file-earmark-bar-graph'}
+            ]
+        })
+
+    # 7d. Trasiegos TK -> Barcaza
+    allowed_trasiegos = ('production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery.control@conquerstrading.com',
+                         'qualitycontrol@conquerstrading.com', 'quality.manager@conquerstrading.com')
+    if is_admin or 'trasiegos_page' in user_areas or user_email in allowed_trasiegos:
+        modulos_usuario.append({
+            'id': 'trasiegos',
+            'categoria': 'Barcazas',
+            'titulo': 'Trasiegos TK→Barcaza',
+            'descripcion': 'Registro y conciliación de trasiegos desde tanques de planta hacia compartimentos de barcaza.',
+            'icono': 'bi-arrow-left-right',
+            'color': 'secondary',
+            'bg_gradient': 'linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%)',
+            'color_hex': '#475569',
+            'badge': 'Barcazas',
+            'url_principal': url_for('trasiegos_page'),
+            'nombre_btn': 'Ver Trasiegos',
+            'sub_links': [
+                {'nombre': 'Reporte Trasiegos', 'url': url_for('reporte_trasiegos'), 'icono': 'bi-file-earmark-bar-graph'}
+            ]
+        })
+
     # 8. Control de Calidad
     if is_admin or 'control_calidad' in user_areas:
         modulos_usuario.append({
@@ -8910,6 +9410,67 @@ def guardar_registro_planta():
         
         db.session.commit()
         return jsonify(success=True, message="Inventario de planta actualizado exitosamente.")
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+@app.route('/guardar-registro-planta-madrid', methods=['POST'])
+@login_required
+@permiso_requerido(['planta', 'planta_madrid'])
+def guardar_registro_planta_madrid():
+    lista_tanques = request.get_json()
+    if not isinstance(lista_tanques, list):
+        return jsonify(success=False, message="Formato de datos incorrecto."), 400
+
+    try:
+        def to_float(v):
+            if v is None:
+                return None
+            s = str(v).strip().replace(',', '.')
+            if s == '':
+                return None
+            try:
+                return float(s)
+            except Exception:
+                return None
+        today_start = datetime.combine(date.today(), time.min)
+        today_end = datetime.combine(date.today(), time.max)
+
+        for datos_tanque in lista_tanques:
+            tk = datos_tanque.get('TK')
+            if not tk: continue
+
+            registro_existente = db.session.query(RegistroPlantaMadrid).filter(
+                RegistroPlantaMadrid.tk == tk,
+                RegistroPlantaMadrid.timestamp.between(today_start, today_end)
+            ).first()
+
+            if registro_existente:
+                # Si existe, lo ACTUALIZAMOS
+                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
+                registro_existente.api = to_float(datos_tanque.get('API'))
+                registro_existente.bsw = to_float(datos_tanque.get('BSW'))
+                registro_existente.s = to_float(datos_tanque.get('S'))
+                registro_existente.timestamp = datetime.utcnow()
+            else:
+                # Si no existe para hoy, CREAMOS uno nuevo
+                nuevo_registro = RegistroPlantaMadrid(
+                    timestamp=datetime.utcnow(),
+                    usuario=session.get("nombre", "No identificado"),
+                    tk=tk,
+                    producto=datos_tanque.get('PRODUCTO'),
+                    max_cap=to_float(datos_tanque.get('MAX_CAP')),
+                    fill_cap=to_float(datos_tanque.get('FILL_CAP')),
+                    bls_60=to_float(datos_tanque.get('BLS_60')),
+                    api=to_float(datos_tanque.get('API')),
+                    bsw=to_float(datos_tanque.get('BSW')),
+                    s=to_float(datos_tanque.get('S'))
+                )
+                db.session.add(nuevo_registro)
+        
+        db.session.commit()
+        return jsonify(success=True, message="Inventario de planta Madrid actualizado exitosamente.")
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
@@ -9272,8 +9833,8 @@ def exportar_excel(nombre_reporte):
     columnas = []
     filename = f"reporte_{nombre_reporte}_{valor or 'general'}.xlsx"
 
-    # --- Lógica de filtrado para modelos con `timestamp` (Planta, Orion, Bita) ---
-    if nombre_reporte in ['planta', 'barcaza_orion', 'barcaza_bita']:
+    # --- Lógica de filtrado para modelos con `timestamp` (Planta, Planta Madrid, Orion, Bita) ---
+    if nombre_reporte in ['planta', 'planta_madrid', 'barcaza_orion', 'barcaza_bita']:
         timestamp_limite = None
         if valor:
             try:
@@ -9301,6 +9862,21 @@ def exportar_excel(nombre_reporte):
             subquery = subquery_base.filter(RegistroPlanta.timestamp <= timestamp_limite).group_by(RegistroPlanta.tk).subquery() if timestamp_limite else subquery_base.group_by(RegistroPlanta.tk).subquery()
             registros_db = db.session.query(RegistroPlanta).join(subquery, (RegistroPlanta.tk == subquery.c.tk) & (RegistroPlanta.timestamp == subquery.c.max_timestamp)).all()
             columnas = ["tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
+
+        elif nombre_reporte == 'planta_madrid':
+            subquery_base = db.session.query(RegistroPlantaMadrid.tk, func.max(RegistroPlantaMadrid.timestamp).label('max_timestamp'))
+            subquery = subquery_base.filter(RegistroPlantaMadrid.timestamp <= timestamp_limite).group_by(RegistroPlantaMadrid.tk).subquery() if timestamp_limite else subquery_base.group_by(RegistroPlantaMadrid.tk).subquery()
+            registros_db = db.session.query(RegistroPlantaMadrid).join(subquery, (RegistroPlantaMadrid.tk == subquery.c.tk) & (RegistroPlantaMadrid.timestamp == subquery.c.max_timestamp)).all()
+            orden_madrid = [fila["TK"] for fila in PLANILLA_PLANTA_MADRID]
+            try:
+                tanques_m = TanquePlantaMadrid.query.filter_by(activo=True).order_by(TanquePlantaMadrid.orden).all()
+                if tanques_m:
+                    orden_madrid = [t.nombre for t in tanques_m]
+            except Exception:
+                pass
+            orden_madrid_map = {tk: i for i, tk in enumerate(orden_madrid)}
+            registros_db = sorted(registros_db, key=lambda r: orden_madrid_map.get(r.tk, 99))
+            columnas = ["tk", "producto", "max_cap", "fill_cap", "bls_60", "api", "bsw", "s"]
 
         elif nombre_reporte == 'barcaza_orion':
             subquery_base = db.session.query(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo, func.max(RegistroBarcazaOrion.timestamp).label('max_timestamp'))
@@ -9832,6 +10408,177 @@ def descargar_reporte_planta_pdf():
     return Response(pdf,
                   mimetype='application/pdf',
                   headers={'Content-Disposition': 'attachment;filename=reporte_planta.pdf'})
+
+@app.route('/descargar-reporte-planta-madrid-pdf')
+@login_required
+@permiso_requerido(['reportes', 'planta', 'planta_madrid'])
+def descargar_reporte_planta_madrid_pdf():
+    filtro_tipo = request.args.get('filtro_tipo', 'dia')
+    valor = request.args.get('valor')
+    
+    subquery_base = db.session.query(RegistroPlantaMadrid.tk, func.max(RegistroPlantaMadrid.timestamp).label('max_timestamp'))
+    fecha_reporte_str = f"General (últimos datos registrados al {date.today().strftime('%d/%m/%Y')})"
+    subquery_filtrada = subquery_base
+
+    if valor:
+        if filtro_tipo == 'dia':
+            fecha_obj = date.fromisoformat(valor)
+            fecha_reporte_str = f"del día {fecha_obj.strftime('%d de %B de %Y')}"
+            subquery_filtrada = subquery_base.filter(RegistroPlantaMadrid.timestamp <= datetime.combine(fecha_obj, time.max))
+        elif filtro_tipo == 'mes':
+            ano, mes = map(int, valor.split('-'))
+            fecha_obj = date(ano, mes, 1)
+            fecha_reporte_str = f"del mes de {fecha_obj.strftime('%B de %Y')}"
+            ultimo_dia = (fecha_obj + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            subquery_filtrada = subquery_base.filter(RegistroPlantaMadrid.timestamp <= datetime.combine(ultimo_dia, time.max))
+        elif filtro_tipo == 'trimestre':
+            ano_str, q_str = valor.split('-Q')
+            ano = int(ano_str)
+            trimestre = int(q_str)
+            mes_fin = trimestre * 3
+            ultimo_dia_trimestre = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            fecha_reporte_str = f"del Trimestre {trimestre} de {ano}"
+            subquery_filtrada = subquery_base.filter(RegistroPlantaMadrid.timestamp <= datetime.combine(ultimo_dia_trimestre, time.max))
+        elif filtro_tipo == 'anual':
+            ano = int(valor)
+            ultimo_dia_ano = date(ano, 12, 31)
+            fecha_reporte_str = f"del Año {ano}"
+            subquery_filtrada = subquery_base.filter(RegistroPlantaMadrid.timestamp <= datetime.combine(ultimo_dia_ano, time.max))
+
+    subquery = subquery_filtrada.group_by(RegistroPlantaMadrid.tk).subquery()
+    registros_db = db.session.query(RegistroPlantaMadrid).join(subquery, (RegistroPlantaMadrid.tk == subquery.c.tk) & (RegistroPlantaMadrid.timestamp == subquery.c.max_timestamp)).all()
+
+    if not registros_db:
+        flash("No hay datos para generar el PDF con el filtro seleccionado.", "warning")
+        return redirect(url_for('reporte_planta_madrid'))
+
+    start_dt = None
+    end_dt = None
+    try:
+        if valor:
+            if filtro_tipo == 'dia':
+                fecha_obj = date.fromisoformat(valor)
+                start_dt = datetime.combine(fecha_obj, time.min)
+                end_dt = datetime.combine(fecha_obj, time.max)
+            elif filtro_tipo == 'mes':
+                ano, mes = map(int, valor.split('-'))
+                fecha_ini = date(ano, mes, 1)
+                fecha_fin = (fecha_ini + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+            elif filtro_tipo == 'trimestre':
+                ano_str, q_str = valor.split('-Q')
+                ano = int(ano_str)
+                trimestre = int(q_str)
+                mes_ini = (trimestre - 1) * 3 + 1
+                mes_fin = trimestre * 3
+                fecha_ini = date(ano, mes_ini, 1)
+                fecha_fin = (date(ano, mes_fin, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+            elif filtro_tipo == 'anual':
+                ano = int(valor)
+                fecha_ini = date(ano, 1, 1)
+                fecha_fin = date(ano, 12, 31)
+                start_dt = datetime.combine(fecha_ini, time.min)
+                end_dt = datetime.combine(fecha_fin, time.max)
+    except Exception:
+        start_dt = None
+        end_dt = None
+
+    historial_query = db.session.query(RegistroPlantaMadrid)
+    if end_dt:
+        historial_query = historial_query.filter(RegistroPlantaMadrid.timestamp <= end_dt)
+    if start_dt:
+        historial_query = historial_query.filter(RegistroPlantaMadrid.timestamp >= start_dt)
+
+    historial_db = (historial_query
+                     .order_by(RegistroPlantaMadrid.timestamp.desc(), RegistroPlantaMadrid.tk.asc())
+                     .all())
+
+    historial_registros = [
+        {
+            'fecha': r.timestamp.strftime('%Y-%m-%d %H:%M'),
+            'tk': r.tk,
+            'producto': r.producto,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0,
+            'usuario': r.usuario
+        }
+        for r in historial_db
+    ]
+
+    orden_madrid = [fila["TK"] for fila in PLANILLA_PLANTA_MADRID]
+    try:
+        tanques_m = TanquePlantaMadrid.query.filter_by(activo=True).order_by(TanquePlantaMadrid.orden).all()
+        if tanques_m:
+            orden_madrid = [t.nombre for t in tanques_m]
+    except Exception:
+        pass
+    orden_madrid_map = {tk: i for i, tk in enumerate(orden_madrid)}
+
+    from collections import OrderedDict
+    grupos = OrderedDict()
+    for item in historial_registros:
+        dia = item['fecha'][:10]
+        if dia not in grupos:
+            grupos[dia] = []
+        grupos[dia].append(item)
+    historial_grouped = []
+    for dia, regs in grupos.items():
+        regs_sorted = sorted(regs, key=lambda x: orden_madrid_map.get(x['tk'], 99))
+        historial_grouped.append({
+            'dia': dia,
+            'registros': regs_sorted
+        })
+
+    registros_limpios = []
+    for r in registros_db:
+        registros_limpios.append({
+            'tk': r.tk,
+            'producto': r.producto,
+            'max_cap': r.max_cap or 0.0,
+            'fill_cap': r.fill_cap or 0.0,
+            'bls_60': r.bls_60 or 0.0,
+            'api': r.api or 0.0,
+            'bsw': r.bsw or 0.0,
+            's': r.s or 0.0
+        })
+
+    total_bls = sum(r['bls_60'] for r in registros_limpios)
+    total_cap = sum(r['max_cap'] for r in registros_limpios)
+    total_fill = sum(r['fill_cap'] for r in registros_limpios)
+
+    logo_base64 = None
+    try:
+        logo_candidates = ['Logo_de_empresa.jpeg', 'Conquers_4_Logo.png', 'logo.jpeg']
+        for fname in logo_candidates:
+            logo_path = os.path.join(current_app.root_path, 'static', fname)
+            if os.path.exists(logo_path):
+                import base64
+                with open(logo_path, 'rb') as f:
+                    logo_base64 = base64.b64encode(f.read()).decode('utf-8')
+                break
+    except Exception as e:
+        print(f"Error cargando logo para planta Madrid PDF: {e}")
+
+    html_para_pdf = render_template('reportes_pdf/planta_madrid_pdf.html',
+                                    registros=registros_limpios,
+                                    historial=historial_registros,
+                                    historial_grouped=historial_grouped,
+                                    fecha_reporte=fecha_reporte_str,
+                                    total_bls=total_bls,
+                                    total_cap=total_cap,
+                                    total_fill=total_fill,
+                                    logo_base64=logo_base64,
+                                    fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'))
+    
+    pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
+    return Response(pdf,
+                  mimetype='application/pdf',
+                  headers={'Content-Disposition': 'attachment;filename=reporte_planta_madrid.pdf'})
 
 @app.route('/descargar-reporte-orion-pdf')
 @login_required
@@ -11707,6 +12454,18 @@ def listar_conductores():
         return jsonify(success=True, conductores=conductores)
     except Exception as e:
         current_app.logger.error(f"Error listando conductores: {e}")
+        return jsonify(success=False, message=str(e)), 500
+
+
+@app.route('/api/clientes', methods=['GET'])
+@login_required
+def listar_clientes():
+    """Devuelve la lista completa de clientes (JSON fresco de la BD) para que el frontend refresque."""
+    try:
+        clientes = cargar_clientes()
+        return jsonify(success=True, clientes=clientes)
+    except Exception as e:
+        current_app.logger.error(f"Error listando clientes: {e}")
         return jsonify(success=False, message=str(e)), 500
 
 
@@ -18623,6 +19382,17 @@ def obtener_datos_faltantes(id):
     except Exception as e:
         print(f"Error obteniendo datos faltantes: {e}")
         return jsonify(success=False, message='Error interno del servidor'), 500
+
+@app.route('/api/clientes', methods=['GET'])
+@login_required
+def api_clientes():
+    """Retorna la lista completa y actualizada de clientes y sedes."""
+    try:
+        clientes = cargar_clientes()
+        return jsonify(success=True, clientes=clientes)
+    except Exception as e:
+        app.logger.warning(f"Error al obtener clientes: {e}")
+        return jsonify(success=False, clientes=[], message=str(e)), 500
 
 @app.route('/gestionar_clientes')
 @login_required
