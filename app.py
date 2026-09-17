@@ -489,7 +489,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad",  "analisis_laboratorio",]
     },
     "carlos.baron@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -561,7 +561,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Asistente Logístico",
         "rol": "editor",
-        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion"]
+        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "analisis_laboratorio"]
     },
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
