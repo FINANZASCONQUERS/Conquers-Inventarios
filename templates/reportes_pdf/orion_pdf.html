@@ -51,14 +51,16 @@ table tfoot td { background:#e8f1f7; font-weight:600; border-top:2px solid #1b4f
     <table>
         <thead>
             <tr>
-                <th style="width:10%">TK</th>
-                <th style="width:18%">Producto</th>
-                <th style="width:12%">BLS @60°F</th>
-                <th style="width:8%">API</th>
-                <th style="width:8%">%BSW</th>
-                <th style="width:8%">%S</th>
+                <th style="width:9%">TK</th>
+                <th style="width:13%">Producto</th>
+                <th style="width:11%">Toneladas</th>
+                <th style="width:7%">API</th>
+                <th style="width:11%">BLS @60°F</th>
+                <th style="width:11%">Galones</th>
+                <th style="width:7%">%BSW</th>
+                <th style="width:7%">%S</th>
                 <th style="width:12%">Grupo</th>
-                <th style="width:22%">Hora</th>
+                <th style="width:12%">Hora</th>
             </tr>
         </thead>
         <tbody>
@@ -66,8 +68,10 @@ table tfoot td { background:#e8f1f7; font-weight:600; border-top:2px solid #1b4f
             <tr>
                 <td>{{ h.tk }}</td>
                 <td>{{ h.producto }}</td>
-                <td class="numeric">{{ '%.0f'|format(h.bls_60) }}</td>
+                <td class="numeric">{% if h.toneladas is not none %}{{ '%.2f'|format(h.toneladas) }}{% else %}-{% endif %}</td>
                 <td class="numeric">{{ '%.1f'|format(h.api) }}</td>
+                <td class="numeric">{{ '%.0f'|format(h.bls_60) }}</td>
+                <td class="numeric">{{ '%.0f'|format(h.galones or 0) }}</td>
                 <td class="numeric">{{ '%.2f'|format(h.bsw) }}</td>
                 <td class="numeric">{{ '%.2f'|format(h.s) }}</td>
                 <td><span class="grupo-tag">{{ h.grupo }}</span></td>
@@ -78,8 +82,10 @@ table tfoot td { background:#e8f1f7; font-weight:600; border-top:2px solid #1b4f
         <tfoot>
             <tr>
                 <td colspan="2" style="text-align:right;">Total Día</td>
-                <td class="numeric">{{ '%.0f'|format(grupo.registros|sum(attribute='bls_60')) }}</td>
+                <td class="numeric">{{ '%.2f'|format(grupo.registros|map(attribute='toneladas')|reject('none')|sum) }}</td>
                 <td class="numeric">-</td>
+                <td class="numeric">{{ '%.0f'|format(grupo.registros|sum(attribute='bls_60')) }}</td>
+                <td class="numeric">{{ '%.0f'|format(grupo.registros|map(attribute='galones')|reject('none')|sum) }}</td>
                 <td class="numeric">-</td>
                 <td class="numeric">-</td>
                 <td colspan="2"></td>

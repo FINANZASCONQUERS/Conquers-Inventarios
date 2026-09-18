@@ -7,7 +7,8 @@ venv/
 env/
 .venv/
 .venv*/
-Scripts/
+.venv*/Scripts/
+!scripts/
 Lib/
 include/
 bin/

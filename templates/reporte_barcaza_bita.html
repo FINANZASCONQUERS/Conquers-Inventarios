@@ -75,6 +75,8 @@
         transform: translateY(-2px);
     }
     
+    .reporte-nd-badge { font-size: .75rem; font-weight: 600; vertical-align: middle; }
+    .reporte-card.reporte-no-disponible .reporte-card-header { background-color: #fff1f2 !important; color: #991b1b !important; }
     .reporte-card-header { 
         padding: 1rem 1.5rem; 
         background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
@@ -404,17 +406,19 @@
                         <table class="reporte-table">
                             <thead>
                                 <tr>
-                                    <th>Descripción</th><th>Total Capacidad</th><th>Total Inventario (BLS)</th>
-                                    <th style="min-width: 150px;">% Llenado</th><th>API Ponderado</th><th>%BSW Ponderado</th><th>%S Ponderado</th>
+                                    <th>Descripción</th><th>Total Capacidad</th><th>Total Toneladas</th><th>API Ponderado</th><th>Total Inventario (BLS)</th><th>Total Galones</th>
+                                    <th style="min-width: 150px;">% Llenado</th><th>%BSW Ponderado</th><th>%S Ponderado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr class="reporte-totals-row fs-5" id="total-consolidado-row">
                                     <td><strong>TOTALES / PROMEDIOS</strong></td>
                                     <td class="text-center numeric-cell" id="total-cap-consolidado">...</td>
-                                    <td class="text-center numeric-cell" id="total-bls-consolidado">...</td>
-                                    <td><div class="progress-wrapper" style="height: 28px;" id="total-porc-consolidado-wrapper"><div class="progress-fill"></div><span class="progress-text"></span></div></td>
+                                    <td class="text-center numeric-cell" id="total-ton-consolidado">...</td>
                                     <td class="text-center numeric-cell" id="total-api-consolidado">...</td>
+                                    <td class="text-center numeric-cell" id="total-bls-consolidado">...</td>
+                                    <td class="text-center numeric-cell" id="total-gal-consolidado">...</td>
+                                    <td><div class="progress-wrapper" style="height: 28px;" id="total-porc-consolidado-wrapper"><div class="progress-fill"></div><span class="progress-text"></span></div></td>
                                     <td class="text-center numeric-cell" id="total-bsw-consolidado">...</td>
                                     <td class="text-center numeric-cell" id="total-s-consolidado">...</td>
                                 </tr>
@@ -428,9 +432,13 @@
         <div class="row g-4 justify-content-center">
             <!-- Tarjeta Marinse -->
             <div class="col-12 col-lg-10 mb-4">
-                <div class="reporte-card">
+                {% set nd = disponibilidad.get('MARINSE') if disponibilidad else none %}
+                {% set nd = nd if (nd and not nd.disponible) else none %}
+                <div class="reporte-card {% if nd %}reporte-no-disponible{% endif %}">
                     <div class="reporte-card-header">
-                        <span>BARCAZA MARINSE</span>
+                        <span>BARCAZA MARINSE
+                            {% if nd %}<span class="badge bg-danger ms-2 reporte-nd-badge" title="{{ nd.motivo }}"><i class="bi bi-slash-circle me-1"></i>NO DISPONIBLE{% if nd.motivo %} · {{ nd.motivo }}{% endif %}</span>{% endif %}
+                        </span>
                         <span class="badge bg-light text-dark"><i class="bi bi-database me-1"></i>{{ tanques_marinse|length }} Tanques</span>
                     </div>
                     <div class="table-responsive">
@@ -438,7 +446,7 @@
                             <thead>
                                 <tr>
                                     <th class="selector-col">Incluir</th>
-                                    <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>BLS @60</th><th>API</th><th>%BSW</th><th>%S</th>
+                                    <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>Toneladas</th><th>API</th><th>BLS @60</th><th>Galones</th><th>%BSW</th><th>%S</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -448,8 +456,10 @@
                                     <td><strong>{{ fila.TK }}</strong></td>
                                     <td>{{ fila.PRODUCTO }}</td>
                                     <td class="text-right numeric-cell">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
+                                    <td class="text-right numeric-cell">{% if fila.get('TONELADAS') is not none and fila.get('TONELADAS') != '' %}{{ "%.2f"|format(fila.get('TONELADAS')|float) }}{% else %}<span class="text-muted" title="API sin valor: no se calcula">&mdash;</span>{% endif %}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.API|float) }}</td>
+                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
+                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.get('GALONES', 0)|float) }}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.BSW|float) }}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.S|float) }}</td>
                                 </tr>
@@ -457,8 +467,10 @@
                                 <tr class="reporte-totals-row" id="total-row-marinse">
                                     <td colspan="3"><strong>TOTAL / PROMEDIO</strong></td>
                                     <td class="text-right numeric-cell total-cap">...</td>
-                                    <td class="text-right numeric-cell total-bls">...</td>
+                                    <td class="text-right numeric-cell total-ton">...</td>
                                     <td class="text-center numeric-cell prom-api">...</td>
+                                    <td class="text-right numeric-cell total-bls">...</td>
+                                    <td class="text-right numeric-cell total-gal">...</td>
                                     <td class="text-center numeric-cell prom-bsw">...</td>
                                     <td class="text-center numeric-cell prom-s">...</td>
                                 </tr>
@@ -469,9 +481,13 @@
             </div>
             <!-- Tarjeta Oiltech -->
             <div class="col-12 col-lg-10">
-                <div class="reporte-card">
+                {% set nd = disponibilidad.get('OIDECH') if disponibilidad else none %}
+                {% set nd = nd if (nd and not nd.disponible) else none %}
+                <div class="reporte-card {% if nd %}reporte-no-disponible{% endif %}">
                     <div class="reporte-card-header">
-                        <span>BARCAZA OILTECH</span>
+                        <span>BARCAZA OILTECH
+                            {% if nd %}<span class="badge bg-danger ms-2 reporte-nd-badge" title="{{ nd.motivo }}"><i class="bi bi-slash-circle me-1"></i>NO DISPONIBLE{% if nd.motivo %} · {{ nd.motivo }}{% endif %}</span>{% endif %}
+                        </span>
                         <span class="badge bg-light text-dark"><i class="bi bi-database me-1"></i>{{ tanques_oidech|length }} Tanques</span>
                     </div>
                     <div class="table-responsive">
@@ -479,7 +495,7 @@
                             <thead>
                                 <tr>
                                     <th class="selector-col">Incluir</th>
-                                    <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>BLS @60</th><th>API</th><th>%BSW</th><th>%S</th>
+                                    <th>Tanque</th><th>Producto</th><th>MAX CAP</th><th>Toneladas</th><th>API</th><th>BLS @60</th><th>Galones</th><th>%BSW</th><th>%S</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -489,8 +505,10 @@
                                     <td><strong>{{ fila.TK }}</strong></td>
                                     <td>{{ fila.PRODUCTO }}</td>
                                     <td class="text-right numeric-cell">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
+                                    <td class="text-right numeric-cell">{% if fila.get('TONELADAS') is not none and fila.get('TONELADAS') != '' %}{{ "%.2f"|format(fila.get('TONELADAS')|float) }}{% else %}<span class="text-muted" title="API sin valor: no se calcula">&mdash;</span>{% endif %}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.API|float) }}</td>
+                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.BLS_60|float) }}</td>
+                                    <td class="text-right numeric-cell">{{ "%.2f"|format(fila.get('GALONES', 0)|float) }}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.BSW|float) }}</td>
                                     <td class="text-center numeric-cell">{{ "%.1f"|format(fila.S|float) }}</td>
                                 </tr>
@@ -498,8 +516,10 @@
                                 <tr class="reporte-totals-row" id="total-row-oidech">
                                     <td colspan="3"><strong>TOTAL / PROMEDIO</strong></td>
                                     <td class="text-right numeric-cell total-cap">...</td>
-                                    <td class="text-right numeric-cell total-bls">...</td>
+                                    <td class="text-right numeric-cell total-ton">...</td>
                                     <td class="text-center numeric-cell prom-api">...</td>
+                                    <td class="text-right numeric-cell total-bls">...</td>
+                                    <td class="text-right numeric-cell total-gal">...</td>
                                     <td class="text-center numeric-cell prom-bsw">...</td>
                                     <td class="text-center numeric-cell prom-s">...</td>
                                 </tr>
@@ -514,6 +534,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/conversion_api.js') }}"></script>
 <script>
 // Datos desde Python
 const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | safe }}');
@@ -522,7 +543,7 @@ const todosLosTanques = JSON.parse('{{ todos_los_tanques_json | default("[]") | 
 // Tus funciones existentes para los cálculos interactivos de la tabla
 // ===============================================================
 function calcularEstadisticas(listaTanques) {
-    if (!listaTanques || listaTanques.length === 0) return { total_cap: 0, total_bls: 0, total_porc: 0, prom_api: 0, prom_bsw: 0, prom_s: 0 };
+    if (!listaTanques || listaTanques.length === 0) return { total_cap: 0, total_bls: 0, total_porc: 0, prom_api: 0, prom_bsw: 0, prom_s: 0, total_gal: 0, total_ton: 0, tanques_sin_api: 0 };
     const total_cap = listaTanques.reduce((s, t) => s + (parseFloat(t.MAX_CAP) || 0), 0);
     const total_bls = listaTanques.reduce((s, t) => s + (parseFloat(t.BLS_60) || 0), 0);
     const total_porc = total_cap > 0 ? (total_bls / total_cap * 100) : 0;
@@ -535,7 +556,16 @@ function calcularEstadisticas(listaTanques) {
             s += (parseFloat(t.S) || 0) * peso;
         });
     }
-    return { total_cap, total_bls, total_porc, prom_api: api, prom_bsw: bsw, prom_s: s };
+    // Conversión por gravedad API (tabla Ton/Barril): galones y toneladas del conjunto
+    const C = window.ConversionAPI;
+    let total_gal = 0, total_ton = 0, tanques_sin_api = 0;
+    listaTanques.forEach(t => {
+        const bls = parseFloat(t.BLS_60) || 0;
+        total_gal += C ? C.galones(bls) : bls * 42;
+        const ton = C ? C.toneladas(bls, t.API) : null;
+        if (ton === null) { if (bls > 0) tanques_sin_api++; } else { total_ton += ton; }
+    });
+    return { total_cap, total_bls, total_porc, prom_api: api, prom_bsw: bsw, prom_s: s, total_gal, total_ton, tanques_sin_api };
 }
 
 function actualizarVistaTotales(idBase, stats) {
@@ -557,12 +587,16 @@ function actualizarVistaTotales(idBase, stats) {
         totalRow.querySelector('#total-api-consolidado').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
         totalRow.querySelector('#total-bsw-consolidado').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
         totalRow.querySelector('#total-s-consolidado').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
+        totalRow.querySelector('#total-gal-consolidado').innerHTML = `<strong>${format(stats.total_gal, 2)}</strong>`;
+        totalRow.querySelector('#total-ton-consolidado').innerHTML = `<strong>${format(stats.total_ton, 2)}</strong>` + (stats.tanques_sin_api ? ` <small class="text-muted" title="Tanques con volumen pero sin API: no suman toneladas">(${stats.tanques_sin_api} sin API)</small>` : '');
     } else {
         totalRow.querySelector('.total-cap').innerHTML = `<strong>${format(stats.total_cap, 2)}</strong>`;
         totalRow.querySelector('.total-bls').innerHTML = `<strong>${format(stats.total_bls, 2)}</strong>`;
         totalRow.querySelector('.prom-api').innerHTML = `<strong>${format(stats.prom_api, 1)}</strong>`;
         totalRow.querySelector('.prom-bsw').innerHTML = `<strong>${format(stats.prom_bsw, 1)}</strong>`;
         totalRow.querySelector('.prom-s').innerHTML = `<strong>${format(stats.prom_s, 1)}</strong>`;
+        totalRow.querySelector('.total-gal').innerHTML = `<strong>${format(stats.total_gal, 2)}</strong>`;
+        totalRow.querySelector('.total-ton').innerHTML = `<strong>${format(stats.total_ton, 2)}</strong>`;
     }
 }
 
