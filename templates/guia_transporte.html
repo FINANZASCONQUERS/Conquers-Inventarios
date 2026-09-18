@@ -1067,30 +1067,31 @@
                 width: 0.90cm !important;
             }
 
-            /* Columna AM/PM: ocupa TODA la altura para cubrir los 2 recuadros preimpresos */
+            /* Contenedor AM/PM: referencia para posicionamiento absoluto de hijos */
             .hora .hora-print-ampm-col {
-                display: flex !important;
-                flex-direction: column !important;
-                flex: 0 0 0.75cm !important;
-                width: 0.75cm !important;
-                height: 0.95cm !important;
                 position: absolute !important;
                 top: 0.15cm !important;
                 right: 0.12cm !important;
+                width: 0.75cm !important;
+                height: 0.95cm !important;
                 box-sizing: border-box !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                display: block !important;
             }
 
+            /* Base para ambas casillas: position absolute con top fijo en cm */
             .hora .hora-print-cell {
-                height: 50% !important;
+                position: absolute !important;
+                left: 0 !important;
                 width: 100% !important;
+                height: 0.47cm !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
                 font-size: 8pt !important;
                 font-weight: bold !important;
-                color: #000 !important;
+                color: #000;
                 border: none !important;
                 background: transparent !important;
                 box-sizing: border-box !important;
@@ -1098,6 +1099,16 @@
                 padding: 0 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
+            }
+
+            /* A.M. fijado al cuadro SUPERIOR */
+            .hora .hora-print-cell.hora-print-am {
+                top: 0cm !important;
+            }
+
+            /* P.M. fijado al cuadro INFERIOR */
+            .hora .hora-print-cell.hora-print-pm {
+                top: 0.48cm !important;
             }
         }
 
@@ -3518,13 +3529,16 @@
             const pmEl = document.getElementById('horaPrintPm');
             if (!input || !hhEl || !sepEl || !mmEl || !amEl || !pmEl) return;
 
+            // Estilos base compartidos para ambas casillas (inline !important para máxima prioridad)
+            const baseCell = 'position:absolute!important;left:0!important;width:100%!important;height:0.47cm!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:8pt!important;font-weight:bold!important;border:none!important;background:transparent!important;box-sizing:border-box!important;margin:0!important;padding:0!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;';
+
             const val = (input.value || '').trim();
             if (!val) {
                 hhEl.textContent = '';
                 sepEl.textContent = '';
                 mmEl.textContent = '';
-                amEl.style.visibility = 'hidden';
-                pmEl.style.visibility = 'hidden';
+                amEl.style.cssText = baseCell + 'top:0cm!important;color:transparent!important;';
+                pmEl.style.cssText = baseCell + 'top:0.48cm!important;color:transparent!important;';
                 return;
             }
 
@@ -3568,12 +3582,14 @@
                 mmEl.textContent = '';
             }
 
+            // Posicionar: AM siempre top:0cm (cuadro superior), PM siempre top:0.48cm (cuadro inferior)
+            // Ocultar casilla inactiva con color:transparent, mostrar activa con color:#000
             if (esPm) {
-                amEl.style.visibility = 'hidden';
-                pmEl.style.visibility = 'visible';
+                amEl.style.cssText = baseCell + 'top:0cm!important;color:transparent!important;';
+                pmEl.style.cssText = baseCell + 'top:0.48cm!important;color:#000!important;';
             } else {
-                amEl.style.visibility = 'visible';
-                pmEl.style.visibility = 'hidden';
+                amEl.style.cssText = baseCell + 'top:0cm!important;color:#000!important;';
+                pmEl.style.cssText = baseCell + 'top:0.48cm!important;color:transparent!important;';
             }
         }
 

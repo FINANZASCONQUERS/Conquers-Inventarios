@@ -76,6 +76,8 @@ scratch/
 scratch_*.py
 test_*.py
 scratch.py
+guias/
+*.pdf
 
 # --- 9. Archivos Multimedia Pesados ---
 *.mp4

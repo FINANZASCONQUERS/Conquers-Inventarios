@@ -321,6 +321,27 @@ html.dark-mode .mo-btn-download {
     transform: translateY(-1px);
 }
 
+.mo-btn-danger-soft {
+    background: var(--mo-surface);
+    color: var(--mo-rose, #ef4444);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    padding: .62rem 1rem;
+    border-radius: var(--mo-radius-sm);
+    font-weight: 600;
+    font-size: .84rem;
+    transition: var(--mo-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    cursor: pointer;
+}
+.mo-btn-danger-soft:hover {
+    border-color: var(--mo-rose, #ef4444);
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    transform: translateY(-1px);
+}
+
 .mo-premium-badge {
     display: inline-flex;
     align-items: center;
@@ -2056,6 +2077,9 @@ html.dark-mode .mo-planta-unit b { color: var(--mo-emerald-light); }
                 <button class="mo-btn-soft" id="moClearPremiumBtn" type="button" title="Restablecer ajustes premium del escenario">
                     <i class="bi bi-arrow-counterclockwise"></i> Limpiar Premium
                 </button>
+                <button class="mo-btn-danger-soft" id="moResetModelBtn" type="button" title="Borrar el modelo actual y subir otro archivo">
+                    <i class="bi bi-trash3"></i> Borrar Modelo
+                </button>
                 <span class="mo-premium-badge d-none" id="moPremiumBadge">
                     <i class="bi bi-sliders"></i> Premiums activos: 0
                 </span>
@@ -3361,10 +3385,86 @@ fileInput.addEventListener('change', showFileBadge);
 
 function showFileBadge() {
     const f = fileInput.files[0];
-    fileBadge.innerHTML = f
-        ? `<span class="mo-file-badge"><i class="bi bi-file-earmark-check"></i> ${f.name}</span>`
-        : '';
+    if (f) {
+        fileBadge.innerHTML = `<span class="mo-file-badge d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-file-earmark-check text-success"></i> ${escHtml(f.name)}
+            <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" id="moBtnRemoveSingleFile" title="Quitar este archivo y limpiar modelo" style="text-decoration:none; line-height:1;">
+                <i class="bi bi-x-circle-fill"></i>
+            </button>
+        </span>`;
+        const btnRemove = $('#moBtnRemoveSingleFile');
+        if (btnRemove) {
+            btnRemove.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('¿Deseas quitar este archivo y limpiar el modelo?')) {
+                    limpiarModeloYResultados();
+                }
+            });
+        }
+    } else {
+        fileBadge.innerHTML = '';
+    }
 }
+
+async function limpiarModeloYResultados() {
+    // 1. Limpiar archivo seleccionado
+    fileInput.value = '';
+    fileBadge.innerHTML = '';
+    window.__moRunWithParamId = null;
+
+    // 2. Limpiar resultados en memoria y overrides
+    currentResults = null;
+    premiumOverrides = {};
+    updatePremiumControlsUI();
+
+    // 3. Destruir instancias de gráficos Chart.js
+    Object.values(chartInstances || {}).forEach(chart => {
+        try { chart.destroy(); } catch (e) {}
+    });
+    chartInstances = {};
+
+    // 4. Limpiar sesión en el servidor
+    try {
+        await fetch('/modelo-optimizacion/limpiar-sesion', { method: 'POST' });
+    } catch (e) {
+        console.warn('Error al limpiar sesión en el servidor:', e);
+    }
+
+    // 5. Ocultar secciones de resultados
+    $('#moKpiSection')?.classList.add('d-none');
+    $('#moCommandStrip')?.classList.add('d-none');
+    $('#moTabsSection')?.classList.add('d-none');
+    $('#moDownloadBtn')?.classList.add('d-none');
+    $('#moWarningBannerSection')?.classList.add('d-none');
+
+    // 6. Mostrar estado inicial vacío listo para cargar
+    $('#moEmptyState')?.classList.remove('d-none');
+
+    // 7. Restablecer indicadores y badges
+    const lastRun = $('#moLastRunText');
+    if (lastRun) lastRun.innerHTML = '<i class="bi bi-clock-history"></i> Sin ejecuciones recientes';
+    const statusBadge = $('#moStatusBadge');
+    if (statusBadge) statusBadge.innerHTML = '';
+
+    // 8. Restablecer nombre de escenario a valor por defecto
+    const escInp = $('#moEscenario');
+    if (escInp) escInp.value = 'Escenario Base';
+
+    // 9. Mostrar mensaje de confirmación
+    const alertArea = $('#moAlertArea');
+    if (alertArea) {
+        alertArea.innerHTML = `<div class="alert alert-info alert-dismissible fade show py-2 small mb-0 shadow-sm" role="alert">
+            <i class="bi bi-info-circle me-1"></i><strong>Modelo borrado:</strong> Ya puedes arrastrar o seleccionar otro archivo de parámetros.
+            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>
+        </div>`;
+    }
+}
+
+$('#moResetModelBtn')?.addEventListener('click', () => {
+    if (confirm('¿Deseas borrar el modelo y los resultados actuales para subir otro archivo?')) {
+        limpiarModeloYResultados();
+    }
+});
 
 /* ═══════════════ EXECUTE MODEL ═══════════════ */
 $('#moRunBtn').addEventListener('click', async () => {
@@ -5149,6 +5249,20 @@ if (cachedEl) {
         loadPremiumMapFromResults(currentResults);
         updatePremiumControlsUI();
         renderDashboard(currentResults);
+        if (!fileInput.files.length) {
+            fileBadge.innerHTML = `<span class="mo-file-badge d-inline-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-check2-circle text-success"></i> Modelo cargado en sesión
+                <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" id="moBtnRemoveCachedFile" title="Borrar modelo y subir otro" style="text-decoration:none; line-height:1;">
+                    <i class="bi bi-x-circle-fill"></i>
+                </button>
+            </span>`;
+            $('#moBtnRemoveCachedFile')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm('¿Deseas borrar el modelo y los resultados actuales para subir otro archivo?')) {
+                    limpiarModeloYResultados();
+                }
+            });
+        }
     } catch (e) { console.error('Error parsing cached results:', e); }
 }
 
