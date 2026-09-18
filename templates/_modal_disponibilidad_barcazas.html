@@ -1,0 +1,144 @@
+{#
+  Modal de gestión de disponibilidad de barcazas.
+  Requiere en el contexto: barcazas_config (lista de dicts de ConfiguracionBarcaza.to_dict()) y puede_gestionar (bool).
+  Abrir con: <button data-bs-toggle="modal" data-bs-target="#modalDisponibilidadBarcazas">
+  Al cambiar un estado se dispara en document el evento 'barcaza:disponibilidad'
+  con detail = {nombre, disponible, motivo, nombre_display} para que cada página actualice su UI.
+#}
+<style>
+  .disp-item { border: 1px solid #e5e7eb; border-radius: .6rem; padding: .75rem 1rem; transition: background-color .2s; }
+  .disp-item.no-disponible { background-color: #fff5f5; border-color: #fecaca; }
+  .disp-item .form-check-input { width: 2.6em; height: 1.35em; cursor: pointer; }
+  .disp-item .form-check-input:disabled { cursor: not-allowed; }
+  .disp-estado { font-size: .78rem; font-weight: 600; }
+  .disp-meta { font-size: .75rem; color: #6b7280; }
+</style>
+
+<div class="modal fade" id="modalDisponibilidadBarcazas" tabindex="-1" aria-labelledby="modalDisponibilidadLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDisponibilidadLabel"><i class="bi bi-toggles2 me-2"></i>Disponibilidad de Barcazas</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="dispAlert" class="alert d-none py-2 mb-3" role="alert"></div>
+        {% if not puede_gestionar %}
+        <div class="alert alert-secondary py-2 mb-3"><i class="bi bi-lock-fill me-1"></i> Solo lectura: no tiene permiso para cambiar la disponibilidad.</div>
+        {% else %}
+        <p class="text-muted small mb-3">Una barcaza <strong>no disponible</strong> queda atenuada en las planillas (sin guardar inventario), aparece deshabilitada en Trasiegos y marcada en los reportes.</p>
+        {% endif %}
+        <div class="d-flex flex-column gap-2">
+          {% for b in barcazas_config %}
+          <div class="disp-item {% if not b.disponible %}no-disponible{% endif %}" data-barcaza="{{ b.nombre }}">
+            <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+              <div>
+                <div class="fw-semibold">{{ b.nombre_display }} <span class="badge bg-light text-secondary border ms-1">{{ b.tipo }}</span></div>
+                <div class="disp-meta" data-role="meta">
+                  {% if b.fecha_actualizacion %}Actualizado {{ b.fecha_actualizacion }}{% if b.usuario_actualizacion %} por {{ b.usuario_actualizacion }}{% endif %}{% else %}Sin cambios registrados{% endif %}
+                </div>
+              </div>
+              <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="dispSwitch_{{ b.nombre }}"
+                       data-role="switch" {% if b.disponible %}checked{% endif %} {% if not puede_gestionar %}disabled{% endif %}>
+                <label class="form-check-label disp-estado {% if b.disponible %}text-success{% else %}text-danger{% endif %}" for="dispSwitch_{{ b.nombre }}" data-role="estado">
+                  {% if b.disponible %}🟢 Disponible{% else %}🔴 No disponible{% endif %}
+                </label>
+              </div>
+            </div>
+            <div class="mt-2 {% if b.disponible %}d-none{% endif %}" data-role="motivo-wrap">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">Motivo</span>
+                <input type="text" class="form-control" data-role="motivo" maxlength="255"
+                       placeholder="Ej: En mantenimiento, en fondeo, fuera de puerto..." value="{{ b.motivo }}" {% if not puede_gestionar %}disabled{% endif %}>
+                {% if puede_gestionar %}<button class="btn btn-outline-secondary" type="button" data-role="guardar-motivo"><i class="bi bi-check2"></i></button>{% endif %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="text-muted">No hay barcazas configuradas.</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const modal = document.getElementById('modalDisponibilidadBarcazas');
+  if (!modal) return;
+  const PUEDE_GESTIONAR = {{ 'true' if puede_gestionar else 'false' }};
+  const URL_TOGGLE = "{{ url_for('api_barcazas_toggle') }}";
+  const alertBox = modal.querySelector('#dispAlert');
+
+  function aviso(msg, tipo) {
+    alertBox.className = 'alert alert-' + tipo + ' py-2 mb-3';
+    alertBox.textContent = msg;
+    clearTimeout(alertBox._t);
+    alertBox._t = setTimeout(() => alertBox.classList.add('d-none'), 4000);
+  }
+
+  function pintarItem(item, b) {
+    item.classList.toggle('no-disponible', !b.disponible);
+    const sw = item.querySelector('[data-role="switch"]');
+    const estado = item.querySelector('[data-role="estado"]');
+    const wrap = item.querySelector('[data-role="motivo-wrap"]');
+    const motivo = item.querySelector('[data-role="motivo"]');
+    const meta = item.querySelector('[data-role="meta"]');
+    sw.checked = !!b.disponible;
+    estado.textContent = b.disponible ? '🟢 Disponible' : '🔴 No disponible';
+    estado.classList.toggle('text-success', !!b.disponible);
+    estado.classList.toggle('text-danger', !b.disponible);
+    wrap.classList.toggle('d-none', !!b.disponible);
+    if (motivo) motivo.value = b.motivo || '';
+    if (meta) meta.textContent = b.fecha_actualizacion
+      ? ('Actualizado ' + b.fecha_actualizacion + (b.usuario_actualizacion ? ' por ' + b.usuario_actualizacion : ''))
+      : 'Sin cambios registrados';
+  }
+
+  async function enviar(item, payload) {
+    const sw = item.querySelector('[data-role="switch"]');
+    sw.disabled = true;
+    try {
+      const r = await fetch(URL_TOGGLE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.success) throw new Error(data.message || ('Error ' + r.status));
+      pintarItem(item, data.barcaza);
+      aviso(data.message, data.barcaza.disponible ? 'success' : 'warning');
+      document.dispatchEvent(new CustomEvent('barcaza:disponibilidad', { detail: data.barcaza }));
+    } catch (e) {
+      aviso('❌ ' + e.message, 'danger');
+      // Revertir el switch al estado real
+      sw.checked = !item.classList.contains('no-disponible');
+    } finally {
+      sw.disabled = !PUEDE_GESTIONAR;
+    }
+  }
+
+  if (PUEDE_GESTIONAR) {
+    modal.querySelectorAll('.disp-item').forEach(item => {
+      const nombre = item.dataset.barcaza;
+      const sw = item.querySelector('[data-role="switch"]');
+      const motivo = item.querySelector('[data-role="motivo"]');
+      const btnMotivo = item.querySelector('[data-role="guardar-motivo"]');
+      sw.addEventListener('change', () => {
+        enviar(item, { nombre, disponible: sw.checked, motivo: motivo ? motivo.value : '' });
+      });
+      if (btnMotivo) btnMotivo.addEventListener('click', () => {
+        enviar(item, { nombre, disponible: false, motivo: motivo.value });
+      });
+      if (motivo) motivo.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); enviar(item, { nombre, disponible: false, motivo: motivo.value }); }
+      });
+    });
+  }
+})();
+</script>

@@ -116,6 +116,9 @@ MO_ERROR_SIN_EXCEL = (
     "MODELO_LP_EXCEL_PATH apuntando a un archivo accesible."
 )
 
+# --- Módulo Conversión API Barcazas ---
+from conversion_api import enriquecer_tanque, totales_conversion
+
 # --- Blueprint para WhatsApp ---
 # TEMPORALMENTE DESHABILITADO por error de spacy
 # from bot_whatsapp import bot_bp
@@ -485,17 +488,23 @@ USUARIOS = {
         "rol": "admin",
         "area": [] 
     },
+    "refinerycwt@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Refinery CWT",
+        "rol": "editor",
+        "area": ["planta_madrid", "reporte_madrid"]
+    },
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad",  "analisis_laboratorio",]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid"]
     },
     "carlos.baron@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid"]
     },
     "logistics.inventory@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -513,13 +522,19 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ricardo Congo",
         "rol": "editor",
-        "area": ["barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
+        "area": ["barcaza_orion", "barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
     },
     "omar.morales@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion"]
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
+    },
+    "omar.morales@conquerstraing.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Omar Morales",
+        "rol": "viewer",
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
     },
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -543,25 +558,31 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita"] 
+    },
+    "ignacio@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Ignacio Quimbayo",
+        "rol": "editor",
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita"] 
     },
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
+        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
     },
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
+        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "barcaza_orion", "barcaza_bita", "reportes"]
     },
     "logistics.assistant@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Asistente Logístico",
         "rol": "editor",
-        "area": ["programacion_cargue", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "analisis_laboratorio"]
+        "area": ["programacion_cargue", "reporte_madrid", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes"]
     },
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
@@ -717,15 +738,20 @@ MODULE_ROUTE_MAP = [
     (r'^/api/barcaza_orion', ['barcaza_orion']),
     (r'^/barcaza_bita', ['barcaza_bita']),
     (r'^/api/barcaza_bita', ['barcaza_bita']),
-    (r'^/reporte_planta_madrid', ['reportes', 'planta', 'planta_madrid']),
-    (r'^/descargar-reporte-planta-madrid-pdf', ['reportes', 'planta', 'planta_madrid']),
-    (r'^/reporte_planta', ['reportes', 'planta']),
+    (r'^/guardar_registro_barcaza', ['barcaza_orion']),
+    (r'^/guardar-registro-bita', ['barcaza_bita']),
+    (r'^/api/barcazas', ['barcaza_orion', 'barcaza_bita', 'reportes']),
+    (r'^/reporte_barcaza', ['reportes', 'barcaza_orion', 'barcaza_bita']),
+    (r'^/descargar-reporte-orion-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
+    (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
+    (r'^/reporte_planta_madrid(?:$|[/?#])', ['reportes', 'reporte_madrid', 'planta_madrid']),
+    (r'^/descargar-reporte-planta-madrid-pdf', ['reportes', 'reporte_madrid', 'planta_madrid']),
+    (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
     (r'^/descargar-reporte-planta-pdf', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
     (r'^/reporte_grafico_despachos', ['reportes', 'programacion_cargue']),
     (r'^/descargar_reporte_grafico_despachos_pdf', ['reportes', 'programacion_cargue']),
     (r'^/exportar_programacion_cargue', ['programacion_cargue', 'reportes']),
-    (r'^/reporte_barcaza', ['reportes']),
     (r'^/programacion-base', ['programacion_base']),
     (r'^/pedidos', ['programacion_base']),
     (r'^/api/programacion_base', ['programacion_base']),
@@ -735,10 +761,10 @@ MODULE_ROUTE_MAP = [
     (r'^/api/trasiegos', ['planta', 'trasiegos']),
     (r'^/reporte_trasiegos', ['planta', 'trasiegos']),
     (r'^/guardar_trasiegos_masivo', ['planta', 'trasiegos']),
-    (r'^/planta_madrid', ['planta', 'planta_madrid']),
-    (r'^/guardar-registro-planta-madrid', ['planta', 'planta_madrid']),
-    (r'^/api/tanques_madrid', ['planta', 'planta_madrid', 'admin']),
-    (r'^/planta', ['planta']),
+    (r'^/planta_madrid(?:$|[/?#])', ['planta_madrid']),
+    (r'^/guardar-registro-planta-madrid', ['planta_madrid']),
+    (r'^/api/tanques_madrid', ['planta_madrid']),
+    (r'^/planta(?:$|[/?#])', ['planta']),
     (r'^/reporte_variaciones_tanques', ['planta']),
     (r'^/api/tanques', ['planta']),
     (r'^/guardar-datos-planta', ['planta']),
@@ -1266,6 +1292,32 @@ class RegistroBarcazaBita(db.Model):
 
     def __repr__(self):
         return f'<RegistroBarcazaBita ID: {self.id}, TK: {self.tk}>'
+
+class ConfiguracionBarcaza(db.Model):
+    __tablename__ = 'configuracion_barcazas'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(50), unique=True, nullable=False)
+    nombre_display = db.Column(db.String(100), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)  # ORION o BITA
+    disponible = db.Column(db.Boolean, default=True)
+    motivo = db.Column(db.String(255), nullable=True)
+    orden = db.Column(db.Integer, default=0)
+    fecha_actualizacion = db.Column(db.DateTime, nullable=True)
+    usuario_actualizacion = db.Column(db.String(100), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'nombre': self.nombre,
+            'nombre_display': self.nombre_display,
+            'tipo': self.tipo,
+            'disponible': bool(self.disponible),
+            'motivo': self.motivo or '',
+            'orden': self.orden or 0,
+            'fecha_actualizacion': self.fecha_actualizacion.strftime('%d/%m/%Y %I:%M %p') if self.fecha_actualizacion else None,
+            'usuario_actualizacion': self.usuario_actualizacion or ''
+        }
 
 class RegistroTransito(db.Model):
     __tablename__ = 'registros_transito'
@@ -3580,6 +3632,7 @@ def tanques_delete():
 
 @app.route('/api/tanques_madrid/save', methods=['POST'])
 @login_required
+@permiso_requerido(['planta_madrid'])
 def tanques_madrid_save():
     try:
         data = request.get_json()
@@ -3635,6 +3688,7 @@ def tanques_madrid_save():
 
 @app.route('/api/tanques_madrid/delete', methods=['POST'])
 @login_required
+@permiso_requerido(['planta_madrid'])
 def tanques_madrid_delete():
     try:
         data = request.get_json()
@@ -3658,7 +3712,8 @@ def calcular_estadisticas(lista_tanques):
     if not lista_tanques:
         return {
             'total_cap': 0, 'total_bls': 0, 'total_porc': 0,
-            'prom_api': 0, 'prom_bsw': 0, 'prom_s': 0
+            'prom_api': 0, 'prom_bsw': 0, 'prom_s': 0,
+            'total_gal': 0, 'total_ton': 0, 'tanques_sin_api': 0
         }
 
     # --- Totales simples (Suma) ---
@@ -3685,13 +3740,17 @@ def calcular_estadisticas(lista_tanques):
             suma_ponderada_bsw += (float(t.get('BSW') or 0) * peso)
             suma_ponderada_s += (float(t.get('S') or 0) * peso)
 
+    conv = totales_conversion(lista_tanques)
     return {
         'total_cap': total_cap,
         'total_bls': total_bls,
         'total_porc': total_porc,
         'prom_api': suma_ponderada_api, # Ahora estos son los promedios ponderados
         'prom_bsw': suma_ponderada_bsw,
-        'prom_s': suma_ponderada_s
+        'prom_s': suma_ponderada_s,
+        'total_gal': conv.get('total_gal', 0.0),
+        'total_ton': conv.get('total_ton', 0.0),
+        'tanques_sin_api': conv.get('tanques_sin_api', 0)
     }
 
 def permiso_exclusivo(email_requerido):
@@ -5024,7 +5083,7 @@ def planta():
 
 @app.route('/planta_madrid')
 @login_required
-@permiso_requerido(['planta', 'planta_madrid'])
+@permiso_requerido(['planta_madrid'])
 def planta_madrid():
     # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, se inicia en blanco (vacío)
     fecha_str = request.args.get('fecha')
@@ -5365,7 +5424,7 @@ def reporte_planta():
 
 @app.route('/reporte_planta_madrid')
 @login_required
-@permiso_requerido(['reportes', 'planta', 'planta_madrid'])
+@permiso_requerido(['reportes', 'reporte_madrid', 'planta_madrid'])
 def reporte_planta_madrid():
     fecha_str = request.args.get('fecha')
     try:
@@ -6755,6 +6814,117 @@ def reporte_transito():
                            camiones_mapa=camiones_para_mapa,
                            nombre=session.get("nombre"),
                            fecha_actualizacion_info=fecha_actualizacion_info)
+# =====================================================================
+# CONFIGURACIÓN Y PERMISOS DE BARCAZAS (ORION Y BITA)
+# =====================================================================
+BARCAZAS_DEFAULT = [
+    {'nombre': 'PRINCIPAL', 'nombre_display': 'Tanque Principal (TK-101)', 'tipo': 'ORION', 'orden': 1},
+    {'nombre': 'MANZANILLO', 'nombre_display': 'Manzanillo (MGO)', 'tipo': 'ORION', 'orden': 2},
+    {'nombre': 'CR', 'nombre_display': 'Barcaza CR', 'tipo': 'ORION', 'orden': 3},
+    {'nombre': 'MARGOTH', 'nombre_display': 'Barcaza Margoth', 'tipo': 'ORION', 'orden': 4},
+    {'nombre': 'ODISEA', 'nombre_display': 'Barcaza Odisea', 'tipo': 'ORION', 'orden': 5},
+    {'nombre': 'MARINSE', 'nombre_display': 'Barcaza Marinse', 'tipo': 'BITA', 'orden': 1},
+    {'nombre': 'OIDECH', 'nombre_display': 'Barcaza Oidech', 'tipo': 'BITA', 'orden': 2},
+]
+
+# Usuarios autorizados para EDITAR (modificar inventario y gestionar disponibilidad) en Barcazas:
+# Juan Diego Ayala (admin), Juan Diego Cuadros y Ricardo Congo.
+# Carlos Barón, Samantha Roa, Omar Morales, Asistente Logístico e Ignacio Quimbayo tienen acceso de SOLO LECTURA.
+BARCAZAS_EDITORES_EMAILS = {
+    'numbers@conquerstrading.com',
+    'qualitycontrol@conquerstrading.com',
+    'juandiego.cuadros@conquerstrading.com',
+    'quality.manager@conquerstrading.com',
+}
+
+def _puede_editar_barcazas():
+    """Verifica si el usuario en sesión tiene permisos de edición (escritura) en barcazas."""
+    if session.get('rol') == 'admin':
+        return True
+    email = (session.get('email') or '').lower().strip()
+    return email in BARCAZAS_EDITORES_EMAILS
+
+def _puede_gestionar_barcazas():
+    """Solo administradores o editores autorizados pueden cambiar la disponibilidad de barcazas."""
+    return _puede_editar_barcazas()
+
+def _disponibilidad_barcazas(tipo=None):
+    """Retorna un dict { 'NOMBRE': {'disponible': bool, 'motivo': str, ...} }."""
+    try:
+        query = ConfiguracionBarcaza.query
+        if tipo:
+            query = query.filter_by(tipo=tipo)
+        items = query.order_by(ConfiguracionBarcaza.orden.asc()).all()
+        if not items:
+            for b in BARCAZAS_DEFAULT:
+                item = ConfiguracionBarcaza(
+                    nombre=b['nombre'],
+                    nombre_display=b['nombre_display'],
+                    tipo=b['tipo'],
+                    disponible=True,
+                    orden=b.get('orden', 0)
+                )
+                db.session.add(item)
+            db.session.commit()
+            query = ConfiguracionBarcaza.query
+            if tipo:
+                query = query.filter_by(tipo=tipo)
+            items = query.order_by(ConfiguracionBarcaza.orden.asc()).all()
+        return {item.nombre: item.to_dict() for item in items}
+    except Exception as e:
+        print(f"Error cargando disponibilidad de barcazas: {e}")
+        return {b['nombre']: {'nombre': b['nombre'], 'nombre_display': b['nombre_display'], 'tipo': b['tipo'], 'disponible': True, 'motivo': ''} for b in BARCAZAS_DEFAULT if not tipo or b['tipo'] == tipo}
+
+@app.route('/api/barcazas/disponibilidad', methods=['GET'])
+@login_required
+def api_barcazas_disponibilidad():
+    tipo = request.args.get('tipo')
+    disp = _disponibilidad_barcazas(tipo)
+    return jsonify(success=True, disponibilidad=disp)
+
+@app.route('/api/barcazas/toggle', methods=['POST'])
+@login_required
+def api_barcazas_toggle():
+    if not _puede_gestionar_barcazas():
+        return jsonify(success=False, error='FORBIDDEN', message='Permiso denegado: no tiene permisos para cambiar la disponibilidad de barcazas.'), 403
+    try:
+        data = request.get_json() or {}
+        nombre = (data.get('nombre') or '').strip().upper()
+        disponible = data.get('disponible')
+        motivo = (data.get('motivo') or '').strip()
+
+        if not nombre or disponible is None:
+            return jsonify(success=False, message='Nombre y estado de disponibilidad requeridos.'), 400
+
+        item = ConfiguracionBarcaza.query.filter_by(nombre=nombre).first()
+        if not item:
+            def_b = next((b for b in BARCAZAS_DEFAULT if b['nombre'] == nombre), None)
+            if def_b:
+                item = ConfiguracionBarcaza(
+                    nombre=def_b['nombre'],
+                    nombre_display=def_b['nombre_display'],
+                    tipo=def_b['tipo'],
+                    disponible=bool(disponible),
+                    motivo=motivo,
+                    orden=def_b.get('orden', 0)
+                )
+                db.session.add(item)
+            else:
+                return jsonify(success=False, message=f'Barcaza {nombre} no encontrada.'), 404
+        else:
+            item.disponible = bool(disponible)
+            if motivo or not item.disponible:
+                item.motivo = motivo
+
+        item.fecha_actualizacion = datetime.utcnow()
+        item.usuario_actualizacion = session.get('nombre', 'No identificado')
+        db.session.commit()
+
+        return jsonify(success=True, barcaza=item.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=str(e)), 500
+
 @app.route('/barcaza_orion')
 @login_required
 @permiso_requerido('barcaza_orion')
@@ -6789,7 +6959,10 @@ def barcaza_orion():
             })
     else:
         print("DEBUG: No se encontraron registros, se usará la planilla por defecto.")
-        datos_para_plantilla = PLANILLA_BARCAZA_ORION
+        datos_para_plantilla = [dict(t) for t in PLANILLA_BARCAZA_ORION]
+
+    for tk in datos_para_plantilla:
+        enriquecer_tanque(tk)
 
     # Ordenar los tanques CR según el orden de PLANILLA_BARCAZA_ORION
     def ordenar_por_planilla(lista, grupo, planilla):
@@ -6802,6 +6975,20 @@ def barcaza_orion():
     tanques_margoth = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MARGOTH']
     tanques_odisea = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'ODISEA']
 
+    disponibilidad = _disponibilidad_barcazas('ORION')
+    barcazas_config = [v for k, v in sorted(disponibilidad.items(), key=lambda x: x[1].get('orden', 0))]
+    puede_gestionar = _puede_gestionar_barcazas()
+    puede_editar = _puede_editar_barcazas()
+
+    ultimo_guardado = {}
+    for grupo_key in ['PRINCIPAL', 'MANZANILLO', 'CR', 'MARGOTH', 'ODISEA']:
+        regs_g = [r for r in registros_recientes if r.grupo == grupo_key]
+        if regs_g:
+            ult = max(regs_g, key=lambda r: r.timestamp)
+            ultimo_guardado[grupo_key] = f"{ult.timestamp.strftime('%d/%m/%Y %I:%M %p')} por {ult.usuario}"
+        else:
+            ultimo_guardado[grupo_key] = None
+
     return render_template("barcaza_orion.html",
                            titulo="Planilla Barcaza Orion",
                            tanques_principales=tanques_principales,
@@ -6809,6 +6996,11 @@ def barcaza_orion():
                            tanques_cr=tanques_cr,
                            tanques_margoth=tanques_margoth,
                            tanques_odisea=tanques_odisea,
+                           disponibilidad=disponibilidad,
+                           barcazas_config=barcazas_config,
+                           puede_gestionar=puede_gestionar,
+                           puede_editar=puede_editar,
+                           ultimo_guardado=ultimo_guardado,
                            nombre=session.get("nombre"),
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
                            today_iso=date.today().isoformat())
@@ -6898,7 +7090,10 @@ def barcaza_bita():
                 "BLS_60": r.bls_60 or "", "API": r.api or "", "BSW": r.bsw or "", "S": r.s or ""
             })
     else:
-        datos_para_plantilla = PLANILLA_BARCAZA_BITA
+        datos_para_plantilla = [dict(t) for t in PLANILLA_BARCAZA_BITA]
+
+    for tk in datos_para_plantilla:
+        enriquecer_tanque(tk)
 
     # 4. Lógica para separar en grupos
     grupos = {
@@ -6906,10 +7101,35 @@ def barcaza_bita():
         "BARCAZA OIDECH": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('OID')]
     }
 
+    disponibilidad = _disponibilidad_barcazas('BITA')
+    barcazas_config = [v for k, v in sorted(disponibilidad.items(), key=lambda x: x[1].get('orden', 0))]
+    puede_gestionar = _puede_gestionar_barcazas()
+    puede_editar = _puede_editar_barcazas()
+
+    ultimo_guardado = {}
+    regs_mari = [r for r in registros_recientes if (r.tk or '').startswith('MARI')]
+    if regs_mari:
+        ult = max(regs_mari, key=lambda r: r.timestamp)
+        ultimo_guardado['MARINSE'] = f"{ult.timestamp.strftime('%d/%m/%Y %I:%M %p')} por {ult.usuario}"
+    else:
+        ultimo_guardado['MARINSE'] = None
+
+    regs_oid = [r for r in registros_recientes if (r.tk or '').startswith('OID')]
+    if regs_oid:
+        ult = max(regs_oid, key=lambda r: r.timestamp)
+        ultimo_guardado['OIDECH'] = f"{ult.timestamp.strftime('%d/%m/%Y %I:%M %p')} por {ult.usuario}"
+    else:
+        ultimo_guardado['OIDECH'] = None
+
     # 5. Renderizar la plantilla, pasando todas las variables necesarias
     return render_template("barcaza_bita.html",
                            titulo="Planilla Barcaza BITA",
                            grupos=grupos,
+                           disponibilidad=disponibilidad,
+                           barcazas_config=barcazas_config,
+                           puede_gestionar=puede_gestionar,
+                           puede_editar=puede_editar,
+                           ultimo_guardado=ultimo_guardado,
                            nombre=session.get('nombre', 'Desconocido'),
                            fecha_seleccionada=fecha_seleccionada_obj.isoformat(),
                            today_iso=date.today().isoformat(),
@@ -8716,6 +8936,7 @@ def home_siza():
 
 @app.route('/reporte_barcaza')
 @login_required
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
 def reporte_barcaza():
     # 1. Lógica del filtro de fecha (idéntica a la que ya usamos)
     fecha_str = request.args.get('fecha')
@@ -8746,6 +8967,8 @@ def reporte_barcaza():
                 "BLS_60": registro.bls_60, "API": registro.api, 
                 "BSW": registro.bsw, "S": registro.s, "grupo": registro.grupo
             })
+    for tk in todos_los_tanques_lista:
+        enriquecer_tanque(tk)
 
     # 4. Calcular el total consolidado a partir de los datos filtrados
     total_consolidado = calcular_estadisticas(todos_los_tanques_lista)
@@ -8791,6 +9014,7 @@ def reporte_barcaza():
 
 @app.route('/reporte_barcaza_bita')
 @login_required
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
 def reporte_barcaza_bita():
     # La lógica de consulta es idéntica a la de la planilla
     fecha_str = request.args.get('fecha')
@@ -8813,6 +9037,8 @@ def reporte_barcaza_bita():
                 "TK": r.tk, "PRODUCTO": r.producto, "MAX_CAP": r.max_cap,
                 "BLS_60": r.bls_60, "API": r.api, "BSW": r.bsw, "S": r.s
             })
+    for tk in datos_reporte:
+        enriquecer_tanque(tk)
 
     total_consolidado = calcular_estadisticas(datos_reporte)
     tanques_marinse = [tk for tk in datos_reporte if tk.get('TK','').startswith('MARI')]
@@ -8842,6 +9068,8 @@ def reporte_barcaza_bita():
 @login_required
 @permiso_requerido('barcaza_bita')
 def guardar_registro_bita():
+    if not _puede_editar_barcazas():
+        return jsonify(success=False, error='FORBIDDEN', message='Permiso denegado: su usuario tiene permisos de solo lectura y no puede modificar el inventario de barcazas.'), 403
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
@@ -8902,6 +9130,8 @@ def guardar_registro_bita():
 @login_required
 @permiso_requerido('barcaza_orion')
 def guardar_registro_barcaza():
+    if not _puede_editar_barcazas():
+        return jsonify(success=False, error='FORBIDDEN', message='Permiso denegado: su usuario tiene permisos de solo lectura y no puede modificar el inventario de barcazas.'), 403
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
         return jsonify(success=False, message="Formato incorrecto."), 400
@@ -8972,24 +9202,44 @@ def dashboard_reportes():
     # Lista dinámica de módulos autorizados y activos para el usuario
     modulos_usuario = []
 
-    # 1. Operaciones de Planta / Producción
-    if is_admin or 'planta' in user_areas or 'reportes' in user_areas:
+    # 1. Operaciones de Planta Cartagena / Producción
+    if (is_admin or 'planta' in user_areas or 'reportes' in user_areas) and user_email != 'refinerycwt@conquerstrading.com':
         solo_reporte = ('planta' not in user_areas and not is_admin)
         modulos_usuario.append({
             'id': 'planta',
             'categoria': 'Producción',
-            'titulo': 'Reporte de Planta' if solo_reporte else 'Operaciones de Planta',
-            'descripcion': 'Visualización y reporte operativo de tanques y producción.' if solo_reporte else 'Gestión de tanques, mediciones diarias de inventario y reporte operativo de producción.',
+            'titulo': 'Reporte de Planta (Cartagena)' if solo_reporte else 'Operaciones Planta (Cartagena)',
+            'descripcion': 'Visualización y reporte operativo de tanques y producción en Cartagena.' if solo_reporte else 'Gestión de tanques, mediciones diarias de inventario y reporte operativo de producción Cartagena.',
             'icono': 'bi-buildings-fill',
             'color': 'danger',
             'bg_gradient': 'linear-gradient(135deg, #FFE8D1 0%, #FFD4A3 100%)',
             'color_hex': '#EA580C',
-            'badge': 'Producción',
+            'badge': 'Cartagena',
             'url_principal': url_for('reporte_planta') if solo_reporte else url_for('planta'),
             'nombre_btn': 'Ver Reporte' if solo_reporte else 'Planilla Planta',
             'sub_links': [
                 {'nombre': 'Reporte Planta', 'url': url_for('reporte_planta'), 'icono': 'bi-file-earmark-bar-graph'}
             ] if not solo_reporte else []
+        })
+
+    # 1b. Operaciones de Planta Madrid
+    if is_admin or 'planta_madrid' in user_areas or 'reporte_madrid' in user_areas or 'reportes' in user_areas:
+        puede_editar_madrid = is_admin or 'planta_madrid' in user_areas
+        modulos_usuario.append({
+            'id': 'planta_madrid',
+            'categoria': 'Producción',
+            'titulo': 'Operaciones Planta (Madrid)' if puede_editar_madrid else 'Reporte Planta (Madrid)',
+            'descripcion': 'Gestión de tanques, mediciones diarias de inventario y captura en Sede Madrid.' if puede_editar_madrid else 'Monitoreo en tiempo real del inventario de tanques en Sede Madrid.',
+            'icono': 'bi-buildings',
+            'color': 'primary',
+            'bg_gradient': 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)',
+            'color_hex': '#2563EB',
+            'badge': 'Madrid',
+            'url_principal': url_for('planta_madrid') if puede_editar_madrid else url_for('reporte_planta_madrid'),
+            'nombre_btn': 'Planilla Madrid' if puede_editar_madrid else 'Ver Reporte Madrid',
+            'sub_links': [
+                {'nombre': 'Reporte Madrid', 'url': url_for('reporte_planta_madrid'), 'icono': 'bi-file-earmark-bar-graph'}
+            ] if puede_editar_madrid else []
         })
 
     # 2. Programación de Despachos
@@ -9416,7 +9666,7 @@ def guardar_registro_planta():
 
 @app.route('/guardar-registro-planta-madrid', methods=['POST'])
 @login_required
-@permiso_requerido(['planta', 'planta_madrid'])
+@permiso_requerido(['planta_madrid'])
 def guardar_registro_planta_madrid():
     lista_tanques = request.get_json()
     if not isinstance(lista_tanques, list):
@@ -10411,7 +10661,7 @@ def descargar_reporte_planta_pdf():
 
 @app.route('/descargar-reporte-planta-madrid-pdf')
 @login_required
-@permiso_requerido(['reportes', 'planta', 'planta_madrid'])
+@permiso_requerido(['reportes', 'reporte_madrid', 'planta_madrid'])
 def descargar_reporte_planta_madrid_pdf():
     filtro_tipo = request.args.get('filtro_tipo', 'dia')
     valor = request.args.get('valor')
@@ -10582,6 +10832,7 @@ def descargar_reporte_planta_madrid_pdf():
 
 @app.route('/descargar-reporte-orion-pdf')
 @login_required
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
 def descargar_reporte_orion_pdf():
     # --- La lógica de filtros se mantiene igual ---
     fecha_str = request.args.get('fecha', date.today().isoformat())
@@ -10694,6 +10945,7 @@ def descargar_reporte_orion_pdf():
 
 @app.route('/descargar-reporte-bita-pdf')
 @login_required
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
 def descargar_reporte_bita_pdf():
     # --- Lógica para manejar los filtros avanzados ---
     filtro_tipo = request.args.get('filtro_tipo')
@@ -17114,6 +17366,10 @@ def home():
     # --- REGLA 4: Usuario de inventario EPP exclusivo ---
     if user_email == 'safety@conquerstrading.com':
         return redirect(url_for('inventario_epp_home'))
+
+    # --- REGLA 4b: Usuario exclusivo de Planta Madrid ---
+    if user_email == 'refinerycwt@conquerstrading.com':
+        return redirect(url_for('planta_madrid'))
 
     # --- REGLA 5: Todos los demás usuarios van al home global ---
     return redirect(url_for('home_global'))

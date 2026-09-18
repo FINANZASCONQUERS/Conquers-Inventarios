@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Reporte Visual de Planta{% endblock %}
+{% block title %}Reporte Visual de Planta - Sede Madrid{% endblock %}
 
 {% block extra_css %}
 <link
@@ -8,9 +8,9 @@
     rel="stylesheet">
 <style>
     :root {
-        --primary: #0b8552;
-        --primary-dark: #094d32;
-        --primary-light: #0fa665;
+        --primary: #0284c7;
+        --primary-dark: #0369a1;
+        --primary-light: #38bdf8;
         --success: #28a745;
         --warning: #ffc107;
         --danger: #dc3545;
@@ -75,24 +75,21 @@
     .report-icon-mega {
         width: 70px;
         height: 70px;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         border-radius: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-size: 2rem;
-        box-shadow: 0 8px 24px rgba(11, 133, 82, 0.4);
+        box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4);
         animation: float 3s ease-in-out infinite;
     }
 
     @keyframes float {
-
-        0%,
-        100% {
+        0%, 100% {
             transform: translateY(0px);
         }
-
         50% {
             transform: translateY(-10px);
         }
@@ -151,9 +148,9 @@
     }
 
     .sede-pill.active {
-        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         color: white !important;
-        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
     }
 
     .sede-pill:not(.active) {
@@ -234,7 +231,6 @@
             opacity: 0;
             transform: translateY(20px);
         }
-
         to {
             opacity: 1;
             transform: translateY(0);
@@ -242,59 +238,48 @@
     }
 
     .filter-select-premium {
-        background: var(--input-bg);
-        color: var(--input-text);
-        border: 2px solid var(--border-color);
         border-radius: 12px;
+        border: 2px solid var(--border-color);
         padding: 0.75rem 1rem;
         font-weight: 500;
         transition: var(--transition);
-        cursor: pointer;
+        background-color: var(--bg-surface-subtle);
+        color: var(--text-primary);
     }
 
     .filter-select-premium:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(11, 133, 82, 0.1);
-        outline: none;
+        box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.15);
+        background-color: var(--bg-surface);
     }
 
     /* ==== GRID DE TANQUES ==== */
     .tanks-grid-premium {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 2rem;
-        animation: fadeIn 0.8s ease;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
-    }
-
-    /* ==== TARJETA DE TANQUE PREMIUM ==== */
     .tank-card-premium {
         background: var(--glass-bg);
         backdrop-filter: blur(20px) saturate(180%);
         border-radius: var(--border-radius);
         border: 1px solid var(--glass-border);
-        overflow: hidden;
-        transition: var(--transition);
+        padding: 1.5rem;
         box-shadow: var(--card-shadow);
-        animation: scaleIn 0.5s ease backwards;
-        animation-delay: calc(var(--animation-order) * 0.1s);
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInScale 0.6s ease backwards;
+        animation-delay: calc(var(--animation-order, 0) * 0.08s);
     }
 
-    @keyframes scaleIn {
+    @keyframes fadeInScale {
         from {
             opacity: 0;
-            transform: scale(0.9);
+            transform: scale(0.95);
         }
-
         to {
             opacity: 1;
             transform: scale(1);
@@ -302,92 +287,68 @@
     }
 
     .tank-card-premium:hover {
-        transform: translateY(-8px) scale(1.02);
+        transform: translateY(-8px);
         box-shadow: var(--card-shadow-hover);
+        border-color: var(--primary);
     }
 
     .tank-card-header-premium {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        padding: 1.25rem 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .tank-card-header-premium::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
-    }
-
-    @keyframes rotate {
-        from {
-            transform: rotate(0deg);
-        }
-
-        to {
-            transform: rotate(360deg);
-        }
+        margin-bottom: 1.25rem;
     }
 
     .tank-id-premium {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         font-weight: 800;
-        color: white;
-        position: relative;
-        z-index: 1;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        letter-spacing: -0.5px;
+        color: var(--text-primary);
         font-family: 'JetBrains Mono', monospace;
     }
 
     .tank-product-badge {
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(10px);
-        padding: 0.4rem 1rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
+        padding: 0.4rem 0.9rem;
+        border-radius: 10px;
         font-weight: 700;
-        color: white;
-        text-transform: uppercase;
+        font-size: 0.75rem;
         letter-spacing: 0.5px;
-        position: relative;
-        z-index: 1;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        text-transform: uppercase;
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.15) 0%, rgba(3, 105, 161, 0.15) 100%);
+        color: var(--primary);
+        border: 1px solid rgba(2, 132, 199, 0.3);
     }
 
     .tank-card-body-premium {
-        padding: 2rem 1.5rem;
         display: flex;
-        gap: 2rem;
+        gap: 1.5rem;
+        align-items: center;
+        margin-bottom: 1.25rem;
     }
 
-    /* ==== VISUALIZACIÓN DEL TANQUE 3D ==== */
+    /* ==== CILINDRO 3D INDUSTRIAL ==== */
     .tank-visual-3d {
-        width: 120px;
-        height: 180px;
         position: relative;
+        width: 100px;
+        height: 150px;
         flex-shrink: 0;
-        perspective: 1000px;
     }
 
     .tank-cylinder {
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e0 100%);
-        border-radius: 12px;
+        background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #94a3b8 100%);
+        border-radius: 8px;
         position: relative;
         overflow: hidden;
-        box-shadow:
+        box-shadow: 
             inset 0 2px 8px rgba(0, 0, 0, 0.1),
             0 4px 12px rgba(0, 0, 0, 0.15);
         transform-style: preserve-3d;
+    }
+
+    html.dark-mode .tank-cylinder {
+        background: linear-gradient(90deg, #1e293b 0%, #334155 50%, #1e293b 100%);
     }
 
     .tank-cylinder::before {
@@ -396,7 +357,7 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 20px;
+        height: 16px;
         background: linear-gradient(135deg, #cbd5e0 0%, #a0aec0 100%);
         border-radius: 50% 50% 0 0 / 100% 100% 0 0;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -409,7 +370,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        height: 15px;
+        height: 12px;
         background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
         border-radius: 0 0 8px 8px;
         box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.2);
@@ -417,7 +378,7 @@
 
     .tank-liquid-premium {
         position: absolute;
-        bottom: 15px;
+        bottom: 12px;
         left: 0;
         right: 0;
         transition: height 1s cubic-bezier(0.4, 0, 0.2, 1);
@@ -428,22 +389,19 @@
     .tank-liquid-premium::before {
         content: '';
         position: absolute;
-        top: -5px;
+        top: -4px;
         left: 0;
         right: 0;
-        height: 10px;
+        height: 8px;
         background: inherit;
         filter: brightness(1.2);
         animation: wave 3s ease-in-out infinite;
     }
 
     @keyframes wave {
-
-        0%,
-        100% {
+        0%, 100% {
             transform: translateX(0%) scale(1, 1);
         }
-
         50% {
             transform: translateX(5%) scale(1.05, 0.95);
         }
@@ -469,8 +427,32 @@
     }
 
     .tank-liquid-premium.level-full {
-        background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+        background: linear-gradient(180deg, #60a5fa 0%, #0284c7 100%);
+        box-shadow: 0 0 20px rgba(2, 132, 199, 0.4);
+    }
+
+    /* Línea indicadora de Llenado Seguro */
+    .tank-safefill-marker {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 2px dashed #f59e0b;
+        z-index: 4;
+        pointer-events: none;
+    }
+
+    .tank-safefill-label {
+        position: absolute;
+        right: 2px;
+        top: -14px;
+        font-size: 0.6rem;
+        font-weight: 800;
+        color: #b45309;
+        background: rgba(254, 243, 199, 0.95);
+        padding: 1px 4px;
+        border-radius: 4px;
+        line-height: 1;
+        letter-spacing: -0.2px;
     }
 
     .tank-full-alert {
@@ -480,228 +462,164 @@
         transform: translate(-50%, -50%);
         background: rgba(220, 38, 38, 0.95);
         color: white;
-        padding: 0.5rem 1rem;
+        padding: 0.4rem 0.8rem;
         border-radius: 8px;
         font-weight: 700;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         z-index: 10;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        animation: blink 1.5s ease-in-out infinite;
+        animation: blink 1s infinite;
     }
 
     @keyframes blink {
-
-        0%,
-        100% {
-            opacity: 1;
-        }
-
-        50% {
-            opacity: 0.6;
-        }
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
     }
 
-    /* ==== INFORMACIÓN DEL TANQUE ==== */
+    .tank-overfill-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 800;
+        padding: 3px 8px;
+        border-radius: 6px;
+        margin-top: 6px;
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+        animation: pulseAlert 1.6s infinite;
+    }
+
+    @keyframes pulseAlert {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.04); }
+    }
+
     .tank-info-premium {
         flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
     }
 
     .tank-volume-display {
-        font-size: 2rem;
+        font-size: 1.7rem;
         font-weight: 800;
-        color: #1a202c;
+        color: var(--text-primary);
+        line-height: 1;
+        margin-bottom: 0.5rem;
         font-family: 'JetBrains Mono', monospace;
-        letter-spacing: -1px;
     }
 
     .tank-volume-unit {
-        font-size: 1rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
         font-weight: 600;
-        color: #64748b;
-        margin-left: 0.5rem;
     }
 
     .tank-conversion-info {
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-        padding: 0.4rem 0.75rem;
+        gap: 0.4rem;
+        background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+        color: #0369a1;
+        padding: 0.35rem 0.75rem;
         border-radius: 8px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: #1e40af;
-        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
     }
 
     .tank-progress-premium {
-        height: 14px;
-        background: #f1f5f9;
-        border-radius: 20px;
+        height: 8px;
+        background: rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
         overflow: hidden;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-        position: relative;
+        margin-bottom: 0.5rem;
     }
 
     .tank-progress-bar-premium {
         height: 100%;
-        border-radius: 20px;
+        border-radius: 10px;
         transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
     }
 
-    .tank-progress-bar-premium::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        animation: shimmer 2s infinite;
-    }
-
-    @keyframes shimmer {
-        0% {
-            transform: translateX(-100%);
-        }
-
-        100% {
-            transform: translateX(100%);
-        }
-    }
-
-    .tank-progress-bar-premium.level-empty {
-        background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
-    }
-
-    .tank-progress-bar-premium.level-low {
-        background: linear-gradient(90deg, #fca5a5 0%, #dc2626 100%);
-    }
-
-    .tank-progress-bar-premium.level-medium {
-        background: linear-gradient(90deg, #fcd34d 0%, #f59e0b 100%);
-    }
-
-    .tank-progress-bar-premium.level-good {
-        background: linear-gradient(90deg, #6ee7b7 0%, #10b981 100%);
-    }
-
-    .tank-progress-bar-premium.level-full {
-        background: linear-gradient(90deg, #60a5fa 0%, #3b82f6 100%);
-    }
+    .tank-progress-bar-premium.level-empty { background: #e5e7eb; }
+    .tank-progress-bar-premium.level-low { background: linear-gradient(90deg, #f87171, #dc2626); }
+    .tank-progress-bar-premium.level-medium { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+    .tank-progress-bar-premium.level-good { background: linear-gradient(90deg, #34d399, #10b981); }
+    .tank-progress-bar-premium.level-full { background: linear-gradient(90deg, #38bdf8, #0284c7); }
 
     .tank-percentage-display {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 0.5rem;
+        font-size: 0.85rem;
     }
 
     .tank-percentage-value {
-        font-size: 1.25rem;
-        font-weight: 700;
-        font-family: 'JetBrains Mono', monospace;
+        font-weight: 800;
+        font-size: 1.1rem;
     }
 
-    .tank-percentage-value.level-empty {
-        color: #6b7280;
-    }
-
-    .tank-percentage-value.level-low {
-        color: #dc2626;
-    }
-
-    .tank-percentage-value.level-medium {
-        color: #f59e0b;
-    }
-
-    .tank-percentage-value.level-good {
-        color: #10b981;
-    }
-
-    .tank-percentage-value.level-full {
-        color: #3b82f6;
-    }
+    .tank-percentage-value.level-empty { color: #9ca3af; }
+    .tank-percentage-value.level-low { color: #dc2626; }
+    .tank-percentage-value.level-medium { color: #f59e0b; }
+    .tank-percentage-value.level-good { color: #10b981; }
+    .tank-percentage-value.level-full { color: #0284c7; }
 
     .tank-max-capacity {
-        font-size: 0.8rem;
-        color: #64748b;
-        font-weight: 500;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.78rem;
     }
 
-    /* ==== PIE DE TARJETA ==== */
     .tank-card-footer-premium {
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        padding: 1rem 1.5rem;
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        border-top: 1px solid #e2e8f0;
+        gap: 0.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--glass-border);
     }
 
     .tank-stat-premium {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
         text-align: center;
+        padding: 0.5rem;
+        background: var(--bg-surface-subtle);
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
     }
 
     .tank-stat-label {
         font-size: 0.7rem;
-        color: #94a3b8;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
+        color: var(--text-muted);
+        display: block;
+        margin-bottom: 0.2rem;
     }
 
     .tank-stat-value {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1e293b;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--text-primary);
         font-family: 'JetBrains Mono', monospace;
     }
 
-    /* ==== MENSAJE SIN DATOS ==== */
-    .no-data-premium {
-        grid-column: 1 / -1;
-        background: var(--glass-bg);
-        backdrop-filter: blur(20px);
-        border-radius: var(--border-radius);
-        padding: 4rem 2rem;
-        text-align: center;
-        border: 2px dashed #cbd5e0;
-    }
-
-    .no-data-icon {
-        font-size: 4rem;
-        color: #cbd5e0;
-        margin-bottom: 1rem;
-        animation: float 3s ease-in-out infinite;
-    }
-
-    /* ==== TOTAL DE PRODUCTO ==== */
     .total-product-card {
         background: var(--glass-bg);
-        backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px) saturate(180%);
         border-radius: var(--border-radius);
         border: 1px solid var(--glass-border);
-        padding: 2rem;
-        text-align: center;
+        padding: 1.5rem;
         box-shadow: var(--card-shadow);
+        text-align: center;
         margin-top: 2rem;
-        border-left: 5px solid var(--primary);
+        animation: fadeInUp 0.5s ease;
     }
 
     .total-product-title {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        color: #1a202c;
+        color: var(--text-primary);
         margin: 0;
     }
 
@@ -710,160 +628,35 @@
         font-weight: 800;
     }
 
-    /* ==== RESPONSIVE ==== */
-    @media (max-width: 768px) {
-        .tanks-grid-premium {
-            grid-template-columns: 1fr;
-            gap: 1.5rem;
-        }
-
-        .report-title-main {
-            font-size: 1.5rem;
-        }
-
-        .tank-card-body-premium {
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-
-        .tank-visual-3d {
-            width: 100px;
-            height: 150px;
-            margin: 0 auto;
-        }
-
-        .tank-card-footer-premium {
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.75rem;
-        }
-    }
-
-    /* ==== LEYENDA ==== */
-    .legend-premium {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: var(--bg-surface);
-        color: var(--text-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-
-    .legend-dot {
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: var(--dot-color);
-        box-shadow: 0 0 0 3px rgba(var(--dot-color-rgb), 0.2);
-    }
-
-    /* ==== MODO OSCURO ADAPTACIONES ==== */
-    html.dark-mode .report-header-glass,
-    html.dark-mode .filters-glass-card,
-    html.dark-mode .tank-card-premium,
-    html.dark-mode .total-product-card {
-        background: var(--bg-surface);
-        border-color: var(--border-color);
+    .no-data-premium {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--glass-bg);
         backdrop-filter: blur(20px);
+        border-radius: var(--border-radius);
+        border: 2px dashed var(--border-color);
+        grid-column: 1 / -1;
     }
 
-    html.dark-mode .report-title-main {
-        color: var(--text-primary);
-    }
-
-    html.dark-mode .report-subtitle-main,
-    html.dark-mode .tank-max-capacity,
-    html.dark-mode .tank-stat-label,
-    html.dark-mode .tank-volume-unit {
+    .no-data-icon {
+        font-size: 4rem;
         color: var(--text-muted);
-    }
-
-    html.dark-mode .report-timestamp {
-        background: var(--bg-surface-subtle);
-        color: var(--text-primary);
-    }
-
-    html.dark-mode .filter-select-premium,
-    html.dark-mode .form-control {
-        background-color: var(--input-bg);
-        border-color: var(--border-color);
-        color: var(--text-primary);
-    }
-
-    html.dark-mode .form-label {
-        color: var(--text-secondary) !important;
-    }
-
-    html.dark-mode .tank-id-premium {
-        color: #fff;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-    }
-
-    html.dark-mode .tank-volume-display,
-    html.dark-mode .tank-percentage-value {
-        color: #fff;
-    }
-
-    html.dark-mode .tank-cylinder {
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    html.dark-mode .tank-cylinder::before {
-        /* Tapa */
-        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-    }
-
-    html.dark-mode .tank-cylinder::after {
-        /* Base */
-        background: linear-gradient(135deg, #1a202c 0%, #171923 100%);
-    }
-
-    html.dark-mode .tank-card-footer-premium {
-        background: rgba(255, 255, 255, 0.03);
-        border-top-color: rgba(255, 255, 255, 0.1);
-    }
-
-    html.dark-mode .tank-stat-value {
-        color: #e0e0e0;
-    }
-
-    html.dark-mode .legend-premium {
-        background: #2c2c2c;
-        color: #e0e0e0;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    html.dark-mode .btn-glass.btn-outline-glass {
-        color: var(--primary-light);
-        border-color: var(--primary-light);
-    }
-
-    html.dark-mode .btn-glass.btn-outline-glass:hover {
-        background: var(--primary-light);
-        color: #fff;
-    }
-
-    html.dark-mode .total-product-title {
-        color: #fff;
+        margin-bottom: 1rem;
+        opacity: 0.5;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="report-container">
-    <div class="container">
+    <div class="container-fluid px-4">
 
         <!-- ENCABEZADO GLASSMORPHISM -->
         <div class="report-header-glass">
             <div class="row align-items-center g-3">
                 <div class="col-auto">
                     <div class="report-icon-mega">
-                        <i class="bi bi-buildings-fill"></i>
+                        <i class="bi bi-geo-alt-fill"></i>
                     </div>
                 </div>
                 <div class="col">
@@ -871,17 +664,17 @@
                         <h1 class="report-title-main">Reporte Visual de Planta</h1>
                         <!-- SELECTOR DE SEDE -->
                         <div class="sede-pill-group">
-                            <a href="{{ url_for('reporte_planta') }}" class="sede-pill active">
+                            {% if (session.rol == 'admin' or 'planta' in session.get('area', []) or 'reportes' in session.get('area', [])) and session.get('email') != 'refinerycwt@conquerstrading.com' %}
+                            <a href="{{ url_for('reporte_planta') }}" class="sede-pill">
                                 <i class="bi bi-buildings"></i> Cartagena
                             </a>
-                            {% if session.get('rol') == 'admin' or 'reporte_madrid' in session.get('area', []) or 'reportes' in session.get('area', []) or 'planta_madrid' in session.get('area', []) %}
-                            <a href="{{ url_for('reporte_planta_madrid') }}" class="sede-pill">
+                            {% endif %}
+                            <a href="{{ url_for('reporte_planta_madrid') }}" class="sede-pill active">
                                 <i class="bi bi-geo-alt-fill"></i> Madrid
                             </a>
-                            {% endif %}
                         </div>
                     </div>
-                    <p class="report-subtitle-main mb-0">Monitoreo en Tiempo Real del Inventario de Tanques - Sede Cartagena</p>
+                    <p class="report-subtitle-main mb-0">Monitoreo en Tiempo Real del Inventario de Tanques - Sede Madrid</p>
                     {% if fecha_actualizacion_info and "no disponible" not in fecha_actualizacion_info|lower and "error"
                     not in fecha_actualizacion_info|lower %}
                     <div class="mt-2">
@@ -894,9 +687,6 @@
                 </div>
                 <div class="col-auto ms-auto">
                     <div class="d-flex gap-2 flex-wrap justify-content-end">
-                        <a href="{{ url_for('reporte_variaciones_tanques') }}" class="btn btn-glass btn-outline-glass">
-                            <i class="bi bi-graph-up-arrow me-2"></i>Variaciones
-                        </a>
                         <div class="btn-group">
                             <button type="button" class="btn btn-glass btn-primary-glass dropdown-toggle"
                                 data-bs-toggle="dropdown">
@@ -909,9 +699,9 @@
                                 <li><a class="dropdown-item" href="#" data-filtro="anual">Todo el Año</a></li>
                             </ul>
                         </div>
-                        {% if session.rol == 'admin' or 'planta' in session.area %}
-                        <a href="{{ url_for('planta') }}" class="btn btn-glass btn-outline-glass">
-                            <i class="bi bi-pencil-fill me-2"></i>Editar Planilla
+                        {% if session.rol == 'admin' or 'planta_madrid' in session.get('area', []) %}
+                        <a href="{{ url_for('planta_madrid') }}" class="btn btn-glass btn-outline-glass">
+                            <i class="bi bi-pencil-fill me-2"></i>Editar Planilla Madrid
                         </a>
                         {% endif %}
                     </div>
@@ -939,7 +729,7 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <form method="GET" action="{{ url_for('reporte_planta') }}">
+                    <form method="GET" action="{{ url_for('reporte_planta_madrid') }}">
                         <label class="form-label fw-bold text-dark mb-2">
                             <i class="bi bi-calendar-date me-2"></i>Fecha del Reporte
                         </label>
@@ -950,7 +740,7 @@
                             <button type="submit" class="btn btn-glass btn-primary-glass">
                                 <i class="bi bi-funnel-fill"></i>
                             </button>
-                            <a href="{{ url_for('reporte_planta') }}" class="btn btn-glass btn-outline-glass">
+                            <a href="{{ url_for('reporte_planta_madrid') }}" class="btn btn-glass btn-outline-glass">
                                 <i class="bi bi-arrow-counterclockwise"></i>
                             </a>
                         </div>
@@ -960,7 +750,7 @@
             <div class="row mt-2">
                 <div class="col d-flex gap-2 flex-wrap">
                     <div class="legend-premium">
-                        <span class="legend-dot" style="--dot-color:#198754; --dot-color-rgb:25,135,84;"></span>
+                        <span class="legend-dot" style="--dot-color:#0284c7; --dot-color-rgb:2,132,199;"></span>
                         Días con registro
                     </div>
                     <div class="legend-premium">
@@ -971,7 +761,7 @@
             </div>
         </div>
 
-        <!-- GRID DE TANQUES PREMIUM -->
+        <!-- GRID DE TANQUES MADRID -->
         <div id="contenedor-tanques" class="tanks-grid-premium">
             <!-- Los tanques se cargan dinámicamente -->
         </div>
@@ -989,7 +779,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Seleccione una Opción</h5>
+                <h5 class="modal-title">Descargar Reporte - Sede Madrid</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -1096,39 +886,53 @@
 
         const bls60 = parseFloat(data.BLS_60) || 0;
         const maxCap = parseFloat(data.MAX_CAP) || 0;
+        const fillCap = parseFloat(data.FILL_CAP) || maxCap;
         const porcentaje = maxCap > 0 ? Math.min((bls60 / maxCap) * 100, 100) : 0;
         const nivel = determinarNivel(porcentaje);
+        const safePercent = maxCap > 0 ? Math.min((fillCap / maxCap) * 100, 100) : 100;
+        const isOverSafeFill = fillCap > 0 && bls60 > fillCap;
 
         let conversionHTML = '';
-        if (data.TK === "Consumo Interno") {
-            const gals = (bls60 * 42).toFixed(2);
-            conversionHTML = `
-            <div class="tank-conversion-info">
-                <i class="bi bi-droplet-fill"></i>
-                <strong>${parseFloat(gals).toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</strong>
-            </div>`;
-        } else {
-            const allowedTonTanks = new Set(['TK-102', 'TK-110', 'TK-108']);
-            if (allowedTonTanks.has(data.TK)) {
+        const tkName = (data.TK || '').toUpperCase();
+        const prod = (data.PRODUCTO || '').toUpperCase();
+        const convType = data.TIPO_CONVERSION || '';
+
+        // La conversión SOLO se debe realizar para MGO y FO6
+        const esMgoOFo6 = (
+            convType === 'BBL_TO_TON' ||
+            prod.includes('MGO') ||
+            prod.includes('FO6') ||
+            prod.includes('F06') ||
+            ['TK-19', 'TK-14', 'TK-20', 'TK-15'].includes(tkName)
+        ) && !['CRUDO', 'DILUYENTE', 'COMBUSTIBLE'].some(p => prod.includes(p)) && !['TK-21', 'TK-22', 'TK-11', 'TK-12', 'TK-13', 'TK-24'].includes(tkName);
+
+        if (esMgoOFo6) {
+            let factor = parseFloat(data.CONVERSION_VALOR);
+            if (isNaN(factor) || factor <= 0) {
+                if (prod.includes('MGO') || tkName === 'TK-19' || tkName === 'TK-14') {
+                    factor = 7.4;
+                } else if (prod.includes('FO6') || prod.includes('F06') || tkName === 'TK-20' || tkName === 'TK-15') {
+                    factor = 6.4;
+                }
+            }
+
+            let tons = 0;
+            if (factor > 0 && bls60 > 0) {
+                tons = factor > 1 ? (bls60 / factor) : (bls60 * factor);
+            } else if (bls60 > 0) {
                 const apiVal = parseFloat(data.API);
-                let tons = 0;
-                if (!isNaN(apiVal) && bls60 > 0) {
+                if (!isNaN(apiVal) && apiVal > 0) {
                     const sg = 141.5 / (apiVal + 131.5);
                     tons = bls60 * (sg / 6.2898);
-                } else if (data.TK === 'TK-102') {
-                    tons = bls60 > 0 ? (bls60 / 6.7) : 0;
-                } else if (data.TK === 'TK-110') {
-                    tons = bls60 > 0 ? (bls60 / 7.4) : 0;
-                } else if (data.TK === 'TK-108') {
-                    tons = bls60 > 0 ? (bls60 / 6.7) : 0;
                 }
-                if (tons > 0) {
-                    conversionHTML = `
-                    <div class="tank-conversion-info" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #047857;">
-                        <i class="bi bi-box-seam"></i>
-                        <strong>${tons.toFixed(2)} TON</strong>
-                    </div>`;
-                }
+            }
+
+            if (tons > 0) {
+                conversionHTML = `
+                <div class="tank-conversion-info" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); color: #047857;">
+                    <i class="bi bi-box-seam"></i>
+                    <strong>${tons.toFixed(2)} TON</strong>
+                </div>`;
             }
         }
 
@@ -1138,10 +942,8 @@
         card.setAttribute("data-producto", data.PRODUCTO || '');
         card.style.setProperty('--animation-order', index);
 
-        let maxCapLabel = `${maxCap.toLocaleString('es-CO', { maximumFractionDigits: 0 })} BLS`;
-        if (data.TK === "Consumo Interno") {
-            maxCapLabel = `${maxCap.toLocaleString('es-CO', { maximumFractionDigits: 2 })} BLS (${(maxCap * 42).toFixed(2)} GAL)`;
-        }
+        const maxCapLabel = `${maxCap.toLocaleString('es-CO', { maximumFractionDigits: 0 })} BLS`;
+        const fillCapLabel = `${fillCap.toLocaleString('es-CO', { maximumFractionDigits: 0 })} BLS`;
 
         card.innerHTML = `
         <div class="tank-card-header-premium">
@@ -1153,7 +955,11 @@
             <div class="tank-visual-3d">
                 <div class="tank-cylinder">
                     <div class="tank-liquid-premium level-${nivel}" style="height:${porcentaje}%"></div>
-                    ${porcentaje >= 95 ? '<div class="tank-full-alert"><i class="bi bi-exclamation-triangle-fill me-1"></i>LLENO</div>' : ''}
+                    ${safePercent < 100 ? `
+                    <div class="tank-safefill-marker" style="bottom: calc(12px + ${safePercent}% * 0.82);" title="Límite Llenado Seguro: ${fillCapLabel}">
+                        <span class="tank-safefill-label">${safePercent.toFixed(0)}%</span>
+                    </div>` : ''}
+                    ${porcentaje >= 98 ? '<div class="tank-full-alert"><i class="bi bi-exclamation-triangle-fill me-1"></i>LLENO</div>' : ''}
                 </div>
             </div>
             
@@ -1172,6 +978,12 @@
                     <span class="tank-percentage-value level-${nivel}">${porcentaje.toFixed(1)}%</span>
                     <span class="tank-max-capacity">Max: ${maxCapLabel}</span>
                 </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 0.76rem;">
+                    <span class="text-muted">Llenado Seguro:</span>
+                    <strong class="${isOverSafeFill ? 'text-danger fw-bold' : 'text-primary'}">${fillCapLabel}</strong>
+                </div>
+                ${isOverSafeFill ? '<div class="tank-overfill-badge"><i class="bi bi-exclamation-triangle-fill"></i> SOBRE LLENADO SEGURO</div>' : ''}
             </div>
         </div>
         
@@ -1182,14 +994,14 @@
             </div>
             <div class="tank-stat-premium">
                 <span class="tank-stat-label">BSW</span>
-                <span class="tank-stat-value">${data.TK === 'Consumo Interno' ? 'N/A' : (data.BSW ? data.BSW + '%' : 'N/A')}</span>
+                <span class="tank-stat-value">${data.BSW ? data.BSW + '%' : 'N/A'}</span>
             </div>
             <div class="tank-stat-premium">
                 <span class="tank-stat-label">%S</span>
-                <span class="tank-stat-value">${data.TK === 'Consumo Interno' ? 'N/A' : (data.S ? data.S + '%' : 'N/A')}</span>
+                <span class="tank-stat-value">${data.S ? data.S + '%' : 'N/A'}</span>
             </div>
         </div>
-    `;
+        `;
 
         return card;
     }
@@ -1245,8 +1057,8 @@
             } else {
                 mensaje.innerHTML = `
                 <div class="no-data-icon"><i class="bi bi-database-exclamation"></i></div>
-                <h3 class="h5 mb-2">No hay datos disponibles</h3>
-                <p class="text-muted mb-0">Por favor, guarde un registro en la planilla primero</p>
+                <h3 class="h5 mb-2">No hay datos disponibles para Madrid</h3>
+                <p class="text-muted mb-0">Por favor, guarde un registro en la planilla de Madrid primero</p>
             `;
             }
 
@@ -1256,7 +1068,7 @@
 
     // Inicializar
     document.addEventListener("DOMContentLoaded", () => {
-        // Calendario
+        // Calendario Flatpickr
         const input = document.getElementById('fecha_filtro');
         if (input) {
             const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
@@ -1276,7 +1088,7 @@
             };
 
             addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
-            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_blue.css');
             addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
                 flatpickr(input, {
                     dateFormat: 'Y-m-d',
@@ -1285,8 +1097,9 @@
                     onDayCreate: function (dObj, dStr, fp, dayElem) {
                         const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
                         if (setFechas.has(dateStr)) {
-                            dayElem.style.background = 'rgba(25, 135, 84, 0.2)';
-                            dayElem.style.color = '#198754';
+                            dayElem.style.background = 'rgba(2, 132, 199, 0.2)';
+                            dayElem.style.color = '#0284c7';
+                            dayElem.style.fontWeight = 'bold';
                             dayElem.setAttribute('title', 'Con registro');
                         } else {
                             dayElem.style.background = 'rgba(173,181,189,0.15)';
@@ -1301,30 +1114,31 @@
         cargarFiltros();
         filtrar();
 
-        // Modal de descarga
-        const modalElement = document.getElementById('opcionesDescargaModal');
-        const descargaModal = new bootstrap.Modal(modalElement);
+        // Lógica modal de descarga
+        const descargaModal = new bootstrap.Modal(document.getElementById('opcionesDescargaModal'));
         let filtroSeleccionado = '';
 
         function prepararModal(filtro) {
             filtroSeleccionado = filtro;
-            const hoy = new Date().toISOString();
-            const anoActual = new Date().getFullYear();
+            ['inputDia', 'inputMes', 'inputTrimestre', 'inputAnual'].forEach(id => {
+                document.getElementById(id).style.display = 'none';
+            });
 
-            document.getElementById('inputDia').style.display = 'none';
-            document.getElementById('inputMes').style.display = 'none';
-            document.getElementById('inputTrimestre').style.display = 'none';
-            document.getElementById('inputAnual').style.display = 'none';
+            const hoy = new Date();
+            const anoActual = hoy.getFullYear();
+            const mesActual = (hoy.getMonth() + 1).toString().padStart(2, '0');
+            const diaActual = hoy.toISOString().slice(0, 10);
 
             if (filtro === 'dia') {
                 document.getElementById('inputDia').style.display = 'block';
-                document.getElementById('fechaValor').value = hoy.slice(0, 10);
+                document.getElementById('fechaValor').value = diaActual;
             } else if (filtro === 'mes') {
                 document.getElementById('inputMes').style.display = 'block';
-                document.getElementById('mesValor').value = hoy.slice(0, 7);
+                document.getElementById('mesValor').value = `${anoActual}-${mesActual}`;
             } else if (filtro === 'trimestre') {
                 document.getElementById('inputTrimestre').style.display = 'block';
                 document.getElementById('trimestreAno').value = anoActual;
+                document.getElementById('trimestreNum').value = Math.ceil((hoy.getMonth() + 1) / 3);
             } else if (filtro === 'anual') {
                 document.getElementById('inputAnual').style.display = 'block';
                 document.getElementById('anualValor').value = anoActual;
@@ -1343,9 +1157,9 @@
         function descargar(formato) {
             let urlBase = '';
             if (formato === 'pdf') {
-                urlBase = "{{ url_for('descargar_reporte_planta_pdf') }}";
+                urlBase = "{{ url_for('descargar_reporte_planta_madrid_pdf') }}";
             } else {
-                urlBase = "{{ url_for('exportar_excel', nombre_reporte='planta') }}";
+                urlBase = "{{ url_for('exportar_excel', nombre_reporte='planta_madrid') }}";
             }
 
             let params = new URLSearchParams();

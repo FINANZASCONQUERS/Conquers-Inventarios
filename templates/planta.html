@@ -88,6 +88,44 @@
         margin-top: 0.25rem;
     }
 
+    /* ==== SELECTOR DE SEDE ==== */
+    .sede-pill-group {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface-subtle, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 30px;
+        padding: 4px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .sede-pill {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sede-pill.active {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+    }
+
+    .sede-pill:not(.active) {
+        color: #64748b;
+    }
+
+    .sede-pill:not(.active):hover {
+        color: #1a202c;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
     /* ==== FILTROS PREMIUM ==== */
     .filter-card-premium {
         background: white;
@@ -541,8 +579,25 @@
                 </div>
             </div>
             <div class="col">
-                <h1 class="page-title-text">Inventario de Planta</h1>
-                <p class="page-subtitle mb-0">Sistema de Control de Tanques en Tiempo Real</p>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h1 class="page-title-text">Inventario de Planta</h1>
+                    <!-- SELECTOR DE SEDE -->
+                    <div class="sede-pill-group">
+                        <a href="{{ url_for('planta') }}" class="sede-pill active">
+                            <i class="bi bi-buildings"></i> Cartagena
+                        </a>
+                        {% if session.get('rol') == 'admin' or 'planta_madrid' in session.get('area', []) %}
+                        <a href="{{ url_for('planta_madrid') }}" class="sede-pill">
+                            <i class="bi bi-geo-alt-fill"></i> Madrid
+                        </a>
+                        {% elif 'reporte_madrid' in session.get('area', []) or 'reportes' in session.get('area', []) %}
+                        <a href="{{ url_for('reporte_planta_madrid') }}" class="sede-pill" title="Ver Reporte Madrid">
+                            <i class="bi bi-geo-alt-fill"></i> Madrid (Reporte)
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <p class="page-subtitle mb-0">Sistema de Control de Tanques en Tiempo Real - Sede Cartagena</p>
             </div>
             <div class="col-auto ms-auto">
                 <div class="d-flex gap-2 flex-wrap justify-content-end">

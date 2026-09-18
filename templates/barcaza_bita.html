@@ -58,6 +58,19 @@
         box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25); 
     }
     .alert-container { position: fixed; top: 80px; right: 20px; z-index: 1100; width: 350px; }
+    /* Columnas calculadas por gravedad API (Galones / Toneladas) */
+    .calc-cell { text-align: center; background-color: #f8f9fa; color: #495057; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .calc-cell.sin-api { color: #adb5bd; }
+    .barcaza-totals-row td { font-weight: 600; background-color: #eef2f7; border-top: 2px solid var(--color-border); }
+    .barcaza-table thead th.th-calc { background-color: #3d5a80; }
+
+    /* Barcaza marcada como NO disponible: atenuada y sin edición */
+    .barcaza-card-header { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+    .barcaza-nd-badge { display: none; font-size: .75rem; font-weight: 600; letter-spacing: .02em; }
+    .barcaza-no-disponible { opacity: .55; filter: grayscale(.35); }
+    .barcaza-no-disponible .barcaza-card-header { background-color: #fff1f2; color: #991b1b; border-bottom-color: #fecaca; }
+    .barcaza-no-disponible .barcaza-nd-badge { display: inline-flex; align-items: center; gap: .35rem; }
+    .barcaza-no-disponible .editable-cell { pointer-events: none; background-color: #f1f3f5 !important; cursor: not-allowed; color: #6c757d; }
 
     /* Nuevos estilos para el filtro mejorado */
     .barcaza-filters {
@@ -115,10 +128,97 @@
         .barcaza-btn { flex: 1; min-width: 100%; }
         .barcaza-filters .row { flex-direction: column; gap: 1rem; }
     }
+
+    /* ===== Vista compacta: cuadros a ancho completo, sin scroll horizontal ===== */
+    .barcaza-stack { display: flex; flex-direction: column; gap: 1.25rem; }
+    .barcaza-card { margin-bottom: 0; }
+    .barcaza-table { width: 100%; }
+    .barcaza-table thead th { padding: .55rem .6rem; font-size: .8rem; letter-spacing: .03em; white-space: nowrap; }
+    .barcaza-table thead th.th-input { background-color: #9a6700; }
+    .barcaza-table thead th.th-calc { background-color: #3d5a80; }
+    .barcaza-table tbody td { padding: .4rem .6rem; font-size: .93rem; white-space: nowrap; }
+    .editable-cell { padding: .35rem .5rem; min-width: 5.5rem; }
+    .editable-cell.input-primary { background-color: #fff4d6; }
+    .editable-cell.input-primary:hover { background-color: #ffe9b3; }
+    .editable-cell.input-primary:focus { background-color: #ffe9b3; outline-color: #d97706; box-shadow: 0 0 0 .2rem rgba(217,119,6,.25); }
+    .editable-cell.sin-api { box-shadow: inset 0 0 0 2px #f59e0b; }
+    .calc-cell { padding: .4rem .6rem; }
+    .barcaza-card-footer { padding: .5rem 1rem; font-size: .8rem; color: #6b7280; background: #fafbfc; border-top: 1px solid var(--color-border); border-radius: 0 0 var(--border-radius) var(--border-radius); display: flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+    .barcaza-leyenda { font-size: .82rem; color: #6b7280; display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; margin: -.5rem 0 1rem; }
+    .barcaza-leyenda .sw { display: inline-block; width: 14px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: .3rem; border: 1px solid rgba(0,0,0,.08); }
+    {% if not puede_editar %}
+    .editable-cell { pointer-events: none !important; cursor: default !important; background-color: transparent !important; }
+    .editable-cell.input-primary { background-color: #fafbfc !important; }
+    {% endif %}
 </style>
 {% endblock %}
 
 {% block content %}
+{#--- Macro: cuadro de una barcaza (Toneladas + API -> BLS @60 -> Galones) ---#}
+{% macro render_tanques_table(title, tanques_list, empty_message, clave) %}
+{% set estado = disponibilidad.get(clave) if disponibilidad else none %}
+{% set nd = estado and not estado.disponible %}
+{% set ug = ultimo_guardado.get(clave) if ultimo_guardado else none %}
+<div class="barcaza-card {% if nd %}barcaza-no-disponible{% endif %}" data-barcaza-card="{{ clave }}">
+    <div class="barcaza-card-header">
+        <span>{{ title }}</span>
+        <span class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-secondary border fw-normal">{{ tanques_list|length }} tanques</span>
+            <span class="badge bg-danger barcaza-nd-badge" data-role="nd-badge"><i class="bi bi-slash-circle"></i> NO DISPONIBLE<span data-role="nd-motivo">{% if nd and estado.motivo %} · {{ estado.motivo }}{% endif %}</span></span>
+        </span>
+    </div>
+    <div class="table-responsive">
+        <table class="barcaza-table">
+            <thead>
+                <tr>
+                    <th>Tanque</th>
+                    <th>Producto</th>
+                    <th title="Capacidad máxima (BLS)">MAX CAP</th>
+                    <th class="th-input" title="Dato de entrada">Toneladas</th>
+                    <th class="th-input" title="Dato de entrada (gravedad API)">API</th>
+                    <th class="th-calc" title="Toneladas × Barriles/Ton según API. También puede digitarse.">BLS @60</th>
+                    <th class="th-calc" title="BLS @60 × 42">Galones</th>
+                    <th>%BSW</th>
+                    <th>%S</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in tanques_list %}
+                <tr data-tk="{{ fila.TK }}" data-driver="BLS">
+                    <td class="fw-semibold">{{ fila.TK }}</td>
+                    <td data-field="PRODUCTO">{{ fila.PRODUCTO }}</td>
+                    <td data-field="MAX_CAP" class="text-center">{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
+                    <td class="editable-cell input-primary" contenteditable="{{ 'true' if (puede_editar and not nd) else 'false' }}" data-field="TONELADAS">{% if fila.get('TONELADAS') is not none and fila.get('TONELADAS') != '' %}{{ "%.2f"|format(fila.get('TONELADAS')|float) }}{% else %}0{% endif %}</td>
+                    <td class="editable-cell input-primary" contenteditable="{{ 'true' if (puede_editar and not nd) else 'false' }}" data-field="API">{{ fila.API|default(0, true) }}</td>
+                    <td class="editable-cell" contenteditable="{{ 'true' if (puede_editar and not nd) else 'false' }}" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
+                    <td class="calc-cell" data-calc="GALONES">{{ "%.2f"|format(fila.get('GALONES', 0)|float) }}</td>
+                    <td class="editable-cell" contenteditable="{{ 'true' if (puede_editar and not nd) else 'false' }}" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
+                    <td class="editable-cell" contenteditable="{{ 'true' if (puede_editar and not nd) else 'false' }}" data-field="S">{{ fila.S|default(0, true) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-3">{{ empty_message }}</td>
+                </tr>
+                {% endfor %}
+                {% if tanques_list %}
+                <tr class="barcaza-totals-row">
+                    <td colspan="3">TOTAL</td>
+                    <td class="text-center" data-total="TONELADAS"></td>
+                    <td></td>
+                    <td class="text-center" data-total="BLS_60"></td>
+                    <td class="calc-cell" data-total="GALONES"></td>
+                    <td colspan="2"></td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="barcaza-card-footer">
+        <span><i class="bi bi-clock-history me-1"></i>{% if ug %}Último guardado: <strong>{{ ug }}</strong>{% else %}Sin registros guardados para esta fecha (se muestran valores por defecto){% endif %}</span>
+        <span class="text-warning fw-semibold d-none" data-role="aviso-api"></span>
+    </div>
+</div>
+{% endmacro %}
 <div class="barcaza-container">
     <div class="container-xl">
         <div class="barcaza-header">
@@ -128,18 +228,34 @@
                     {{ titulo }}
                 </h1>
                 <p class="barcaza-subtitle">
+                    {% if puede_editar %}
                     Editando inventario para el registro del día. Usuario: <strong>{{ nombre }}</strong>
+                    {% else %}
+                    Visualizando inventario (Modo Solo Lectura). Usuario: <strong>{{ nombre }}</strong>
+                    {% endif %}
                 </p>
             </div>
             <div class="barcaza-actions">
+                {% if puede_gestionar %}
+                <button type="button" class="barcaza-btn barcaza-btn-secondary" data-bs-toggle="modal" data-bs-target="#modalDisponibilidadBarcazas" title="Marcar barcazas disponibles / no disponibles">
+                    <i class="bi bi-toggles2"></i>
+                    Disponibilidad
+                </button>
+                {% endif %}
                 <a href="{{ url_for('reporte_barcaza_bita') }}" class="barcaza-btn barcaza-btn-secondary">
                     <i class="bi bi-file-earmark-bar-graph-fill"></i>
                     Ver Reporte
                 </a>
+                {% if puede_editar %}
                 <button id="guardar-bita-btn" class="barcaza-btn barcaza-btn-primary">
                     <i class="bi bi-save2-fill"></i>
                     Guardar Registro
                 </button>
+                {% else %}
+                <span class="badge bg-secondary d-flex align-items-center gap-1 px-3 py-2 fs-6">
+                    <i class="bi bi-eye-fill"></i> Solo Lectura
+                </span>
+                {% endif %}
             </div>
         </div>
 
@@ -172,98 +288,22 @@
 
         <div id="alert-container" class="alert-container"></div>
 
-        <div class="row g-4">
-            {# Barcaza Marinse #}
-            <div class="col-lg-6 d-flex flex-column gap-4">
-                <div class="barcaza-card">
-                    <div class="barcaza-card-header">
-                        BARCAZA MARINSE
-                    </div>
-                    <div class="table-responsive">
-                        <table class="barcaza-table">
-                            <thead>
-                                <tr>
-                                    <th>Tanque</th>
-                                    <th>Producto</th>
-                                    <th>MAX CAP</th>
-                                    <th>BLS @60</th>
-                                    <th>API</th>
-                                    <th>%BSW</th>
-                                    <th>%S</th> 
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for fila in grupos["BARCAZA MARINSE"] %}
-                                <tr data-tk="{{ fila.TK }}">
-                                    <td>{{ fila.TK }}</td>
-                                    <td>{{ fila.PRODUCTO }}</td>
-                                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S|default(0, true) }}</td> 
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-3">
-                                        No hay tanques para Barcaza Marinse.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            {# Barcaza Oiltech #}
-            <div class="col-lg-6 d-flex flex-column gap-4">
-                <div class="barcaza-card">
-                    <div class="barcaza-card-header">
-                        BARCAZA OILTECH
-                    </div>
-                    <div class="table-responsive">
-                        <table class="barcaza-table">
-                            <thead>
-                                <tr>
-                                    <th>Tanque</th>
-                                    <th>Producto</th>
-                                    <th>MAX CAP</th>
-                                    <th>BLS @60</th>
-                                    <th>API</th>
-                                    <th>%BSW</th>
-                                    <th>%S</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for fila in grupos["BARCAZA OIDECH"] %}
-                                <tr data-tk="{{ fila.TK }}">
-                                    <td>{{ fila.TK }}</td>
-                                    <td>{{ fila.PRODUCTO }}</td>
-                                    <td>{{ "%.2f"|format(fila.MAX_CAP|float) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BLS_60">{{ fila.BLS_60|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="API">{{ fila.API|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="BSW">{{ fila.BSW|default(0, true) }}</td>
-                                    <td class="editable-cell" contenteditable="true" data-field="S">{{ fila.S|default(0, true) }}</td> 
-                                </tr>
-                                {% else %}
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-3">
-                                        No hay tanques para Barcaza Oiltech.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="barcaza-leyenda">
+            <span><span class="sw" style="background:#fff4d6"></span>Dato de entrada: <strong>Toneladas</strong> y <strong>API</strong></span>
+            <span><span class="sw" style="background:var(--color-primary-light)"></span><strong>BLS @60</strong> = Toneladas &times; Barriles/Ton (tabla API). Tambi&eacute;n puede digitarse y se calculan las toneladas</span>
+            <span><span class="sw" style="background:#f8f9fa"></span><strong>Galones</strong> = BLS @60 &times; 42</span>
+        </div>
+        <div class="barcaza-stack">
+            {{ render_tanques_table("BARCAZA MARINSE", grupos["BARCAZA MARINSE"], "No hay tanques para Barcaza Marinse.", "MARINSE") }}
+            {{ render_tanques_table("BARCAZA OIDECH", grupos["BARCAZA OIDECH"], "No hay tanques para Barcaza Oidech.", "OIDECH") }}
         </div>
     </div>
 </div>
+{% include '_modal_disponibilidad_barcazas.html' %}
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/conversion_api.js') }}"></script>
 <script>
     function mostrarAlerta(mensaje, tipo = 'info', duracion = 5000) {
         const alertContainer = document.getElementById('alert-container');
@@ -280,38 +320,34 @@
 
     document.addEventListener('DOMContentLoaded', function() {
         const guardarBtn = document.getElementById('guardar-bita-btn');
-
-        if (!guardarBtn) {
-            console.error("No se encontró el botón con id 'guardar-bita-btn'.");
-            return;
-        }
-
-        guardarBtn.addEventListener('click', async () => {
+        if (guardarBtn) {
+            guardarBtn.addEventListener('click', async () => {
             const originalBtnText = guardarBtn.innerHTML;
+            const faltanApi = window.validarConversionBarcazas ? window.validarConversionBarcazas() : [];
+            if (faltanApi.length) { mostrarAlerta('⚠️ Falta la gravedad API para convertir toneladas a barriles en: <strong>' + faltanApi.join(', ') + '</strong>. Ingrésela antes de guardar.', 'warning', 9000); return; }
             guardarBtn.disabled = true;
             guardarBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...`;
 
             try {
-                // Primero rellenar vacíos visibles con 0
-                document.querySelectorAll('.editable-cell').forEach(cell => {
+                // Primero rellenar vacíos visibles con 0 (solo barcazas disponibles)
+                document.querySelectorAll('.barcaza-card:not(.barcaza-no-disponible) .editable-cell').forEach(cell => {
                     if (cell.textContent.trim() === '') cell.textContent = '0';
                 });
 
                 const datosAGuardar = [];
                 document.querySelectorAll(".barcaza-table tbody tr[data-tk]").forEach(fila => {
-                    const celdas = fila.getElementsByTagName('td');
-                    const bls_60_raw = celdas[3].textContent.trim().replace(',', '.');
-                    const api_raw = celdas[4].textContent.trim().replace(',', '.');
-                    const bsw_raw = celdas[5].textContent.trim().replace(',', '.');
-                    const s_raw = celdas[6].textContent.trim().replace(',', '.');
+                    // Omitir barcazas marcadas como no disponibles (no se sobreescribe su inventario)
+                    if (fila.closest('.barcaza-no-disponible')) return;
+                    const getTxt = (f) => { const el = fila.querySelector(`[data-field="${f}"]`); return (el ? el.textContent : '').trim().replace(',', '.'); };
+                    const getNum = (f) => { const v = getTxt(f); const n = parseFloat(v === '' ? '0' : v); return Number.isFinite(n) ? n : 0; };
                     datosAGuardar.push({
                         "TK": fila.dataset.tk,
-                        "PRODUCTO": celdas[1].textContent.trim(),
-                        "MAX_CAP": parseFloat(celdas[2].textContent.trim().replace(',', '.')) || 0,
-                        "BLS_60": bls_60_raw === '' ? '0' : bls_60_raw,
-                        "API": api_raw === '' ? '0' : api_raw,
-                        "BSW": bsw_raw === '' ? '0' : bsw_raw,
-                        "S": s_raw === '' ? '0' : s_raw
+                        "PRODUCTO": getTxt('PRODUCTO'),
+                        "MAX_CAP": getNum('MAX_CAP'),
+                        "BLS_60": getNum('BLS_60'),
+                        "API": getNum('API'),
+                        "BSW": getNum('BSW'),
+                        "S": getNum('S')
                     });
                 });
 
@@ -347,6 +383,95 @@
                 guardarBtn.innerHTML = originalBtnText;
             }
         });
+        }
+        // Disponibilidad: reflejar en vivo el cambio hecho desde el modal
+        const PUEDE_EDITAR = {{ 'true' if puede_editar else 'false' }};
+        document.addEventListener('barcaza:disponibilidad', (ev) => {
+            const b = ev.detail || {};
+            const card = document.querySelector(`[data-barcaza-card="${b.nombre}"]`);
+            if (!card) return;
+            const nd = !b.disponible;
+            card.classList.toggle('barcaza-no-disponible', nd);
+            card.querySelectorAll('.editable-cell').forEach(c => c.setAttribute('contenteditable', (PUEDE_EDITAR && !nd) ? 'true' : 'false'));
+            const motivo = card.querySelector('[data-role="nd-motivo"]');
+            if (motivo) motivo.textContent = (nd && b.motivo) ? ' · ' + b.motivo : '';
+        });
+
+        // =================================================================
+        //  CONVERSIÓN POR GRAVEDAD API: Toneladas + API -> BLS @60 -> Galones
+        //  (si se digita BLS @60 directamente, se calculan las toneladas)
+        // =================================================================
+        (function () {
+            const C = window.ConversionAPI;
+            if (!C) { console.warn('ConversionAPI no cargado'); return; }
+            const fmt2 = (n) => (n === null || n === undefined || !Number.isFinite(n)) ? '' : n.toFixed(2);
+            const num = (v) => { const n = parseFloat(String(v == null ? '' : v).trim().replace(',', '.')); return Number.isFinite(n) ? n : 0; };
+            const cel = (fila, campo) => fila.querySelector(`[data-field="${campo}"]`);
+            const val = (fila, campo) => { const el = cel(fila, campo); return el ? num(el.textContent) : 0; };
+
+            function recalcularFila(fila) {
+                const cApi = cel(fila, 'API');
+                const f = C.factores(cApi ? cApi.textContent : '');
+                const driver = fila.dataset.driver || 'BLS';
+                const cTon = cel(fila, 'TONELADAS'), cBls = cel(fila, 'BLS_60'), cGal = fila.querySelector('[data-calc="GALONES"]');
+                let ton = val(fila, 'TONELADAS'), bls = val(fila, 'BLS_60');
+                let faltaApi = false, tonValida = true;
+                if (driver === 'TON') {
+                    if (f) { bls = ton * f.bbl_ton; if (cBls) cBls.textContent = fmt2(bls); }
+                    else if (ton > 0) { faltaApi = true; }
+                } else {
+                    if (f) { ton = bls * f.ton_bbl; if (cTon) cTon.textContent = fmt2(ton); }
+                    else if (bls > 0) { faltaApi = true; tonValida = false; }
+                }
+                if (cTon) cTon.classList.toggle('sin-api', faltaApi);
+                if (cBls) cBls.classList.toggle('sin-api', faltaApi);
+                if (cApi) cApi.classList.toggle('sin-api', faltaApi);
+                const gal = bls * C.GAL_POR_BBL;
+                if (cGal) cGal.textContent = fmt2(gal);
+                return { tk: fila.dataset.tk, ton: tonValida ? ton : null, bls, gal, faltaApi, driver };
+            }
+
+            function recalcularTarjeta(card) {
+                let tTon = 0, tBls = 0, tGal = 0; const faltan = [];
+                card.querySelectorAll('tbody tr[data-tk]').forEach(fila => {
+                    const r = recalcularFila(fila);
+                    if (r.ton !== null) tTon += r.ton;
+                    tBls += r.bls; tGal += r.gal;
+                    if (r.faltaApi) faltan.push(r.tk);
+                });
+                const set = (campo, v) => { const el = card.querySelector(`[data-total="${campo}"]`); if (el) el.textContent = v; };
+                set('TONELADAS', tTon.toFixed(2)); set('BLS_60', tBls.toFixed(2)); set('GALONES', tGal.toFixed(2));
+                const aviso = card.querySelector('[data-role="aviso-api"]');
+                if (aviso) { aviso.textContent = faltan.length ? ('\u26A0 Falta API en: ' + faltan.join(', ')) : ''; aviso.classList.toggle('d-none', !faltan.length); }
+                return faltan;
+            }
+            function recalcularTodo() { document.querySelectorAll('.barcaza-card').forEach(recalcularTarjeta); }
+
+            document.querySelectorAll('.editable-cell[data-field]').forEach(cell => {
+                const campo = cell.dataset.field, fila = cell.closest('tr'), card = cell.closest('.barcaza-card');
+                if (!['TONELADAS', 'BLS_60', 'API'].includes(campo)) return;
+                cell.addEventListener('input', () => {
+                    if (campo === 'TONELADAS') fila.dataset.driver = 'TON';
+                    if (campo === 'BLS_60') fila.dataset.driver = 'BLS';
+                    recalcularTarjeta(card);
+                });
+                cell.addEventListener('blur', () => recalcularTarjeta(card));
+            });
+            recalcularTodo();
+            window.recalcularConversionBarcazas = recalcularTodo;
+            // Tanques (de barcazas disponibles) con toneladas digitadas que no se pueden convertir a BLS por falta de API
+            window.validarConversionBarcazas = function () {
+                const faltan = [];
+                document.querySelectorAll('.barcaza-card:not(.barcaza-no-disponible)').forEach(card => {
+                    card.querySelectorAll('tbody tr[data-tk]').forEach(fila => {
+                        const r = recalcularFila(fila);
+                        if (r.faltaApi && r.driver === 'TON') faltan.push(((card.dataset.barcazaCard || '') + ' ' + r.tk).trim());
+                    });
+                });
+                return faltan;
+            };
+        })();
+
         // Autocompletar con 0 al salir de una celda vacía
         document.querySelectorAll('.editable-cell').forEach(cell => {
             cell.addEventListener('blur', () => {

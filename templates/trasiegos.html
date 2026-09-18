@@ -4,8 +4,11 @@
 
 {% block content %}
 <div class="container">
-  <div class="page-section-header shadow-sm mb-3">
+  <div class="page-section-header shadow-sm mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
     <h2 class="h4 mb-0"><i class="bi bi-arrow-left-right"></i> Registrar Trasiego</h2>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalDisponibilidadBarcazas" title="Marcar barcazas disponibles / no disponibles">
+      <i class="bi bi-toggles2 me-1"></i>Disponibilidad de barcazas
+    </button>
   </div>
 
   <form id="form-meta" class="card shadow-sm p-3 mb-4" method="post" onsubmit="return false;">
@@ -224,6 +227,8 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
+{% include '_modal_disponibilidad_barcazas.html' %}
+
 <script>
   const selFecha = document.getElementById('selFecha');
   const selTk = document.getElementById('selTk');
@@ -243,6 +248,41 @@ document.addEventListener('DOMContentLoaded', () => {
     selFecha.value = today;
   }
 
+  // ---- Disponibilidad de barcazas: opciones deshabilitadas en el selector ----
+  function claveBarcaza(key) { return String(key || '').toUpperCase().replace(/^BITA-/, ''); }
+
+  function aplicarDisponibilidadBarcazas(sel) {
+    if (!sel) return;
+    const disp = window.__barDisponibilidad || {};
+    let resetear = false;
+    Array.from(sel.options).forEach(op => {
+      if (!op.value) return;
+      const d = disp[op.value];
+      const nd = d && d.disponible === false;
+      op.disabled = !!nd;
+      op.textContent = nd ? (op.value + ' (No disponible' + (d.motivo ? ': ' + d.motivo : '') + ')') : op.value;
+      op.classList.toggle('text-muted', !!nd);
+      if (nd && sel.value === op.value) resetear = true;
+    });
+    if (resetear) { sel.value = ''; sel.dispatchEvent(new Event('change')); }
+  }
+
+  function todosLosSelectsBarcaza() {
+    return document.querySelectorAll('#selBarcaza, select[name="destino_barcaza"]');
+  }
+
+  // Cambio hecho desde el modal: actualizar en vivo todos los selectores de barcaza (incluidos formularios clonados)
+  document.addEventListener('barcaza:disponibilidad', (ev) => {
+    const b = ev.detail || {};
+    const disp = window.__barDisponibilidad || (window.__barDisponibilidad = {});
+    Object.keys(disp).forEach(key => {
+      if (claveBarcaza(key) === String(b.nombre || '').toUpperCase()) {
+        disp[key] = { disponible: !!b.disponible, motivo: b.motivo || '' };
+      }
+    });
+    todosLosSelectsBarcaza().forEach(aplicarDisponibilidadBarcazas);
+  });
+
   async function loadOptions() {
     try {
       const res = await fetch('{{ url_for("api_trasiegos_opciones") }}');
@@ -256,7 +296,8 @@ document.addEventListener('DOMContentLoaded', () => {
           op.textContent = tk;
           selTk.appendChild(op);
         });
-        // Load Barcaza options
+        // Load Barcaza options (las no disponibles quedan visibles pero deshabilitadas)
+        window.__barDisponibilidad = data.disponibilidad || {};
         selBarcaza.innerHTML = '<option value="">Seleccionar Barcaza</option>';
         Object.keys(data.barcazas).forEach(bar => {
           const op = document.createElement('option');
@@ -264,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
           op.textContent = bar;
           selBarcaza.appendChild(op);
         });
+        aplicarDisponibilidadBarcazas(selBarcaza);
         // Store aforos
         aforosTK = data.aforosTK || [];
         aforosBAR = data.aforosBAR || [];

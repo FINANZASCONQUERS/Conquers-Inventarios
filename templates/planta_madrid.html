@@ -1,0 +1,981 @@
+{% extends "base.html" %}
+
+{% block title %}Planilla de Planta - Sede Madrid{% endblock %}
+
+{% block extra_css %}
+<link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap"
+    rel="stylesheet">
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        --secondary-gradient: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        --accent-color: #0284c7;
+        --accent-hover: #0369a1;
+        --border-radius-sm: 8px;
+        --border-radius-md: 12px;
+        --border-radius-lg: 16px;
+        --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1);
+        --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+        --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: var(--bg-body);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ENCABEZADO */
+    .page-header-modern {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        padding: 1.75rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-card);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header-modern::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--primary-gradient);
+    }
+
+    .page-title-icon {
+        width: 54px;
+        height: 54px;
+        background: var(--primary-gradient);
+        border-radius: var(--border-radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.75rem;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .page-title-text {
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin-bottom: 0.25rem;
+        color: var(--text-primary);
+    }
+
+    .page-subtitle {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* SELECTOR DE SEDE */
+    .sede-pill-group {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface-subtle);
+        border: 1px solid var(--border-color);
+        border-radius: 30px;
+        padding: 4px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .sede-pill {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sede-pill.active {
+        background: var(--primary-gradient);
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+    }
+
+    .sede-pill:not(.active) {
+        color: var(--text-muted);
+    }
+
+    .sede-pill:not(.active):hover {
+        color: var(--text-primary);
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    /* BOTONES */
+    .btn-premium {
+        padding: 0.625rem 1.25rem;
+        border-radius: var(--border-radius-md);
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: var(--transition-smooth);
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-premium:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-elevated);
+    }
+
+    .btn-primary-premium {
+        background: var(--primary-gradient);
+        color: white;
+    }
+
+    .btn-primary-premium:hover {
+        color: white;
+        opacity: 0.95;
+    }
+
+    .btn-outline-premium {
+        background: var(--bg-surface);
+        border: 1.5px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-outline-premium:hover {
+        background: var(--bg-surface-subtle);
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+
+    .btn-success-premium {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+    }
+
+    .btn-success-premium:hover {
+        color: white;
+        background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+    }
+
+    /* TARJETA DE FILTROS */
+    .filter-card-premium {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-card);
+    }
+
+    .date-input-wrapper {
+        position: relative;
+    }
+
+    .date-input-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        pointer-events: none;
+    }
+
+    .date-input-wrapper .form-control {
+        padding-left: 2.75rem;
+        border-radius: var(--border-radius-md);
+        border: 1.5px solid var(--border-color);
+        font-weight: 500;
+        background-color: var(--bg-surface-subtle);
+        color: var(--text-primary);
+        transition: var(--transition-smooth);
+    }
+
+    .date-input-wrapper .form-control:focus {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.12);
+        background-color: var(--bg-surface);
+    }
+
+    /* TABLA */
+    .table-container-modern {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        overflow: hidden;
+        box-shadow: var(--shadow-card);
+        margin-bottom: 2rem;
+    }
+
+    .table-modern {
+        margin-bottom: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-modern thead th {
+        background: var(--bg-surface-subtle);
+        color: var(--text-muted);
+        font-weight: 700;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        padding: 1rem 1.1rem;
+        border-bottom: 2px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .table-modern tbody td {
+        padding: 0.95rem 1.1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.9rem;
+        color: var(--text-primary);
+    }
+
+    .table-modern tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table-modern tbody tr:hover {
+        background-color: rgba(2, 132, 199, 0.03);
+    }
+
+    .tank-id-badge {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        font-size: 0.95rem;
+        padding: 0.35rem 0.65rem;
+        border-radius: var(--border-radius-sm);
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(3, 105, 161, 0.1) 100%);
+        color: var(--accent-color);
+        border: 1px solid rgba(2, 132, 199, 0.2);
+        display: inline-block;
+    }
+
+    .product-label {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .editable-premium {
+        background-color: var(--bg-surface);
+        border: 1.5px solid #cbd5e1;
+        border-radius: var(--border-radius-sm);
+        padding: 0.5rem 0.75rem !important;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        transition: var(--transition-smooth);
+        min-width: 85px;
+    }
+
+    html.dark-mode .editable-premium {
+        background-color: #1e293b;
+        border-color: #475569;
+        color: #f1f5f9;
+    }
+
+    .editable-premium:hover {
+        background-color: var(--bg-surface-subtle);
+        border-color: var(--accent-color);
+    }
+
+    .editable-premium:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2);
+        background-color: var(--bg-surface);
+    }
+
+    .editable-premium.cell-edited {
+        background-color: #fef3c7 !important;
+        border-color: #f59e0b !important;
+        color: #92400e !important;
+    }
+
+    html.dark-mode .editable-premium.cell-edited {
+        background-color: #78350f !important;
+        border-color: #d97706 !important;
+        color: #fef3c7 !important;
+    }
+
+    .readonly-cell {
+        background-color: var(--bg-surface-subtle);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        font-family: 'JetBrains Mono', monospace;
+        padding: 0.5rem 0.75rem !important;
+        border-radius: var(--border-radius-sm);
+    }
+
+    .ton-col-premium {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 700;
+        color: #047857;
+        background-color: rgba(5, 150, 105, 0.05);
+        border-radius: var(--border-radius-sm);
+        padding: 0.5rem 0.75rem !important;
+        text-align: right;
+    }
+
+    .stat-card-modern {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-md);
+        padding: 1.25rem;
+        box-shadow: var(--shadow-subtle);
+        transition: var(--transition-smooth);
+    }
+
+    .stat-card-modern:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-card);
+    }
+
+    .stat-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        font-family: 'JetBrains Mono', monospace;
+        line-height: 1;
+    }
+
+    .stat-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        margin-top: 0.5rem;
+        display: inline-block;
+    }
+
+    .legend-modern {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        background: var(--bg-surface-subtle);
+        border: 1px solid var(--border-color);
+    }
+
+    .saving-indicator {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #0f172a;
+        color: white;
+        padding: 0.9rem 1.5rem;
+        border-radius: 50px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 1050;
+    }
+
+    .saving-spinner {
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl my-4">
+
+    <!-- ENCABEZADO PREMIUM -->
+    <div class="page-header-modern">
+        <div class="row align-items-center g-3">
+            <div class="col-auto">
+                <div class="page-title-icon">
+                    <i class="bi bi-geo-alt-fill"></i>
+                </div>
+            </div>
+            <div class="col">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h1 class="page-title-text">Inventario de Planta</h1>
+                    <!-- SELECTOR DE SEDE -->
+                    <div class="sede-pill-group">
+                        {% if (session.get('rol') == 'admin' or 'planta' in session.get('area', [])) and session.get('email') != 'refinerycwt@conquerstrading.com' %}
+                        <a href="{{ url_for('planta') }}" class="sede-pill">
+                            <i class="bi bi-buildings"></i> Cartagena
+                        </a>
+                        {% endif %}
+                        <a href="{{ url_for('planta_madrid') }}" class="sede-pill active">
+                            <i class="bi bi-geo-alt-fill"></i> Madrid
+                        </a>
+                    </div>
+                </div>
+                <p class="page-subtitle mb-0">Sistema de Control y Captura de Tanques - Sede Madrid</p>
+            </div>
+            <div class="col-auto ms-auto">
+                <div class="d-flex gap-2 flex-wrap justify-content-end">
+                    <a href="{{ url_for('reporte_planta_madrid') }}" class="btn btn-outline-premium btn-premium">
+                        <i class="bi bi-graph-up me-2"></i>Ver Reporte Visual
+                    </a>
+                    <button type="button" onclick="guardarRegistro()" class="btn btn-success-premium btn-premium">
+                        <i class="bi bi-save2-fill me-2"></i>Guardar Registro
+                    </button>
+                    <!-- BOTÓN GESTIONAR TANQUES -->
+                    {% if session.get('rol') == 'admin' or 'planta_madrid' in session.get('area', []) %}
+                    <button type="button" data-bs-toggle="modal" data-bs-target="#modalGestionTanques"
+                        class="btn btn-outline-premium btn-premium">
+                        <i class="bi bi-gear-fill me-2"></i>Configurar Tanques
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS PREMIUM -->
+    <div class="filter-card-premium">
+        <form method="GET" action="{{ url_for('planta_madrid') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-6">
+                    <label class="form-label fw-bold text-muted">
+                        <i class="bi bi-calendar-date me-2"></i>Seleccionar Fecha de Inventario
+                    </label>
+                    <div class="date-input-wrapper">
+                        <i class="bi bi-calendar3 date-input-icon"></i>
+                        <input type="text" class="form-control" id="fecha_filtro" name="fecha"
+                            value="{{ fecha_seleccionada or '' }}" placeholder="Seleccione una fecha"
+                            data-fechas='{{ (fechas_con_registro or [])|tojson|safe }}'>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <button type="submit" class="btn btn-primary-premium btn-premium w-100">
+                        <i class="bi bi-funnel-fill me-2"></i>Aplicar Filtro
+                    </button>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <a href="{{ url_for('planta_madrid') }}" class="btn btn-outline-premium btn-premium w-100">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Ver Actual
+                    </a>
+                </div>
+            </div>
+            {% if fecha_seleccionada and today_iso and fecha_seleccionada != today_iso %}
+            <div class="alert alert-info alert-modern mt-3 mb-0">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <strong>Vista Histórica:</strong> Mostrando datos del {{ fecha_seleccionada }}
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- TARJETAS DE RESUMEN OPERATIVO -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-modern">
+                <div class="stat-label">Total Barriles @60°F</div>
+                <div class="stat-value" id="summary-total-bls">0.00</div>
+                <span class="stat-badge bg-primary text-white">Volumen Real</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-modern">
+                <div class="stat-label">Capacidad Máx. Instalada</div>
+                <div class="stat-value" id="summary-total-cap">0</div>
+                <span class="stat-badge bg-secondary text-white">Nominal</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-modern">
+                <div class="stat-label">Cap. Máx. Llenado Seguro</div>
+                <div class="stat-value" id="summary-total-fill">0</div>
+                <span class="stat-badge bg-info text-white">Operativo Seguro</span>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card-modern">
+                <div class="stat-label">% Ocupación General</div>
+                <div class="stat-value" id="summary-ocupacion">0%</div>
+                <span class="stat-badge bg-success text-white" id="summary-ocupacion-badge">Normal</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEYENDA -->
+    <div class="mb-3 d-flex gap-2 flex-wrap">
+        <div class="legend-modern">
+            <span class="legend-dot" style="--dot-color:#0284c7; --dot-color-rgb:2,132,199;"></span>
+            Días con registro
+        </div>
+        <div class="legend-modern">
+            <span class="legend-dot" style="--dot-color:#adb5bd; --dot-color-rgb:173,181,189;"></span>
+            Días sin registro
+        </div>
+        <div class="legend-modern" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+            <i class="bi bi-pencil-fill me-1"></i>
+            Campos editables
+        </div>
+    </div>
+
+    <!-- INDICADOR DE GUARDADO -->
+    <div class="saving-indicator" id="savingIndicator">
+        <span class="saving-spinner"></span>
+        <span class="fw-bold">Guardando inventario Madrid...</span>
+    </div>
+
+    <!-- CONTENEDOR DE ALERTAS -->
+    <div id="alert-container" style="position: fixed; top: 100px; right: 20px; z-index: 1060; max-width: 400px;"></div>
+
+    <!-- TABLA PREMIUM MADRID -->
+    <div class="table-container-modern">
+        <div class="table-responsive">
+            <table class="table table-modern">
+                <thead>
+                    <tr>
+                        <th style="min-width: 110px;">
+                            <i class="bi bi-tag-fill me-1"></i>Tanque
+                        </th>
+                        <th style="min-width: 140px;">
+                            <i class="bi bi-droplet-fill me-1"></i>Producto
+                        </th>
+                        <th style="min-width: 120px;">
+                            <i class="bi bi-speedometer2 me-1"></i>Cap. Máx
+                        </th>
+                        <th style="min-width: 130px;">
+                            <i class="bi bi-shield-check me-1"></i>Llenado Seguro
+                        </th>
+                        <th style="min-width: 130px;">
+                            <i class="bi bi-thermometer-half me-1"></i>BLS @60°F
+                        </th>
+                        <th style="min-width: 120px;">
+                            <i class="bi bi-calculator me-1"></i>Conversión
+                        </th>
+                        <th style="min-width: 95px;">
+                            <i class="bi bi-graph-up me-1"></i>API
+                        </th>
+                        <th style="min-width: 95px;">
+                            <i class="bi bi-droplet-half me-1"></i>%BSW
+                        </th>
+                        <th style="min-width: 95px;">
+                            <i class="bi bi-fire me-1"></i>%S
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fila in planilla %}
+                    <tr data-tk="{{ fila.TK }}" data-conversion="{{ fila.TIPO_CONVERSION }}"
+                        data-conversion-val="{{ fila.CONVERSION_VALOR if fila.CONVERSION_VALOR is not none else '' }}">
+                        <td>
+                            <span class="tank-id-badge">{{ fila.TK }}</span>
+                        </td>
+                        <td data-field="PRODUCTO">
+                            <span class="product-label">{{ fila.PRODUCTO }}</span>
+                        </td>
+                        <td data-field="MAX_CAP" class="fw-bold">
+                            {{ fila.MAX_CAP|int if fila.MAX_CAP else 0 }} BLS
+                        </td>
+                        <td data-field="FILL_CAP" class="fw-bold text-primary">
+                            {{ fila.FILL_CAP|int if fila.FILL_CAP else (fila.MAX_CAP|int if fila.MAX_CAP else 0) }} BLS
+                        </td>
+                        <td contenteditable="true" class="editable-premium" data-field="BLS_60" inputmode="decimal"
+                            title="Ingrese los barriles a 60°F">{{ fila.BLS_60 }}</td>
+                        <td class="ton-col-premium" title="Calculado automáticamente">
+                            —
+                        </td>
+                        <td contenteditable="true" class="editable-premium" data-field="API" inputmode="decimal"
+                            title="Ingrese la densidad API">{{ fila.API }}</td>
+                        <td contenteditable="{{ 'false' if fila.TK == 'TK-24' or 'COMBUSTIBLE' in (fila.PRODUCTO or '')|upper else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TK != 'TK-24' and 'COMBUSTIBLE' not in (fila.PRODUCTO or '')|upper else 'readonly-cell' }}"
+                            data-field="BSW" inputmode="decimal"
+                            title="{{ 'No aplica' if fila.TK == 'TK-24' or 'COMBUSTIBLE' in (fila.PRODUCTO or '')|upper else 'Ingrese %BSW' }}">
+                            {{ fila.BSW if fila.TK != 'TK-24' and 'COMBUSTIBLE' not in (fila.PRODUCTO or '')|upper else 'N/A' }}
+                        </td>
+                        <td contenteditable="{{ 'false' if fila.TK == 'TK-24' or 'COMBUSTIBLE' in (fila.PRODUCTO or '')|upper else 'true' }}"
+                            class="{{ 'editable-premium' if fila.TK != 'TK-24' and 'COMBUSTIBLE' not in (fila.PRODUCTO or '')|upper else 'readonly-cell' }}"
+                            data-field="S" inputmode="decimal"
+                            title="{{ 'No aplica' if fila.TK == 'TK-24' or 'COMBUSTIBLE' in (fila.PRODUCTO or '')|upper else 'Ingrese %S' }}">
+                            {{ fila.S if fila.TK != 'TK-24' and 'COMBUSTIBLE' not in (fila.PRODUCTO or '')|upper else 'N/A' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL GESTIÓN DE TANQUES MADRID -->
+    <div class="modal fade" id="modalGestionTanques" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-gear-fill me-2"></i>Configuración de Tanques - Sede Madrid
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-3" id="tanquesTabs">
+                        <li class="nav-item">
+                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-lista">Tanques Activos</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-nuevo" id="tabBtnNuevo">+ Nuevo / Editar Tanque</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- LISTA DE TANQUES -->
+                        <div class="tab-pane fade show active" id="tab-lista">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tanque</th>
+                                            <th>Producto</th>
+                                            <th>Cap. Máx (BLS)</th>
+                                            <th>Llenado Seguro (BLS)</th>
+                                            <th>Conversión</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for t in tanques_conf %}
+                                        <tr class="{{ 'opacity-50' if not t.activo else '' }}">
+                                            <td class="fw-bold">{{ t.nombre }}</td>
+                                            <td>{{ t.producto_actual }}</td>
+                                            <td>{{ t.capacidad_maxima }}</td>
+                                            <td class="text-primary fw-semibold">{{ t.capacidad_llenado or t.capacidad_maxima }}</td>
+                                            <td><small>{{ t.tipo_conversion }}</small></td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" data-tank='{{ t|tojson }}'
+                                                    onclick='editarTanque(this)' title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-{{ 'danger' if t.activo else 'success' }}"
+                                                    onclick="toggleTanque({{ t.id }})" title="{{ 'Desactivar' if t.activo else 'Activar' }}">
+                                                    <i class="bi bi-{{ 'trash' if t.activo else 'check-circle' }}"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- FORMULARIO NUEVO/EDITAR -->
+                        <div class="tab-pane fade" id="tab-nuevo">
+                            <form id="form-tanque-madrid">
+                                <input type="hidden" id="tk_id" name="id">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Nombre del Tanque (Ej: TK-21)</label>
+                                        <input type="text" class="form-control" id="tk_nombre" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Producto Actual</label>
+                                        <input type="text" class="form-control" id="tk_producto" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Capacidad Máxima (BLS)</label>
+                                        <input type="number" step="0.01" class="form-control" id="tk_capacidad" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Capacidad Máxima de Llenado (BLS)</label>
+                                        <input type="number" step="0.01" class="form-control" id="tk_capacidad_llenado" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Regla de Conversión</label>
+                                        <select class="form-select" id="tk_conversion">
+                                            <option value="NONE">Sin conversión</option>
+                                            <option value="BBL_TO_TON">Barriles a Toneladas (Usa API) - MGO / FO6</option>
+                                            <option value="BBL_TO_GAL">Barriles a Galones ( * 42)</option>
+                                            <option value="GAL_TO_BBL">Galones a Barriles ( / 42)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Valor Conversión Fijo (Opcional)</label>
+                                        <input type="number" step="0.0001" class="form-control" id="tk_conversion_valor"
+                                            placeholder="Opcional">
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <button type="submit" class="btn btn-primary-premium btn-premium w-100">
+                                        <i class="bi bi-save2-fill me-2"></i>Guardar Tanque Madrid
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Cálculos y conversiones dinámicas
+    function calcularConversiones() {
+        const rows = document.querySelectorAll('.table-modern tbody tr');
+        let totalBLS = 0;
+        let totalCap = 0;
+        let totalFill = 0;
+
+        rows.forEach(row => {
+            const blsCell = row.querySelector('[data-field="BLS_60"]');
+            const apiCell = row.querySelector('[data-field="API"]');
+            const maxCapCell = row.querySelector('[data-field="MAX_CAP"]');
+            const fillCapCell = row.querySelector('[data-field="FILL_CAP"]');
+            const convCell = row.querySelector('.ton-col-premium');
+
+            const blsVal = parseFloat((blsCell.textContent || '').replace(',', '.')) || 0;
+            const apiVal = parseFloat((apiCell ? apiCell.textContent || '' : '').replace(',', '.')) || 0;
+            const maxCapVal = parseFloat((maxCapCell.textContent || '').replace(/[^\d.]/g, '')) || 0;
+            const fillCapVal = parseFloat((fillCapCell.textContent || '').replace(/[^\d.]/g, '')) || maxCapVal;
+
+            totalBLS += blsVal;
+            totalCap += maxCapVal;
+            totalFill += fillCapVal;
+
+            const rule = row.getAttribute('data-conversion') || 'NONE';
+            const fixedVal = parseFloat(row.getAttribute('data-conversion-val'));
+            const tk = (row.getAttribute('data-tk') || '').toUpperCase();
+            const prod = (row.querySelector('[data-field="PRODUCTO"]')?.textContent || '').trim().toUpperCase();
+
+            // La conversión SOLO se debe hacer para los MGO y FO6
+            const esMgoOFo6 = (
+                rule === 'BBL_TO_TON' ||
+                prod.includes('MGO') ||
+                prod.includes('FO6') ||
+                prod.includes('F06') ||
+                ['TK-19', 'TK-14', 'TK-20', 'TK-15'].includes(tk)
+            ) && !['CRUDO', 'DILUYENTE', 'COMBUSTIBLE'].some(p => prod.includes(p)) && !['TK-21', 'TK-22', 'TK-11', 'TK-12', 'TK-13', 'TK-24'].includes(tk);
+
+            // Alerta si sobrepasa llenado seguro
+            if (fillCapVal > 0 && blsVal > fillCapVal) {
+                blsCell.style.backgroundColor = 'rgba(239, 68, 68, 0.15)';
+                blsCell.style.borderColor = '#ef4444';
+            } else if (!blsCell.classList.contains('cell-edited')) {
+                blsCell.style.backgroundColor = '';
+                blsCell.style.borderColor = '';
+            }
+
+            if (esMgoOFo6) {
+                let factor = 0;
+                if (!isNaN(fixedVal) && fixedVal > 0) {
+                    factor = fixedVal;
+                } else if (prod.includes('MGO') || tk === 'TK-19' || tk === 'TK-14') {
+                    factor = 7.4;
+                } else if (prod.includes('FO6') || prod.includes('F06') || tk === 'TK-20' || tk === 'TK-15') {
+                    factor = 6.4;
+                }
+
+                let tons = 0;
+                if (factor > 0 && blsVal > 0) {
+                    tons = factor > 1 ? (blsVal / factor) : (blsVal * factor);
+                } else if (apiVal > 0 && blsVal > 0) {
+                    const sg = 141.5 / (apiVal + 131.5);
+                    tons = blsVal * (sg / 6.2898);
+                }
+                convCell.textContent = tons > 0 ? `${tons.toFixed(2)} TON` : '—';
+            } else {
+                convCell.textContent = '—';
+            }
+        });
+
+        // Actualizar resumen
+        document.getElementById('summary-total-bls').textContent = totalBLS.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('summary-total-cap').textContent = totalCap.toLocaleString('es-CO');
+        document.getElementById('summary-total-fill').textContent = totalFill.toLocaleString('es-CO');
+        
+        const pct = totalCap > 0 ? ((totalBLS / totalCap) * 100).toFixed(1) : 0;
+        document.getElementById('summary-ocupacion').textContent = `${pct}%`;
+    }
+
+    // Marcar cambios y recalcular
+    document.querySelectorAll('.editable-premium').forEach(cell => {
+        cell.addEventListener('input', function() {
+            this.classList.add('cell-edited');
+            calcularConversiones();
+        });
+    });
+
+    // Guardar inventario
+    function guardarRegistro() {
+        const rows = document.querySelectorAll('.table-modern tbody tr');
+        const data = [];
+
+        rows.forEach(row => {
+            const tk = row.getAttribute('data-tk');
+            const producto = (row.querySelector('[data-field="PRODUCTO"]')?.textContent || '').trim();
+            const maxCap = parseFloat((row.querySelector('[data-field="MAX_CAP"]')?.textContent || '').replace(/[^\d.]/g, '')) || 0;
+            const fillCap = parseFloat((row.querySelector('[data-field="FILL_CAP"]')?.textContent || '').replace(/[^\d.]/g, '')) || maxCap;
+            const bls60 = (row.querySelector('[data-field="BLS_60"]')?.textContent || '').trim();
+            const api = (row.querySelector('[data-field="API"]')?.textContent || '').trim();
+            const bsw = (row.querySelector('[data-field="BSW"]')?.textContent || '').trim();
+            const s = (row.querySelector('[data-field="S"]')?.textContent || '').trim();
+
+            if (tk) {
+                data.push({
+                    TK: tk,
+                    PRODUCTO: producto,
+                    MAX_CAP: maxCap,
+                    FILL_CAP: fillCap,
+                    BLS_60: bls60,
+                    API: api,
+                    BSW: bsw === 'N/A' ? '' : bsw,
+                    S: s === 'N/A' ? '' : s
+                });
+            }
+        });
+
+        const indicator = document.getElementById('savingIndicator');
+        indicator.style.display = 'flex';
+
+        fetch("{{ url_for('guardar_registro_planta_madrid') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(resData => {
+            indicator.style.display = 'none';
+            if (resData.success) {
+                mostrarAlerta(resData.message || "Inventario Madrid guardado con éxito", "success");
+                document.querySelectorAll('.cell-edited').forEach(c => c.classList.remove('cell-edited'));
+            } else {
+                mostrarAlerta(resData.message || "Error al guardar", "danger");
+            }
+        })
+        .catch(err => {
+            indicator.style.display = 'none';
+            mostrarAlerta("Error de conexión al servidor", "danger");
+        });
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const container = document.getElementById('alert-container');
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${tipo} alert-dismissible fade show shadow-lg`;
+        alert.role = 'alert';
+        alert.innerHTML = `
+            <strong>${tipo === 'success' ? '<i class="bi bi-check-circle-fill me-1"></i>' : '<i class="bi bi-exclamation-triangle-fill me-1"></i>'}</strong> ${msg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        container.appendChild(alert);
+        setTimeout(() => alert.remove(), 4000);
+    }
+
+    // Configuración de tanques en modal
+    document.addEventListener('DOMContentLoaded', function() {
+        calcularConversiones();
+
+        const form = document.getElementById('form-tanque-madrid');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const id = document.getElementById('tk_id').value;
+                const nombre = document.getElementById('tk_nombre').value;
+                const producto = document.getElementById('tk_producto').value;
+                const capacidad = document.getElementById('tk_capacidad').value;
+                const capacidad_llenado = document.getElementById('tk_capacidad_llenado').value;
+                const conversion = document.getElementById('tk_conversion').value;
+                const conversion_valor = document.getElementById('tk_conversion_valor').value;
+
+                fetch("{{ url_for('tanques_madrid_save') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, nombre, producto, capacidad, capacidad_llenado, conversion, conversion_valor })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        mostrarAlerta("Tanque guardado. Recargando...", "success");
+                        setTimeout(() => location.reload(), 900);
+                    } else {
+                        mostrarAlerta(data.message, "danger");
+                    }
+                })
+                .catch(e => mostrarAlerta("Error de conexión", "danger"));
+            });
+        }
+
+        // Flatpickr
+        const input = document.getElementById('fecha_filtro');
+        if (input && window.flatpickr) {
+            const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
+            const setFechas = new Set(fechasConRegistro);
+
+            flatpickr(input, {
+                dateFormat: 'Y-m-d',
+                defaultDate: input.value || new Date(),
+                allowInput: true,
+                onDayCreate: function (dObj, dStr, fp, dayElem) {
+                    const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
+                    if (setFechas.has(dateStr)) {
+                        dayElem.style.background = 'rgba(2, 132, 199, 0.2)';
+                        dayElem.style.color = '#0284c7';
+                        dayElem.style.fontWeight = 'bold';
+                    }
+                }
+            });
+        }
+    });
+
+    function editarTanque(btn) {
+        const t = JSON.parse(btn.getAttribute('data-tank'));
+        document.getElementById('tk_id').value = t.id || '';
+        document.getElementById('tk_nombre').value = t.nombre || '';
+        document.getElementById('tk_producto').value = t.producto_actual || '';
+        document.getElementById('tk_capacidad').value = t.capacidad_maxima || '';
+        document.getElementById('tk_capacidad_llenado').value = t.capacidad_llenado || t.capacidad_maxima || '';
+        document.getElementById('tk_conversion').value = t.tipo_conversion || 'BBL_TO_TON';
+        document.getElementById('tk_conversion_valor').value = t.conversion_valor !== null ? t.conversion_valor : '';
+
+        const tabBtn = document.getElementById('tabBtnNuevo');
+        tabBtn.textContent = 'Editar Tanque: ' + t.nombre;
+        new bootstrap.Tab(tabBtn).show();
+    }
+
+    function toggleTanque(id) {
+        if (confirm("¿Está seguro de cambiar el estado de este tanque?")) {
+            fetch("{{ url_for('tanques_madrid_delete') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    mostrarAlerta(data.message, "danger");
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
