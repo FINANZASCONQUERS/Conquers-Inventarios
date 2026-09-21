@@ -1946,6 +1946,56 @@
         return texto;
     }
 
+    function normalizarNombreCliente(txt) {
+        return (txt || '').toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+    }
+
+    function sinSufijosCliente(txt) {
+        return (txt || '').toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/\b(S\.?A\.?S\.?|S\.?A\.?|LTDA\.?|LIMITADA|E\.?U\.?|S\.? EN C\.?|SUCURSAL)\b/gi, '')
+            .replace(/[^A-Z0-9]/gi, '')
+            .toUpperCase();
+    }
+
+    function buscarClienteEnCatalogo(nombreBuscado, destinoBuscado = '') {
+        if (!Array.isArray(clientes) || !nombreBuscado) return null;
+        const normNombre = normalizarNombreCliente(nombreBuscado);
+        const sufNombre = sinSufijosCliente(nombreBuscado);
+        const normDestino = extraerCiudadSolo(destinoBuscado);
+
+        // 1. Coincidencia exacta de nombre alfanumérico + destino
+        if (normDestino) {
+            const m = clientes.find(c => {
+                const n = normalizarNombreCliente(c.NOMBRE_CLIENTE);
+                const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
+                return (n === normNombre) && (ciu.includes(normDestino) || normDestino.includes(ciu));
+            });
+            if (m) return m;
+        }
+
+        // 2. Coincidencia sin sufijos societarios + destino
+        if (normDestino && sufNombre) {
+            const m = clientes.find(c => {
+                const s = sinSufijosCliente(c.NOMBRE_CLIENTE);
+                const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
+                return (s === sufNombre) && (ciu.includes(normDestino) || normDestino.includes(ciu));
+            });
+            if (m) return m;
+        }
+
+        // 3. Coincidencia exacta de nombre alfanumérico
+        const mExact = clientes.find(c => normalizarNombreCliente(c.NOMBRE_CLIENTE) === normNombre);
+        if (mExact) return mExact;
+
+        // 4. Coincidencia sin sufijos societarios
+        if (sufNombre) {
+            const mSuf = clientes.find(c => sinSufijosCliente(c.NOMBRE_CLIENTE) === sufNombre);
+            if (mSuf) return mSuf;
+        }
+
+        return null;
+    }
+
     function actualizarDatalistCiudades() {
         const dl = document.getElementById('datalist-ciudades');
         if (!dl) return;
@@ -2433,40 +2483,16 @@
             }
 
             // 2. Buscar cliente y sede específica
-            let clienteMatch = null;
-            if (sedeCiudad) {
-                const normSede = extraerCiudadSolo(sedeCiudad);
-                clienteMatch = clientes.find(c => {
-                    const nom = (c.NOMBRE_CLIENTE || '').trim().toUpperCase();
-                    const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
-                    return nom === val && (ciu.includes(normSede) || normSede.includes(ciu));
-                });
-            }
-
-            if (!clienteMatch) {
-                // Si ya había un destino en la fila, preferir la sede que coincida con ese destino
-                const tdDestino = tr.querySelector('td[data-field="destino"]');
-                const destinoActual = extraerCiudadSolo(
-                    tdDestino?.querySelector('input')?.value || tdDestino?.textContent || ''
-                );
-                if (destinoActual) {
-                    clienteMatch = clientes.find(c => {
-                        const nom = (c.NOMBRE_CLIENTE || '').trim().toUpperCase();
-                        const ciu = extraerCiudadSolo(c.CIUDAD_DEPARTAMENTO || '');
-                        return nom === val && (ciu.includes(destinoActual) || destinoActual.includes(ciu));
-                    });
-                }
-            }
-
-            if (!clienteMatch) {
-                clienteMatch = clientes.find(c => (c.NOMBRE_CLIENTE || '').toUpperCase() === val);
-            }
+            const tdDestino = tr.querySelector('td[data-field="destino"]');
+            const destinoActual = extraerCiudadSolo(
+                tdDestino?.querySelector('input')?.value || tdDestino?.textContent || ''
+            );
+            const clienteMatch = buscarClienteEnCatalogo(val, sedeCiudad || destinoActual);
 
             if (clienteMatch) {
-                const tdDestino = tr.querySelector('td[data-field="destino"]');
-                const destinoActual = extraerCiudadSolo(
-                    tdDestino?.querySelector('input')?.value || tdDestino?.textContent || ''
-                );
+                if (clienteMatch.DIRECCION) {
+                    tr.dataset.direccionCliente = clienteMatch.DIRECCION;
+                }
 
                 // Si se seleccionó explícitamente una sede compuesta, o si la celda destino está vacía:
                 if (sedeCiudad) {
@@ -2617,7 +2643,8 @@
                 });
             }
 
-            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-fecha-despacho="${row.fecha_despacho || ''}" data-fecha-programacion="${row.fecha_programacion || ''}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" data-missing-required="${camposObligatoriosFaltantes.join(',')}" class="align-middle">`;
+            const dirRow = row.direccion || (buscarClienteEnCatalogo(row.cliente, row.destino)?.DIRECCION) || '';
+            let rowHtml = `<tr data-id="${row.id}" data-estado="${row.estado || 'PROGRAMADO'}" data-fecha-despacho="${row.fecha_despacho || ''}" data-fecha-programacion="${row.fecha_programacion || ''}" data-despachado-desde="${despachadoDesdeAttr}" data-despachado-bloqueado="${despachadoBloqueadoAttr}" data-refinery-completo="${refineriaCompleto}" data-es-diluyente-pesado="${row.es_diluyente_pesado ? '1' : '0'}" data-missing-required="${camposObligatoriosFaltantes.join(',')}" data-direccion-cliente="${dirRow}" class="align-middle">`;
 
             // Agregar número de fila con badge discreto de Refinery
             let refineryBadge = '';
@@ -3516,6 +3543,22 @@
                     }
                 }
             });
+
+            // Pasar dirección del cliente explícitamente si se conoce o se encuentra en catálogo
+            let dirCliente = row.dataset.direccionCliente || '';
+            if (!dirCliente && Array.isArray(clientes)) {
+                const cliVal = (row.querySelector('td[data-field="cliente"] input')?.value || row.querySelector('td[data-field="cliente"]')?.textContent || '').trim();
+                const destVal = row.querySelector('td[data-field="destino"] input')?.value || row.querySelector('td[data-field="destino"]')?.textContent || '';
+                const cleanCliVal = cliVal.split('|')[0].trim();
+                const cliEncontrado = buscarClienteEnCatalogo(cleanCliVal, destVal) || buscarClienteEnCatalogo(cliVal, destVal);
+                if (cliEncontrado && cliEncontrado.DIRECCION) {
+                    dirCliente = cliEncontrado.DIRECCION;
+                }
+            }
+            if (dirCliente) {
+                url.searchParams.append('direccion', dirCliente);
+            }
+
             window.location.href = url.href;
         }
 
@@ -4771,6 +4814,22 @@
                     }
                 }
             });
+
+            // Pasar dirección del cliente explícitamente desde catálogo si se encuentra
+            let dirCliente = '';
+            if (Array.isArray(clientes)) {
+                const cliVal = (row['cliente'] || '').trim();
+                const destVal = row['destino'] || '';
+                const cleanCliVal = cliVal.split('|')[0].trim();
+                const cliEncontrado = buscarClienteEnCatalogo(cleanCliVal, destVal) || buscarClienteEnCatalogo(cliVal, destVal);
+                if (cliEncontrado && cliEncontrado.DIRECCION) {
+                    dirCliente = cliEncontrado.DIRECCION;
+                }
+            }
+            if (dirCliente) {
+                url.searchParams.append('direccion', dirCliente);
+            }
+
             window.location.href = url.href;
             return;
         }

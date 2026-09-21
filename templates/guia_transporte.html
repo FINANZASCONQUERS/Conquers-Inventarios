@@ -2612,6 +2612,8 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (!datosGuia.cliente && urlParams.get('cliente')) datosGuia.cliente = urlParams.get('cliente');
             if (!datosGuia.destino && urlParams.get('destino')) datosGuia.destino = urlParams.get('destino');
+            if (!datosGuia.direccion && urlParams.get('direccion')) datosGuia.direccion = urlParams.get('direccion');
+            if (!datosGuia.ciudad && urlParams.get('ciudad')) datosGuia.ciudad = urlParams.get('ciudad');
 
             // Asegurarse de llamar a las funciones de sync una vez cargados los datos
             syncEmpresaTransportadoraWrap();
@@ -2648,51 +2650,81 @@
                 }
 
                 // --- Cliente y Dirección ---
-                // Reemplazo para funcionar con el Dropdown Personalizado con soporte multi-sede y destino
+                // Reemplazo con jerarquía estricta para no truncar nombres ni asignar sedes erróneas
+                const direccionExplicita = (datosGuia.direccion || urlParams.get('direccion') || '').trim();
+
                 if (datosGuia.cliente) {
                     const searchName = (datosGuia.cliente || '').trim();
                     const searchDestino = (datosGuia.destino || '').trim();
 
                     const normalizar = (txt) => (txt || '').toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
                     const alfanum = (txt) => normalizar(txt).replace(/[^A-Z0-9]/g, "");
+                    const sinSufijos = (txt) => normalizar(txt)
+                        .replace(/\b(S\.?A\.?S\.?|S\.?A\.?|LTDA\.?|LIMITADA|E\.?U\.?|S\.? EN C\.?|SUCURSAL)\b/gi, '')
+                        .replace(/[^A-Z0-9]/g, "");
 
-                    const normSearchName = normalizar(searchName);
-                    const normDestino = normalizar(searchDestino);
                     const cleanSearchName = alfanum(searchName);
+                    const sufSearchName = sinSufijos(searchName);
                     const cleanDestino = alfanum(searchDestino);
 
                     let idx = -1;
 
-                    // 1. Prioridad: Coincidencia de NOMBRE y DESTINO (Sede correspondiente a la ciudad)
+                    // 1. Prioridad: Coincidencia EXACTA de NOMBRE y DESTINO (Sede correspondiente a la ciudad)
                     if (cleanDestino) {
                         idx = clientes.findIndex(c => {
                             const nomClean = alfanum(c.NOMBRE_CLIENTE);
                             const ciuClean = alfanum(c.CIUDAD_DEPARTAMENTO);
                             const dirClean = alfanum(c.DIRECCION);
-                            const coincideNombre = nomClean === cleanSearchName || nomClean.includes(cleanSearchName) || cleanSearchName.includes(nomClean);
-                            const coincideDestino = ciuClean.includes(cleanDestino) || cleanDestino.includes(ciuClean) || dirClean.includes(cleanDestino);
+                            const coincideNombre = (nomClean === cleanSearchName);
+                            const coincideDestino = (ciuClean === cleanDestino || ciuClean.includes(cleanDestino) || cleanDestino.includes(ciuClean) || dirClean.includes(cleanDestino));
                             return coincideNombre && coincideDestino;
                         });
                     }
 
-                    // 2. Si NO viene un destino específico, buscar por nombre
-                    if (idx === -1 && !cleanDestino) {
+                    // 2. Prioridad: Coincidencia de NOMBRE (sin sufijos societarios SAS/SA/LTDA) y DESTINO
+                    if (idx === -1 && cleanDestino && sufSearchName) {
+                        idx = clientes.findIndex(c => {
+                            const nomSuf = sinSufijos(c.NOMBRE_CLIENTE);
+                            const ciuClean = alfanum(c.CIUDAD_DEPARTAMENTO);
+                            const dirClean = alfanum(c.DIRECCION);
+                            const coincideNombre = (nomSuf === sufSearchName);
+                            const coincideDestino = (ciuClean === cleanDestino || ciuClean.includes(cleanDestino) || cleanDestino.includes(ciuClean) || dirClean.includes(cleanDestino));
+                            return coincideNombre && coincideDestino;
+                        });
+                    }
+
+                    // 3. Prioridad: Coincidencia EXACTA de NOMBRE (sin importar destino)
+                    if (idx === -1) {
                         idx = clientes.findIndex(c => alfanum(c.NOMBRE_CLIENTE) === cleanSearchName);
                     }
 
-                    // 3. Coincidencia parcial de nombre SOLO si no había destino específico
-                    if (idx === -1 && !cleanDestino) {
-                        idx = clientes.findIndex(c => {
-                            const nomClean = alfanum(c.NOMBRE_CLIENTE);
-                            return nomClean.includes(cleanSearchName) || cleanSearchName.includes(nomClean);
-                        });
+                    // 4. Prioridad: Coincidencia sin sufijos societarios (sin importar destino)
+                    if (idx === -1 && sufSearchName) {
+                        idx = clientes.findIndex(c => sinSufijos(c.NOMBRE_CLIENTE) === sufSearchName);
                     }
 
                     if (idx !== -1) {
                         seleccionarCliente(idx, Boolean(datosGuia.destino));
+
+                        // REGLA FUNDAMENTAL: Nunca truncar la razón social recibida de la programación
+                        const displayInput = document.getElementById('clienteNombreDisplay');
+                        if (displayInput) {
+                            if (searchName.length >= (clientes[idx].NOMBRE_CLIENTE || '').length) {
+                                displayInput.value = searchName;
+                            }
+                        }
+
+                        // Si se envió una dirección explícita desde programación/URL, tiene máxima prioridad
+                        if (direccionExplicita) {
+                            const direccionInput = document.getElementById('direccionCliente');
+                            if (direccionInput) direccionInput.value = direccionExplicita;
+                        }
+
+                        if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+                        if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+                        if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
                     } else {
-                        // Fallback seguro: Si viene destino pero no hay sede exacta registrada en esa ciudad,
-                        // mantener el cliente y colocar la ciudad del destino, PERO NUNCA forzar una sede de otra ciudad (como Madrid).
+                        // Fallback seguro: Si no se encuentra en el catálogo local
                         const displayInput = document.getElementById('clienteNombreDisplay');
                         if (displayInput) displayInput.value = datosGuia.cliente;
 
@@ -2700,10 +2732,16 @@
                         if (ciudadInput && datosGuia.destino) ciudadInput.value = datosGuia.destino;
 
                         const direccionInput = document.getElementById('direccionCliente');
-                        if (direccionInput) direccionInput.value = '';
+                        if (direccionInput) direccionInput.value = direccionExplicita || '';
 
                         if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
                         if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+                        if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+                    }
+                } else if (direccionExplicita) {
+                    const direccionInput = document.getElementById('direccionCliente');
+                    if (direccionInput) {
+                        direccionInput.value = direccionExplicita;
                         if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
                     }
                 }

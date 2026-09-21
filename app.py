@@ -7259,6 +7259,8 @@ def guia_transporte():
         # Campos adicionales para poblar "PLACA DEL TANQUE" desde Programación
         'tanque': request.args.get('tanque', ''),
         'placa_tanque': request.args.get('placa_tanque', ''),
+        'direccion': request.args.get('direccion', ''),
+        'ciudad': request.args.get('ciudad', '') or request.args.get('ciudad_cliente', ''),
         # Campo de factura/remisión (consecutivo 4 dígitos para guía física o número asignado para digital/otros)
         'factura_remision': factura_remision,
         'programacion_id': request.args.get('programacion_id', '')
@@ -17444,7 +17446,18 @@ def cargar_clientes():
                     if os.path.exists(ruta_clientes):
                         with open(ruta_clientes, 'r', encoding='utf-8') as f:
                             clientes_json = json.load(f)
-                        todos = clientes_lista + clientes_json
+                        # Solo incorporar clientes de JSON que no existan en DB por nombre y ciudad
+                        claves_db = {
+                            (_normalizar_texto_cliente(c.get('NOMBRE_CLIENTE') or c.get('nombre')),
+                             _normalizar_ciudad_cliente(c.get('CIUDAD_DEPARTAMENTO') or c.get('ciudad')))
+                            for c in clientes_lista
+                        }
+                        clientes_faltantes = [
+                            c for c in clientes_json
+                            if (_normalizar_texto_cliente(c.get('NOMBRE_CLIENTE') or c.get('nombre')),
+                                _normalizar_ciudad_cliente(c.get('CIUDAD_DEPARTAMENTO') or c.get('ciudad'))) not in claves_db
+                        ]
+                        todos = clientes_lista + clientes_faltantes
                         clientes_lista, _ = _deduplicar_clientes_lista(todos)
                 except Exception as merge_err:
                     print(f"Advertencia: No se pudo fusionar Clientes.json: {merge_err}")
