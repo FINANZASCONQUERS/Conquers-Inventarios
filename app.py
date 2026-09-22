@@ -1120,21 +1120,19 @@ def _init_tanques_planta():
             except Exception as e:
                 print(f"[MIGRATE] Error agregando columna: {e}")
 
-        # Poblar si está vacía
-        if TanquePlanta.query.count() == 0:
-            print("[INIT] Poblando tabla de tanques con valores por defecto...")
-            # Mapeo de PLANILLA_PLANTA a modelo
-            defaults = [
-                {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "BBL_TO_TON", "orden": 1},
-                {"nombre": "TK-110", "producto": "FO4",       "cap": 22000, "conv": "BBL_TO_TON", "orden": 2},
-                {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 6},
-                {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 3},
-                {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 4},
-                {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 5},
-                {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 7},
-            ]
-            
-            for d in defaults:
+        defaults = [
+            {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "BBL_TO_TON", "orden": 1},
+            {"nombre": "TK-110", "producto": "FO4",       "cap": 22000, "conv": "BBL_TO_TON", "orden": 2},
+            {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 6},
+            {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 3},
+            {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 4},
+            {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 5},
+            {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 7},
+        ]
+        
+        for d in defaults:
+            t = TanquePlanta.query.filter_by(nombre=d['nombre']).first()
+            if not t:
                 t = TanquePlanta(
                     nombre=d['nombre'],
                     producto_actual=d['producto'],
@@ -1144,8 +1142,26 @@ def _init_tanques_planta():
                     orden=d['orden']
                 )
                 db.session.add(t)
+            else:
+                t.capacidad_maxima = d['cap']
+                t.producto_actual = d['producto']
+                t.tipo_conversion = d['conv']
+                t.orden = d['orden']
+        db.session.commit()
+
+        # Sincronizar capacidades maestras en registros históricos de Planta
+        try:
+            for d in defaults:
+                db.session.query(RegistroPlanta).filter_by(tk=d['nombre']).update(
+                    {'max_cap': d['cap'], 'producto': d['producto']},
+                    synchronize_session=False
+                )
             db.session.commit()
-            print("[INIT] Tanques inicializados.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[INIT] Error sincronizando registros históricos Planta: {e}")
+
+        print("[INIT] Tanques Planta sincronizados.")
         
 
 
@@ -1246,6 +1262,18 @@ def _init_tanques_madrid():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+
+            # Sincronizar capacidades maestras en registros históricos de Madrid
+            try:
+                for d in defaults_madrid:
+                    db.session.query(RegistroPlantaMadrid).filter_by(tk=d['nombre']).update(
+                        {'max_cap': d['cap'], 'fill_cap': d['fill'], 'producto': d['producto']},
+                        synchronize_session=False
+                    )
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"[INIT] Error sincronizando registros históricos Madrid: {e}")
 
             print("[INIT] Tanques Madrid sincronizados y actualizados con factores específicos (MGO: 7.4, FO6: 6.4).")
         except Exception as e:
@@ -2993,7 +3021,7 @@ PLANILLA_BARCAZA_ORION = [
     
     # Tanques Principales (TK-101, TK-102)
     {"TK": "TK-101", "PRODUCTO": "VLSFO", "MAX_CAP":4660.52, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "PRINCIPAL"},
-    {"TK": "TK-102", "PRODUCTO": "FUELOIL", "MAX_CAP":4660.52, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "PRINCIPAL"},
+    {"TK": "TK-102", "PRODUCTO": "VLSFO", "MAX_CAP":4660.52, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "PRINCIPAL"},
     
     # BARCAZA CR (VLSFO)
     {"TK": "1P", "PRODUCTO": "VLSFO", "MAX_CAP": 742.68, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "CR"},
@@ -3031,6 +3059,38 @@ PLANILLA_BARCAZA_ORION = [
     {"TK": "5P", "PRODUCTO": "VLSFO", "MAX_CAP": 2930.16, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "ODISEA"},
     {"TK": "5S", "PRODUCTO": "VLSFO", "MAX_CAP": 2933.93, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "ODISEA"},
 ]
+
+def _init_tanques_orion():
+    with app.app_context():
+        try:
+            tanques_existentes = set(db.session.query(RegistroBarcazaOrion.tk, RegistroBarcazaOrion.grupo).distinct().all())
+            nuevos = 0
+            for t_def in PLANILLA_BARCAZA_ORION:
+                tk = t_def["TK"]
+                grupo = t_def["grupo"]
+                if (tk, grupo) not in tanques_existentes:
+                    nuevo_reg = RegistroBarcazaOrion(
+                        usuario="sistema_init",
+                        tk=tk,
+                        producto=t_def["PRODUCTO"],
+                        max_cap=t_def["MAX_CAP"],
+                        grupo=grupo,
+                        bls_60=0.0,
+                        api=0.0,
+                        bsw=0.0,
+                        s=0.0,
+                        timestamp=datetime.utcnow()
+                    )
+                    db.session.add(nuevo_reg)
+                    nuevos += 1
+            if nuevos > 0:
+                db.session.commit()
+                print(f"[INIT] Se sincronizaron {nuevos} tanques en RegistroBarcazaOrion (incluyendo TK-102).")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[INIT] Error al sincronizar tanques de Orion en BD: {e}")
+
+_init_tanques_orion()
 
 PLANILLA_BARCAZA_BITA = [
     # Barcaza Marinse
@@ -5360,7 +5420,7 @@ def reporte_planta():
     mapa_js = {r.tk: {
         "TK": r.tk,
         "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto),
-        "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP")),
+        "MAX_CAP": 124.78 if r.tk == "Consumo Interno" else (defaults_map.get(r.tk, {}).get("MAX_CAP") or r.max_cap),
         "BLS_60": r.bls_60,
         "API": r.api,
         "BSW": r.bsw,
@@ -5475,8 +5535,8 @@ def reporte_planta_madrid():
     mapa_js = {r.tk: {
         "TK": r.tk,
         "PRODUCTO": defaults_map.get(r.tk, {}).get("PRODUCTO") or r.producto,
-        "MAX_CAP": r.max_cap or defaults_map.get(r.tk, {}).get("MAX_CAP"),
-        "FILL_CAP": r.fill_cap or defaults_map.get(r.tk, {}).get("FILL_CAP") or defaults_map.get(r.tk, {}).get("MAX_CAP"),
+        "MAX_CAP": defaults_map.get(r.tk, {}).get("MAX_CAP") or r.max_cap,
+        "FILL_CAP": defaults_map.get(r.tk, {}).get("FILL_CAP") or r.fill_cap or defaults_map.get(r.tk, {}).get("MAX_CAP"),
         "TIPO_CONVERSION": defaults_map.get(r.tk, {}).get("TIPO_CONVERSION") or "NONE",
         "CONVERSION_VALOR": defaults_map.get(r.tk, {}).get("CONVERSION_VALOR"),
         "BLS_60": r.bls_60,
@@ -6954,23 +7014,37 @@ def barcaza_orion():
                 "BLS_60": registro.bls_60 or "", "API": registro.api or "", 
                 "BSW": registro.bsw or "", "S": registro.s or "", "grupo": registro.grupo or ""
             })
+        # Asegurar que cualquier tanque de PLANILLA_BARCAZA_ORION que no tenga registro histórico aún, aparezca
+        tks_existentes = {(t["TK"], t.get("grupo")) for t in datos_para_plantilla}
+        for tk_def in PLANILLA_BARCAZA_ORION:
+            if (tk_def["TK"], tk_def.get("grupo")) not in tks_existentes:
+                datos_para_plantilla.append(dict(tk_def))
     else:
         print("DEBUG: No se encontraron registros, se usará la planilla por defecto.")
         datos_para_plantilla = [dict(t) for t in PLANILLA_BARCAZA_ORION]
 
+    # Sincronizar capacidades maestras y productos desde la definición oficial
+    caps_orion = {(t["TK"], t["grupo"]): (t["MAX_CAP"], t["PRODUCTO"]) for t in PLANILLA_BARCAZA_ORION}
+    for tk in datos_para_plantilla:
+        key = (tk.get("TK"), tk.get("grupo"))
+        if key in caps_orion:
+            tk["MAX_CAP"] = caps_orion[key][0]
+            if not tk.get("PRODUCTO"):
+                tk["PRODUCTO"] = caps_orion[key][1]
+
     for tk in datos_para_plantilla:
         enriquecer_tanque(tk)
 
-    # Ordenar los tanques CR según el orden de PLANILLA_BARCAZA_ORION
+    # Ordenar los tanques según el orden de PLANILLA_BARCAZA_ORION
     def ordenar_por_planilla(lista, grupo, planilla):
         orden = [t["TK"] for t in planilla if t["grupo"] == grupo]
         return sorted([t for t in lista if t["grupo"] == grupo], key=lambda x: orden.index(x["TK"]) if x["TK"] in orden else 999)
 
-    tanques_principales = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'PRINCIPAL']
-    tanques_man = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MANZANILLO']
+    tanques_principales = ordenar_por_planilla(datos_para_plantilla, 'PRINCIPAL', PLANILLA_BARCAZA_ORION)
+    tanques_man = ordenar_por_planilla(datos_para_plantilla, 'MANZANILLO', PLANILLA_BARCAZA_ORION)
     tanques_cr = ordenar_por_planilla(datos_para_plantilla, 'CR', PLANILLA_BARCAZA_ORION)
-    tanques_margoth = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'MARGOTH']
-    tanques_odisea = [tk for tk in datos_para_plantilla if tk.get('grupo') == 'ODISEA']
+    tanques_margoth = ordenar_por_planilla(datos_para_plantilla, 'MARGOTH', PLANILLA_BARCAZA_ORION)
+    tanques_odisea = ordenar_por_planilla(datos_para_plantilla, 'ODISEA', PLANILLA_BARCAZA_ORION)
 
     disponibilidad = _disponibilidad_barcazas('ORION')
     barcazas_config = [v for k, v in sorted(disponibilidad.items(), key=lambda x: x[1].get('orden', 0))]
@@ -8958,14 +9032,25 @@ def reporte_barcaza():
         .all())
     
     # 3. Preparar los datos para la plantilla
+    caps_orion = {(t["TK"], t["grupo"]): (t["MAX_CAP"], t["PRODUCTO"]) for t in PLANILLA_BARCAZA_ORION}
     todos_los_tanques_lista = []
     if registros_recientes:
         for registro in registros_recientes:
+            cfg = caps_orion.get((registro.tk, registro.grupo), (registro.max_cap, registro.producto))
             todos_los_tanques_lista.append({
-                "TK": registro.tk, "PRODUCTO": registro.producto, "MAX_CAP": registro.max_cap,
+                "TK": registro.tk, "PRODUCTO": cfg[1] or registro.producto, "MAX_CAP": cfg[0] or registro.max_cap,
                 "BLS_60": registro.bls_60, "API": registro.api, 
                 "BSW": registro.bsw, "S": registro.s, "grupo": registro.grupo
             })
+    
+    # Asegurar que todos los tanques de PLANILLA_BARCAZA_ORION aparezcan en el reporte
+    tks_existentes = {(t["TK"], t.get("grupo")) for t in todos_los_tanques_lista}
+    for tk_def in PLANILLA_BARCAZA_ORION:
+        if (tk_def["TK"], tk_def.get("grupo")) not in tks_existentes:
+            nuevo = dict(tk_def)
+            nuevo.update({"BLS_60": 0.0, "API": 0.0, "BSW": 0.0, "S": 0.0})
+            todos_los_tanques_lista.append(nuevo)
+
     for tk in todos_los_tanques_lista:
         enriquecer_tanque(tk)
 
@@ -8975,7 +9060,7 @@ def reporte_barcaza():
     # 5. Agrupar los tanques en el diccionario que la plantilla espera
     datos_para_template = {}
     nombres_display = {
-        "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
+        "PRINCIPAL": "Tanques Principales (TK-101, TK-102)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
         "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
     }
     def ordenar_por_planilla(lista, grupo, planilla):
@@ -8984,10 +9069,7 @@ def reporte_barcaza():
 
     if todos_los_tanques_lista:
         for grupo_key, nombre_barcaza in nombres_display.items():
-            if grupo_key == "CR":
-                tanques_ordenados = ordenar_por_planilla(todos_los_tanques_lista, "CR", PLANILLA_BARCAZA_ORION)
-            else:
-                tanques_ordenados = [t for t in todos_los_tanques_lista if t.get("grupo") == grupo_key]
+            tanques_ordenados = ordenar_por_planilla(todos_los_tanques_lista, grupo_key, PLANILLA_BARCAZA_ORION)
             if tanques_ordenados:
                 datos_para_template[nombre_barcaza] = {"tanques": tanques_ordenados, "totales": {}}
                 datos_para_template[nombre_barcaza]["totales"] = calcular_estadisticas(tanques_ordenados)
@@ -9163,6 +9245,10 @@ def guardar_registro_barcaza():
             if registro_existente:
                 # ACTUALIZAR
                 registro_existente.usuario = session.get("nombre", "No identificado")
+                if datos_tanque.get('PRODUCTO'):
+                    registro_existente.producto = datos_tanque.get('PRODUCTO')
+                if datos_tanque.get('MAX_CAP') is not None:
+                    registro_existente.max_cap = to_float(datos_tanque.get('MAX_CAP'))
                 registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
                 registro_existente.api = to_float(datos_tanque.get('API'))
                 registro_existente.bsw = to_float(datos_tanque.get('BSW'))
@@ -9637,6 +9723,10 @@ def guardar_registro_planta():
             if registro_existente:
                 # Si existe, lo ACTUALIZAMOS
                 registro_existente.usuario = session.get("nombre", "No identificado")
+                if datos_tanque.get('PRODUCTO'):
+                    registro_existente.producto = "DILUYENTE" if tk == "Consumo Interno" else datos_tanque.get('PRODUCTO')
+                if datos_tanque.get('MAX_CAP') is not None:
+                    registro_existente.max_cap = 124.78 if tk == "Consumo Interno" else to_float(datos_tanque.get('MAX_CAP'))
                 registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
                 registro_existente.api = to_float(datos_tanque.get('API'))
                 registro_existente.bsw = to_float(datos_tanque.get('BSW'))
@@ -9697,6 +9787,12 @@ def guardar_registro_planta_madrid():
             if registro_existente:
                 # Si existe, lo ACTUALIZAMOS
                 registro_existente.usuario = session.get("nombre", "No identificado")
+                if datos_tanque.get('PRODUCTO'):
+                    registro_existente.producto = datos_tanque.get('PRODUCTO')
+                if datos_tanque.get('MAX_CAP') is not None:
+                    registro_existente.max_cap = to_float(datos_tanque.get('MAX_CAP'))
+                if datos_tanque.get('FILL_CAP') is not None:
+                    registro_existente.fill_cap = to_float(datos_tanque.get('FILL_CAP'))
                 registro_existente.bls_60 = to_float(datos_tanque.get('BLS_60'))
                 registro_existente.api = to_float(datos_tanque.get('API'))
                 registro_existente.bsw = to_float(datos_tanque.get('BSW'))
@@ -10783,13 +10879,21 @@ def descargar_reporte_planta_madrid_pdf():
             'registros': regs_sorted
         })
 
+    tanques_map = {}
+    try:
+        t_objs = TanquePlantaMadrid.query.filter_by(activo=True).all()
+        tanques_map = {t.nombre: t for t in t_objs}
+    except Exception:
+        pass
+
     registros_limpios = []
     for r in registros_db:
+        t_cfg = tanques_map.get(r.tk)
         registros_limpios.append({
             'tk': r.tk,
-            'producto': r.producto,
-            'max_cap': r.max_cap or 0.0,
-            'fill_cap': r.fill_cap or 0.0,
+            'producto': (t_cfg.producto_actual if t_cfg else None) or r.producto,
+            'max_cap': (t_cfg.capacidad_maxima if t_cfg else None) or r.max_cap or 0.0,
+            'fill_cap': (t_cfg.capacidad_llenado if t_cfg else None) or r.fill_cap or 0.0,
             'bls_60': r.bls_60 or 0.0,
             'api': r.api or 0.0,
             'bsw': r.bsw or 0.0,
@@ -10857,24 +10961,32 @@ def descargar_reporte_orion_pdf():
 
     # ======== INICIO DE LA SOLUCIÓN DEFINITIVA ========
     # 2. LIMPIEZA DE DATOS: Convertir registros a diccionarios y reemplazar None por 0.0
+    caps_orion = {(t["TK"], t["grupo"]): (t["MAX_CAP"], t["PRODUCTO"]) for t in PLANILLA_BARCAZA_ORION}
     todos_los_tanques_lista = []
     for r in registros_recientes:
+        cfg = caps_orion.get((r.tk, r.grupo), (r.max_cap, r.producto))
         todos_los_tanques_lista.append({
             "TK": r.tk,
-            "PRODUCTO": r.producto,
-            "MAX_CAP": r.max_cap or 0.0,
+            "PRODUCTO": cfg[1] or r.producto,
+            "MAX_CAP": cfg[0] or r.max_cap or 0.0,
             "BLS_60": r.bls_60 or 0.0,
             "API": r.api or 0.0,
             "BSW": r.bsw or 0.0,
             "S": r.s or 0.0,
             "grupo": r.grupo
         })
-    # ======== FIN DE LA SOLUCIÓN DEFINITIVA ========
+    # Asegurar que todos los tanques de PLANILLA_BARCAZA_ORION aparezcan en el reporte
+    tks_existentes = {(t["TK"], t.get("grupo")) for t in todos_los_tanques_lista}
+    for tk_def in PLANILLA_BARCAZA_ORION:
+        if (tk_def["TK"], tk_def.get("grupo")) not in tks_existentes:
+            nuevo = dict(tk_def)
+            nuevo.update({"BLS_60": 0.0, "API": 0.0, "BSW": 0.0, "S": 0.0})
+            todos_los_tanques_lista.append(nuevo)
 
     # 3. Agrupar datos y calcular estadísticas (usa la lista ya limpia)
     datos_agrupados = {}
     nombres_display = {
-        "PRINCIPAL": "Tanque Principal (TK-101)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
+        "PRINCIPAL": "Tanques Principales (TK-101, TK-102)", "MANZANILLO": "Barcaza Manzanillo (MGO)",
         "CR": "Barcaza CR", "MARGOTH": "Barcaza Margoth", "ODISEA": "Barcaza Odisea"
     }
     for tanque in todos_los_tanques_lista:
