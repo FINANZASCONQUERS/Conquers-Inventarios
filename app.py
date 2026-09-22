@@ -20,6 +20,7 @@ import pytz
 import pandas as pd
 import uuid
 import re
+import bisect
 from flask import g
 from flask import Response
 try:
@@ -1559,6 +1560,10 @@ PRECINTOS_CANTIDAD_DEFECTO = 5
 PRECINTOS_CANTIDAD_MAXIMA = 12
 # Saltarse 1 o 2 numeros es normal: son sellos que se rompen al colocarlos.
 PRECINTOS_SALTO_TOLERADO = 3
+# Para calcular hasta donde llego el consecutivo sin que un numero mal digitado
+# muy por encima del bloque real mueva la marca. Ver _precintos_marca_agua.
+PRECINTOS_VENTANA_DENSIDAD = 100
+PRECINTOS_MINIMO_DENSIDAD = 3
 # Sellos sacados de circulacion por ajuste (rollos viejos que ya no estan en
 # bodega). Van a ANULADO igual que los rotos, pero no son merma: se separan
 # en el resumen por este marcador.
@@ -22919,18 +22924,81 @@ def _recalcular_texto_precintos(registro):
     return registro.precintos
 
 
+def _precintos_marca_agua():
+    """El numero mas alto que ya salio de bodega (USADO o ANULADO).
+
+    El consecutivo no retrocede. Un numero por debajo de esta marca ya se gasto
+    fisicamente, asi que no puede volver a entregarse aunque su fila haya
+    quedado en DISPONIBLE -- y queda en DISPONIBLE mas seguido de lo que
+    parece: al editar a mano la celda de precintos de un cargue
+    (_sincronizar_precintos_manual), al liberar una fila, o al dar de alta un
+    lote cuyo rango arranca antes del consecutivo real.
+
+    No se usa MAX() a secas: un solo numero mal digitado ('0005000' por
+    '000500') queda marcado USADO al final del lote y dispararia la marca hasta
+    alla, dejando el stock entero por debajo y bloqueando toda asignacion. Se
+    toma el ocupado mas alto que tenga vecinos ocupados cerca; lo que quede
+    aislado por encima se ignora, que es lo que ese numero es: un error.
+    """
+    ocupados = [n for (n,) in db.session.query(InventarioPrecinto.numero)
+                .filter(InventarioPrecinto.estado.in_(('USADO', 'ANULADO')))
+                .order_by(InventarioPrecinto.numero.asc()).all()]
+    if not ocupados:
+        return None
+    for i in range(len(ocupados) - 1, -1, -1):
+        desde = bisect.bisect_left(ocupados, ocupados[i] - PRECINTOS_VENTANA_DENSIDAD)
+        if i - desde + 1 >= PRECINTOS_MINIMO_DENSIDAD:
+            return ocupados[i]
+    return ocupados[-1]
+
+
+def _precintos_contar_huecos(marca=None):
+    """Cuantos DISPONIBLE quedaron por debajo de la marca: stock que no es stock."""
+    if marca is None:
+        marca = _precintos_marca_agua()
+    if marca is None:
+        return 0
+    return (InventarioPrecinto.query
+            .filter(InventarioPrecinto.estado == 'DISPONIBLE',
+                    InventarioPrecinto.numero < marca)
+            .count())
+
+
 def _tomar_precintos_disponibles(cantidad):
-    """Bloquea y devuelve los siguientes N sellos disponibles.
+    """Bloquea y devuelve los siguientes N sellos del consecutivo.
+
+    Solo entrega numeros por encima de la marca de agua: entregar el minimo
+    DISPONIBLE a secas era repartir sellos ya gastados, porque los huecos que
+    quedan atras son siempre los numeros mas bajos y por lo tanto los primeros
+    de la cola.
 
     `skip_locked` evita que dos usuarios asignando a la vez se lleven el mismo
     consecutivo: el segundo salta las filas que el primero ya tiene tomadas.
     """
-    return (db.session.query(InventarioPrecinto)
-            .filter(InventarioPrecinto.estado == 'DISPONIBLE')
+    query = db.session.query(InventarioPrecinto).filter(
+        InventarioPrecinto.estado == 'DISPONIBLE')
+    marca = _precintos_marca_agua()
+    if marca is not None:
+        query = query.filter(InventarioPrecinto.numero > marca)
+    return (query
             .order_by(InventarioPrecinto.numero.asc())
             .limit(cantidad)
             .with_for_update(skip_locked=True)
             .all())
+
+
+def _precintos_mensaje_stock(faltante, pedidos):
+    """Explica por que no hay stock sin mentir sobre el conteo de DISPONIBLE."""
+    marca = _precintos_marca_agua()
+    msg = ('Stock insuficiente: solo quedan {} precintos por encima de {} y se '
+           'pidieron {}. Registra un lote nuevo.').format(
+        faltante, _formatear_codigo_precinto(marca) if marca else 'el consecutivo', pedidos)
+    huecos = _precintos_contar_huecos(marca)
+    if huecos:
+        msg += (' (Hay {} numeros marcados DISPONIBLE por debajo del consecutivo '
+                'que no se entregan porque ya se usaron. Si alguno sigue fisicamente '
+                'en bodega, revisalo con scripts/diagnostico_precintos.py.)').format(huecos)
+    return msg
 
 
 def _marcar_precinto_usado(precinto, registro, usuario):
@@ -22981,10 +23049,16 @@ def _precintos_resumen():
                  .filter(InventarioPrecinto.estado == 'ANULADO',
                          InventarioPrecinto.usuario_anulacion == PRECINTOS_USUARIO_AJUSTE)
                  .count())
-    proximos = (InventarioPrecinto.query
-                .filter(InventarioPrecinto.estado == 'DISPONIBLE')
-                .order_by(InventarioPrecinto.numero.asc())
+    # Los proximos tienen que salir de la misma regla que usa la asignacion, o
+    # la pagina anuncia un numero y el boton entrega otro.
+    marca = _precintos_marca_agua()
+    q_proximos = InventarioPrecinto.query.filter(InventarioPrecinto.estado == 'DISPONIBLE')
+    if marca is not None:
+        q_proximos = q_proximos.filter(InventarioPrecinto.numero > marca)
+    proximos = (q_proximos.order_by(InventarioPrecinto.numero.asc())
                 .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
+    huecos = _precintos_contar_huecos(marca)
+    disponibles = max(disponibles - huecos, 0)
     por_revisar = (InventarioPrecinto.query
                    .filter(InventarioPrecinto.requiere_revision.is_(True)).count())
     return {
@@ -22992,6 +23066,7 @@ def _precintos_resumen():
         'usados': conteos.get('USADO', 0),
         'anulados': conteos.get('ANULADO', 0) - retirados,
         'retirados': retirados,
+        'huecos': huecos,
         'por_revisar': por_revisar,
         'siguiente': proximos[0].codigo if proximos else None,
         'proximos': [p.codigo for p in proximos],
@@ -23055,7 +23130,12 @@ def _auto_vincular_precintos_con_programacion():
         for c in cargues:
             if not c.precintos:
                 continue
-            numeros = [int(n) for n in re.findall(r'\d+', c.precintos) if len(n) >= 4]
+            # Solo corridas de 4 a 6 digitos. Una mas larga no es un codigo: es
+            # un dedazo ('0005000' por '000500') o dos codigos pegados sin guion,
+            # y al leerla como numero marcaba USADO un sello que nadie uso. Eso
+            # ahora ademas moveria la marca de agua y congelaria el stock.
+            numeros = [int(n) for n in re.findall(r'\d+', c.precintos)
+                       if 4 <= len(n) <= PRECINTOS_DIGITOS]
             if not numeros:
                 continue
             precintos_bd = InventarioPrecinto.query.filter(InventarioPrecinto.numero.in_(numeros)).all()
@@ -23354,12 +23434,10 @@ def api_precintos_asignar():
     try:
         tomados = _tomar_precintos_disponibles(cantidad)
         if len(tomados) < cantidad:
+            faltante = len(tomados)
             db.session.rollback()
-            return jsonify(
-                success=False,
-                message='Stock insuficiente: solo hay {} precintos disponibles y se pidieron {}. '
-                        'Registra un lote nuevo.'.format(len(tomados), cantidad)
-            ), 409
+            return jsonify(success=False,
+                           message=_precintos_mensaje_stock(faltante, cantidad)), 409
 
         usuario = _precintos_usuario()
         for p in tomados:
@@ -23377,12 +23455,20 @@ def api_precintos_asignar():
         return jsonify(success=False, message='Error al asignar precintos: {}'.format(e)), 500
 
     consecutivos = numeros == list(range(numeros[0], numeros[0] + len(numeros)))
+    mensaje = '{} precintos asignados: {}'.format(len(codigos), _texto_precintos(codigos))
+    # Saltarse 1 o 2 numeros es normal (sellos que se rompen al colocarlos); un
+    # salto mayor significa que el bloque venia con huecos y hay que mirarlo.
+    salto_maximo = max((b - a for a, b in zip(numeros, numeros[1:])), default=1)
+    if salto_maximo > PRECINTOS_SALTO_TOLERADO:
+        mensaje += (' Ojo: el bloque no es continuo, hay un salto de {} numeros. '
+                    'Verifica contra los sellos fisicos.'.format(salto_maximo - 1))
     return jsonify(
         success=True,
-        message='{} precintos asignados: {}'.format(len(codigos), _texto_precintos(codigos)),
+        message=mensaje,
         precintos=texto,
         asignados=codigos,
         consecutivos=consecutivos,
+        salto_maximo=salto_maximo,
         resumen=_precintos_resumen(),
     )
 
@@ -23450,7 +23536,8 @@ def api_precintos_anular():
             candidatos = _tomar_precintos_disponibles(1)
             if not candidatos:
                 db.session.rollback()
-                return jsonify(success=False, message='No hay precintos disponibles para reemplazar.'), 409
+                return jsonify(success=False,
+                               message=_precintos_mensaje_stock(0, 1)), 409
             _marcar_precinto_usado(candidatos[0], registro, usuario)
             reemplazo_codigo = candidatos[0].codigo
 
