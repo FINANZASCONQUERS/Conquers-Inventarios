@@ -75,7 +75,7 @@
         {% endif %}
 
         <!-- SEDE MADRID: REPORTE (para todos los autorizados de Madrid) -->
-        {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) or 'reportes' in session.get('area', []) or session.get('rol') == 'admin' %}
+        {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) or session.get('rol') == 'admin' %}
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 border-0 shadow-sm hover-card">
                 <div class="card-body text-center p-4">

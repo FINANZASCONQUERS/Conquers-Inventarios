@@ -194,7 +194,7 @@ defecto seguros. #}
                     {% set user_planillas = [] %}
                     {% if 'planta' in session.get('area', []) and session.get('email') != 'refinerycwt@conquerstrading.com' %}{% set _ = user_planillas.append(('planta', 'Planilla Planta Cartagena', 'buildings-fill')) %}{% endif %}
                     {% if 'planta_madrid' in session.get('area', []) %}{% set _ = user_planillas.append(('planta_madrid', 'Planilla Planta Madrid', 'buildings')) %}{% endif %}
-                    {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) or ('reportes' in session.get('area', []) and session.get('email') != 'refinerycwt@conquerstrading.com') %}
+                    {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) %}
                         {% set _ = user_planillas.append(('reporte_planta_madrid', 'Reporte Planta Madrid', 'file-earmark-bar-graph')) %}
                     {% endif %}
                     {% if 'reportes' in session.get('area', []) and 'planta' not in session.get('area', []) and session.get('email') != 'refinerycwt@conquerstrading.com' %}{% set _ = user_planillas.append(('reporte_planta', 'Reporte Planta', 'file-earmark-bar-graph')) %}{% endif %}
@@ -268,7 +268,7 @@ defecto seguros. #}
                                     href="{{ url_for('reporte_planta') }}"><i
                                         class="bi bi-file-earmark-bar-graph me-2 text-danger"></i>Reporte Planta (Cartagena)</a></li>
                             {% endif %}
-                            {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) or ('reportes' in session.get('area', []) and session.get('email') != 'refinerycwt@conquerstrading.com') %}
+                            {% if 'reporte_madrid' in session.get('area', []) or 'planta_madrid' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'reporte_planta_madrid' %}active{% endif %}"
                                     href="{{ url_for('reporte_planta_madrid') }}"><i
                                         class="bi bi-file-earmark-bar-graph me-2 text-primary"></i>Reporte Planta (Madrid)</a></li>

@@ -526,7 +526,7 @@
     <!-- LEYENDA -->
     <div class="mb-3 d-flex gap-2 flex-wrap">
         <div class="legend-modern">
-            <span class="legend-dot" style="--dot-color:#0284c7; --dot-color-rgb:2,132,199;"></span>
+            <span class="legend-dot" style="--dot-color:#198754; --dot-color-rgb:25,135,84;"></span>
             Días con registro
         </div>
         <div class="legend-modern">
@@ -923,24 +923,47 @@
             });
         }
 
-        // Flatpickr
+        // ==== CALENDARIO CON FLATPICKR ====
         const input = document.getElementById('fecha_filtro');
-        if (input && window.flatpickr) {
+        if (input) {
             const fechasConRegistro = input.getAttribute('data-fechas') ? JSON.parse(input.getAttribute('data-fechas')) : [];
             const setFechas = new Set(fechasConRegistro);
 
-            flatpickr(input, {
-                dateFormat: 'Y-m-d',
-                defaultDate: input.value || new Date(),
-                allowInput: true,
-                onDayCreate: function (dObj, dStr, fp, dayElem) {
-                    const dateStr = dayElem.dateObj.toISOString().slice(0, 10);
-                    if (setFechas.has(dateStr)) {
-                        dayElem.style.background = 'rgba(2, 132, 199, 0.2)';
-                        dayElem.style.color = '#0284c7';
-                        dayElem.style.fontWeight = 'bold';
+            const addCss = (href) => {
+                const l = document.createElement('link');
+                l.rel = 'stylesheet';
+                l.href = href;
+                document.head.appendChild(l);
+            };
+            const addJs = (src, cb) => {
+                const s = document.createElement('script');
+                s.src = src;
+                s.onload = cb;
+                document.body.appendChild(s);
+            };
+
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css');
+            addCss('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/themes/material_green.css');
+            addJs('https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js', () => {
+                flatpickr(input, {
+                    dateFormat: 'Y-m-d',
+                    defaultDate: input.value || '{{ today_iso }}',
+                    allowInput: true,
+                    onDayCreate: function (dObj, dStr, fp, dayElem) {
+                        const y = dayElem.dateObj.getFullYear();
+                        const m = String(dayElem.dateObj.getMonth() + 1).padStart(2, '0');
+                        const d = String(dayElem.dateObj.getDate()).padStart(2, '0');
+                        const dateStr = `${y}-${m}-${d}`;
+                        dayElem.classList.add('fp-hint-day');
+                        if (setFechas.has(dateStr)) {
+                            dayElem.classList.add('fp-day-con-registro');
+                            dayElem.setAttribute('title', 'Con registro');
+                        } else {
+                            dayElem.classList.add('fp-day-sin-registro');
+                            dayElem.setAttribute('title', 'Sin registro');
+                        }
                     }
-                }
+                });
             });
         }
     });
@@ -978,4 +1001,39 @@
         }
     }
 </script>
+
+<style>
+    .flatpickr-calendar .flatpickr-day.fp-hint-day {
+        position: relative;
+    }
+
+    .flatpickr-calendar .flatpickr-day.fp-day-con-registro {
+        background: rgba(25, 135, 84, 0.2) !important;
+        color: #198754 !important;
+        border-color: rgba(25, 135, 84, 0.45) !important;
+        font-weight: 700 !important;
+    }
+
+    .flatpickr-calendar .flatpickr-day.fp-day-con-registro:hover {
+        background: rgba(25, 135, 84, 0.35) !important;
+        color: #0f5132 !important;
+    }
+
+    .flatpickr-calendar .flatpickr-day.fp-day-sin-registro {
+        background: rgba(173, 181, 189, 0.15) !important;
+        color: #6c757d !important;
+        border-color: transparent !important;
+    }
+
+    .flatpickr-calendar .flatpickr-day.selected {
+        background: #0b8552 !important;
+        border-color: #0b8552 !important;
+        color: #fff !important;
+    }
+
+    .flatpickr-calendar .flatpickr-day.today {
+        border-color: #0b8552 !important;
+        font-weight: 700 !important;
+    }
+</style>
 {% endblock %}

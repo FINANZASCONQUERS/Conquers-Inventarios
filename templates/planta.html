@@ -590,7 +590,7 @@
                         <a href="{{ url_for('planta_madrid') }}" class="sede-pill">
                             <i class="bi bi-geo-alt-fill"></i> Madrid
                         </a>
-                        {% elif 'reporte_madrid' in session.get('area', []) or 'reportes' in session.get('area', []) %}
+                        {% elif 'reporte_madrid' in session.get('area', []) %}
                         <a href="{{ url_for('reporte_planta_madrid') }}" class="sede-pill" title="Ver Reporte Madrid">
                             <i class="bi bi-geo-alt-fill"></i> Madrid (Reporte)
                         </a>

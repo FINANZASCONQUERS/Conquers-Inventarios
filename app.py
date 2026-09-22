@@ -744,8 +744,8 @@ MODULE_ROUTE_MAP = [
     (r'^/reporte_barcaza', ['reportes', 'barcaza_orion', 'barcaza_bita']),
     (r'^/descargar-reporte-orion-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
     (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
-    (r'^/reporte_planta_madrid(?:$|[/?#])', ['reportes', 'reporte_madrid', 'planta_madrid']),
-    (r'^/descargar-reporte-planta-madrid-pdf', ['reportes', 'reporte_madrid', 'planta_madrid']),
+    (r'^/reporte_planta_madrid(?:$|[/?#])', ['reporte_madrid', 'planta_madrid']),
+    (r'^/descargar-reporte-planta-madrid-pdf', ['reporte_madrid', 'planta_madrid']),
     (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
     (r'^/descargar-reporte-planta-pdf', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
@@ -1210,10 +1210,10 @@ def _init_tanques_madrid():
                 {"nombre": "TK-14", "producto": "MGO-FO4", "cap": 1300.0, "fill": 1170.0, "conv": "BBL_TO_TON", "conv_val": 7.4, "orden": 4},
                 {"nombre": "TK-20", "producto": "FO6",   "cap": 3000.0, "fill": 2880.0, "conv": "BBL_TO_TON", "conv_val": 6.4, "orden": 5},
                 {"nombre": "TK-15", "producto": "FO6",   "cap": 1500.0, "fill": 1350.0, "conv": "BBL_TO_TON", "conv_val": 6.4, "orden": 6},
-                {"nombre": "TK-11", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1350.0, "conv": "NONE", "conv_val": None, "orden": 7},
-                {"nombre": "TK-12", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1350.0, "conv": "NONE", "conv_val": None, "orden": 8},
+                {"nombre": "TK-11", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1400.0, "conv": "NONE", "conv_val": None, "orden": 7},
+                {"nombre": "TK-12", "producto": "DILUYENTE", "cap": 1500.0, "fill": 1400.0, "conv": "NONE", "conv_val": None, "orden": 8},
                 {"nombre": "TK-13", "producto": "DILUYENTE", "cap": 1300.0, "fill": 1170.0, "conv": "NONE", "conv_val": None, "orden": 9},
-                {"nombre": "TK-24", "producto": "COMBUSTIBLE", "cap": 1200.0, "fill": 1100.0, "conv": "NONE", "conv_val": None, "orden": 10},
+                {"nombre": "TK-24", "producto": "COMBUSTIBLE", "cap": 262.0, "fill": 251.0, "conv": "NONE", "conv_val": None, "orden": 10},
             ]
             for d in defaults_madrid:
                 t = TanquePlantaMadrid.query.filter_by(nombre=d['nombre']).first()
@@ -2980,10 +2980,10 @@ PLANILLA_PLANTA_MADRID = [
     {"TK": "TK-14", "PRODUCTO": "MGO-FO4", "MAX_CAP": 1300.0, "FILL_CAP": 1170.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 7.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-20", "PRODUCTO": "FO6",   "MAX_CAP": 3000.0, "FILL_CAP": 2880.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 6.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-15", "PRODUCTO": "FO6",   "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": 6.4, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-11", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-12", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1350.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-11", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1400.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-12", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1500.0, "FILL_CAP": 1400.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-13", "PRODUCTO": "DILUYENTE", "MAX_CAP": 1300.0, "FILL_CAP": 1170.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-24", "PRODUCTO": "COMBUSTIBLE", "MAX_CAP": 1200.0, "FILL_CAP": 1100.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""}
+    {"TK": "TK-24", "PRODUCTO": "COMBUSTIBLE", "MAX_CAP": 262.0, "FILL_CAP": 251.0, "TIPO_CONVERSION": "NONE", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 PLANILLA_BARCAZA_ORION = [
     # Sección MANZANILLO (MGO)
@@ -2991,8 +2991,9 @@ PLANILLA_BARCAZA_ORION = [
     {"TK": "2", "PRODUCTO": "MGO", "MAX_CAP": 806, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "MANZANILLO"},
     {"TK": "3", "PRODUCTO": "MGO", "MAX_CAP": 694, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "MANZANILLO"},
     
-    # Tanque Principal (TK-101)
+    # Tanques Principales (TK-101, TK-102)
     {"TK": "TK-101", "PRODUCTO": "VLSFO", "MAX_CAP":4660.52, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "PRINCIPAL"},
+    {"TK": "TK-102", "PRODUCTO": "FUELOIL", "MAX_CAP":4660.52, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "PRINCIPAL"},
     
     # BARCAZA CR (VLSFO)
     {"TK": "1P", "PRODUCTO": "VLSFO", "MAX_CAP": 742.68, "BLS_60": "", "API": "", "BSW": "", "S": "", "grupo": "CR"},
@@ -3039,7 +3040,7 @@ PLANILLA_BARCAZA_BITA = [
     {"TK": "MARI TK-4C", "PRODUCTO": "VLSFO", "MAX_CAP": 1433.75, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-5C", "PRODUCTO": "VLSFO", "MAX_CAP": 1641.97, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "MARI TK-6C", "PRODUCTO": "VLSFO", "MAX_CAP": 1617.23, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    # Barcaza Oidech
+    # Barcaza Oiltech
     {"TK": "OID TK-1C", "PRODUCTO": "VLSFO", "MAX_CAP": 4535.54, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-2C", "PRODUCTO": "VLSFO", "MAX_CAP": 5808.34, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "OID TK-3C", "PRODUCTO": "VLSFO", "MAX_CAP": 4928.29, "BLS_60": "", "API": "", "BSW": "", "S": ""}
@@ -5085,35 +5086,31 @@ def planta():
 @login_required
 @permiso_requerido(['planta_madrid'])
 def planta_madrid():
-    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, se inicia en blanco (vacío)
+    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy por defecto
     fecha_str = request.args.get('fecha')
 
-    registros_recientes = []
-    if fecha_str:
-        try:
-            fecha_seleccionada = date.fromisoformat(fecha_str)
-            start_dia = datetime.combine(fecha_seleccionada, time.min)
-            end_dia = datetime.combine(fecha_seleccionada, time.max)
-
-            # Consulta para obtener los registros del día consultado
-            subquery = db.session.query(
-                RegistroPlantaMadrid.tk,
-                func.max(RegistroPlantaMadrid.timestamp).label('max_timestamp')
-            ).filter(
-                RegistroPlantaMadrid.timestamp >= start_dia,
-                RegistroPlantaMadrid.timestamp <= end_dia
-            ).group_by(RegistroPlantaMadrid.tk).subquery()
-
-            registros_recientes = db.session.query(RegistroPlantaMadrid).join(
-                subquery,
-                (RegistroPlantaMadrid.tk == subquery.c.tk) & (RegistroPlantaMadrid.timestamp == subquery.c.max_timestamp)
-            ).all()
-        except (ValueError, TypeError):
-            fecha_seleccionada = date.today()
-    else:
-        # Por defecto la planilla inicia completamente vacía para nueva captura
+    try:
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+    except (ValueError, TypeError):
         fecha_seleccionada = date.today()
-        registros_recientes = []
+
+    start_dia = datetime.combine(fecha_seleccionada, time.min)
+    end_dia = datetime.combine(fecha_seleccionada, time.max)
+
+    # 2. Consulta para obtener los registros del día seleccionado (hoy por defecto)
+    # Si aún no se han registrado datos para este día, quedará naturalmente vacío sin datos residuales
+    subquery = db.session.query(
+        RegistroPlantaMadrid.tk,
+        func.max(RegistroPlantaMadrid.timestamp).label('max_timestamp')
+    ).filter(
+        RegistroPlantaMadrid.timestamp >= start_dia,
+        RegistroPlantaMadrid.timestamp <= end_dia
+    ).group_by(RegistroPlantaMadrid.tk).subquery()
+
+    registros_recientes = db.session.query(RegistroPlantaMadrid).join(
+        subquery,
+        (RegistroPlantaMadrid.tk == subquery.c.tk) & (RegistroPlantaMadrid.timestamp == subquery.c.max_timestamp)
+    ).all()
     
     # 3. Preparar y ORDENAR los datos usando la configuración de TanquePlantaMadrid
     try:
@@ -6818,13 +6815,13 @@ def reporte_transito():
 # CONFIGURACIÓN Y PERMISOS DE BARCAZAS (ORION Y BITA)
 # =====================================================================
 BARCAZAS_DEFAULT = [
-    {'nombre': 'PRINCIPAL', 'nombre_display': 'Tanque Principal (TK-101)', 'tipo': 'ORION', 'orden': 1},
+    {'nombre': 'PRINCIPAL', 'nombre_display': 'Tanques Principales (TK-101, TK-102)', 'tipo': 'ORION', 'orden': 1},
     {'nombre': 'MANZANILLO', 'nombre_display': 'Manzanillo (MGO)', 'tipo': 'ORION', 'orden': 2},
     {'nombre': 'CR', 'nombre_display': 'Barcaza CR', 'tipo': 'ORION', 'orden': 3},
     {'nombre': 'MARGOTH', 'nombre_display': 'Barcaza Margoth', 'tipo': 'ORION', 'orden': 4},
     {'nombre': 'ODISEA', 'nombre_display': 'Barcaza Odisea', 'tipo': 'ORION', 'orden': 5},
     {'nombre': 'MARINSE', 'nombre_display': 'Barcaza Marinse', 'tipo': 'BITA', 'orden': 1},
-    {'nombre': 'OIDECH', 'nombre_display': 'Barcaza Oidech', 'tipo': 'BITA', 'orden': 2},
+    {'nombre': 'OIDECH', 'nombre_display': 'Barcaza Oiltech', 'tipo': 'BITA', 'orden': 2},
 ]
 
 # Usuarios autorizados para EDITAR (modificar inventario y gestionar disponibilidad) en Barcazas:
@@ -7098,7 +7095,7 @@ def barcaza_bita():
     # 4. Lógica para separar en grupos
     grupos = {
         "BARCAZA MARINSE": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('MARI')],
-        "BARCAZA OIDECH": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('OID')]
+        "BARCAZA OILTECH": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('OID')]
     }
 
     disponibilidad = _disponibilidad_barcazas('BITA')
@@ -9389,7 +9386,7 @@ def dashboard_reportes():
             'id': 'barcaza_bita',
             'categoria': 'Barcazas',
             'titulo': 'Barcaza BITA',
-            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza BITA (Marinse, Oidech).',
+            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza BITA (Marinse, Oiltech).',
             'icono': 'bi-tsunami',
             'color': 'info',
             'bg_gradient': 'linear-gradient(135deg, #CFFAFE 0%, #A5F3FC 100%)',
