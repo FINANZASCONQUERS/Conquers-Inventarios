@@ -5421,7 +5421,7 @@ def reporte_planta():
 
 @app.route('/reporte_planta_madrid')
 @login_required
-@permiso_requerido(['reportes', 'reporte_madrid', 'planta_madrid'])
+@permiso_requerido(['reporte_madrid', 'planta_madrid'])
 def reporte_planta_madrid():
     fecha_str = request.args.get('fecha')
     try:
@@ -10660,7 +10660,7 @@ def descargar_reporte_planta_pdf():
 
 @app.route('/descargar-reporte-planta-madrid-pdf')
 @login_required
-@permiso_requerido(['reportes', 'reporte_madrid', 'planta_madrid'])
+@permiso_requerido(['reporte_madrid', 'planta_madrid'])
 def descargar_reporte_planta_madrid_pdf():
     filtro_tipo = request.args.get('filtro_tipo', 'dia')
     valor = request.args.get('valor')
