@@ -9,7 +9,11 @@
             --sticky-bg-header: #1e293b;
             --sticky-bg-filter: #f8fafc;
             --sticky-bg-cell: #ffffff;
-            --sticky-border: #e2e8f0;
+            --sticky-border: #cbd5e1;
+            --sticky-row-prog-bg: #ffffff;
+            --sticky-row-cargando-bg: #fefce8;
+            --sticky-row-cargado-bg: #fff7ed;
+            --sticky-row-despachado-bg: #f0fdf4;
             --ctx-menu-bg: #ffffff;
             --ctx-menu-text: #0f172a;
             --ctx-menu-hover: #f0fdf4;
@@ -25,6 +29,10 @@
             --sticky-bg-filter: #0f1a23;
             --sticky-bg-cell: #14212d;
             --sticky-border: #223544;
+            --sticky-row-prog-bg: #14212d;
+            --sticky-row-cargando-bg: #262414;
+            --sticky-row-cargado-bg: #2a1f17;
+            --sticky-row-despachado-bg: #122822;
             --ctx-menu-bg: #1a2a38;
             --ctx-menu-text: #f8fafc;
             --ctx-menu-hover: rgba(16, 185, 129, 0.15);
@@ -58,6 +66,11 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        .programacion-cargue-page .table-modern {
+            border-collapse: separate !important;
+            border-spacing: 0 !important;
+        }
+
         .programacion-cargue-page .table-modern th {
             font-size: 0.82rem !important;
             padding: 10px 8px !important;
@@ -66,6 +79,7 @@
         .programacion-cargue-page .table-modern td {
             font-size: 0.875rem !important;
             padding: 7px 8px !important;
+            border-bottom: 1px solid var(--table-border, #e2e8f0) !important;
         }
 
         .programacion-cargue-page .table-modern .form-control-sm,
@@ -253,6 +267,111 @@
             background: rgba(239, 68, 68, 0.12) !important;
             border-color: rgba(239, 68, 68, 0.7) !important;
             color: #ef4444 !important;
+        }
+
+        /* ==========================================================================
+           COLUMNAS ESTÁTICAS / FIJAS (FREEZE PANES)
+           # (0px..70px), FECHA PROG (70px..200px), PRODUCTO (200px..360px)
+           ========================================================================== */
+        .sticky-col-num,
+        th.sticky-col-num,
+        td.sticky-col-num {
+            position: sticky !important;
+            left: 0 !important;
+            width: 70px !important;
+            min-width: 70px !important;
+            max-width: 70px !important;
+        }
+
+        .sticky-col-fecha,
+        th.sticky-col-fecha,
+        td[data-field="fecha_programacion"],
+        td.sticky-col-fecha {
+            position: sticky !important;
+            left: 70px !important;
+            width: 130px !important;
+            min-width: 130px !important;
+            max-width: 130px !important;
+        }
+
+        .sticky-col-producto,
+        th.sticky-col-producto,
+        td[data-field="producto_a_cargar"],
+        td.sticky-col-producto {
+            position: sticky !important;
+            left: 200px !important;
+            width: 160px !important;
+            min-width: 160px !important;
+            max-width: 160px !important;
+            border-right: 2px solid var(--sticky-border, #cbd5e1) !important;
+            box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        /* Z-Index y Fondo en Cabecera (Thead) */
+        .table-modern thead tr:first-child th.sticky-col-num,
+        .table-modern thead tr:first-child th.sticky-col-fecha,
+        .table-modern thead tr:first-child th.sticky-col-producto {
+            z-index: 30 !important;
+            background-color: var(--sticky-bg-header) !important;
+        }
+
+        /* Z-Index y Fondo en Fila de Filtros */
+        .table-modern thead #filter-row th.sticky-col-num,
+        .table-modern thead #filter-row th.sticky-col-fecha,
+        .table-modern thead #filter-row th.sticky-col-producto {
+            z-index: 31 !important;
+            background-color: var(--sticky-bg-filter) !important;
+        }
+
+        /* Z-Index en Celdas de Datos (Tbody) */
+        .table-modern tbody td.sticky-col-num {
+            z-index: 15 !important;
+            background-color: var(--sticky-row-prog-bg, #ffffff);
+        }
+
+        .table-modern tbody td[data-field="fecha_programacion"],
+        .table-modern tbody td.sticky-col-fecha {
+            z-index: 14 !important;
+            background-color: var(--sticky-row-prog-bg, #ffffff);
+        }
+
+        .table-modern tbody td[data-field="producto_a_cargar"],
+        .table-modern tbody td.sticky-col-producto {
+            z-index: 13 !important;
+            background-color: var(--sticky-row-prog-bg, #ffffff);
+        }
+
+        /* Mantener los fondos de estado en las columnas fijas */
+        .tbody-modern tr[data-estado="PROGRAMADO"] td.sticky-col-num,
+        .tbody-modern tr[data-estado="PROGRAMADO"] td[data-field="fecha_programacion"],
+        .tbody-modern tr[data-estado="PROGRAMADO"] td.sticky-col-fecha,
+        .tbody-modern tr[data-estado="PROGRAMADO"] td[data-field="producto_a_cargar"],
+        .tbody-modern tr[data-estado="PROGRAMADO"] td.sticky-col-producto {
+            background-color: var(--sticky-row-prog-bg, var(--row-prog-bg, #ffffff)) !important;
+        }
+
+        .tbody-modern tr[data-estado="CARGANDO"] td.sticky-col-num,
+        .tbody-modern tr[data-estado="CARGANDO"] td[data-field="fecha_programacion"],
+        .tbody-modern tr[data-estado="CARGANDO"] td.sticky-col-fecha,
+        .tbody-modern tr[data-estado="CARGANDO"] td[data-field="producto_a_cargar"],
+        .tbody-modern tr[data-estado="CARGANDO"] td.sticky-col-producto {
+            background-color: var(--sticky-row-cargando-bg, var(--row-cargando-bg, #fefce8)) !important;
+        }
+
+        .tbody-modern tr[data-estado="CARGADO"] td.sticky-col-num,
+        .tbody-modern tr[data-estado="CARGADO"] td[data-field="fecha_programacion"],
+        .tbody-modern tr[data-estado="CARGADO"] td.sticky-col-fecha,
+        .tbody-modern tr[data-estado="CARGADO"] td[data-field="producto_a_cargar"],
+        .tbody-modern tr[data-estado="CARGADO"] td.sticky-col-producto {
+            background-color: var(--sticky-row-cargado-bg, var(--row-cargado-bg, #fff7ed)) !important;
+        }
+
+        .tbody-modern tr[data-estado="DESPACHADO"] td.sticky-col-num,
+        .tbody-modern tr[data-estado="DESPACHADO"] td[data-field="fecha_programacion"],
+        .tbody-modern tr[data-estado="DESPACHADO"] td.sticky-col-fecha,
+        .tbody-modern tr[data-estado="DESPACHADO"] td[data-field="producto_a_cargar"],
+        .tbody-modern tr[data-estado="DESPACHADO"] td.sticky-col-producto {
+            background-color: var(--sticky-row-despachado-bg, var(--row-despachado-bg, #f0fdf4)) !important;
         }
 
         /* Floating Scroll Buttons */
@@ -2701,16 +2820,20 @@
         let headerHtml = '<tr class="align-middle">';
         let filterHtml = '<tr id="filter-row" class="align-middle">';
         // 1. Número (#) - Sticky Left 0
-        headerHtml += `<th style="width: 70px; min-width: 70px; position: sticky; left: 0; z-index: 20; background-color: var(--sticky-bg-header);" class="text-center th-shadow">#</th>`;
-        filterHtml += '<th style="position: sticky; left: 0; z-index: 21; background-color: var(--sticky-bg-filter);" class="text-center">#</th>';
+        headerHtml += `<th style="width: 70px; min-width: 70px;" class="text-center th-shadow sticky-col-num">#</th>`;
+        filterHtml += '<th class="text-center sticky-col-num">#</th>';
 
         allColumns.forEach(col => {
             const config = columnsConfig[col];
             const stockBadge = (col === 'precintos' && puedePrecintos)
                 ? ' <span class="badge bg-success-subtle text-success-emphasis" id="badge-stock-precintos" title="Precintos disponibles en inventario">…</span>'
                 : '';
-            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap">${formatColumnName(col)}${stockBadge}</th>`;
-            filterHtml += `<th><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
+            let stickyClass = '';
+            if (col === 'fecha_programacion') stickyClass = ' sticky-col-fecha';
+            else if (col === 'producto_a_cargar') stickyClass = ' sticky-col-producto';
+
+            headerHtml += `<th style="width: ${config.width}; min-width: ${config.width}" class="text-nowrap${stickyClass}">${formatColumnName(col)}${stockBadge}</th>`;
+            filterHtml += `<th class="${stickyClass}"><input type="text" class="form-control form-control-sm filter-input" data-filter-col="${col}" placeholder="Buscar..."></th>`;
         });
 
         // 2. Acciones - Normal al final (Revertido sticky)
@@ -2815,7 +2938,7 @@
             const numeroMostrar = row._numeroFilaHistorial || (index + 1);
 
             // Celda 1: Número (Sticky Left 0)
-            rowHtml += `<td class="text-center fw-bold number-cell" style="min-width: 70px; width:70px; position: sticky; left: 0; z-index: 15;">
+            rowHtml += `<td class="text-center fw-bold number-cell sticky-col-num" style="min-width: 70px; width:70px; position: sticky; left: 0; z-index: 15;">
                             <div class="d-flex align-items-center justify-content-center gap-2">
                                 <span class="text-primary">${numeroMostrar}</span>
                                 ${refineryBadge}
@@ -2838,10 +2961,14 @@
                 );
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
+                let stickyColClass = '';
+                if (col === 'fecha_programacion') stickyColClass = ' sticky-col-fecha';
+                else if (col === 'producto_a_cargar') stickyColClass = ' sticky-col-producto';
+
                 if (config.type === 'datalist' && finalEditable) {
                     const listId = config.listId || 'productos-lista';
                     const placeholder = config.placeholder || '';
-                    rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="datalist" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <input list="${listId}" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="${placeholder}">
                                 </td>`;
@@ -2858,12 +2985,12 @@
                         selectHtml += `<option value="${opt}" ${selected}>${opt}</option>`;
                     });
                     selectHtml += '</select>';
-                    rowHtml += `<td data-field="${col}" data-type="select" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="select" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     ${selectHtml}
                                 </td>`;
                 } else if (col === 'cliente' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <div class="input-group input-group-sm border-0">
                                         <input list="datalist-clientes" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar cliente...">
@@ -2872,7 +2999,7 @@
                                     </div>
                                 </td>`;
                 } else if (col === 'nombre_conductor' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <div class="input-group input-group-sm border-0">
                                         <input list="datalist-conductores" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar conductor...">
@@ -2881,7 +3008,7 @@
                                     </div>
                                 </td>`;
                 } else if (col === 'cedula_conductor' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <div class="input-group input-group-sm border-0">
                                         <input type="text" list="datalist-cedulas" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar CC...">
@@ -2890,7 +3017,7 @@
                                     </div>
                                 </td>`;
                 } else if (col === 'placa' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="text" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <div class="input-group input-group-sm border-0">
                                         <input type="text" list="datalist-placas" class="form-control border-0 bg-transparent editable-input" value="${value}" data-col="${col}" placeholder="Buscar placa...">
@@ -2899,12 +3026,12 @@
                                     </div>
                                 </td>`;
                 } else if (config.type === 'date' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="date" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="date" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <input type="date" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
                                 </td>`;
                 } else if (config.type === 'time' && finalEditable) {
-                    rowHtml += `<td data-field="${col}" data-type="time" class="position-relative">
+                    rowHtml += `<td data-field="${col}" data-type="time" class="position-relative${stickyColClass}">
                                     ${lockBadge}
                                     <input type="time" class="form-control form-control-sm border-0 bg-transparent editable-input" value="${value}" data-col="${col}">
                                 </td>`;
@@ -2916,7 +3043,7 @@
                     const editorPrecintos = finalEditable
                         ? `<span class="cell-editor flex-grow-1" contenteditable="true" data-col="precintos">${formatCellValue(value, config)}</span>`
                         : `<span class="flex-grow-1 text-truncate" title="Solo puedes asignar precintos desde el inventario">${formatCellValue(value, config)}</span>`;
-                    rowHtml += `<td data-field="precintos" data-type="text" class="${finalEditable ? 'editable-cell' : ''} position-relative" style="min-width: ${config.width}">
+                    rowHtml += `<td data-field="precintos" data-type="text" class="${finalEditable ? 'editable-cell' : ''} position-relative${stickyColClass}" style="min-width: ${config.width}">
                                     <div class="d-flex align-items-center gap-1">
                                         ${editorPrecintos}
                                         <button type="button" class="btn btn-outline-warning btn-xs btn-asignar-precintos flex-shrink-0"
@@ -2926,9 +3053,9 @@
                                 </td>`;
                 } else {
                     if (finalEditable) {
-                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true" data-col="${col}">${formatCellValue(value, config)}</span></td>`;
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="editable-cell ${config.type === 'number' ? 'text-end' : ''} position-relative${stickyColClass} ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}"><span class="cell-editor" contenteditable="true" data-col="${col}">${formatCellValue(value, config)}</span></td>`;
                     } else {
-                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
+                        rowHtml += `<td data-field="${col}" data-type="${config.type || 'text'}" class="${config.type === 'number' ? 'text-end' : ''} position-relative${stickyColClass} ${refineriaBlocked ? 'opacity-75' : ''}" style="min-width: ${config.width}">${formatCellValue(value, config)}</td>`;
                     }
                 }
             });
