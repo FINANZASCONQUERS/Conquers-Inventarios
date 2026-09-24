@@ -1,3 +1,4 @@
+from collections import defaultdict
 import requests
 from sqlalchemy import or_
 import json
@@ -493,19 +494,19 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery CWT",
         "rol": "editor",
-        "area": ["planta_madrid", "reporte_madrid"]
+        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "precintos"]
     },
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
     },
     "carlos.baron@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
     },
     "logistics.inventory@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -559,25 +560,25 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
     },
     "ignacio@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
     },
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juliana Torres",
         "rol": "editor",
-        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos"]
+        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "programacion_cargue_madrid"]
     },
     "logistic@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025*"),
         "nombre": "Samantha Roa",
         "rol": "editor",
-        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "barcaza_orion", "barcaza_bita", "reportes"]
+        "area": ["planta", "reporte_madrid", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "barcaza_orion", "barcaza_bita", "reportes", "programacion_cargue_madrid"]
     },
     "logistics.assistant@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -689,17 +690,20 @@ MODULE_ROUTE_MAP = [
     (r'^/api/analisis-laboratorio', ['analisis_laboratorio']),
     (r'^/inventario-precintos', ['precintos']),
     (r'^/api/precintos', ['precintos']),
-    (r'^/programacion-cargue', ['programacion_cargue']),
+    # La de Madrid va aparte: el patron de Cartagena no puede comerse el sufijo
+    # -madrid, porque TODOS los patrones que calzan tienen que dejar pasar.
+    (r'^/programacion-cargue-madrid(?:$|[/?#])', ['programacion_cargue_madrid']),
+    (r'^/programacion-cargue(?:$|[/?#])', ['programacion_cargue']),
     (r'^/api/programacion-base', ['programacion_base']),
     (r'^/api/programacion_base', ['programacion_base']),
-    (r'^/api/programacion', ['programacion_cargue']),
+    (r'^/api/programacion', ['programacion_cargue', 'programacion_cargue_madrid']),
     (r'^/actualizar_programacion', ['programacion_cargue']),
     (r'^/eliminar_programacion', ['programacion_cargue']),
     (r'^/agregar_programacion', ['programacion_cargue']),
-    (r'^/api/vcf_api6a', ['programacion_cargue', 'planta', 'guia_transporte', 'panel_enturnamiento']),
-    (r'^/api/cliente', ['programacion_cargue', 'guia_transporte']),
-    (r'^/api/conductor', ['programacion_cargue', 'guia_transporte', 'panel_enturnamiento']),
-    (r'^/api/empresa', ['programacion_cargue', 'guia_transporte']),
+    (r'^/api/vcf_api6a', ['programacion_cargue', 'programacion_cargue_madrid', 'planta', 'guia_transporte', 'panel_enturnamiento']),
+    (r'^/api/cliente', ['programacion_cargue', 'programacion_cargue_madrid', 'guia_transporte']),
+    (r'^/api/conductor', ['programacion_cargue', 'programacion_cargue_madrid', 'guia_transporte', 'panel_enturnamiento']),
+    (r'^/api/empresa', ['programacion_cargue', 'programacion_cargue_madrid', 'guia_transporte']),
     (r'^/panel-enturnamiento', ['panel_enturnamiento']),
     (r'^/panel_enturnamiento', ['panel_enturnamiento']),
     (r'^/api/panel-enturnamiento', ['panel_enturnamiento']),
@@ -750,9 +754,9 @@ MODULE_ROUTE_MAP = [
     (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
     (r'^/descargar-reporte-planta-pdf', ['reportes', 'planta']),
     (r'^/reportes', ['reportes']),
-    (r'^/reporte_grafico_despachos', ['reportes', 'programacion_cargue']),
-    (r'^/descargar_reporte_grafico_despachos_pdf', ['reportes', 'programacion_cargue']),
-    (r'^/exportar_programacion_cargue', ['programacion_cargue', 'reportes']),
+    (r'^/reporte_grafico_despachos', ['reportes', 'programacion_cargue', 'programacion_cargue_madrid']),
+    (r'^/descargar_reporte_grafico_despachos_pdf', ['reportes', 'programacion_cargue', 'programacion_cargue_madrid']),
+    (r'^/exportar_programacion_cargue', ['programacion_cargue', 'programacion_cargue_madrid', 'reportes']),
     (r'^/programacion-base', ['programacion_base']),
     (r'^/pedidos', ['programacion_base']),
     (r'^/api/programacion_base', ['programacion_base']),
@@ -1084,8 +1088,8 @@ class TanquePlanta(db.Model):
     producto_actual = db.Column(db.String(100), nullable=False)
     capacidad_maxima = db.Column(db.Float, default=0.0)
     
-    # Opciones: 'BBL_TO_TON' (Estándar), 'BBL_TO_GAL' (Consumo Interno)
-    tipo_conversion = db.Column(db.String(50), default='BBL_TO_TON') 
+    # Opciones: 'BBL_TO_TON' (110, 108, 102), 'BBL_TO_GAL' (Consumo Interno), 'NONE' (Crudo, Diluyente)
+    tipo_conversion = db.Column(db.String(50), default='NONE') 
     conversion_valor = db.Column(db.Float, nullable=True) # Valor fijo opcional (ej: factor ton/bbl)
     
     activo = db.Column(db.Boolean, default=True)
@@ -1122,11 +1126,11 @@ def _init_tanques_planta():
                 print(f"[MIGRATE] Error agregando columna: {e}")
 
         defaults = [
-            {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "BBL_TO_TON", "orden": 1},
+            {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "NONE",       "orden": 1},
             {"nombre": "TK-110", "producto": "FO4",       "cap": 22000, "conv": "BBL_TO_TON", "orden": 2},
             {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 6},
-            {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 3},
-            {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "BBL_TO_TON", "orden": 4},
+            {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 3},
+            {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 4},
             {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 5},
             {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 7},
         ]
@@ -1493,9 +1497,37 @@ class RegistroRemolcador(db.Model):
     def __repr__(self):
         return f'<RegistroRemolcador {self.id}>'    
 
+# =============================================================================
+# SEDES DE DESPACHO (CARTAGENA / MADRID)
+# =============================================================================
+# Programacion de cargue, pedidos y precintos viven en las mismas tablas y se
+# separan por la columna `sede`. Todo lo que existia antes es de Cartagena, asi
+# que cualquier consulta que no diga sede se queda en CARTAGENA: agregar Madrid
+# no puede cambiar lo que ya ve Cartagena.
+SEDE_POR_DEFECTO = 'CARTAGENA'
+SEDES_PROGRAMACION = ('CARTAGENA', 'MADRID')
+SEDE_ETIQUETAS = {'CARTAGENA': 'Cartagena', 'MADRID': 'Madrid'}
+# Area de usuario que abre la programacion de cada sede.
+AREA_PROGRAMACION_POR_SEDE = {
+    'CARTAGENA': 'programacion_cargue',
+    'MADRID': 'programacion_cargue_madrid',
+}
+# Usuarios de refineria: solo campos de refineria, candado de 30 minutos y no
+# pueden tocar un cargue DESPACHADO.
+EMAILS_REFINERIA = {
+    'refinery.control@conquerstrading.com',
+    'refinerycwt@conquerstrading.com',
+}
+# Nombre que dejan en `ultimo_editor` (bloqueo de eliminacion tras 30 min).
+NOMBRES_REFINERIA = {'control refineria', 'refinery cwt'}
+
+
 class ProgramacionCargue(db.Model):
     __tablename__ = 'programacion_cargue'
     id = db.Column(db.Integer, primary_key=True)
+    # Planta desde la que sale el cargue. Ver SEDES_PROGRAMACION.
+    sede = db.Column(db.String(20), nullable=False, default=SEDE_POR_DEFECTO,
+                     server_default=SEDE_POR_DEFECTO, index=True)
     
     # Campos de Juliana y Samantha
     factura = db.Column(db.String(100))
@@ -1586,6 +1618,10 @@ class LotePrecintos(db.Model):
     total_precintos = db.Column(db.Integer, default=0)
     usuario_registro = db.Column(db.String(120))
     observaciones = db.Column(db.Text)
+    # Sede donde se dio de alta. Los sellos pueden transferirse despues; la
+    # sede que manda es la de cada InventarioPrecinto.
+    sede = db.Column(db.String(20), nullable=False, default=SEDE_POR_DEFECTO,
+                     server_default=SEDE_POR_DEFECTO, index=True)
     # El lote sintético que agrupa lo importado de la columna vieja.
     es_historico = db.Column(db.Boolean, default=False)
     activo = db.Column(db.Boolean, default=True)
@@ -1604,6 +1640,10 @@ class InventarioPrecinto(db.Model):
     numero = db.Column(db.BigInteger, nullable=False, index=True)
     codigo = db.Column(db.String(20), nullable=False, index=True)
     estado = db.Column(db.String(20), nullable=False, default='DISPONIBLE', index=True)
+    # Bodega donde esta el sello fisicamente. Cada sede lleva su propio
+    # consecutivo y su propia marca de agua.
+    sede = db.Column(db.String(20), nullable=False, default=SEDE_POR_DEFECTO,
+                     server_default=SEDE_POR_DEFECTO, index=True)
 
     # Trazabilidad: a qué cargue se fue el sello.
     programacion_id = db.Column(
@@ -1660,6 +1700,9 @@ class ProgramacionBase(db.Model):
     destino = db.Column(db.String(150))
     calidad = db.Column(db.String(20))
     galones = db.Column(db.Float)
+    # Planta de despacho: decide a que programacion de cargue se envia.
+    sede = db.Column(db.String(20), nullable=False, default=SEDE_POR_DEFECTO,
+                     server_default=SEDE_POR_DEFECTO, index=True)
     # Vínculo con programación de cargue cuando el pedido se envía
     programacion_cargue_id = db.Column(db.Integer, nullable=True)
 
@@ -1707,6 +1750,106 @@ def _ensure_programacion_base_columns():
 
 
 _ensure_programacion_base_columns()
+
+
+def _ensure_sede_columns():
+    """Agrega `sede` a las tablas que se reparten entre Cartagena y Madrid.
+
+    Las filas existentes quedan en CARTAGENA por el DEFAULT: es donde estaban.
+    """
+    from sqlalchemy import inspect, text
+    tablas = ('programacion_cargue', 'programacion_base', 'lotes_precintos', 'inventario_precintos')
+    with app.app_context():
+        insp = inspect(db.engine)
+        existentes = set(insp.get_table_names())
+        for tabla in tablas:
+            if tabla not in existentes:
+                continue
+            cols = [c['name'] for c in insp.get_columns(tabla)]
+            if 'sede' in cols:
+                continue
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text(
+                        f"ALTER TABLE {tabla} ADD COLUMN sede VARCHAR(20) NOT NULL DEFAULT '{SEDE_POR_DEFECTO}'"
+                    ))
+                    conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{tabla}_sede ON {tabla} (sede)"))
+                print(f'[INIT] Columna sede añadida a {tabla}')
+            except Exception as e:
+                print(f'[INIT] No se pudo añadir sede a {tabla}:', e)
+
+
+_ensure_sede_columns()
+
+
+class SedeNoPermitida(Exception):
+    """La sede pedida no existe o el usuario no tiene acceso a ella."""
+
+    def __init__(self, mensaje, status=403):
+        super().__init__(mensaje)
+        self.mensaje = mensaje
+        self.status = status
+
+
+@app.errorhandler(SedeNoPermitida)
+def _responder_sede_no_permitida(error):
+    return jsonify(success=False, error='FORBIDDEN_SEDE', message=error.mensaje), error.status
+
+
+def _normalizar_sede(valor):
+    """'madrid', ' Madrid ' -> 'MADRID'. Devuelve None si no es una sede conocida."""
+    sede = str(valor or '').strip().upper()
+    return sede if sede in SEDES_PROGRAMACION else None
+
+
+def _sedes_programacion_usuario():
+    """Sedes cuya programacion de cargue puede abrir el usuario en sesion."""
+    if session.get('rol') == 'admin':
+        return list(SEDES_PROGRAMACION)
+    areas = session.get('area', []) or []
+    return [s for s in SEDES_PROGRAMACION if AREA_PROGRAMACION_POR_SEDE[s] in areas]
+
+
+def _puede_sede_programacion(sede):
+    return sede in _sedes_programacion_usuario()
+
+
+def _sede_de_la_peticion(default=SEDE_POR_DEFECTO):
+    """Sede pedida por ?sede= o por el JSON, validada contra los permisos.
+
+    Sin sede explicita se asume Cartagena: es lo que hacian todas las pantallas
+    antes de que existiera Madrid.
+    """
+    crudo = request.args.get('sede')
+    if crudo is None and request.is_json:
+        crudo = (request.get_json(silent=True) or {}).get('sede')
+    if crudo in (None, ''):
+        crudo = default
+    sede = _normalizar_sede(crudo)
+    if not sede:
+        raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
+    if not _puede_sede_programacion(sede):
+        raise SedeNoPermitida(
+            f'No tienes acceso a la programación de {SEDE_ETIQUETAS[sede]}.')
+    return sede
+
+
+def _verificar_sede_registro(registro):
+    """Corta la peticion si el cargue es de una sede a la que el usuario no entra."""
+    sede = getattr(registro, 'sede', None) or SEDE_POR_DEFECTO
+    if not _puede_sede_programacion(sede):
+        raise SedeNoPermitida(
+            f'Este registro es de la sede {SEDE_ETIQUETAS.get(sede, sede)} y no tienes acceso a ella.')
+    return registro
+
+
+def _programacion_de_sede_o_404(id):
+    """get_or_404 + control de sede, para toda ruta que reciba el id del cargue."""
+    return _verificar_sede_registro(ProgramacionCargue.query.get_or_404(id))
+
+
+def _es_usuario_refineria(email=None):
+    return (email if email is not None else session.get('email')) in EMAILS_REFINERIA
 
 # ---------------- BLOQUEO DE CELDAS (EDICIÓN EN TIEMPO REAL) -----------------
 class ProgramacionCargueLock(db.Model):
@@ -2997,13 +3140,13 @@ def _expand_preview_rows(datos, max_rows=200):
 
    
 PLANILLA_PLANTA = [
-    {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-108", "PRODUCTO": "FO6",    "MAX_CAP": 28000, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-102", "PRODUCTO": "IFO",       "MAX_CAP": 4100,  "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "BLS_60": "", "API": "", "BSW": "", "S": ""}
+    {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-108", "PRODUCTO": "FO6",       "MAX_CAP": 28000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-102", "PRODUCTO": "IFO",       "MAX_CAP": 4100,  "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "TIPO_CONVERSION": "BBL_TO_GAL", "CONVERSION_VALOR": 42.0, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 
 PLANILLA_PLANTA_MADRID = [
@@ -3629,7 +3772,7 @@ def tanques_save():
         nombre = (data.get('nombre') or '').strip().upper()
         producto = (data.get('producto') or '').strip().upper()
         capacidad = float(data.get('capacidad') or 0)
-        conversion = data.get('conversion') # 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL'
+        conversion = data.get('conversion') or 'NONE' # 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL', 'NONE'
         
         # Nuevo campo para valor personalizado
         try:
@@ -5079,9 +5222,10 @@ def planta():
          orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
          orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
          datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA}
-         # Añadir tipo conversión default
+         # Añadir tipo conversión default: solo 110, 108 y 102 llevan BBL_TO_TON
+         allowed_ton = {'TK-110', 'TK-108', 'TK-102'}
          for k, v in datos_por_tk.items():
-             v['TIPO_CONVERSION'] = 'BBL_TO_GAL' if k == 'Consumo Interno' else 'BBL_TO_TON'
+             v['TIPO_CONVERSION'] = 'BBL_TO_GAL' if k == 'Consumo Interno' else ('BBL_TO_TON' if k in allowed_ton else 'NONE')
     else:
         for i, t in enumerate(tanques_conf):
             datos_por_tk[t['nombre']] = {
@@ -7211,39 +7355,66 @@ def barcaza_bita():
                            today_iso=date.today().isoformat(),
                            fecha_display=fecha_display) 
 
-def _extraer_folio_diluyente(texto):
-    """Extrae el número entero de folio de diluyente (ej: '303400000600-4' -> 600, '0600' -> 600)."""
+# Talonario de guías físicas de cada planta: serie + folio (+ '-DV').
+# Cartagena: 303400000600-4. Madrid: 303700000016-0.
+GUIA_FISICA_SERIE_POR_SEDE = {
+    'CARTAGENA': '303400000',
+    'MADRID': '303700000',
+}
+# Folio mínimo que se acepta escrito corto (sin la serie). En Cartagena el
+# talonario ya va por los cientos y un número chico sería una factura o un año;
+# el de Madrid arrancó en 001.
+GUIA_FISICA_FOLIO_CORTO_MINIMO = {'CARTAGENA': 100, 'MADRID': 1}
+
+
+def _extraer_folio_diluyente(texto, sede=None):
+    """Extrae el número entero de folio de diluyente (ej: '303400000600-4' -> 600, '0600' -> 600).
+
+    Con `sede`, solo reconoce la serie de esa planta (un 3037 no cuenta para el
+    consecutivo de Cartagena). Sin sede, reconoce cualquiera de las dos.
+    """
     if not texto:
         return None
     texto = str(texto).strip()
-    # 1. Patrón oficial de guía física: 303400000XXXX (con o sin sufijo DV)
-    m = re.search(r'303400000?(\d{3,4})', texto)
-    if m:
-        try:
-            return int(m.group(1))
-        except (ValueError, TypeError):
-            pass
+    sede = _normalizar_sede(sede)
+    series = [GUIA_FISICA_SERIE_POR_SEDE[sede]] if sede else list(GUIA_FISICA_SERIE_POR_SEDE.values())
+    # 1. Patrón oficial de guía física: serie + folio (con o sin sufijo DV).
+    #    El último 0 de la serie es opcional: hay guías digitadas con un cero de menos o de más.
+    for serie in series:
+        m = re.search(re.escape(serie[:-1]) + r'0?(\d{3,4})', texto)
+        if m:
+            try:
+                return int(m.group(1))
+            except (ValueError, TypeError):
+                pass
     # 2. Folio escrito como 3 o 4 dígitos (ej: 0600, 600, 0600-4)
-    # Debe estar en el rango real de folios de guías físicas (entre 100 y 1999) para evitar tomar facturas o años
-    m = re.match(r'^(?:0*)(\d{3,4})(?:-\d+)?$', texto)
-    if m:
+    # Debe estar en el rango real de folios de guías físicas para evitar tomar facturas o años
+    m = re.match(r'^(?:0*)(\d{1,4})(?:-\d+)?$', texto)
+    if m and len(texto.split('-')[0]) >= 3:
         try:
             val = int(m.group(1))
-            if 100 <= val <= 1999:
+            minimo = GUIA_FISICA_FOLIO_CORTO_MINIMO.get(sede, 100)
+            if minimo <= val <= 1999:
                 return val
         except (ValueError, TypeError):
             pass
     return None
 
 
-def _obtener_siguiente_consecutivo_guia_fisica():
+def _obtener_siguiente_consecutivo_guia_fisica(sede=SEDE_POR_DEFECTO):
     """
     Busca en los registros históricos de ProgramacionCargue de guías FÍSICAS (o con serie 3034000...)
     el último folio utilizado en la columna `numero_guia`, y retorna el siguiente folio formateado a 4 dígitos (ej: '0601').
+
+    Cada sede tiene su talonario: el de Madrid no mueve el de Cartagena ni al revés.
+    Madrid sin guías registradas no sugiere nada (el 0601 es el arranque de Cartagena).
     """
+    sede = _normalizar_sede(sede) or SEDE_POR_DEFECTO
+    sin_historial = '0601' if sede == SEDE_POR_DEFECTO else ''
     try:
         registros = (ProgramacionCargue.query
-                     .filter(ProgramacionCargue.numero_guia.isnot(None))
+                     .filter(ProgramacionCargue.numero_guia.isnot(None),
+                             ProgramacionCargue.sede == sede)
                      .order_by(ProgramacionCargue.id.desc())
                      .limit(300)
                      .all())
@@ -7251,17 +7422,17 @@ def _obtener_siguiente_consecutivo_guia_fisica():
         for r in registros:
             # Solo consultar la columna numero_guia (NUNCA la factura comercial de venta)
             num = (r.numero_guia or '').strip()
-            folio = _extraer_folio_diluyente(num)
+            folio = _extraer_folio_diluyente(num, sede)
             if folio is not None:
                 folios.append(folio)
         
         if folios:
             siguiente = max(folios) + 1
             return f"{siguiente:04d}"
-        return "0601"
+        return sin_historial
     except Exception as e:
         app.logger.warning(f"Error calculando siguiente consecutivo guía física: {e}")
-        return "0601"
+        return sin_historial
 
 
 # Mantener alias de compatibilidad
@@ -7271,14 +7442,15 @@ _obtener_siguiente_consecutivo_guia_diluyente = _obtener_siguiente_consecutivo_g
 @app.route('/api/programacion/siguiente_guia_diluyente', methods=['GET'])
 @app.route('/api/programacion/siguiente_guia_fisica', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def api_siguiente_guia_diluyente():
-    """Retorna el siguiente consecutivo de 4 dígitos para guía física."""
-    siguiente = _obtener_siguiente_consecutivo_guia_fisica()
+    """Retorna el siguiente consecutivo de 4 dígitos para guía física (?sede=)."""
+    sede = _normalizar_sede(request.args.get('sede')) or SEDE_POR_DEFECTO
+    siguiente = _obtener_siguiente_consecutivo_guia_fisica(sede)
     return jsonify(
-        success=True,
+        success=bool(siguiente),
         siguiente_folio=siguiente,
-        siguiente_guia_base=f"303400000{siguiente}"
+        siguiente_guia_base=f"{GUIA_FISICA_SERIE_POR_SEDE[sede]}{siguiente}" if siguiente else ''
     )
 
 
@@ -7301,7 +7473,7 @@ def guia_transporte():
     num_guia_req = (request.args.get('numero_guia') or request.args.get('factura') or request.args.get('factura_remision') or '').strip()
 
     if num_guia_req:
-        # Si la fila ya tenía un número registrado:
+        # Si la fila ya tenía un número registrado (3034 Cartagena o 3037 Madrid):
         folio = _extraer_folio_diluyente(num_guia_req)
         if folio is not None and es_fisica:
             # En la guía física solo se colocan los 4 dígitos (ej: 0600)
@@ -7312,7 +7484,7 @@ def guia_transporte():
         # La fila NO tiene número de guía todavía (se coloca después de imprimir):
         if es_fisica:
             # Tomar el consecutivo a partir de la última guía física pasada registrada (ej: 0601)
-            factura_remision = _obtener_siguiente_consecutivo_guia_fisica()
+            factura_remision = _obtener_siguiente_consecutivo_guia_fisica(request.args.get('sede'))
         else:
             factura_remision = ''
 
@@ -9332,8 +9504,10 @@ def dashboard_reportes():
             ] if puede_editar_madrid else []
         })
 
-    # 2. Programación de Despachos
-    if is_admin or 'programacion_cargue' in user_areas:
+    # 2. Programación de Despachos (Cartagena y/o Madrid)
+    ve_cargue_ctg = is_admin or 'programacion_cargue' in user_areas
+    ve_cargue_mad = is_admin or 'programacion_cargue_madrid' in user_areas
+    if ve_cargue_ctg or ve_cargue_mad:
         modulos_usuario.append({
             'id': 'programacion_cargue',
             'categoria': 'Logística',
@@ -9344,9 +9518,11 @@ def dashboard_reportes():
             'bg_gradient': 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)',
             'color_hex': '#0284C7',
             'badge': 'Logística',
-            'url_principal': url_for('programacion_cargue'),
-            'nombre_btn': 'Ver Programación',
-            'sub_links': []
+            'url_principal': url_for('programacion_cargue' if ve_cargue_ctg else 'programacion_cargue_madrid'),
+            'nombre_btn': 'Ver Programación' if ve_cargue_ctg else 'Ver Programación Madrid',
+            'sub_links': [
+                {'nombre': 'Programación Madrid', 'url': url_for('programacion_cargue_madrid'), 'icono': 'bi-calendar-check'}
+            ] if (ve_cargue_ctg and ve_cargue_mad) else []
         })
 
     # 2b. Inventario de Precintos
@@ -12781,20 +12957,37 @@ def home_programacion_base():
     """Página de inicio unificada - redirecciona a home global."""
     return redirect(url_for('home_global'))
 
-@app.route('/programacion-cargue')
-@login_required
-@permiso_requerido('programacion_cargue')
-def programacion_cargue():
-    """Muestra la página de programación de vehículos."""
+def _render_programacion_cargue(sede):
+    """Misma pantalla para las dos sedes; solo cambia la sede que consulta."""
     clientes = cargar_clientes()
     conductores = cargar_conductores()
-    return render_template('programacion_cargue.html', 
-                           rol_usuario=session.get('rol'), 
+    return render_template('programacion_cargue.html',
+                           rol_usuario=session.get('rol'),
                            email_usuario=session.get('email'),
                            nombre=session.get('nombre'),
                            lista_clientes=clientes,
                            lista_conductores=conductores,
-                           puede_precintos=tiene_permiso('precintos'))
+                           puede_precintos=tiene_permiso('precintos'),
+                           sede=sede,
+                           sede_etiqueta=SEDE_ETIQUETAS[sede],
+                           sedes_usuario=_sedes_programacion_usuario(),
+                           es_refineria=_es_usuario_refineria())
+
+
+@app.route('/programacion-cargue')
+@login_required
+@permiso_requerido('programacion_cargue')
+def programacion_cargue():
+    """Muestra la página de programación de vehículos (Cartagena)."""
+    return _render_programacion_cargue('CARTAGENA')
+
+
+@app.route('/programacion-cargue-madrid')
+@login_required
+@permiso_requerido('programacion_cargue_madrid')
+def programacion_cargue_madrid():
+    """Programación de cargue de la planta de Madrid (Cundinamarca)."""
+    return _render_programacion_cargue('MADRID')
 
 
 @app.route('/programacion-base')
@@ -13082,7 +13275,7 @@ PROGRAMACION_BASE_ALLOWED_EMAILS = {
 
 
 def _campos_editables_programacion_base(email_usuario, rol_usuario):
-    campos = ['fecha_cargue', 'fecha_cargue_confirmada', 'producto', 'cliente', 'destino', 'calidad', 'galones']
+    campos = ['fecha_cargue', 'fecha_cargue_confirmada', 'producto', 'cliente', 'destino', 'calidad', 'galones', 'sede']
     if rol_usuario == 'admin':
         return campos
     if (email_usuario or '').lower() in PROGRAMACION_BASE_ALLOWED_EMAILS:
@@ -13228,7 +13421,11 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
     if not producto_ref:
         return None
 
+    # Solo cargues de la planta del pedido: un pedido de Madrid no puede
+    # quedar amarrado a un cargue de Cartagena que se le parezca.
+    sede_ref = registro_base.sede or SEDE_POR_DEFECTO
     candidatos = ProgramacionCargue.query.filter(
+        ProgramacionCargue.sede == sede_ref,
         ProgramacionCargue.fecha_programacion == fecha_ref
     ).all()
 
@@ -13237,6 +13434,7 @@ def _encontrar_programacion_existente_para_pedido(registro_base):
         fecha_desde = fecha_ref - timedelta(days=3)
         fecha_hasta = fecha_ref + timedelta(days=3)
         candidatos = ProgramacionCargue.query.filter(
+            ProgramacionCargue.sede == sede_ref,
             ProgramacionCargue.fecha_programacion >= fecha_desde,
             ProgramacionCargue.fecha_programacion <= fecha_hasta
         ).all()
@@ -13443,6 +13641,7 @@ def _sincronizar_programacion_desde_pedido(registro_base, force_create=False):
             raise ValueError('Para crear una nueva Programación de Cargue debes registrar Fecha de Cargue Confirmada. Si ya existe cargada, usa Vincular cargado.')
 
         registro_prog = ProgramacionCargue(
+            sede=registro_base.sede or SEDE_POR_DEFECTO,
             fecha_programacion=fecha_ref,
             producto_a_cargar=_normalizar_producto_cargue(registro_base.producto),
             cliente=_normalizar_cliente_cargue(registro_base.cliente),
@@ -13543,6 +13742,7 @@ def handle_programacion_base():
             'cliente': r.cliente,
             'destino': r.destino,
             'calidad': r.calidad,
+            'sede': r.sede or SEDE_POR_DEFECTO,
             # Mostrar en pedidos el valor real cuando ya existe programación vinculada.
             'galones': (prog.galones if (prog and prog.galones not in (None, '')) else r.galones),
             'programacion_cargue_id': prog.id if prog else None,
@@ -13628,6 +13828,21 @@ def update_programacion_base(id):
                     registro.calidad = None
             elif campo == 'destino':
                 registro.destino = _normalizar_destino_ciudad(valor)
+            elif campo == 'sede':
+                sede_nueva = _normalizar_sede(valor)
+                if not sede_nueva:
+                    return jsonify(success=False, message='Planta de despacho inválida.'), 400
+                # Ya enviado, el cargue vive en la tabla de la otra sede (con sus
+                # precintos y su guía): cambiarlo aquí dejaría el vínculo cruzado.
+                if registro.programacion_cargue_id and sede_nueva != (registro.sede or SEDE_POR_DEFECTO):
+                    db.session.rollback()
+                    return jsonify(
+                        success=False,
+                        message='Este pedido ya se envió a Programación de Cargue de {}. Para cambiar la planta, '
+                                'elimina ese cargue y vuelve a enviar el pedido.'.format(
+                                    SEDE_ETIQUETAS.get(registro.sede, registro.sede))
+                    ), 409
+                registro.sede = sede_nueva
             elif campo == 'galones':
                 try:
                     setattr(registro, campo, float(valor) if valor not in (None, '') else None)
@@ -13676,17 +13891,20 @@ def enviar_pedido_a_programacion(id):
         registro.ultimo_editor = session.get('nombre')
         db.session.commit()
 
+        sede_destino = (prog.sede if prog else registro.sede) or SEDE_POR_DEFECTO
+        etiqueta_sede = SEDE_ETIQUETAS.get(sede_destino, sede_destino)
         if creado:
-            accion = 'creado y enviado'
+            accion = f'creado y enviado a Programación de Cargue {etiqueta_sede}'
         elif not vinculo_previo and prog:
-            accion = 'vinculado con una programación ya cargada'
+            accion = f'vinculado con una programación ya cargada en {etiqueta_sede}'
         else:
-            accion = 'actualizado en Programación de Cargue'
+            accion = f'actualizado en Programación de Cargue {etiqueta_sede}'
 
         return jsonify(
             success=True,
             message=f'Pedido {accion} correctamente.',
-            programacion_id=(prog.id if prog else None)
+            programacion_id=(prog.id if prog else None),
+            sede=sede_destino
         )
     except ValueError as ve:
         db.session.rollback()
@@ -13722,23 +13940,32 @@ def reconciliar_vinculos_programacion_base():
 
 @app.route('/api/programacion', methods=['GET', 'POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def handle_programacion():
-    """Obtiene o crea registros de programación."""
+    """Obtiene o crea registros de programación de la sede pedida (?sede=)."""
+    sede = _sede_de_la_peticion()
     if request.method == 'POST':
         # Lógica para crear un nuevo registro vacío
-        nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'))
+        nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'), sede=sede)
         db.session.add(nuevo)
         db.session.commit()
         return jsonify(success=True, message="Nueva fila creada.", id=nuevo.id)
     
     # Lógica GET
     mostrar_todas = request.args.get('all', '0') == '1'
-    query = ProgramacionCargue.query.order_by(
+    query = ProgramacionCargue.query.filter(ProgramacionCargue.sede == sede).order_by(
         ProgramacionCargue.fecha_programacion.desc(),
         ProgramacionCargue.id.desc()
     )
-    if not mostrar_todas:
+    pendientes_guia = {}
+    if request.args.get('filtro') == 'guias_pendientes':
+        # Despachos a los que hay que ponerles (o corregirles) el número de guía.
+        pendientes = _guias_pendientes(sede)
+        if request.args.get('conteo') == '1':
+            return jsonify(success=True, total=len(pendientes))
+        registros = [p[0] for p in pendientes]
+        pendientes_guia = {p[0].id: (p[1], p[2]) for p in pendientes}
+    elif not mostrar_todas:
         registros = query.limit(20).all()
     else:
         # Limitar historial a últimos 500 registros para evitar lentitud
@@ -13778,6 +14005,8 @@ def handle_programacion():
         faltantes_despacho = _campos_obligatorios_despacho_faltantes(r)
         fila['campos_obligatorios_faltantes'] = [x['campo'] for x in faltantes_despacho]
         fila['faltan_datos_obligatorios'] = bool(faltantes_despacho)
+        if r.id in pendientes_guia:
+            fila['pendiente_guia'], fila['copias_despacho'] = pendientes_guia[r.id]
             
         data.append(fila)
     return jsonify(data)
@@ -14108,6 +14337,110 @@ PROGRAMACION_MAYUSCULA_CAMPOS = {
 }
 
 
+# =============================================================================
+# NÚMERO DE GUÍA ÚNICO
+# =============================================================================
+# Cada guía es un documento físico o digital con número propio: dos cargues no
+# pueden tener la misma. Ojo: el sufijo no es un dígito descartable,
+# 303400000456-0 y 303400000456-6 son guías distintas. Se compara el número
+# completo sin espacios y en mayúscula.
+# La serie sola (lo que se escribía mientras llegaba el número) no es una guía.
+GUIA_SOLO_SERIE = {'3034', '3037', '303400000', '303700000'}
+
+
+def _normalizar_numero_guia(valor):
+    return re.sub(r'\s+', '', str(valor or '')).upper()
+
+
+def _expr_numero_guia_normalizado():
+    """La misma normalización del lado de la base (sin espacios, mayúscula)."""
+    return func.upper(func.replace(func.trim(ProgramacionCargue.numero_guia), ' ', ''))
+
+
+def _describir_cargue(r):
+    partes = [SEDE_ETIQUETAS.get(r.sede, r.sede or ''),
+              r.fecha_programacion.strftime('%d/%m/%Y') if r.fecha_programacion else 'sin fecha']
+    if r.placa:
+        partes.append('placa ' + r.placa)
+    if r.cliente:
+        partes.append(r.cliente)
+    return ', '.join(p for p in partes if p)
+
+
+def _error_numero_guia(valor, excluir_ids=()):
+    """None si el número se puede usar; si no, el mensaje para el usuario."""
+    numero = _normalizar_numero_guia(valor)
+    if not numero:
+        return None
+    if numero in GUIA_SOLO_SERIE:
+        return (f'"{numero}" es solo la serie del talonario. Escribe el número completo '
+                f'de la guía o deja la celda vacía hasta tenerlo.')
+    q = ProgramacionCargue.query.filter(_expr_numero_guia_normalizado() == numero)
+    if excluir_ids:
+        q = q.filter(~ProgramacionCargue.id.in_(list(excluir_ids)))
+    otro = q.order_by(ProgramacionCargue.id.desc()).first()
+    if otro:
+        return (f'La guía {numero} ya está registrada en otro cargue ({_describir_cargue(otro)}). '
+                f'Los números de guía no se pueden repetir.')
+    return None
+
+
+def _guias_pendientes(sede):
+    """Despachos de la sede a los que les falta el número de guía o lo tienen mal.
+
+    Devuelve [(registro, motivo, copias)]. motivo: 'SIN_GUIA' (vacía), 'SOLO_SERIE'
+    ('3034', '303400000'...) o 'REPETIDA' (el mismo número en otro despacho).
+    Las filas repetidas de un mismo despacho cuentan una sola vez, y si alguna de
+    ellas ya tiene su guía el despacho está resuelto: así, al llenar una fila, sus
+    copias no siguen apareciendo como pendientes.
+    """
+    from collections import defaultdict
+    from sqlalchemy.orm import defer
+    registros = (ProgramacionCargue.query
+                 .options(defer(ProgramacionCargue.imagen_guia))
+                 .filter(ProgramacionCargue.sede == sede).all())
+
+    def despachado(r):
+        return (r.estado or '').strip().upper() == 'DESPACHADO' or r.fecha_despacho is not None
+
+    def texto(v):
+        return re.sub(r'\s+', ' ', str(v or '')).strip().upper()
+
+    def clave(r):
+        return (r.fecha_programacion, texto(r.placa), texto(r.producto_a_cargar),
+                round(r.galones or 0), texto(r.cliente))
+
+    grupos = defaultdict(list)
+    for r in registros:
+        if despachado(r):
+            grupos[clave(r)].append(r)
+
+    despachos_por_guia = defaultdict(set)
+    for k, filas in grupos.items():
+        for r in filas:
+            numero = _normalizar_numero_guia(r.numero_guia)
+            if numero and numero not in GUIA_SOLO_SERIE:
+                despachos_por_guia[numero].add(k)
+    repetidas = {g for g, ks in despachos_por_guia.items() if len(ks) > 1}
+
+    pendientes = []
+    for k, filas in grupos.items():
+        numeros = {_normalizar_numero_guia(r.numero_guia) for r in filas} - {''}
+        reales = numeros - GUIA_SOLO_SERIE
+        if reales & repetidas:
+            motivo = 'REPETIDA'
+            principal = min((r for r in filas if _normalizar_numero_guia(r.numero_guia) in repetidas),
+                            key=lambda r: r.id)
+        elif reales:
+            continue
+        else:
+            motivo = 'SOLO_SERIE' if numeros else 'SIN_GUIA'
+            principal = min(filas, key=lambda r: r.id)
+        pendientes.append((principal, motivo, len(filas) - 1))
+    pendientes.sort(key=lambda t: (t[0].fecha_programacion or date.min, t[0].id), reverse=True)
+    return pendientes
+
+
 def _normalizar_mayusculas_programacion_existente(usuario=None):
     """Normaliza a MAYÚSCULA campos clave de Programación de Cargue históricos."""
     registros = ProgramacionCargue.query.all()
@@ -14280,10 +14613,10 @@ def _es_diluyente_pesado_desde_pedido(registro_programacion):
 
 @app.route('/api/programacion/<int:id>', methods=['PUT'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def update_programacion(id):
     """Actualiza un registro de programación con permisos por campo. (VERSIÓN CORREGIDA)"""
-    registro = ProgramacionCargue.query.get_or_404(id)
+    registro = _programacion_de_sede_o_404(id)
     data = request.get_json() or {}
     
     # La lógica de permisos no necesita cambios, está bien.
@@ -14296,8 +14629,12 @@ def update_programacion(id):
         'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        # Refinería de Madrid: mismos campos que refinería en Cartagena.
+        'refinerycwt@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     }
+    # Ignacio entra con dos correos; ignacio@ no tenía entrada y no podía editar.
+    permisos['ignacio@conquerstrading.com'] = permisos['production@conquerstrading.com']
     
     campos_permitidos = permisos.get(session.get('email'), [])
     if session.get('rol') == 'admin':
@@ -14313,7 +14650,7 @@ def update_programacion(id):
         campos_tocados = set()
 
         # Bloqueo: si el registro ya está DESPACHADO o si refinería intenta seleccionar un estado no permitido
-        if session.get('email') == 'refinery.control@conquerstrading.com':
+        if _es_usuario_refineria():
             if registro.estado == 'DESPACHADO':
                 return jsonify(success=False, message="Bloqueado: El registro ya se encuentra en estado DESPACHADO y no puede ser modificado por refinería."), 403
             if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO', 'CARGADO'):
@@ -14323,7 +14660,7 @@ def update_programacion(id):
         campos_refineria_bloqueables = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
         ahora = datetime.utcnow()
         if registro.refineria_completado_en and (ahora - registro.refineria_completado_en) > timedelta(minutes=30):
-            if session.get('email') == 'refinery.control@conquerstrading.com':
+            if _es_usuario_refineria():
                 if any(campo in campos_refineria_bloqueables for campo in data.keys()):
                     return jsonify(success=False, message="Bloqueado: Han pasado más de 30 minutos desde que se completaron los campos de refinería. Solo puedes editar el estado."), 403
 
@@ -14364,6 +14701,12 @@ def update_programacion(id):
                         setattr(registro, campo, _normalizar_producto_cargue(valor))
                     elif campo == 'cliente':
                         setattr(registro, campo, _normalizar_cliente_cargue(valor))
+                    elif campo == 'numero_guia':
+                        error_guia = _error_numero_guia(valor, excluir_ids=(registro.id,))
+                        if error_guia:
+                            db.session.rollback()
+                            return jsonify(success=False, message=error_guia, campo='numero_guia'), 409
+                        setattr(registro, campo, _normalizar_numero_guia(valor) or None)
                     elif campo in PROGRAMACION_MAYUSCULA_CAMPOS:
                         setattr(registro, campo, _a_mayuscula_guardado(valor) if valor not in (None, '') else None)
                     else:
@@ -14454,7 +14797,7 @@ def update_programacion(id):
 
 @app.route('/api/programacion/normalizar-mayusculas', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def normalizar_programacion_mayusculas():
     usuarios_autorizados = {
         'ops@conquerstrading.com',
@@ -14483,7 +14826,7 @@ def normalizar_programacion_mayusculas():
 
 @app.route('/api/programacion/locks', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def listar_locks_programacion():
     # Limpieza de expirados
     locks = ProgramacionCargueLock.query.all()
@@ -14503,7 +14846,7 @@ def listar_locks_programacion():
 
 @app.route('/api/programacion/lock', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def crear_lock_programacion():
     data = request.get_json() or {}
     registro_id = data.get('registro_id')
@@ -14526,7 +14869,7 @@ def crear_lock_programacion():
 
 @app.route('/api/programacion/lock', methods=['DELETE'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def borrar_lock_programacion():
     registro_id = request.args.get('registro_id', type=int)
     campo = request.args.get('campo')
@@ -14551,7 +14894,7 @@ user_presence = {}  # {email: {name, editing_row, editing_column, last_seen}}
 
 @app.route('/api/programacion/presence', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def update_presence():
     """Actualizar presencia del usuario actual"""
     data = request.get_json() or {}
@@ -14578,6 +14921,8 @@ def update_presence():
     # Actualizar o crear presencia
     user_presence[email] = {
         'name': data.get('user', session.get('nombre', 'Usuario')),
+        # Cada sede ve solo quién edita su propia tabla.
+        'sede': _normalizar_sede(data.get('sede')) or SEDE_POR_DEFECTO,
         'editing_row': data.get('editing_row'),
         'editing_column': data.get('editing_column'),
         'current_value': data.get('current_value'),  # NUEVO: Contenido actual
@@ -14588,7 +14933,7 @@ def update_presence():
 
 @app.route('/api/programacion/presence', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def get_presence():
     """Obtener presencia de todos los usuarios activos"""
     current_email = session.get('email')
@@ -14603,16 +14948,17 @@ def get_presence():
         del user_presence[user_email]
     
     # Filtrar para no incluir al usuario actual
+    sede = _sede_de_la_peticion()
     active_users = {
         email: info for email, info in user_presence.items()
-        if email != current_email
+        if email != current_email and info.get('sede', SEDE_POR_DEFECTO) == sede
     }
     
     return jsonify(success=True, users=active_users)
 
 @app.route('/api/programacion/live_edit', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def registrar_live_edit_programacion():
     """Recibe el texto que el usuario está escribiendo en tiempo real (sin guardar todavía)."""
     data = request.get_json() or {}
@@ -14633,7 +14979,7 @@ def registrar_live_edit_programacion():
 
 @app.route('/api/programacion/live_edits', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def obtener_live_edits_programacion():
     """Devuelve todas las ediciones activas (texto parcial) y locks vigentes."""
     _purge_live_edits()
@@ -14645,19 +14991,24 @@ def obtener_live_edits_programacion():
     
 @app.route('/exportar_programacion_cargue/<string:formato>')
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def exportar_programacion_cargue(formato):
     """
     Genera un reporte de Programación de Cargue en Excel o PDF,
     filtrando por un rango de fechas si se proporciona.
     """
+    sede = _normalizar_sede(request.args.get('sede') or SEDE_POR_DEFECTO)
+    vista_origen = 'programacion_cargue_madrid' if sede == 'MADRID' else 'programacion_cargue'
+    if not sede or not _puede_sede_programacion(sede):
+        flash("No tienes acceso a la programación de esa sede.", "danger")
+        return redirect(url_for('home'))
     try:
         # Leemos las fechas desde los parámetros de la URL.
         fecha_inicio_str = request.args.get('fecha_inicio')
         fecha_fin_str = request.args.get('fecha_fin')
 
         # Empezamos la consulta base.
-        query = ProgramacionCargue.query
+        query = ProgramacionCargue.query.filter(ProgramacionCargue.sede == sede)
 
         # Aplicamos el filtro de fecha de inicio si existe.
         if fecha_inicio_str:
@@ -14674,11 +15025,11 @@ def exportar_programacion_cargue(formato):
 
     except Exception as e:
         flash(f"Error al procesar las fechas: {e}", "danger")
-        return redirect(url_for('programacion_cargue'))
+        return redirect(url_for(vista_origen))
 
     if not registros:
         flash("No hay registros para generar un reporte con el filtro seleccionado.", "warning")
-        return redirect(url_for('programacion_cargue'))
+        return redirect(url_for(vista_origen))
 
     # 2. Lógica para generar el archivo EXCEL
     if formato == 'excel':
@@ -14715,7 +15066,8 @@ def exportar_programacion_cargue(formato):
         output.seek(0)
 
         # Enviamos el archivo al navegador
-        filename = f"reporte_programacion_cargue_{date.today().strftime('%Y-%m-%d')}.xlsx"
+        sufijo_sede = '_madrid' if sede == 'MADRID' else ''
+        filename = f"reporte_programacion_cargue{sufijo_sede}_{date.today().strftime('%Y-%m-%d')}.xlsx"
         return send_file(
             output,
             mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -14741,7 +15093,9 @@ def exportar_programacion_cargue(formato):
             'reportes_pdf/programacion_cargue_pdf.html',
             registros=registros,
             fecha_reporte=datetime.now().strftime('%d de %B de %Y'),
-            logo_base64=logo_base64
+            logo_base64=logo_base64,
+            sede=sede,
+            sede_etiqueta=SEDE_ETIQUETAS[sede]
         )
 
         # Usamos WeasyPrint para convertir el HTML a PDF (base_url para recursos relativos)
@@ -14751,21 +15105,23 @@ def exportar_programacion_cargue(formato):
         return Response(
             pdf,
             mimetype='application/pdf',
-            headers={'Content-Disposition': 'attachment;filename=reporte_programacion_cargue.pdf'}
+            headers={'Content-Disposition': 'attachment;filename=reporte_programacion_cargue{}.pdf'.format(
+                '_madrid' if sede == 'MADRID' else '')}
         )
 
     # Si el formato no es ni 'excel' ni 'pdf', redirigimos
-    return redirect(url_for('programacion_cargue'))
+    return redirect(url_for(vista_origen))
 
 @app.route('/api/programacion/<int:id>', methods=['DELETE'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def delete_programacion(id):
     """Elimina un registro de programación de cargue."""
     # Solo pueden eliminar Juliana (ops), Ignacio (production) y Samantha (logistic)
     usuarios_autorizados = {
         'ops@conquerstrading.com',
         'production@conquerstrading.com',
+        'ignacio@conquerstrading.com',
         'logistic@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com'
@@ -14773,10 +15129,10 @@ def delete_programacion(id):
     if session.get('email') not in usuarios_autorizados and session.get('rol') != 'admin':
         return jsonify(success=False, message='No tienes permiso para eliminar registros.'), 403
 
-    registro = ProgramacionCargue.query.get_or_404(id)
+    registro = _programacion_de_sede_o_404(id)
 
     # Bloqueo: si último editor fue Refinería y han pasado >30 min, prohibir eliminación (para todos)
-    if registro.ultimo_editor and registro.ultimo_editor.strip().lower() == 'control refineria':
+    if registro.ultimo_editor and registro.ultimo_editor.strip().lower() in NOMBRES_REFINERIA:
         if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
             return jsonify(success=False, message='Registro bloqueado: no puede eliminarse después de 30 minutos de la edición de Refinería.'), 403
     try:
@@ -14791,11 +15147,11 @@ def delete_programacion(id):
 
 @app.route('/api/programacion/<int:id>/upload_image', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def upload_programacion_image(id):
     """Sube un archivo de guía (PDF/imagen) y lo guarda en disco; BD almacena ruta relativa."""
+    registro = _programacion_de_sede_o_404(id)
     try:
-        registro = ProgramacionCargue.query.get_or_404(id)
         # Verificar archivo
         if 'imagen' not in request.files:
             return jsonify(success=False, message='No se recibió ningún archivo'), 400
@@ -14862,11 +15218,11 @@ def upload_programacion_image(id):
 
 @app.route('/api/programacion/<int:id>/image', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def get_programacion_image(id):
     """Devuelve información para visualizar la guía (URL si está en disco o dataUri si legado)."""
+    registro = _programacion_de_sede_o_404(id)
     try:
-        registro = ProgramacionCargue.query.get_or_404(id)
         if not registro.imagen_guia:
             return jsonify(success=False, message='Este registro no tiene archivo'), 404
 
@@ -14912,11 +15268,11 @@ def get_programacion_image(id):
 
 @app.route('/api/programacion/<int:id>/image', methods=['DELETE'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def delete_programacion_image(id):
     """Elimina el archivo de guía en disco y limpia la referencia."""
+    registro = _programacion_de_sede_o_404(id)
     try:
-        registro = ProgramacionCargue.query.get_or_404(id)
         if not registro.imagen_guia:
             return jsonify(success=True, message='No hay archivo para eliminar')
         # Si es ruta, intentar borrar del disco
@@ -14940,7 +15296,7 @@ def delete_programacion_image(id):
 
 @app.route('/api/programacion/buscar-reemplazar', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def buscar_reemplazar_programacion():
     """Buscar y reemplazar valores en los registros de programación de cargue."""
     # Solo admins y usuarios con permisos amplios pueden hacer esto
@@ -14950,11 +15306,14 @@ def buscar_reemplazar_programacion():
         'production@conquerstrading.com',
         'oci@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
-        'amariagallo@conquerstrading.com'
+        'amariagallo@conquerstrading.com',
+        'ignacio@conquerstrading.com'
     ]
     if session.get('rol') != 'admin' and session.get('email') not in usuarios_permitidos:
         return jsonify(success=False, message="No tienes permisos para realizar esta acción."), 403
 
+    # El reemplazo masivo solo toca la tabla de la sede desde la que se lanzó.
+    sede = _sede_de_la_peticion()
     data = request.get_json() or {}
     campo = data.get('campo', '').strip()
     buscar = data.get('buscar', '').strip()
@@ -14973,11 +15332,23 @@ def buscar_reemplazar_programacion():
         col = getattr(ProgramacionCargue, campo)
         # Buscar registros con coincidencia exacta (case-insensitive)
         registros = ProgramacionCargue.query.filter(
+            ProgramacionCargue.sede == sede,
             db.func.upper(col) == buscar.upper()
         ).all()
 
         if not registros:
             return jsonify(success=False, message=f"No se encontraron registros con '{buscar}' en '{campo}'."), 404
+
+        if campo == 'numero_guia' and reemplazar:
+            # Un mismo número de guía no puede quedar en varios cargues.
+            if len(registros) > 1:
+                return jsonify(success=False, message=(
+                    f"'{buscar}' está en {len(registros)} cargues y un número de guía no se puede repetir: "
+                    f"corrígelos uno por uno en la tabla.")), 409
+            error_guia = _error_numero_guia(reemplazar, excluir_ids=(registros[0].id,))
+            if error_guia:
+                return jsonify(success=False, message=error_guia), 409
+            reemplazar = _normalizar_numero_guia(reemplazar)
 
         count = len(registros)
         for r in registros:
@@ -14995,10 +15366,10 @@ def buscar_reemplazar_programacion():
 
 @app.route('/api/programacion/<int:id>/importar-sharepoint', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def importar_guia_sharepoint(id):
     """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
-    registro = ProgramacionCargue.query.get_or_404(id)
+    registro = _programacion_de_sede_o_404(id)
     numero_guia = (registro.numero_guia or '').strip()
 
     if not numero_guia:
@@ -15036,7 +15407,7 @@ def importar_guia_sharepoint(id):
 
 @app.route('/api/programacion/auditoria-nombres-desconocidos', methods=['GET'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def auditoria_nombres_desconocidos():
     """Audita la base de datos detectando:
     1. Valores pendientes de normalizar (valores conocidos pero que aún no tienen el formato canónico).
@@ -15128,10 +15499,31 @@ def auditoria_nombres_desconocidos():
         return jsonify(success=False, message=str(e)), 500
 
 
+def _sedes_reporte_despachos():
+    """Sedes cuyo reporte de despachos puede ver el usuario.
+
+    Cada sede la ve quien tiene la programación de cargue de esa sede.
+    """
+    return _sedes_programacion_usuario()
+
+
+def _sede_reporte_despachos():
+    """Sede pedida por ?sede=; sin ella, la primera que el usuario puede ver."""
+    sedes = _sedes_reporte_despachos()
+    sede = _normalizar_sede(request.args.get('sede')) or (sedes[0] if sedes else SEDE_POR_DEFECTO)
+    if sede not in sedes:
+        return None, sedes
+    return sede, sedes
+
+
 @app.route('/reporte_grafico_despachos')
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def reporte_grafico_despachos():
+    sede, sedes_reporte = _sede_reporte_despachos()
+    if not sede:
+        flash("No tienes acceso al reporte de despachos de esa sede.", "danger")
+        return redirect(url_for('home'))
     today = date.today()
     fecha_inicio_str = request.args.get('fecha_inicio', '')
     fecha_fin_str = request.args.get('fecha_fin', '')
@@ -15170,11 +15562,15 @@ def reporte_grafico_despachos():
                 fecha_fin = None
 
     # Obtener lista de clientes únicos normalizados para el selector
-    clientes_raw = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
+    # Cada sede tiene su propio reporte: nunca se mezclan despachos de Cartagena y Madrid.
+    clientes_raw = [c[0] for c in db.session.query(ProgramacionCargue.cliente).distinct().filter(
+        ProgramacionCargue.sede == sede,
+        ProgramacionCargue.cliente.isnot(None)).all() if c[0]]
     clientes = sorted(list({_normalizar_cliente_cargue(c) or c.strip().upper() for c in clientes_raw if c and str(c).strip()}))
 
     # Obtener lista de productos únicos normalizados (despachados, con barriles)
     productos_raw = [p[0] for p in db.session.query(ProgramacionCargue.producto_a_cargar).distinct().filter(
+        ProgramacionCargue.sede == sede,
         ProgramacionCargue.producto_a_cargar.isnot(None),
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.barriles.isnot(None)
@@ -15187,6 +15583,7 @@ def reporte_grafico_despachos():
         ProgramacionCargue.producto_a_cargar,
         ProgramacionCargue.barriles
     ).filter(
+        ProgramacionCargue.sede == sede,
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None),
@@ -15498,7 +15895,10 @@ def reporte_grafico_despachos():
         productos_disponibles=productos_disponibles,
         shown_products=list(product_vals.keys()) if producto_filtro in ['ambos', 'todos', ''] else [],
         resumen_mix_productos=resumen_mix_productos,
-        producto_colores=PRODUCTO_COLORES_OFICIALES
+        producto_colores=PRODUCTO_COLORES_OFICIALES,
+        sede=sede,
+        sede_etiqueta=SEDE_ETIQUETAS[sede],
+        sedes_reporte=sedes_reporte
     )
 
 @app.route('/api/admin/limpiar-duplicados-bd', methods=['POST'])
@@ -15573,8 +15973,12 @@ def api_admin_limpiar_duplicados_bd():
 
 @app.route('/descargar_reporte_grafico_despachos_pdf')
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def descargar_reporte_grafico_despachos_pdf():
+    sede, _ = _sede_reporte_despachos()
+    if not sede:
+        flash("No tienes acceso al reporte de despachos de esa sede.", "danger")
+        return redirect(url_for('home'))
     # Parámetros y lógica equivalente a la vista HTML
     today = date.today()
     fecha_inicio_str = request.args.get('fecha_inicio', '')
@@ -15612,6 +16016,7 @@ def descargar_reporte_grafico_despachos_pdf():
         ProgramacionCargue.producto_a_cargar,
         ProgramacionCargue.barriles
     ).filter(
+        ProgramacionCargue.sede == sede,
         ProgramacionCargue.estado == 'DESPACHADO',
         ProgramacionCargue.cliente.isnot(None),
         ProgramacionCargue.barriles.isnot(None),
@@ -15746,11 +16151,14 @@ def descargar_reporte_grafico_despachos_pdf():
         producto=producto_filtro,
         tipo=tipo_grafico,
         fecha_generacion=datetime.now().strftime('%d/%m/%Y %H:%M'),
-        logo_base64=logo_base64
+        logo_base64=logo_base64,
+        sede=sede,
+        sede_etiqueta=SEDE_ETIQUETAS[sede]
     )
     # Proveer base_url para que recursos relativos funcionen si se agregan
     pdf = HTML(string=html_para_pdf, base_url=current_app.root_path).write_pdf()
-    return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition':'attachment;filename=reporte_grafico_despachos.pdf'})
+    nombre_pdf = 'reporte_grafico_despachos{}.pdf'.format('_madrid' if sede == 'MADRID' else '')
+    return Response(pdf, mimetype='application/pdf', headers={'Content-Disposition': 'attachment;filename=' + nombre_pdf})
   
 @app.route('/inventario_epp_home')
 @login_required
@@ -15948,7 +16356,7 @@ def delete_epp_assignment(id):
 
 @app.route('/api/programacion/upload_excel', methods=['POST'])
 @login_required
-@permiso_requerido('programacion_cargue')
+@permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def upload_programacion_excel():
     """Carga masiva de ProgramacionCargue desde un archivo Excel (.xlsx).
 
@@ -15959,6 +16367,8 @@ def upload_programacion_excel():
     - Si falta 'fecha_programacion' se usa la fecha de hoy.
     - Si no viene 'barriles' pero sí 'galones', se calcula barriles = galones/42.
     """
+    # La carga (y el ?replace=1) solo afecta la tabla de la sede de la pantalla.
+    sede = _sede_de_la_peticion()
     if 'excel_file' not in request.files:
         return jsonify(success=False, message='No se encontró archivo (campo excel_file).'), 400
     f = request.files['excel_file']
@@ -16065,6 +16475,7 @@ def upload_programacion_excel():
                 datos['nombre_conductor'] = _formatear_nombre_conductor_apellido_nombre(datos.get('nombre_conductor'))
 
             datos['ultimo_editor'] = session.get('nombre')
+            datos['sede'] = sede
             # Normalizar estado
             if datos.get('estado'):
                 est = str(datos['estado']).strip().upper()
@@ -16073,8 +16484,34 @@ def upload_programacion_excel():
                 datos['estado'] = est
             registro = ProgramacionCargue(**{k:v for k,v in datos.items() if k in campos_modelo})
             registros.append(registro)
+        # Números de guía: únicos dentro del archivo y contra lo que ya hay en la base
+        # (sin contar lo que el ?replace=1 va a borrar de esta sede).
+        guias_archivo = {}
+        for i, reg in enumerate(registros, start=2):
+            numero = _normalizar_numero_guia(reg.numero_guia)
+            if numero:
+                reg.numero_guia = numero
+                guias_archivo.setdefault(numero, []).append(i)
+        problemas = [f'{g} (filas {", ".join(map(str, filas))})'
+                     for g, filas in guias_archivo.items() if len(filas) > 1]
+        problemas += [f'{g} (fila {filas[0]}): es solo la serie, falta el número'
+                      for g, filas in guias_archivo.items() if g in GUIA_SOLO_SERIE and len(filas) == 1]
+        if guias_archivo:
+            q_existentes = ProgramacionCargue.query.filter(
+                _expr_numero_guia_normalizado().in_(list(guias_archivo)))
+            if request.args.get('replace') == '1':
+                q_existentes = q_existentes.filter(ProgramacionCargue.sede != sede)
+            for existente in q_existentes.limit(20).all():
+                problemas.append('{} ya está en otro cargue ({})'.format(
+                    _normalizar_numero_guia(existente.numero_guia), _describir_cargue(existente)))
+        if problemas:
+            return jsonify(success=False, message=(
+                'No se cargó nada: hay números de guía repetidos o incompletos. '
+                + '; '.join(problemas[:10]) + ('…' if len(problemas) > 10 else '')),
+                guias_problema=problemas), 409
+
         if request.args.get('replace') == '1':
-            db.session.query(ProgramacionCargue).delete()
+            db.session.query(ProgramacionCargue).filter(ProgramacionCargue.sede == sede).delete()
         db.session.add_all(registros)
         db.session.commit()
         filas_creadas = len(registros)
@@ -22867,6 +23304,31 @@ def _precintos_usuario():
     return session.get('nombre') or session.get('email') or 'sistema'
 
 
+def _sedes_precintos_usuario():
+    """Bodegas de precintos que ve el usuario: las de las sedes donde programa."""
+    if not tiene_permiso('precintos'):
+        return []
+    return _sedes_programacion_usuario()
+
+
+def _verificar_sede_precintos(sede):
+    if sede not in _sedes_precintos_usuario():
+        raise SedeNoPermitida(
+            f'No tienes acceso a los precintos de {SEDE_ETIQUETAS.get(sede, sede)}.')
+    return sede
+
+
+def _sede_precintos_de_la_peticion():
+    """Sede de la bodega pedida (?sede= o JSON). Sin sede, Cartagena."""
+    crudo = request.args.get('sede')
+    if crudo is None and request.is_json:
+        crudo = (request.get_json(silent=True) or {}).get('sede')
+    sede = _normalizar_sede(crudo or SEDE_POR_DEFECTO)
+    if not sede:
+        raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
+    return _verificar_sede_precintos(sede)
+
+
 def _precintos_puede_registrar_lotes():
     """Dar de alta stock es funcion de bodega/administracion, no de despacho."""
     return session.get('rol') == 'admin' or session.get('email') in {
@@ -22879,7 +23341,7 @@ def _precintos_puede_registrar_lotes():
 
 def _precintos_bloqueo_refineria(registro):
     """Mismo candado de 30 min que aplica update_programacion sobre `precintos`."""
-    if session.get('email') != 'refinery.control@conquerstrading.com':
+    if not _es_usuario_refineria():
         return None
     if (registro.estado or '').upper() == 'DESPACHADO':
         return 'El registro ya esta DESPACHADO y refineria no puede modificarlo.'
@@ -22924,8 +23386,12 @@ def _recalcular_texto_precintos(registro):
     return registro.precintos
 
 
-def _precintos_marca_agua():
-    """El numero mas alto que ya salio de bodega (USADO o ANULADO).
+def _precintos_marca_agua(sede):
+    """El numero mas alto que ya salio de la bodega de `sede` (USADO o ANULADO).
+
+    Se calcula por sede. Si fuera global, en cuanto Madrid gastara unos cuantos
+    sellos de un bloque mas alto que el de Cartagena, la marca de Cartagena
+    saltaria hasta alla y todo su stock quedaria por debajo: congelado.
 
     El consecutivo no retrocede. Un numero por debajo de esta marca ya se gasto
     fisicamente, asi que no puede volver a entregarse aunque su fila haya
@@ -22941,7 +23407,8 @@ def _precintos_marca_agua():
     aislado por encima se ignora, que es lo que ese numero es: un error.
     """
     ocupados = [n for (n,) in db.session.query(InventarioPrecinto.numero)
-                .filter(InventarioPrecinto.estado.in_(('USADO', 'ANULADO')))
+                .filter(InventarioPrecinto.estado.in_(('USADO', 'ANULADO')),
+                        InventarioPrecinto.sede == sede)
                 .order_by(InventarioPrecinto.numero.asc()).all()]
     if not ocupados:
         return None
@@ -22952,19 +23419,20 @@ def _precintos_marca_agua():
     return ocupados[-1]
 
 
-def _precintos_contar_huecos(marca=None):
+def _precintos_contar_huecos(sede, marca=None):
     """Cuantos DISPONIBLE quedaron por debajo de la marca: stock que no es stock."""
     if marca is None:
-        marca = _precintos_marca_agua()
+        marca = _precintos_marca_agua(sede)
     if marca is None:
         return 0
     return (InventarioPrecinto.query
             .filter(InventarioPrecinto.estado == 'DISPONIBLE',
+                    InventarioPrecinto.sede == sede,
                     InventarioPrecinto.numero < marca)
             .count())
 
 
-def _tomar_precintos_disponibles(cantidad):
+def _tomar_precintos_disponibles(cantidad, sede):
     """Bloquea y devuelve los siguientes N sellos del consecutivo.
 
     Solo entrega numeros por encima de la marca de agua: entregar el minimo
@@ -22976,8 +23444,9 @@ def _tomar_precintos_disponibles(cantidad):
     consecutivo: el segundo salta las filas que el primero ya tiene tomadas.
     """
     query = db.session.query(InventarioPrecinto).filter(
-        InventarioPrecinto.estado == 'DISPONIBLE')
-    marca = _precintos_marca_agua()
+        InventarioPrecinto.estado == 'DISPONIBLE',
+        InventarioPrecinto.sede == sede)
+    marca = _precintos_marca_agua(sede)
     if marca is not None:
         query = query.filter(InventarioPrecinto.numero > marca)
     return (query
@@ -22987,13 +23456,14 @@ def _tomar_precintos_disponibles(cantidad):
             .all())
 
 
-def _precintos_mensaje_stock(faltante, pedidos):
+def _precintos_mensaje_stock(faltante, pedidos, sede):
     """Explica por que no hay stock sin mentir sobre el conteo de DISPONIBLE."""
-    marca = _precintos_marca_agua()
-    msg = ('Stock insuficiente: solo quedan {} precintos por encima de {} y se '
-           'pidieron {}. Registra un lote nuevo.').format(
-        faltante, _formatear_codigo_precinto(marca) if marca else 'el consecutivo', pedidos)
-    huecos = _precintos_contar_huecos(marca)
+    marca = _precintos_marca_agua(sede)
+    msg = ('Stock insuficiente en {}: solo quedan {} precintos por encima de {} y se '
+           'pidieron {}. Registra o transfiere un lote.').format(
+        SEDE_ETIQUETAS.get(sede, sede), faltante,
+        _formatear_codigo_precinto(marca) if marca else 'el consecutivo', pedidos)
+    huecos = _precintos_contar_huecos(sede, marca)
     if huecos:
         msg += (' (Hay {} numeros marcados DISPONIBLE por debajo del consecutivo '
                 'que no se entregan porque ya se usaron. Si alguno sigue fisicamente '
@@ -23020,6 +23490,7 @@ def _precinto_a_dict(p):
         'numero': p.numero,
         'estado': p.estado,
         'lote_id': p.lote_id,
+        'sede': p.sede or SEDE_POR_DEFECTO,
         'programacion_id': p.programacion_id,
         'placa': p.placa or '',
         'numero_guia': p.numero_guia or '',
@@ -23038,30 +23509,37 @@ def _precinto_a_dict(p):
     }
 
 
-def _precintos_resumen():
+def _precintos_resumen(sede):
     _precintos_asegurar_esquema()
     conteos = dict(
         db.session.query(InventarioPrecinto.estado, func.count(InventarioPrecinto.id))
+        .filter(InventarioPrecinto.sede == sede)
         .group_by(InventarioPrecinto.estado).all()
     )
     disponibles = conteos.get('DISPONIBLE', 0)
     retirados = (InventarioPrecinto.query
                  .filter(InventarioPrecinto.estado == 'ANULADO',
+                         InventarioPrecinto.sede == sede,
                          InventarioPrecinto.usuario_anulacion == PRECINTOS_USUARIO_AJUSTE)
                  .count())
     # Los proximos tienen que salir de la misma regla que usa la asignacion, o
     # la pagina anuncia un numero y el boton entrega otro.
-    marca = _precintos_marca_agua()
-    q_proximos = InventarioPrecinto.query.filter(InventarioPrecinto.estado == 'DISPONIBLE')
+    marca = _precintos_marca_agua(sede)
+    q_proximos = InventarioPrecinto.query.filter(InventarioPrecinto.estado == 'DISPONIBLE',
+                                                 InventarioPrecinto.sede == sede)
     if marca is not None:
         q_proximos = q_proximos.filter(InventarioPrecinto.numero > marca)
     proximos = (q_proximos.order_by(InventarioPrecinto.numero.asc())
                 .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
-    huecos = _precintos_contar_huecos(marca)
+    huecos = _precintos_contar_huecos(sede, marca)
     disponibles = max(disponibles - huecos, 0)
     por_revisar = (InventarioPrecinto.query
-                   .filter(InventarioPrecinto.requiere_revision.is_(True)).count())
+                   .filter(InventarioPrecinto.sede == sede,
+                           InventarioPrecinto.requiere_revision.is_(True)).count())
     return {
+        'sede': sede,
+        'sede_etiqueta': SEDE_ETIQUETAS.get(sede, sede),
+        'marca_agua': _formatear_codigo_precinto(marca) if marca is not None else None,
         'disponibles': disponibles,
         'usados': conteos.get('USADO', 0),
         'anulados': conteos.get('ANULADO', 0) - retirados,
@@ -23138,7 +23616,10 @@ def _auto_vincular_precintos_con_programacion():
                        if 4 <= len(n) <= PRECINTOS_DIGITOS]
             if not numeros:
                 continue
-            precintos_bd = InventarioPrecinto.query.filter(InventarioPrecinto.numero.in_(numeros)).all()
+            # Solo sellos de la bodega de la misma sede que el cargue.
+            precintos_bd = InventarioPrecinto.query.filter(
+                InventarioPrecinto.numero.in_(numeros),
+                InventarioPrecinto.sede == (c.sede or SEDE_POR_DEFECTO)).all()
             for p in precintos_bd:
                 if p.estado != 'ANULADO' and (p.estado == 'DISPONIBLE' or p.programacion_id is None):
                     p.estado = 'USADO'
@@ -23169,12 +23650,22 @@ def inventario_precintos():
     """Vista de stock, trazabilidad y registro de lotes de precintos."""
     _precintos_asegurar_esquema()
     _auto_vincular_precintos_con_programacion()
+    sedes = _sedes_precintos_usuario()
+    if not sedes:
+        flash("No tienes acceso a la programación de ninguna sede.", "danger")
+        return redirect(url_for('home'))
+    sede_inicial = _normalizar_sede(request.args.get('sede'))
+    if sede_inicial not in sedes:
+        sede_inicial = sedes[0]
     return render_template(
         'inventario_precintos.html',
         rol_usuario=session.get('rol'),
         email_usuario=session.get('email'),
         nombre=session.get('nombre'),
         puede_registrar_lotes=_precintos_puede_registrar_lotes(),
+        sedes_usuario=sedes,
+        sede_inicial=sede_inicial,
+        sede_etiquetas=SEDE_ETIQUETAS,
     )
 
 
@@ -23182,14 +23673,16 @@ def inventario_precintos():
 @login_required
 @permiso_requerido('precintos')
 def api_precintos_resumen():
+    sede = _sede_precintos_de_la_peticion()
     _auto_vincular_precintos_con_programacion()
-    return jsonify(success=True, **_precintos_resumen())
+    return jsonify(success=True, **_precintos_resumen(sede))
 
 
 @app.route('/api/precintos/listado', methods=['GET'])
 @login_required
 @permiso_requerido('precintos')
 def api_precintos_listado():
+    sede = _sede_precintos_de_la_peticion()
     _precintos_asegurar_esquema()
     _auto_vincular_precintos_con_programacion()
     estado = (request.args.get('estado') or '').upper().strip()
@@ -23199,7 +23692,7 @@ def api_precintos_listado():
     page = max(request.args.get('page', 1, type=int), 1)
     per_page = min(max(request.args.get('per_page', 100, type=int), 1), 500)
 
-    query = InventarioPrecinto.query
+    query = InventarioPrecinto.query.filter(InventarioPrecinto.sede == sede)
     if estado in PRECINTOS_ESTADOS:
         query = query.filter(InventarioPrecinto.estado == estado)
     if solo_revision:
@@ -23241,15 +23734,25 @@ def api_precintos_listado():
 @login_required
 @permiso_requerido('precintos')
 def api_precintos_lotes():
+    sede = _sede_precintos_de_la_peticion()
     _precintos_asegurar_esquema()
-    lotes = LotePrecintos.query.order_by(LotePrecintos.created_at.desc()).all()
+    # Un lote aparece en la sede donde se registro y en la que recibio sellos
+    # transferidos; los conteos son solo de los sellos que estan en esta sede.
+    lotes_con_sellos = [lid for (lid,) in db.session.query(InventarioPrecinto.lote_id)
+                        .filter(InventarioPrecinto.sede == sede,
+                                InventarioPrecinto.lote_id.isnot(None))
+                        .distinct().all()]
+    lotes = (LotePrecintos.query
+             .filter(or_(LotePrecintos.sede == sede, LotePrecintos.id.in_(lotes_con_sellos)))
+             .order_by(LotePrecintos.created_at.desc()).all())
     disponibles_por_lote = dict(
         db.session.query(InventarioPrecinto.lote_id, func.count(InventarioPrecinto.id))
-        .filter(InventarioPrecinto.estado == 'DISPONIBLE')
+        .filter(InventarioPrecinto.estado == 'DISPONIBLE', InventarioPrecinto.sede == sede)
         .group_by(InventarioPrecinto.lote_id).all()
     )
     creados_por_lote = dict(
         db.session.query(InventarioPrecinto.lote_id, func.count(InventarioPrecinto.id))
+        .filter(InventarioPrecinto.sede == sede)
         .group_by(InventarioPrecinto.lote_id).all()
     )
     data = []
@@ -23272,6 +23775,7 @@ def api_precintos_lotes():
             'usuario_registro': l.usuario_registro or '',
             'observaciones': l.observaciones or '',
             'es_historico': bool(l.es_historico),
+            'sede_registro': l.sede or SEDE_POR_DEFECTO,
         })
     return jsonify(success=True, lotes=data)
 
@@ -23283,6 +23787,7 @@ def api_precintos_crear_lote():
     """Da de alta un rango completo de sellos en estado DISPONIBLE."""
     if not _precintos_puede_registrar_lotes():
         return jsonify(success=False, message='No tienes permiso para registrar lotes de precintos.'), 403
+    sede = _sede_precintos_de_la_peticion()
     _precintos_asegurar_esquema()
     data = request.get_json() or {}
     try:
@@ -23303,7 +23808,8 @@ def api_precintos_crear_lote():
     digitos = int(data.get('numero_digitos') or PRECINTOS_DIGITOS)
 
     try:
-        # Un numero que ya existe (usado o disponible) no se vuelve a crear.
+        # Un numero que ya existe (usado o disponible, en cualquier sede) no se
+        # vuelve a crear: para mover sellos entre sedes esta la transferencia.
         existentes = {
             n for (n,) in db.session.query(InventarioPrecinto.numero)
             .filter(InventarioPrecinto.numero >= inicial,
@@ -23328,6 +23834,7 @@ def api_precintos_crear_lote():
             total_precintos=len(nuevos),
             usuario_registro=_precintos_usuario(),
             observaciones=(data.get('observaciones') or '').strip() or None,
+            sede=sede,
         )
         db.session.add(lote)
         db.session.flush()
@@ -23339,6 +23846,7 @@ def api_precintos_crear_lote():
                 codigo=_formatear_codigo_precinto(n, digitos),
                 estado='DISPONIBLE',
                 origen='INVENTARIO',
+                sede=sede,
             ) for n in nuevos
         ])
         db.session.commit()
@@ -23352,7 +23860,7 @@ def api_precintos_crear_lote():
     if omitidos:
         msg += ' Se omitieron {:,} numeros que ya existian en el inventario.'.format(omitidos)
     return jsonify(success=True, message=msg, lote_id=lote.id,
-                   creados=len(nuevos), omitidos=omitidos, resumen=_precintos_resumen())
+                   creados=len(nuevos), omitidos=omitidos, resumen=_precintos_resumen(sede))
 
 
 @app.route('/api/precintos/lotes/<int:lote_id>', methods=['DELETE'])
@@ -23363,9 +23871,16 @@ def api_precintos_eliminar_lote(lote_id):
     if not _precintos_puede_registrar_lotes():
         return jsonify(success=False, message='No tienes permiso para eliminar lotes.'), 403
     _precintos_asegurar_esquema()
+    sede_pagina = _sede_precintos_de_la_peticion()
     lote = db.session.get(LotePrecintos, lote_id)
     if not lote:
         return jsonify(success=False, message='Lote no encontrado.'), 404
+    # Borrar el lote borra sus sellos en todas las sedes: hay que poder ver todas.
+    sedes_del_lote = {sd for (sd,) in db.session.query(InventarioPrecinto.sede)
+                      .filter(InventarioPrecinto.lote_id == lote_id).distinct().all()}
+    sedes_del_lote.add(lote.sede or SEDE_POR_DEFECTO)
+    for sd in sedes_del_lote:
+        _verificar_sede_precintos(sd)
 
     forzar = request.args.get('forzar') == '1'
     usados = InventarioPrecinto.query.filter_by(lote_id=lote_id, estado='USADO').count()
@@ -23389,7 +23904,7 @@ def api_precintos_eliminar_lote(lote_id):
     return jsonify(
         success=True,
         message='Lote {} eliminado ({:,} precintos removidos).'.format(lote_id, total_borrados),
-        resumen=_precintos_resumen()
+        resumen=_precintos_resumen(sede_pagina)
     )
 
 
@@ -23415,6 +23930,9 @@ def api_precintos_asignar():
     registro = ProgramacionCargue.query.get(prog_id)
     if not registro:
         return jsonify(success=False, message='El registro de programacion no existe.'), 404
+    # Los sellos salen de la bodega de la sede del cargue, nunca de la otra.
+    _verificar_sede_registro(registro)
+    sede = _verificar_sede_precintos(registro.sede or SEDE_POR_DEFECTO)
 
     bloqueo = _precintos_bloqueo_refineria(registro)
     if bloqueo:
@@ -23432,12 +23950,12 @@ def api_precintos_asignar():
         ), 409
 
     try:
-        tomados = _tomar_precintos_disponibles(cantidad)
+        tomados = _tomar_precintos_disponibles(cantidad, sede)
         if len(tomados) < cantidad:
             faltante = len(tomados)
             db.session.rollback()
             return jsonify(success=False,
-                           message=_precintos_mensaje_stock(faltante, cantidad)), 409
+                           message=_precintos_mensaje_stock(faltante, cantidad, sede)), 409
 
         usuario = _precintos_usuario()
         for p in tomados:
@@ -23469,7 +23987,7 @@ def api_precintos_asignar():
         asignados=codigos,
         consecutivos=consecutivos,
         salto_maximo=salto_maximo,
-        resumen=_precintos_resumen(),
+        resumen=_precintos_resumen(sede),
     )
 
 
@@ -23484,6 +24002,7 @@ def api_precintos_anular():
     if not motivo:
         return jsonify(success=False, message='Debes indicar el motivo de la anulacion.'), 400
 
+    sede_pagina = _sede_precintos_de_la_peticion()
     precinto = None
     if data.get('precinto_id'):
         precinto = db.session.get(InventarioPrecinto, data['precinto_id'])
@@ -23491,10 +24010,12 @@ def api_precintos_anular():
         digitos = re.sub(r'\D', '', str(data['codigo']))
         if digitos:
             precinto = (InventarioPrecinto.query
-                        .filter(InventarioPrecinto.numero == int(digitos))
+                        .filter(InventarioPrecinto.numero == int(digitos),
+                                InventarioPrecinto.sede == sede_pagina)
                         .order_by(InventarioPrecinto.estado.desc()).first())
     if not precinto:
         return jsonify(success=False, message='No se encontro ese precinto en el inventario.'), 404
+    sede = _verificar_sede_precintos(precinto.sede or SEDE_POR_DEFECTO)
     if precinto.estado == 'ANULADO':
         return jsonify(success=False,
                        message='El precinto {} ya esta anulado.'.format(precinto.codigo)), 400
@@ -23503,7 +24024,8 @@ def api_precintos_anular():
     if not registro:
         # Buscar si este precinto está escrito en alguna programación de cargue
         candidatos_prog = (ProgramacionCargue.query
-                           .filter(or_(
+                           .filter(ProgramacionCargue.sede == sede,
+                                   or_(
                                ProgramacionCargue.precintos.like(f'%{precinto.codigo}%'),
                                ProgramacionCargue.precintos.like(f'%{precinto.numero}%')
                            ))
@@ -23519,6 +24041,7 @@ def api_precintos_anular():
             precinto.conductor = registro.nombre_conductor
 
     if registro:
+        _verificar_sede_registro(registro)
         bloqueo = _precintos_bloqueo_refineria(registro)
         if bloqueo:
             return jsonify(success=False, message=bloqueo), 403
@@ -23533,11 +24056,12 @@ def api_precintos_anular():
         precinto.usuario_anulacion = usuario
 
         if reemplazar:
-            candidatos = _tomar_precintos_disponibles(1)
+            sede_reemplazo = registro.sede or SEDE_POR_DEFECTO
+            candidatos = _tomar_precintos_disponibles(1, sede_reemplazo)
             if not candidatos:
                 db.session.rollback()
                 return jsonify(success=False,
-                               message=_precintos_mensaje_stock(0, 1)), 409
+                               message=_precintos_mensaje_stock(0, 1, sede_reemplazo)), 409
             _marcar_precinto_usado(candidatos[0], registro, usuario)
             reemplazo_codigo = candidatos[0].codigo
 
@@ -23573,7 +24097,7 @@ def api_precintos_anular():
                    anulado=anulado_codigo,
                    reemplazo=reemplazo_codigo,
                    programacion_id=prog_id,
-                   resumen=_precintos_resumen())
+                   resumen=_precintos_resumen(sede))
 
 
 @app.route('/api/precintos/reactivar', methods=['POST'])
@@ -23595,8 +24119,11 @@ def api_precintos_reactivar():
         return jsonify(success=False, message='Precinto no encontrado.'), 404
     if precinto.estado != 'ANULADO':
         return jsonify(success=False, message=f'El precinto {precinto.codigo} no está anulado.'), 400
+    sede = _verificar_sede_precintos(precinto.sede or SEDE_POR_DEFECTO)
 
     registro = db.session.get(ProgramacionCargue, precinto.programacion_id) if precinto.programacion_id else None
+    if registro:
+        _verificar_sede_registro(registro)
     restaurado_a_cargue = False
     reemplazo_liberado = None
 
@@ -23673,7 +24200,7 @@ def api_precintos_reactivar():
         message=msg,
         restaurado_a_cargue=restaurado_a_cargue,
         precintos=registro.precintos if registro else None,
-        resumen=_precintos_resumen()
+        resumen=_precintos_resumen(sede)
     )
 
 
@@ -23691,6 +24218,8 @@ def api_precintos_liberar():
     registro = ProgramacionCargue.query.get(prog_id)
     if not registro:
         return jsonify(success=False, message='El registro de programacion no existe.'), 404
+    _verificar_sede_registro(registro)
+    sede = _verificar_sede_precintos(registro.sede or SEDE_POR_DEFECTO)
 
     bloqueo = _precintos_bloqueo_refineria(registro)
     if bloqueo:
@@ -23711,7 +24240,110 @@ def api_precintos_liberar():
     mensaje = ('{} precintos devueltos al stock.'.format(liberados) if liberados
                else 'Esta fila no tenia precintos del inventario.')
     return jsonify(success=True, message=mensaje, precintos=texto,
-                   liberados=liberados, resumen=_precintos_resumen())
+                   liberados=liberados, resumen=_precintos_resumen(sede))
+
+
+PRECINTOS_TRANSFERENCIA_MAXIMA = 5000
+
+
+@app.route('/api/precintos/transferir', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_transferir():
+    """Mueve un rango de sellos DISPONIBLE de la bodega de una sede a la otra.
+
+    Es como Cartagena le manda sellos fisicos a Madrid. Solo se mueven numeros
+    que la sede de origen todavia podia entregar (DISPONIBLE y por encima de su
+    marca de agua): un hueco por debajo de la marca ya se gasto, y mandarlo a
+    Madrid seria entregarlo dos veces. Todo o nada: si un numero del rango no
+    cumple, no se mueve ninguno.
+    """
+    if not _precintos_puede_registrar_lotes():
+        return jsonify(success=False, message='No tienes permiso para transferir precintos.'), 403
+    _precintos_asegurar_esquema()
+    data = request.get_json() or {}
+    origen = _normalizar_sede(data.get('sede_origen'))
+    destino = _normalizar_sede(data.get('sede_destino'))
+    if not origen or not destino or origen == destino:
+        return jsonify(success=False, message='Indica una sede de origen y una de destino distintas.'), 400
+    _verificar_sede_precintos(origen)
+    _verificar_sede_precintos(destino)
+    try:
+        inicial = int(re.sub(r'\D', '', str(data.get('rango_inicial', ''))) or 0)
+        final = int(re.sub(r'\D', '', str(data.get('rango_final', ''))) or 0)
+    except ValueError:
+        return jsonify(success=False, message='Los rangos deben ser numericos.'), 400
+    if inicial <= 0 or final <= 0 or final < inicial:
+        return jsonify(success=False, message='Rango invalido.'), 400
+    cantidad = final - inicial + 1
+    if cantidad > PRECINTOS_TRANSFERENCIA_MAXIMA:
+        return jsonify(success=False, message='Maximo {:,} precintos por transferencia.'.format(
+            PRECINTOS_TRANSFERENCIA_MAXIMA)), 400
+
+    try:
+        marca_origen = _precintos_marca_agua(origen)
+        filas = (db.session.query(InventarioPrecinto)
+                 .filter(InventarioPrecinto.numero >= inicial,
+                         InventarioPrecinto.numero <= final)
+                 .order_by(InventarioPrecinto.numero.asc())
+                 .with_for_update().all())
+        por_numero = {}
+        for f in filas:
+            por_numero.setdefault(f.numero, []).append(f)
+
+        faltan, ajenos, no_disponibles, gastados = [], [], [], []
+        mover = []
+        for n in range(inicial, final + 1):
+            candidatos = por_numero.get(n) or []
+            vivo = next((f for f in candidatos if f.estado == 'DISPONIBLE'), None)
+            if not candidatos:
+                faltan.append(n)
+            elif vivo is None:
+                no_disponibles.append(n)
+            elif (vivo.sede or SEDE_POR_DEFECTO) != origen:
+                ajenos.append(n)
+            elif marca_origen is not None and n <= marca_origen:
+                gastados.append(n)
+            else:
+                mover.append(vivo)
+
+        problemas = []
+        fmt = lambda lista: ', '.join(_formatear_codigo_precinto(x) for x in lista[:5]) + (
+            ' y {} mas'.format(len(lista) - 5) if len(lista) > 5 else '')
+        if faltan:
+            problemas.append('{} no existen en el inventario ({})'.format(len(faltan), fmt(faltan)))
+        if no_disponibles:
+            problemas.append('{} ya estan usados o anulados ({})'.format(len(no_disponibles), fmt(no_disponibles)))
+        if ajenos:
+            problemas.append('{} no estan en la bodega de {} ({})'.format(
+                len(ajenos), SEDE_ETIQUETAS[origen], fmt(ajenos)))
+        if gastados:
+            problemas.append('{} estan por debajo del consecutivo de {} ({}), ya se entregaron'.format(
+                len(gastados), SEDE_ETIQUETAS[origen], fmt(gastados)))
+        if problemas:
+            db.session.rollback()
+            return jsonify(success=False,
+                           message='No se transfirio nada: ' + '; '.join(problemas) + '.'), 409
+
+        for p in mover:
+            p.sede = destino
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logging.exception("Error transfiriendo precintos")
+        return jsonify(success=False, message='Error al transferir: {}'.format(e)), 500
+
+    logging.info("Precintos %s-%s transferidos de %s a %s por %s",
+                 inicial, final, origen, destino, _precintos_usuario())
+    return jsonify(
+        success=True,
+        message='{} precintos ({} a {}) transferidos de {} a {}.'.format(
+            len(mover), _formatear_codigo_precinto(inicial), _formatear_codigo_precinto(final),
+            SEDE_ETIQUETAS[origen], SEDE_ETIQUETAS[destino]),
+        transferidos=len(mover),
+        resumen=_precintos_resumen(origen),
+        resumen_destino=_precintos_resumen(destino),
+    )
 
 
 @app.route('/api/precintos/exportar', methods=['GET'])
@@ -23719,9 +24351,10 @@ def api_precintos_liberar():
 @permiso_requerido('precintos')
 def api_precintos_exportar():
     """Exporta el inventario a Excel respetando el filtro de estado."""
+    sede = _sede_precintos_de_la_peticion()
     _precintos_asegurar_esquema()
     estado = (request.args.get('estado') or '').upper().strip()
-    query = InventarioPrecinto.query
+    query = InventarioPrecinto.query.filter(InventarioPrecinto.sede == sede)
     if estado in PRECINTOS_ESTADOS:
         query = query.filter(InventarioPrecinto.estado == estado)
     if request.args.get('revision') == '1':
@@ -23749,7 +24382,7 @@ def api_precintos_exportar():
     with pd.ExcelWriter(salida, engine='openpyxl') as writer:
         df.to_excel(writer, index=False, sheet_name='Precintos')
     salida.seek(0)
-    nombre = 'inventario_precintos_{}.xlsx'.format(datetime.now().strftime('%Y%m%d_%H%M'))
+    nombre = 'inventario_precintos_{}_{}.xlsx'.format(sede.lower(), datetime.now().strftime('%Y%m%d_%H%M'))
     return send_file(salida, as_attachment=True, download_name=nombre,
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 

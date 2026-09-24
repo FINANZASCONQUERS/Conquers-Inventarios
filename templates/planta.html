@@ -802,7 +802,6 @@
                                         <tr>
                                             <th>Nombre</th>
                                             <th>Producto Actual</th>
-                                            <th>Producto Actual</th>
                                             <th>Capacidad (BLS)</th>
                                             <th>Conversión</th>
                                             <th>Valor Manual</th>
@@ -854,7 +853,8 @@
                                 <div class="mb-3">
                                     <label class="form-label">Regla de Conversión</label>
                                     <select class="form-select" id="tk_conversion">
-                                        <option value="BBL_TO_TON">Barriles a Toneladas (Usa API)</option>
+                                        <option value="NONE">Sin conversión</option>
+                                        <option value="BBL_TO_TON">Barriles a Toneladas (Usa API) - Solo 110, 108, 102</option>
                                         <option value="BBL_TO_GAL">Barriles a Galones ( * 42)</option>
                                         <option value="GAL_TO_BBL">Galones a Barriles ( / 42)</option>
                                     </select>
@@ -918,7 +918,7 @@
         document.getElementById('tk_nombre').value = tanque.nombre;
         document.getElementById('tk_producto').value = tanque.producto_actual;
         document.getElementById('tk_capacidad').value = tanque.capacidad_maxima;
-        document.getElementById('tk_conversion').value = tanque.tipo_conversion;
+        document.getElementById('tk_conversion').value = tanque.tipo_conversion || 'NONE';
         document.getElementById('tk_conversion_valor').value = tanque.conversion_valor || '';
         // Cambiar al tab de edición
         const tabEl = document.querySelector('button[data-bs-target="#tab-nuevo"]');
@@ -1180,8 +1180,10 @@
         const blsRaw = row.querySelector('[data-field="BLS_60"]')?.innerText || '';
         const apiRaw = row.querySelector('[data-field="API"]')?.innerText || '';
         const tonCell = row.querySelector('.ton-col-premium');
-        const conversionType = row.dataset.conversion; // 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL'
+        const conversionType = row.dataset.conversion || 'NONE'; // 'BBL_TO_TON', 'BBL_TO_GAL', 'GAL_TO_BBL', 'NONE'
         const customValRaw = row.dataset.conversionVal; // Valor manual opcional
+        const tk = (row.dataset.tk || '').toUpperCase().trim();
+        const prod = (row.querySelector('[data-field="PRODUCTO"]')?.innerText || '').toUpperCase().trim();
 
         if (!tonCell) return;
 
@@ -1198,8 +1200,7 @@
 
         // Lógica de conversión dinámica
         if (conversionType === 'BBL_TO_GAL') {
-            // BBLS -> GAL
-            // Si hay customVal, usalo como factor (por defecto 42)
+            // BBLS -> GAL (ej: Consumo Interno)
             const factor = customVal || 42;
             const gals = bls * factor;
             resultHTML = `<span class="gal-val">${gals.toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</span>`;
@@ -1210,43 +1211,42 @@
             const bbls = bls / factor;
             resultHTML = `${bbls.toFixed(2)} BBL`;
         }
-        else {
-            // DEFAULT: BBL_TO_TON
-            // Si hay un valor manual, asumimos que es el factor directo (o densidad?)
-            // El usuario dijo "tonelada segun si es de 6.3 o de 7.4". 
-            // Si pone 7.4, ¿es libras/galón?
-            // Formula TON = BBL * 42 * (Lbs/Gal) / 2204.62
-            // O quizás es un factor directo BBL->TON? 
-            // ASUNCIÓN: Si pone un valor manual, lo usamos como factor de DENSIDAD (lbs/gal), 
-            // o si es muy pequeño (<2) tal vez es SG? 
-            // Si el usuario pone "0.15", es factor directo.
-            // Voy a asumir que si hay valor manual, se calcula con ese valor.
-            // Si el valor es > 3, asumo que es Lbs/Gal (densidad). TON = BBL * (densidad * 42 / 2204.62)
-            // Si el valor es < 2, asumo que es SG o Factor directo. Mejor usar SG logic.
+        else if (conversionType === 'BBL_TO_TON') {
+            // REGLA: Conversión a toneladas ÚNICAMENTE para tanques 110, 108 y 102.
+            // Diluyente (TK-01, TK-02) y Crudo (TK-109) no lo llevan.
+            const allowedTonTanks = ['TK-110', 'TK-108', 'TK-102'];
+            const esTanquePermitido = allowedTonTanks.includes(tk) || (
+                (tk.includes('110') || tk.includes('108') || tk.includes('102')) &&
+                !tk.includes('109') && !tk.includes('01') && !tk.includes('02') &&
+                !prod.includes('CRUDO') && !prod.includes('DILUYENTE')
+            );
 
-            if (customVal) {
-                // Si definieron un valor manual, ignoramos API.
-                // Interpretamos el valor manual.
-                if (customVal > 3) {
-                    // Asumimos Lbs/Gal (ej: 7.4)
-                    // 1 BBL = 42 Gal
-                    // Peso = 42 * 7.4 lbs
-                    // Ton = Peso / 2204.62
-                    const tons = bls * 42 * customVal / 2204.62;
-                    resultHTML = tons.toFixed(3); // 3 decimales para precisión
+            if (esTanquePermitido) {
+                if (customVal) {
+                    if (customVal > 3) {
+                        const tons = bls * 42 * customVal / 2204.62;
+                        resultHTML = tons.toFixed(3);
+                    } else {
+                        const tons = bls * customVal;
+                        resultHTML = tons.toFixed(3);
+                    }
+                } else if (!isNaN(api) && api > 0) {
+                    const sg = 141.5 / (api + 131.5);
+                    const tons = bls * (sg / 6.2898);
+                    resultHTML = tons.toFixed(2);
                 } else {
-                    // Asumimos factor directo (Ton/Bbl) o SG
-                    // Usaremos factor directo por simplicidad si es pequeño
-                    const tons = bls * customVal;
-                    resultHTML = tons.toFixed(3);
+                    let tons = 0;
+                    if (tk === 'TK-102' || tk.includes('102')) tons = bls / 6.7;
+                    else if (tk === 'TK-110' || tk.includes('110')) tons = bls / 7.4;
+                    else if (tk === 'TK-108' || tk.includes('108')) tons = bls / 6.7;
+                    resultHTML = tons > 0 ? tons.toFixed(2) : "—";
                 }
-            } else if (!isNaN(api)) {
-                const sg = 141.5 / (api + 131.5);
-                const tons = bls * (sg / 6.2898);
-                resultHTML = tons.toFixed(2);
             } else {
                 resultHTML = "—";
             }
+        }
+        else {
+            resultHTML = "—";
         }
 
         tonCell.innerHTML = resultHTML;

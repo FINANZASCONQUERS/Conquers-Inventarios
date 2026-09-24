@@ -119,6 +119,96 @@
             transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
+        /* --- Miras de la hoja de calibración (solo se imprimen en modo calibración) --- */
+        .calib-mira {
+            display: none;
+            position: absolute;
+            width: 30mm;
+            height: 30mm;
+            margin-left: -15mm;
+            margin-top: -15mm;
+            pointer-events: none;
+            z-index: 60;
+        }
+
+        .calib-mira svg {
+            width: 30mm;
+            height: 30mm;
+            display: block;
+        }
+
+        .calib-titulo-hoja {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: -9mm;
+            font: 700 9pt Arial, sans-serif;
+            color: #000;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        body.modo-calibracion .hoja {
+            position: relative;
+        }
+
+        body.modo-calibracion .calib-titulo-hoja {
+            display: block;
+        }
+
+        .calib-select {
+            width: 100%;
+            padding: 5px 8px;
+            border-radius: 8px;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 12px;
+            font-weight: 600;
+            color: #1e7e34;
+        }
+
+        .calib-mini-btn {
+            border: 1px solid rgba(40, 167, 69, 0.3);
+            background: rgba(255, 255, 255, 0.8);
+            color: #1e7e34;
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .calib-mini-btn:hover {
+            background: rgba(40, 167, 69, 0.15);
+        }
+
+        .calib-eje {
+            width: 14px;
+            font-weight: 700;
+            color: #1e7e34;
+        }
+
+        .calib-acciones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            padding: 0 14px 8px;
+        }
+
+        .calib-acciones button {
+            border: 1px solid rgba(40, 167, 69, 0.35);
+            background: rgba(40, 167, 69, 0.1);
+            color: #1e7e34;
+            border-radius: 10px;
+            padding: 7px 6px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .calib-acciones button:hover {
+            background: rgba(40, 167, 69, 0.22);
+        }
+
         /* --- Encabezado --- */
         .calib-header {
             display: flex;
@@ -182,7 +272,8 @@
             display: flex;
             flex-direction: column;
             gap: 14px;
-            max-height: 300px;
+            max-height: min(560px, 75vh);
+            overflow-y: auto;
             transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1),
                 padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 0.25s ease;
@@ -768,10 +859,49 @@
                 display: none;
             }
 
-            /* APLICAR OFFSET Y ESCALA (AJUSTE FINO) PARA IMPRESIÓN - CRÍTICO */
+            /* APLICAR OFFSET Y ESCALA (AJUSTE FINO) PARA IMPRESIÓN - CRÍTICO
+               Origen en la esquina superior izquierda: así la escala no mueve el punto
+               de arranque y la hoja de calibración puede calcular ambos ajustes.
+               (Antes era "top center"; como la escala horizontal nunca se aplicaba y
+               el borde superior es el mismo, la impresión de la LX-350 no cambia.) */
             #contenedor-guia {
                 transform: translate(var(--print-offset-x, 0mm), var(--print-offset-y, 0mm)) scale(var(--print-scale-x, 1), var(--print-scale-y, 1)) !important;
-                transform-origin: top center !important;
+                transform-origin: 0 0 !important;
+            }
+
+            /* Campos que en la guía preimpresa tienen el título en la esquina superior del
+               recuadro: centrados a la misma altura que sus vecinos, el texto se montaba
+               sobre el título (pasaba igual en la LX-350 y en la L4260). Se bajan solo al
+               imprimir; "position: relative" no mueve el resto de la fila. */
+            #placaCabezote {
+                position: relative !important;
+                top: 2mm !important;
+            }
+
+            #fechaHoraSalida {
+                position: relative !important;
+                top: 3mm !important;
+            }
+
+            /* "SELLOS:" arrancaba unos 3 mm antes del borde del recuadro de Observaciones */
+            .observaciones > div > div:last-child {
+                padding-left: 6mm !important;
+            }
+
+            /* Hoja de calibración: recuadros punteados y miras (sin datos, salvo la prueba con datos) */
+            body.modo-calibracion .calib-mira {
+                display: block !important;
+            }
+
+            body.modo-calibracion .hoja .campo {
+                border: 0.25mm dashed #555 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                background: transparent !important;
+            }
+
+            body.modo-calibracion:not(.calib-con-datos) .hoja .campo > * {
+                visibility: hidden !important;
             }
 
             .campo,
@@ -1677,25 +1807,34 @@
         <div class="calib-header" onclick="toggleCalibPanel()">
             <div class="calib-header-left">
                 <i class="bi bi-printer"></i>
-                <span class="calib-header-title">Calibración</span>
+                <span class="calib-header-title">Calibración · <span id="calib-perfil-nombre">Epson LX-350</span></span>
             </div>
             <button class="calib-toggle" title="Mostrar/Ocultar"><i class="bi bi-chevron-down"></i></button>
         </div>
         <!-- Cuerpo -->
         <div class="calib-body">
+            <!-- Perfil de impresora: cada una guarda su propia calibración -->
+            <div class="calib-section">
+                <div class="calib-section-title"><i class="bi bi-printer-fill"></i> Impresora</div>
+                <div class="calib-row" style="gap:6px;">
+                    <select id="calib-perfil" class="calib-select" onchange="cambiarPerfilImpresora(this.value)"></select>
+                    <button type="button" class="calib-mini-btn" onclick="agregarPerfilImpresora()" title="Agregar impresora">+</button>
+                    <button type="button" class="calib-mini-btn" id="calib-eliminar" onclick="eliminarPerfilImpresora()" title="Eliminar esta impresora"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
             <!-- Sección Posición -->
             <div class="calib-section">
                 <div class="calib-section-title"><i class="bi bi-arrows-move"></i> Posición</div>
                 <div class="calib-row">
                     <div class="calib-dpad">
-                        <button class="calib-btn calib-btn-sm d-up" onclick="ajustarImpresion(0, -1)"
-                            title="Arriba">▲</button>
-                        <button class="calib-btn calib-btn-sm d-left" onclick="ajustarImpresion(-1, 0)"
-                            title="Izquierda">◄</button>
-                        <button class="calib-btn calib-btn-sm d-right" onclick="ajustarImpresion(1, 0)"
-                            title="Derecha">►</button>
-                        <button class="calib-btn calib-btn-sm d-down" onclick="ajustarImpresion(0, 1)"
-                            title="Abajo">▼</button>
+                        <button class="calib-btn calib-btn-sm d-up" onclick="ajustarImpresion(0, -0.5)"
+                            title="Arriba 0,5 mm">▲</button>
+                        <button class="calib-btn calib-btn-sm d-left" onclick="ajustarImpresion(-0.5, 0)"
+                            title="Izquierda 0,5 mm">◄</button>
+                        <button class="calib-btn calib-btn-sm d-right" onclick="ajustarImpresion(0.5, 0)"
+                            title="Derecha 0,5 mm">►</button>
+                        <button class="calib-btn calib-btn-sm d-down" onclick="ajustarImpresion(0, 0.5)"
+                            title="Abajo 0,5 mm">▼</button>
                     </div>
                     <span id="offset-display" class="calib-value">0mm, 0mm</span>
                 </div>
@@ -1703,13 +1842,35 @@
             <!-- Sección Escala -->
             <div class="calib-section">
                 <div class="calib-section-title"><i class="bi bi-arrows-expand"></i> Escala</div>
-                <div class="calib-row">
+                <div class="calib-row" style="gap:6px;">
+                    <span class="calib-eje" title="Horizontal">↔</span>
                     <div class="calib-scale-bar">
-                        <button class="calib-scale-btn" onclick="ajustarEscala(-0.01)" title="Encoger">−</button>
-                        <span id="scale-display" class="calib-scale-value">100%</span>
-                        <button class="calib-scale-btn" onclick="ajustarEscala(0.01)" title="Estirar">+</button>
+                        <button class="calib-scale-btn" onclick="ajustarEscala('x', -0.002)" title="Encoger a lo ancho">−</button>
+                        <span id="scale-x-display" class="calib-scale-value">100%</span>
+                        <button class="calib-scale-btn" onclick="ajustarEscala('x', 0.002)" title="Estirar a lo ancho">+</button>
                     </div>
                 </div>
+                <div class="calib-row" style="gap:6px; margin-top:4px;">
+                    <span class="calib-eje" title="Vertical">↕</span>
+                    <div class="calib-scale-bar">
+                        <button class="calib-scale-btn" onclick="ajustarEscala('y', -0.002)" title="Encoger a lo alto">−</button>
+                        <span id="scale-display" class="calib-scale-value">100%</span>
+                        <button class="calib-scale-btn" onclick="ajustarEscala('y', 0.002)" title="Estirar a lo alto">+</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Calibración asistida -->
+            <div class="calib-acciones">
+                <button type="button" onclick="imprimirHojaCalibracion()" title="Imprime las casillas y dos miras con regla, sin datos">
+                    <i class="bi bi-rulers"></i> Hoja de calibración
+                </button>
+                <button type="button" onclick="medirYAjustarCalibracion()" title="Escribe lo que leíste en las reglas de la hoja">
+                    <i class="bi bi-magic"></i> Medir y ajustar
+                </button>
+                <button type="button" style="grid-column: 1 / -1;" onclick="imprimirHojaCalibracion(true)"
+                    title="Imprime esta guía con sus datos en una hoja blanca, para compararla contra una guía real a contraluz">
+                    <i class="bi bi-file-earmark-check"></i> Prueba con datos en hoja blanca
+                </button>
             </div>
             <!-- Resetear -->
             <div class="calib-reset-row">
@@ -1722,6 +1883,9 @@
 
     <div id="contenedor-guia">
         <div class="hoja">
+            <div class="calib-titulo-hoja" id="calib-titulo-hoja"></div>
+            <div class="calib-mira" id="calib-mira-a"></div>
+            <div class="calib-mira" id="calib-mira-b"></div>
             <div class="fila">
                 <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
                 <div class="campo planta-productor sin-borde" data-campo="planta"><input id="plantaProductor"
@@ -3155,7 +3319,7 @@
             const fechaInput = document.getElementById('fechaExpEDICION');
             if (fechaInput) {
                 // Determinar sede actual para el prefijo de la fecha
-                const sedeGuardada = localStorage.getItem('sede_guia') || 'cartagena';
+                const sedeGuardada = sedeInicialGuia();
                 const nombreSede = sedeGuardada === 'madrid' ? 'MADRID' : 'CARTAGENA';
                 fechaInput.value = `${nombreSede}, ${fechaActual}`;
                 ajustarTamanoFecha();
@@ -3174,7 +3338,7 @@
             cargarZoomGuardado();
 
             // Aplicar sede guardada al cargar
-            const sedeInicial = localStorage.getItem('sede_guia') || 'cartagena';
+            const sedeInicial = sedeInicialGuia();
             aplicarSede(sedeInicial);
         });
 
@@ -3211,6 +3375,17 @@
         function cambiarSede(sede) {
             localStorage.setItem('sede_guia', sede);
             aplicarSede(sede);
+        }
+
+        // Si la guía se abrió desde la Programación de Cargue, la sede del cargue
+        // (?sede=madrid|cartagena) manda sobre la última que se usó en este navegador.
+        function sedeInicialGuia() {
+            const desdeUrl = (new URLSearchParams(window.location.search).get('sede') || '').toLowerCase();
+            if (SEDES_CONFIG[desdeUrl]) {
+                localStorage.setItem('sede_guia', desdeUrl);
+                return desdeUrl;
+            }
+            return localStorage.getItem('sede_guia') || 'cartagena';
         }
 
         function aplicarSede(sede) {
@@ -3528,7 +3703,7 @@
             if (esFisica) {
                 const facRem = document.getElementById('facturaRemision');
                 if (facRem && (!facRem.value || facRem.value.trim() === '')) {
-                    fetch('/api/programacion/siguiente_guia_fisica')
+                    fetch('/api/programacion/siguiente_guia_fisica?sede=' + encodeURIComponent(sedeInicialGuia()))
                         .then(r => r.json())
                         .then(resp => {
                             if (resp && resp.success && resp.siguiente_folio && (!facRem.value || facRem.value.trim() === '')) {
@@ -3912,8 +4087,16 @@
             if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
             if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
 
-            // Si todo está bien, imprimir
-            window.print();
+            // Si todo está bien, imprimir (con tinta o láser, primero el recordatorio del diálogo)
+            confirmarConfiguracionImpresora(false).then(ok => {
+                if (!ok) return;
+                // Si se mostró el aviso, esperar a que cierre; si no, imprimir de una.
+                if (document.body.classList.contains('swal2-shown') || document.querySelector('.swal2-container')) {
+                    imprimirCuandoCierreElAviso();
+                } else {
+                    window.print();
+                }
+            });
         }
 
         // Interceptar Ctrl+P
@@ -3926,6 +4109,13 @@
 
         // Fail-safe para intentos de impresión por menú del navegador
         window.addEventListener('beforeprint', () => {
+            if (document.body.classList.contains('modo-calibracion')) {
+                // La hoja de calibración se imprime sin datos: no hay nada que validar.
+                document.body.classList.remove('validacion-fallida');
+                const cont = document.getElementById('contenedor-guia');
+                if (cont) cont.style.transform = '';
+                return;
+            }
             const faltantes = validarCampos();
             if (faltantes.length > 0) {
                 document.body.classList.add('validacion-fallida');
@@ -3945,46 +4135,469 @@
             }
         });
 
-        // --- LÓGICA DE CALIBRACIÓN DE IMPRESIÓN ---
-        let printOffsetX = parseFloat(localStorage.getItem('impresora_offset_x')) || 0;
-        let printOffsetY = parseFloat(localStorage.getItem('impresora_offset_y')) || 0;
-        let printScale = parseFloat(localStorage.getItem('impresora_scale')) || 1.0;
+        // --- LÓGICA DE CALIBRACIÓN DE IMPRESIÓN (un perfil por impresora) ---
+        // Cada impresora (la LX-350, una de tinta, una láser...) guarda su propia
+        // posición y escala en este navegador. Cambiar de impresora no borra la
+        // calibración de la otra.
+        const CALIB_KEY = 'guia_impresoras_v1';
+        // Solo la LX-350 viene de fábrica; las demás son las que guarde el usuario con "+".
+        const PERFILES_BASE = [
+            { id: 'lx350', nombre: 'Epson LX-350', tipo: 'matriz' }
+        ];
+        // Perfiles genéricos de una versión anterior: se quitan si nunca se calibraron.
+        const PERFILES_GENERICOS_VIEJOS = ['tinta', 'laser'];
+        const MM_POR_PX = 25.4 / 96;
+
+        function leerLocal(clave) {
+            try { return localStorage.getItem(clave); } catch (e) { return null; }
+        }
+
+        function escribirLocal(clave, valor) {
+            try { localStorage.setItem(clave, valor); } catch (e) { /* sin almacenamiento: queda en memoria */ }
+        }
+
+        function cargarCalibracion() {
+            let datos = null;
+            try { datos = JSON.parse(leerLocal(CALIB_KEY)); } catch (e) { datos = null; }
+            if (!datos || !Array.isArray(datos.perfiles)) {
+                // Primera vez con perfiles: la calibración que ya existía era la de la LX-350.
+                const legado = {
+                    x: parseFloat(leerLocal('impresora_offset_x')) || 0,
+                    y: parseFloat(leerLocal('impresora_offset_y')) || 0,
+                    sx: 1,
+                    sy: parseFloat(leerLocal('impresora_scale')) || 1
+                };
+                datos = {
+                    activo: 'lx350',
+                    perfiles: PERFILES_BASE.map(p => Object.assign({ x: 0, y: 0, sx: 1, sy: 1 }, p, p.id === 'lx350' ? legado : {}))
+                };
+            }
+            datos.perfiles = datos.perfiles.filter(p => !(PERFILES_GENERICOS_VIEJOS.includes(p.id)
+                && !p.x && !p.y && (p.sx || 1) === 1 && (p.sy || 1) === 1));
+            PERFILES_BASE.forEach(base => {
+                if (!datos.perfiles.some(p => p.id === base.id)) {
+                    datos.perfiles.push(Object.assign({ x: 0, y: 0, sx: 1, sy: 1 }, base));
+                }
+            });
+            if (!datos.perfiles.some(p => p.id === datos.activo)) datos.activo = 'lx350';
+            return datos;
+        }
+
+        let calibracion = cargarCalibracion();
+
+        function guardarCalibracion() {
+            escribirLocal(CALIB_KEY, JSON.stringify(calibracion));
+        }
+
+        function perfilActivo() {
+            return calibracion.perfiles.find(p => p.id === calibracion.activo) || calibracion.perfiles[0];
+        }
+
+        const redondear = (v, dec) => Math.round(v * Math.pow(10, dec)) / Math.pow(10, dec);
+        const pct = (v) => `${redondear(v * 100, 1)}%`;
 
         function actualizarDisplayOffset() {
-            document.getElementById('offset-display').textContent = `${printOffsetX}mm, ${printOffsetY}mm`;
-            document.getElementById('scale-display').textContent = `${Math.round(printScale * 100)}%`;
+            const p = perfilActivo();
+            document.getElementById('offset-display').textContent = `${p.x}mm, ${p.y}mm`;
+            document.getElementById('scale-display').textContent = pct(p.sy);
+            const sxEl = document.getElementById('scale-x-display');
+            if (sxEl) sxEl.textContent = pct(p.sx);
+            const nombreEl = document.getElementById('calib-perfil-nombre');
+            if (nombreEl) nombreEl.textContent = p.nombre;
+            const sel = document.getElementById('calib-perfil');
+            if (sel) {
+                sel.innerHTML = calibracion.perfiles.map(q =>
+                    `<option value="${q.id}" ${q.id === p.id ? 'selected' : ''}>${q.nombre.replace(/</g, '&lt;')}</option>`).join('');
+            }
+            const btnEliminar = document.getElementById('calib-eliminar');
+            if (btnEliminar) btnEliminar.disabled = PERFILES_BASE.some(b => b.id === p.id);
             // Aplicar variables CSS al root para que el @media print las tome
-            document.documentElement.style.setProperty('--print-offset-x', `${printOffsetX}mm`);
-            document.documentElement.style.setProperty('--print-offset-y', `${printOffsetY}mm`);
-            // Se le aplica la escala en Y para estirar verticalmente que es el problema común con las impresoras inkjet
-            document.documentElement.style.setProperty('--print-scale-y', printScale);
+            const root = document.documentElement.style;
+            root.setProperty('--print-offset-x', `${p.x}mm`);
+            root.setProperty('--print-offset-y', `${p.y}mm`);
+            root.setProperty('--print-scale-x', p.sx);
+            root.setProperty('--print-scale-y', p.sy);
         }
 
         function ajustarImpresion(dx, dy) {
-            printOffsetX += dx;
-            printOffsetY += dy;
-            localStorage.setItem('impresora_offset_x', printOffsetX);
-            localStorage.setItem('impresora_offset_y', printOffsetY);
+            const p = perfilActivo();
+            p.x = redondear(p.x + dx, 1);
+            p.y = redondear(p.y + dy, 1);
+            guardarCalibracion();
             actualizarDisplayOffset();
         }
 
-        function ajustarEscala(dScale) {
-            printScale += dScale;
-            // Evitar que la escala sea menor a 0.5 o mayor a 1.5 por seguridad
-            if (printScale < 0.5) printScale = 0.5;
-            if (printScale > 1.5) printScale = 1.5;
-            localStorage.setItem('impresora_scale', printScale);
+        function ajustarEscala(eje, d) {
+            const p = perfilActivo();
+            const clave = eje === 'x' ? 'sx' : 'sy';
+            // Entre 80% y 120%: más allá no es calibración, es la escala del diálogo de impresión.
+            p[clave] = Math.min(1.2, Math.max(0.8, redondear(p[clave] + d, 4)));
+            guardarCalibracion();
             actualizarDisplayOffset();
+        }
+
+        function cambiarPerfilImpresora(id) {
+            calibracion.activo = id;
+            guardarCalibracion();
+            actualizarDisplayOffset();
+        }
+
+        function agregarPerfilImpresora() {
+            Swal.fire({
+                title: 'Agregar impresora',
+                html: `<input id="nuevoPerfilNombre" class="swal2-input" placeholder="Ej: Epson L4260">
+                       <select id="nuevoPerfilTipo" class="swal2-select" style="display:flex; margin: 1em auto;">
+                           <option value="tinta">De tinta</option>
+                           <option value="laser">Láser</option>
+                           <option value="matriz">De matriz de puntos</option>
+                       </select>`,
+                showCancelButton: true,
+                confirmButtonText: 'Agregar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const nombre = document.getElementById('nuevoPerfilNombre').value.trim();
+                    if (!nombre) { Swal.showValidationMessage('Escribe un nombre'); return false; }
+                    return { nombre, tipo: document.getElementById('nuevoPerfilTipo').value };
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                const id = 'p' + Date.now();
+                calibracion.perfiles.push({ id, nombre: r.value.nombre, tipo: r.value.tipo, x: 0, y: 0, sx: 1, sy: 1 });
+                calibracion.activo = id;
+                guardarCalibracion();
+                actualizarDisplayOffset();
+            });
+        }
+
+        function eliminarPerfilImpresora() {
+            const p = perfilActivo();
+            if (PERFILES_BASE.some(b => b.id === p.id)) return;
+            Swal.fire({
+                icon: 'warning', title: `¿Eliminar "${p.nombre}"?`, text: 'Se pierde su calibración.',
+                showCancelButton: true, confirmButtonText: 'Eliminar', cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                calibracion.perfiles = calibracion.perfiles.filter(q => q.id !== p.id);
+                calibracion.activo = 'lx350';
+                guardarCalibracion();
+                actualizarDisplayOffset();
+            });
         }
 
         function resetearImpresion() {
-            printOffsetX = 0;
-            printOffsetY = 0;
-            printScale = 1.0;
-            localStorage.setItem('impresora_offset_x', 0);
-            localStorage.setItem('impresora_offset_y', 0);
-            localStorage.setItem('impresora_scale', 1.0);
-            actualizarDisplayOffset();
+            const p = perfilActivo();
+            Swal.fire({
+                icon: 'question', title: `¿Resetear la calibración de "${p.nombre}"?`,
+                text: 'Vuelve a posición 0 mm y escala 100%. Las demás impresoras no se tocan.',
+                showCancelButton: true, confirmButtonText: 'Resetear', cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                Object.assign(p, { x: 0, y: 0, sx: 1, sy: 1 });
+                guardarCalibracion();
+                actualizarDisplayOffset();
+            });
+        }
+
+        // SweetAlert oculta el resto de la página (también en la impresión) mientras un
+        // aviso está abierto o cerrándose. Si se imprime o se mide antes de que termine de
+        // cerrar, la hoja sale en blanco (o no se encuentran las casillas) y el aviso nunca
+        // termina de limpiarse: todo lo que sigue sale en blanco hasta recargar.
+        function cuandoCierreElAviso() {
+            return new Promise(resolve => {
+                let intentos = 0;
+                const esperar = () => {
+                    const abierto = document.body.classList.contains('swal2-shown')
+                        || document.querySelector('.swal2-container');
+                    if (abierto && intentos++ < 60) {
+                        setTimeout(esperar, 50);
+                        return;
+                    }
+                    if (abierto) {
+                        // No cerró en 3 s: se quita a mano para no dejar la página oculta.
+                        document.querySelectorAll('.swal2-container').forEach(el => el.remove());
+                        document.body.classList.remove('swal2-shown', 'swal2-height-auto');
+                    }
+                    requestAnimationFrame(() => resolve());
+                };
+                esperar();
+            });
+        }
+
+        function imprimirCuandoCierreElAviso() {
+            return cuandoCierreElAviso().then(() => window.print());
+        }
+
+        // --- Recordatorio del diálogo de impresión (tinta / láser) ---
+        // El navegador no deja fijar escala ni márgenes desde la página. Si cambian
+        // entre una impresión y otra, ninguna calibración sirve.
+        // esHojaCalibracion: false (guía real), 'hoja' (miras) o 'datos' (prueba con datos).
+        function confirmarConfiguracionImpresora(esHojaCalibracion) {
+            const p = perfilActivo();
+            let yaVisto = false;
+            try { yaVisto = sessionStorage.getItem('aviso_impresora_' + p.id) === '1'; } catch (e) { }
+            if (p.tipo === 'matriz' && !esHojaCalibracion) return Promise.resolve(true);
+            if (yaVisto && !esHojaCalibracion) return Promise.resolve(true);
+            return Swal.fire({
+                icon: 'info',
+                title: esHojaCalibracion === 'datos' ? 'Prueba con datos en hoja blanca'
+                    : (esHojaCalibracion ? 'Hoja de calibración' : `Imprimir con: ${p.nombre}`),
+                html: `<div style="text-align:left; font-size:14px;">
+                        ${esHojaCalibracion ? `<p>Se imprime con la calibración actual de <b>${p.nombre}</b>, en
+                        <b>papel blanco</b>: no se gasta ninguna guía. Pon en la bandeja una hoja blanca
+                        <b>del mismo tamaño que la guía</b> (una hoja A4 normal si la guía es A4),
+                        exactamente como meterías una guía.</p>` : ''}
+                        <p>En la ventana de impresión deja <b>siempre</b>:</p>
+                        <ul style="margin-bottom:6px;">
+                            <li>Impresora: la de este perfil</li>
+                            <li>Diseño: <b>Horizontal</b> · Papel: <b>A4</b> (el mismo de siempre)</li>
+                            <li>Márgenes: <b>Ninguno</b></li>
+                            <li>Escala: <b>Personalizada 100</b> (no "Ajustar a la página")</li>
+                            <li>Encabezados y pies de página: <b>desactivados</b></li>
+                        </ul>
+                        ${p.tipo !== 'matriz' ? `<p style="margin-bottom:6px;">En <b>Preferencias / Propiedades</b> de la impresora (Epson L4260 u otra):
+                        <b>Sin márgenes</b> desactivado y <b>Reducir/Ampliar</b> en 100%. "Sin márgenes" agranda la impresión
+                        un 2-3% y descuadra todo.</p>` : ''}
+                        <p style="margin:0;">La guía siempre entra igual: misma cara, mismo borde primero y pegada a la guía lateral de la bandeja.</p>
+                       </div>`,
+                input: esHojaCalibracion ? undefined : 'checkbox',
+                inputPlaceholder: 'No volver a mostrar hasta cerrar el navegador',
+                showCancelButton: true,
+                confirmButtonText: 'Imprimir',
+                cancelButtonText: 'Cancelar'
+            }).then(r => {
+                if (r.isConfirmed && r.value === 1) {
+                    try { sessionStorage.setItem('aviso_impresora_' + p.id, '1'); } catch (e) { }
+                }
+                return r.isConfirmed;
+            });
+        }
+
+        // --- Hoja de calibración ---
+        // Dos miras con regla milimétrica en la esquina superior izquierda de la
+        // primera casilla (A) y la inferior derecha de la última (B). Impresa sobre
+        // una guía anulada, se lee directamente cuántos milímetros se corrió cada
+        // esquina; con las dos lecturas se calculan posición y escala.
+        function svgMira(letra) {
+            let t = '';
+            for (let i = -12; i <= 12; i++) {
+                const largo = i === 0 ? 0 : (i % 5 === 0 ? 2.4 : 1.2);
+                if (largo) {
+                    t += `<line x1="${i}" y1="${-largo / 2}" x2="${i}" y2="${largo / 2}" />`;
+                    t += `<line x1="${-largo / 2}" y1="${i}" x2="${largo / 2}" y2="${i}" />`;
+                }
+                if (i !== 0 && i % 5 === 0) {
+                    const sig = i > 0 ? '+' : '−';
+                    t += `<text x="${i}" y="-2.2" text-anchor="middle" stroke="none">${sig}${Math.abs(i)}</text>`;
+                    t += `<text x="2.1" y="${i + 0.8}" text-anchor="start" stroke="none">${sig}${Math.abs(i)}</text>`;
+                }
+            }
+            return `<svg viewBox="-15 -15 30 30" xmlns="http://www.w3.org/2000/svg">
+                <g stroke="#000" stroke-width="0.15" font-family="Arial" font-size="1.9" fill="#000">
+                    <line x1="-12" y1="0" x2="12" y2="0" />
+                    <line x1="0" y1="-12" x2="0" y2="12" />
+                    <circle cx="0" cy="0" r="0.6" fill="none" />
+                    ${t}
+                    <text x="-13.5" y="-10.5" font-size="3.2" font-weight="bold" stroke="none">${letra}</text>
+                </g>
+            </svg>`;
+        }
+
+        // Mide con el diseño de IMPRESIÓN, no el de pantalla: en pantalla hay reglas
+        // (@media screen) que corren casillas y agregan espacios. Se apagan las reglas
+        // de pantalla, se encienden las de impresión, se mide y se deja todo como
+        // estaba en la misma tarea, sin que alcance a pintarse.
+        function conEstilosDeImpresion(fn) {
+            const cambios = [];
+            const recorrer = (reglas) => {
+                for (const r of Array.from(reglas)) {
+                    if (r.type !== CSSRule.MEDIA_RULE) continue;
+                    const txt = r.media.mediaText;
+                    const esPrint = /\bprint\b/.test(txt), esScreen = /\bscreen\b/.test(txt);
+                    const nuevo = esPrint && !esScreen ? 'all' : (esScreen && !esPrint ? 'not all' : null);
+                    if (nuevo) { cambios.push([r, txt]); r.media.mediaText = nuevo; }
+                }
+            };
+            for (const hojaCss of Array.from(document.styleSheets)) {
+                let reglas;
+                try { reglas = hojaCss.cssRules; } catch (e) { continue; } // hojas de otro dominio
+                recorrer(reglas);
+            }
+            // Medir sin la calibración aplicada: se quiere la posición de diseño.
+            const neutro = document.createElement('style');
+            neutro.textContent = '#contenedor-guia { transform: none !important; }';
+            document.head.appendChild(neutro);
+            const yaEnModo = document.body.classList.contains('modo-calibracion');
+            document.body.classList.add('modo-calibracion');
+            try {
+                return fn();
+            } finally {
+                if (!yaEnModo) document.body.classList.remove('modo-calibracion');
+                neutro.remove();
+                cambios.forEach(([r, txt]) => { r.media.mediaText = txt; });
+            }
+        }
+
+        // Esquinas de referencia en milímetros de la hoja impresa, medidas desde la
+        // esquina superior izquierda del contenedor (el origen de la transformación).
+        function medirObjetivosCalibracion() {
+            return conEstilosDeImpresion(medirObjetivosEnDisenoActual);
+        }
+
+        function medirObjetivosEnDisenoActual() {
+            const cont = document.getElementById('contenedor-guia');
+            const hoja = cont.querySelector('.hoja');
+            const cr = cont.getBoundingClientRect();
+            const hr = hoja.getBoundingClientRect();
+            const zoom = (cont.offsetWidth ? cr.width / cont.offsetWidth : 1) || 1;
+            const campos = Array.from(hoja.querySelectorAll('.campo')).filter(c => c.offsetWidth > 0 && c.offsetHeight > 0);
+            let a = null, b = null;
+            campos.forEach(c => {
+                const r = c.getBoundingClientRect();
+                // A: la casilla de arriba a la izquierda que no se sale de la hoja. Las de la
+                // primera fila se corren a la izquierda y quedan a ~3 mm del borde del papel,
+                // donde las impresoras de tinta y láser no imprimen.
+                if (r.left >= hr.left - 0.5 && (!a || r.left + r.top < a.left + a.top)) a = r;
+                if (!b || r.right + r.bottom > b.right + b.bottom) b = r;
+            });
+            if (!a || !b) return null;
+            const enHoja = (x, y) => ({ x: (x - hr.left) / zoom, y: (y - hr.top) / zoom });
+            const enCont = (x, y) => ({ x: (x - cr.left) / zoom * MM_POR_PX, y: (y - cr.top) / zoom * MM_POR_PX });
+            return {
+                aHoja: enHoja(a.left, a.top), bHoja: enHoja(b.right, b.bottom),
+                a: enCont(a.left, a.top), b: enCont(b.right, b.bottom)
+            };
+        }
+
+        function dibujarMirasCalibracion() {
+            const obj = medirObjetivosCalibracion();
+            if (!obj) return false;
+            const ma = document.getElementById('calib-mira-a');
+            const mb = document.getElementById('calib-mira-b');
+            ma.innerHTML = svgMira('A');
+            mb.innerHTML = svgMira('B');
+            ma.style.left = obj.aHoja.x + 'px'; ma.style.top = obj.aHoja.y + 'px';
+            mb.style.left = obj.bHoja.x + 'px'; mb.style.top = obj.bHoja.y + 'px';
+            const p = perfilActivo();
+            // La hoja se imprime con la escala de la calibración; la regla se compensa
+            // para que sus marcas sean milímetros reales en el papel.
+            [ma, mb].forEach(m => { m.style.transform = `scale(${1 / p.sx}, ${1 / p.sy})`; });
+            const conDatos = document.body.classList.contains('calib-con-datos');
+            document.getElementById('calib-titulo-hoja').textContent =
+                `${conDatos ? 'PRUEBA EN HOJA BLANCA - NO ES UNA GUÍA' : 'HOJA DE CALIBRACIÓN'} · ${p.nombre} · posición ${p.x} / ${p.y} mm · escala ${pct(p.sx)} / ${pct(p.sy)}`;
+            return true;
+        }
+
+        // conDatos: además de las miras y los recuadros, imprime los datos de la guía en
+        // pantalla, para ver a contraluz si cada texto cae dentro de su casilla.
+        function imprimirHojaCalibracion(conDatos) {
+            confirmarConfiguracionImpresora(conDatos ? 'datos' : 'hoja').then(ok => {
+                if (!ok) return;
+                // Medir y dibujar las miras solo con el aviso ya cerrado.
+                return cuandoCierreElAviso().then(() => prepararEImprimirHojaCalibracion(conDatos));
+            });
+        }
+
+        function prepararEImprimirHojaCalibracion(conDatos) {
+            {
+                document.body.classList.add('modo-calibracion');
+                document.body.classList.toggle('calib-con-datos', !!conDatos);
+                if (conDatos) {
+                    // Mismos ajustes de texto que la impresión real
+                    if (typeof syncEmpresaTransportadoraWrap === 'function') syncEmpresaTransportadoraWrap();
+                    if (typeof syncDestinoWrap === 'function') syncDestinoWrap();
+                    if (typeof syncDespachoWrap === 'function') syncDespachoWrap();
+                    if (typeof syncDireccionWrap === 'function') syncDireccionWrap();
+                    if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
+                    if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
+                    if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+                }
+                if (!dibujarMirasCalibracion()) {
+                    document.body.classList.remove('modo-calibracion', 'calib-con-datos');
+                    Swal.fire('Error', 'No se encontraron las casillas de la guía.', 'error');
+                    return;
+                }
+                window.print();
+            }
+        }
+
+        window.addEventListener('afterprint', () => {
+            document.body.classList.remove('modo-calibracion', 'calib-con-datos');
+        });
+
+        function medirYAjustarCalibracion() {
+            const p = perfilActivo();
+            const campo = (id, ph) => `<input id="${id}" type="number" step="0.5" class="swal2-input" style="width:7em; margin:4px;" placeholder="${ph}">`;
+            Swal.fire({
+                title: `Medir y ajustar · ${p.nombre}`,
+                width: 560,
+                html: `<div style="text-align:left; font-size:14px;">
+                        <p>Pon una <b>guía en blanco encima</b> de la hoja de calibración impresa, con los bordes del papel
+                        exactamente alineados (un clip ayuda), y ponlas <b>contra una ventana</b> o una pantalla con fondo blanco.
+                        En cada cruz (<b>A</b> arriba a la izquierda, <b>B</b> abajo a la derecha) lee
+                        <b>en qué número de la regla cae la esquina del recuadro de la guía</b>.</p>
+                        <p style="margin-bottom:6px;">Regla horizontal: <b>+</b> si la esquina está a la derecha de la cruz, <b>−</b> si está a la izquierda.
+                        Regla vertical: <b>+</b> si está abajo, <b>−</b> si está arriba. Si cae justo en la cruz, escribe 0.</p>
+                        <div style="display:grid; grid-template-columns: auto auto auto; align-items:center; gap:2px 6px;">
+                            <span></span><b style="text-align:center;">↔ horizontal</b><b style="text-align:center;">↕ vertical</b>
+                            <b>Mira A</b>${campo('medAx', 'mm')}${campo('medAy', 'mm')}
+                            <b>Mira B</b>${campo('medBx', 'mm')}${campo('medBy', 'mm')}
+                        </div>
+                       </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Calcular y guardar',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const v = {};
+                    for (const k of ['medAx', 'medAy', 'medBx', 'medBy']) {
+                        const txt = document.getElementById(k).value.replace(',', '.').trim();
+                        const n = txt === '' ? 0 : parseFloat(txt);
+                        if (!Number.isFinite(n) || Math.abs(n) > 30) {
+                            Swal.showValidationMessage('Cada lectura debe ser un número entre -30 y 30 mm');
+                            return false;
+                        }
+                        v[k] = n;
+                    }
+                    return v;
+                }
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                // Medir solo con el aviso ya cerrado (abierto oculta las casillas).
+                return cuandoCierreElAviso().then(() => aplicarMedicionCalibracion(p, r.value));
+            });
+        }
+
+        function aplicarMedicionCalibracion(p, v) {
+            {
+                const obj = medirObjetivosCalibracion();
+                if (!obj) {
+                    Swal.fire('Error', 'No se encontraron las casillas de la guía para calcular.', 'error');
+                    return;
+                }
+                // Punto impreso = origen + t + s·u. Con las lecturas r1 (A) y r2 (B):
+                //   s' = s + (r2 − r1) / (uB − uA)      t' = t + r1 + (s − s')·uA
+                const nuevo = {};
+                for (const [eje, clave, t, r1, r2] of [['x', 'sx', 'x', v.medAx, v.medBx], ['y', 'sy', 'y', v.medAy, v.medBy]]) {
+                    const s0 = p[clave];
+                    const s1 = s0 + (r2 - r1) / (obj.b[eje] - obj.a[eje]);
+                    nuevo[clave] = s1;
+                    nuevo[t] = p[t] + r1 + (s0 - s1) * obj.a[eje];
+                }
+                if (Math.abs(nuevo.sx - 1) > 0.2 || Math.abs(nuevo.sy - 1) > 0.2) {
+                    Swal.fire('Revisa las lecturas', 'El resultado cambiaría la escala más de un 20%. Seguramente algún signo quedó al revés.', 'warning');
+                    return;
+                }
+                p.sx = redondear(nuevo.sx, 4); p.sy = redondear(nuevo.sy, 4);
+                p.x = redondear(nuevo.x, 1); p.y = redondear(nuevo.y, 1);
+                guardarCalibracion();
+                actualizarDisplayOffset();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Calibración guardada',
+                    html: `<b>${p.nombre}</b><br>Posición: ${p.x} mm, ${p.y} mm<br>Escala: ${pct(p.sx)} ↔ · ${pct(p.sy)} ↕
+                           <p style="margin-top:10px;">Imprime otra hoja de calibración para confirmar: las esquinas deben caer en 0.
+                           Si queda algo, repite la medición; cada vuelta afina.</p>`
+                });
+            }
         }
 
         // Inicializar display y estado del panel

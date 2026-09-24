@@ -1108,18 +1108,19 @@
                 <strong>${parseFloat(gals).toLocaleString('es-CO', { minimumFractionDigits: 2 })} GAL</strong>
             </div>`;
         } else {
+            const tkUpper = (data.TK || '').toUpperCase().trim();
             const allowedTonTanks = new Set(['TK-102', 'TK-110', 'TK-108']);
-            if (allowedTonTanks.has(data.TK)) {
+            if (allowedTonTanks.has(tkUpper)) {
                 const apiVal = parseFloat(data.API);
                 let tons = 0;
-                if (!isNaN(apiVal) && bls60 > 0) {
+                if (!isNaN(apiVal) && bls60 > 0 && apiVal > 0) {
                     const sg = 141.5 / (apiVal + 131.5);
                     tons = bls60 * (sg / 6.2898);
-                } else if (data.TK === 'TK-102') {
+                } else if (tkUpper === 'TK-102') {
                     tons = bls60 > 0 ? (bls60 / 6.7) : 0;
-                } else if (data.TK === 'TK-110') {
+                } else if (tkUpper === 'TK-110') {
                     tons = bls60 > 0 ? (bls60 / 7.4) : 0;
-                } else if (data.TK === 'TK-108') {
+                } else if (tkUpper === 'TK-108') {
                     tons = bls60 > 0 ? (bls60 / 6.7) : 0;
                 }
                 if (tons > 0) {

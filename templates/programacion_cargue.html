@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Programación de Cargue{% endblock %}
+{% block title %}Programación de Cargue{% if sede == 'MADRID' %} Madrid{% endif %}{% endblock %}
 {% block container_class %}container-fluid p-0{% endblock %}
 
 {% block content %}
@@ -427,6 +427,79 @@
             cursor: help;
             z-index: 10;
         }
+        /* ==== Filtro "Guías pendientes" ==== */
+        td.guia-pendiente {
+            box-shadow: inset 0 0 0 2px #dc3545;
+            background: rgba(220, 53, 69, 0.08) !important;
+        }
+
+        td.guia-pendiente.guia-repetida {
+            box-shadow: inset 0 0 0 2px #fd7e14;
+            background: rgba(253, 126, 20, 0.10) !important;
+        }
+
+        td.guia-completada {
+            box-shadow: inset 0 0 0 2px #198754;
+            background: rgba(25, 135, 84, 0.10) !important;
+        }
+
+        #btn-guias-pendientes.activo {
+            background: #dc3545;
+            color: #fff;
+            border-color: #dc3545;
+        }
+
+        /* ==== SELECTOR DE SEDE (mismo diseño que la planilla de Planta) ==== */
+        .sede-pill-group {
+            display: inline-flex;
+            align-items: center;
+            background: var(--bg-surface-subtle, #f8fafc);
+            border: 1px solid var(--border-color, #e2e8f0);
+            border-radius: 30px;
+            padding: 4px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+        }
+
+        .sede-pill {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sede-pill.active {
+            background: linear-gradient(135deg, #198754 0%, #157347 100%);
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+        }
+
+        .sede-pill:not(.active) {
+            color: #64748b;
+        }
+
+        .sede-pill:not(.active):hover {
+            color: #1a202c;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        [data-bs-theme="dark"] .sede-pill-group {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        [data-bs-theme="dark"] .sede-pill:not(.active) {
+            color: #cbd5e1;
+        }
+
+        [data-bs-theme="dark"] .sede-pill:not(.active):hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.08);
+        }
     </style>
     <!-- Header Mejorado -->
     <div class="page-header mb-4">
@@ -438,8 +511,20 @@
                             <i class="fas fa-truck-loading"></i>
                         </div>
                         <div class="ms-3">
-                            <h2 class="page-title mb-0">Programación de Cargue</h2>
-                            <p class="page-subtitle mb-0">Gestión de Vehículos y Despachos</p>
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <h2 class="page-title mb-0">Programación de Cargue{% if sedes_usuario|length < 2 and sede == 'MADRID' %} Madrid{% endif %}</h2>
+                                {% if sedes_usuario|length > 1 %}
+                                <div class="sede-pill-group">
+                                    <a href="{{ url_for('programacion_cargue') }}" class="sede-pill {{ 'active' if sede == 'CARTAGENA' else '' }}">
+                                        <i class="bi bi-buildings"></i> Cartagena
+                                    </a>
+                                    <a href="{{ url_for('programacion_cargue_madrid') }}" class="sede-pill {{ 'active' if sede == 'MADRID' else '' }}">
+                                        <i class="bi bi-geo-alt-fill"></i> Madrid
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <p class="page-subtitle mb-0">Gestión de Vehículos y Despachos · Sede {{ sede_etiqueta }}</p>
                         </div>
                     </div>
                 </div>
@@ -462,7 +547,7 @@
                             <i class="fas fa-file-pdf me-1"></i>PDF
                         </button>
                     </div>
-                    <a href="{{ url_for('reporte_grafico_despachos') }}" class="btn btn-modern btn-warning">
+                    <a href="{{ url_for('reporte_grafico_despachos', sede=sede) }}" class="btn btn-modern btn-warning">
                         <i class="fas fa-chart-bar me-2"></i>
                         <span>Reportes</span>
                     </a>
@@ -485,7 +570,8 @@
                         </div>
                         <div class="ms-3">
                             <h5 class="card-title-modern mb-0">Registros de Programación</h5>
-                            <small class="text-muted">Gestiona y visualiza todas las programaciones</small>
+                            <small class="text-muted" id="subtitulo-registros">Gestiona y visualiza todas las programaciones</small>
+                            <small class="text-danger fw-semibold d-none" id="aviso-guias-pendientes"></small>
                         </div>
                     </div>
                 </div>
@@ -503,6 +589,11 @@
                         <button id="toggle-historial-btn" class="btn btn-sm btn-modern btn-outline-secondary"
                             type="button">
                             <i class="fas fa-history me-1"></i>Ver historial
+                        </button>
+                        <button id="btn-guias-pendientes" class="btn btn-sm btn-modern btn-outline-danger" type="button"
+                            title="Despachados sin número de guía, con solo la serie (3034) o con un número repetido en otro despacho">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Guías pendientes
+                            <span class="badge bg-danger ms-1" id="badge-guias-pendientes">…</span>
                         </button>
                         <button class="btn btn-sm btn-modern btn-outline-warning" data-bs-toggle="modal"
                             data-bs-target="#buscarReemplazarModal" title="Buscar y Reemplazar">
@@ -1090,6 +1181,14 @@
 {% endblock %}
 {% block scripts %}
 <script>
+    // Sede de esta pantalla. Toda consulta a la API la lleva; sin ella el
+    // servidor asume Cartagena.
+    const SEDE_PROGRAMACION = "{{ sede }}";
+    // Refinería (Cartagena o Madrid): solo sus campos, candado de 30 minutos.
+    const ES_REFINERIA = {{ 'true' if es_refineria else 'false' }};
+    function urlConSede(url) {
+        return url + (url.includes('?') ? '&' : '?') + 'sede=' + encodeURIComponent(SEDE_PROGRAMACION);
+    }
     document.addEventListener('DOMContentLoaded', function () {
         // --- VARIABLES Y CONFIGURACIÓN ---
         const userEmail = "{{ email_usuario }}";
@@ -1098,7 +1197,7 @@
         // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
         const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)
-        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'].includes(userEmail);
+        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'].includes(userEmail);
         const tbody = document.getElementById('schedule-table-body');
         const thead = document.querySelector('table thead');
         const btnAddRow = document.getElementById('btn-add-row');
@@ -1119,8 +1218,10 @@
             'carlos.baron@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'amariagallo@conquerstrading.com': ['destino', 'cliente'],
             'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'refinerycwt@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             // Ignacio ahora con todos los campos como Samantha/logistic
             'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'ignacio@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos'],
             'logistics.assistant@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'estado', 'numero_guia', 'fecha_despacho']
         };
@@ -1306,6 +1407,7 @@
 
             // Añadimos las fechas como parámetros a la URL.
             const params = new URLSearchParams();
+            params.append('sede', SEDE_PROGRAMACION);
             if (fechaInicio) {
                 params.append('fecha_inicio', fechaInicio);
             }
@@ -2505,12 +2607,62 @@
     });
 
     // --- FUNCIONES DE RENDERIZADO Y FILTRADO ---
-    function fetchAndRender(historialCompleto = false) {
+    // --- Filtro "Guías pendientes": despachados a los que les falta la guía ---
+    let filtroGuiasPendientes = false;
+    const MOTIVOS_GUIA = {
+        SIN_GUIA: 'Despachado sin número de guía',
+        SOLO_SERIE: 'Tiene solo la serie (3034 / 303400000): falta el número completo',
+        REPETIDA: 'Este número de guía también está en otro despacho: revisa cuál es el correcto'
+    };
+
+    function actualizarConteoGuiasPendientes() {
+        const badge = document.getElementById('badge-guias-pendientes');
+        if (!badge) return;
+        fetch(urlConSede("{{ url_for('handle_programacion') }}?filtro=guias_pendientes&conteo=1"))
+            .then(res => res.ok ? res.json() : null)
+            .then(d => {
+                if (!d || !d.success) return;
+                badge.textContent = d.total.toLocaleString('es-CO');
+                badge.className = 'badge ms-1 ' + (d.total ? 'bg-danger' : 'bg-success');
+            })
+            .catch(() => { });
+    }
+
+    function marcarGuiasPendientes(data) {
+        const aviso = document.getElementById('aviso-guias-pendientes');
+        const subtitulo = document.getElementById('subtitulo-registros');
+        if (!filtroGuiasPendientes) {
+            if (aviso) aviso.classList.add('d-none');
+            if (subtitulo) subtitulo.classList.remove('d-none');
+            return;
+        }
+        (data || []).forEach(row => {
+            if (!row.pendiente_guia) return;
+            const td = tbody.querySelector(`tr[data-id="${row.id}"] td[data-field="numero_guia"]`);
+            if (!td) return;
+            td.classList.add('guia-pendiente');
+            if (row.pendiente_guia === 'REPETIDA') td.classList.add('guia-repetida');
+            let titulo = MOTIVOS_GUIA[row.pendiente_guia] || '';
+            if (row.copias_despacho) titulo += ` (este despacho tiene ${row.copias_despacho} fila(s) repetida(s); basta con llenar esta)`;
+            td.title = titulo;
+        });
+        if (subtitulo) subtitulo.classList.add('d-none');
+        if (aviso) {
+            aviso.classList.remove('d-none');
+            aviso.textContent = (data || []).length
+                ? `Mostrando ${(data || []).length} despacho(s) con la guía pendiente. Escribe el número en la columna Guía; al guardar la celda queda en verde.`
+                : 'No hay guías pendientes en esta sede.';
+        }
+    }
+
+    function fetchAndRender(historialCompleto = false, forzar = false) {
         let url = "{{ url_for('handle_programacion') }}";
-        if (historialCompleto) {
+        if (filtroGuiasPendientes) {
+            url += '?filtro=guias_pendientes';
+        } else if (historialCompleto) {
             url += '?all=1';
         }
-        fetch(url)
+        fetch(urlConSede(url))
             .then(res => res.ok ? res.json() : Promise.reject('Error de red'))
             .then(data => {
                 // Guardar datos traídos desde el servidor
@@ -2518,7 +2670,7 @@
                 // Si el usuario está editando (fila con clase editing-row o elemento activo dentro del tbody),
                 // no re-renderizamos para evitar perder datos en edición. Dejamos los datos en memoria para aplicar luego.
                 const currentlyEditing = tbody.querySelector('.editing-row') || tbody.contains(document.activeElement);
-                if (currentlyEditing) {
+                if (currentlyEditing && !forzar) {
                     // marcar que hay una actualización pendiente (se usa para que el usuario aplique el orden manualmente)
                     const sortBtn = document.getElementById('btn-sort-estado');
                     if (sortBtn) sortBtn.classList.add('btn-warning');
@@ -2526,6 +2678,7 @@
                 }
 
                 renderTable(data);
+                marcarGuiasPendientes(data);
             })
             .catch(error => {
                 console.error('Error en fetchAndRender:', error);
@@ -2679,7 +2832,7 @@
                 // Si el usuario es refinería y pasaron 30 min, bloquear todos sus campos excepto el estado. Si está DESPACHADO, bloquear todo.
                 const esColRefineriaConTiempo = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
                 const esColEstado = col === 'estado';
-                const refineriaBlocked = userEmail === 'refinery.control@conquerstrading.com' && (
+                const refineriaBlocked = ES_REFINERIA && (
                     (row.estado || '').toUpperCase() === 'DESPACHADO' && (esColRefineriaConTiempo || esColEstado) ||
                     row.refineria_bloqueado && esColRefineriaConTiempo
                 );
@@ -2695,7 +2848,7 @@
                 } else if (config.type === 'select' && finalEditable) {
                     // Renderizar un SELECT para tipo_guia y otros campos select
                     let options = config.options || [];
-                    if (col === 'estado' && userEmail === 'refinery.control@conquerstrading.com') {
+                    if (col === 'estado' && ES_REFINERIA) {
                         options = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
                     }
                     let selectHtml = `<select class="form-select form-select-sm border-0 bg-transparent editable-select" data-col="${col}">`;
@@ -2838,7 +2991,7 @@
         const badge = document.getElementById('badge-stock-precintos');
         if (!badge) return;
         try {
-            const resp = await fetch('/api/precintos/resumen');
+            const resp = await fetch(urlConSede('/api/precintos/resumen'));
             const data = await resp.json();
             if (!data.success) return;
             badge.textContent = data.disponibles.toLocaleString('es-CO');
@@ -3278,7 +3431,7 @@
     btnAddRow.addEventListener('click', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
-        fetch("{{ url_for('handle_programacion') }}", { method: 'POST' })
+        fetch(urlConSede("{{ url_for('handle_programacion') }}"), { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
@@ -3515,6 +3668,7 @@
                 return;
             }
             const url = new URL("{{ url_for('guia_transporte') }}", window.location.origin);
+            url.searchParams.set('sede', SEDE_PROGRAMACION.toLowerCase());
             if (row.dataset.id) {
                 url.searchParams.append('programacion_id', row.dataset.id);
             }
@@ -3758,7 +3912,7 @@
             const select = document.createElement('select');
             select.className = 'form-select form-select-sm shadow-sm';
             let opts = config.options || [];
-            if (userEmail === 'refinery.control@conquerstrading.com') {
+            if (ES_REFINERIA) {
                 opts = ['PROGRAMADO', 'CARGANDO', 'CARGADO'];
             }
             opts.forEach(opt => {
@@ -3954,6 +4108,16 @@
                         row.dataset.fechaProgramacion = value || '';
                     }
 
+                    if (field === 'numero_guia') {
+                        const tdGuia = row.querySelector('td[data-field="numero_guia"]');
+                        if (tdGuia && tdGuia.classList.contains('guia-pendiente') && value) {
+                            tdGuia.classList.remove('guia-pendiente', 'guia-repetida');
+                            tdGuia.classList.add('guia-completada');
+                            tdGuia.title = 'Guía guardada';
+                        }
+                        actualizarConteoGuiasPendientes();
+                    }
+
                     const faltantesActuales = obtenerCamposObligatoriosFaltantesDesdeDom(row);
                     aplicarResaltadoCamposFaltantes(row, faltantesActuales);
                 } else {
@@ -3978,6 +4142,11 @@
                         if (select) {
                             select.value = String(row.dataset.estado || 'PROGRAMADO').toUpperCase();
                         }
+                        fetchAndRender(mostrandoHistorialCompleto);
+                    }
+
+                    // Guía repetida o incompleta: no se guardó; la celda vuelve a lo que hay en la base.
+                    if (field === 'numero_guia') {
                         fetchAndRender(mostrandoHistorialCompleto);
                     }
                 }
@@ -4408,6 +4577,23 @@
     let historialCurrentPage = 1;
     const historialPageSize = 50;
 
+    const btnGuiasPendientes = document.getElementById('btn-guias-pendientes');
+    if (btnGuiasPendientes) {
+        btnGuiasPendientes.addEventListener('click', function () {
+            filtroGuiasPendientes = !filtroGuiasPendientes;
+            btnGuiasPendientes.classList.toggle('activo', filtroGuiasPendientes);
+            // Cerrar la celda en edición (eso la guarda) y cambiar de vista sí o sí.
+            const activo = document.activeElement;
+            if (activo && tbody.contains(activo)) activo.dispatchEvent(new FocusEvent('blur'));
+            setTimeout(() => {
+                tbody.querySelectorAll('.editing-row').forEach(tr => tr.classList.remove('editing-row'));
+                fetchAndRender(mostrandoHistorialCompleto, true);
+                actualizarConteoGuiasPendientes();
+            }, 200);
+        });
+    }
+    actualizarConteoGuiasPendientes();
+
     // Botón para alternar historial ahora abre el modal
     toggleHistorialBtn.addEventListener('click', function () {
         const modal = new bootstrap.Modal(document.getElementById('historialModal'));
@@ -4422,7 +4608,7 @@
             <p class="mt-3 text-muted">Cargando historial...</p>
         </td></tr>`;
 
-        fetch("{{ url_for('handle_programacion') }}?all=1")
+        fetch(urlConSede("{{ url_for('handle_programacion') }}?all=1"))
             .then(res => res.json())
             .then(data => {
                 historialData = data;
@@ -4805,6 +4991,7 @@
             if (!row) return;
 
             const url = new URL("{{ url_for('guia_transporte') }}", window.location.href);
+            url.searchParams.set('sede', SEDE_PROGRAMACION.toLowerCase());
             allColumns.forEach(field => {
                 let value = row[field] || '';
                 if (value && value !== '-') {
@@ -5018,7 +5205,7 @@
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Procesando...';
 
-        fetch('/api/programacion/buscar-reemplazar', {
+        fetch(urlConSede('/api/programacion/buscar-reemplazar'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ campo, buscar, reemplazar })
@@ -5066,7 +5253,7 @@
         btnUploadExcel.disabled = true;
         btnUploadExcel.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Subiendo...';
         const replace = document.getElementById('replaceExisting').checked ? '1' : '0';
-        fetch(`/api/programacion/upload_excel?replace=${replace}`, { method: 'POST', body: fd })
+        fetch(urlConSede(`/api/programacion/upload_excel?replace=${replace}`), { method: 'POST', body: fd })
             .then(r => r.json().then(data => ({ ok: r.ok, data })))
             .then(({ ok, data }) => {
                 if (ok && data.success) {
@@ -5341,10 +5528,11 @@
             editing_row: rowId,
             editing_column: column,
             current_value: currentValue,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            sede: SEDE_PROGRAMACION
         };
 
-        fetch('/api/programacion/presence', {
+        fetch(urlConSede('/api/programacion/presence'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -5358,7 +5546,7 @@
             return;
         }
 
-        fetch('/api/programacion/presence')
+        fetch(urlConSede('/api/programacion/presence'))
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
