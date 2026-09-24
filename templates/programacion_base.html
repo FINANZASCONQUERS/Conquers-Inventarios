@@ -629,6 +629,7 @@
                             <th style="min-width: 180px;">Producto</th>
                             <th style="min-width: 220px;">Cliente</th>
                             <th style="min-width: 220px;">Destino</th>
+                            <th style="min-width: 150px;" title="Programación de Cargue a la que se envía el pedido">Planta de Despacho</th>
                             <th style="min-width: 230px;">Calidad(Liviana-Pesada)</th>
                             <th style="min-width: 160px;">Galones</th>
                             <th style="min-width: 140px;">BBL</th>
@@ -733,12 +734,18 @@
         let pendingCreateField = '';
         let allRows = [];
 
+        const SEDES_DESPACHO = [
+            { value: 'CARTAGENA', label: 'Cartagena' },
+            { value: 'MADRID', label: 'Madrid' }
+        ];
+
         const columns = [
             { field: 'fecha_cargue', type: 'date' },
             { field: 'fecha_cargue_confirmada', type: 'date' },
             { field: 'producto', type: 'datalist', listId: 'datalist-productos', creatable: true },
             { field: 'cliente', type: 'datalist', listId: 'datalist-clientes', creatable: true },
             { field: 'destino', type: 'text' },
+            { field: 'sede', type: 'sede' },
             { field: 'calidad', type: 'select' },
             { field: 'galones', type: 'number' },
             { field: 'bbl', type: 'computed' },
@@ -1024,7 +1031,8 @@
                 const btnSend = document.createElement('button');
                 btnSend.type = 'button';
                 btnSend.className = 'btn-send-row-base';
-                btnSend.title = 'Enviar a Programación de Cargue';
+                const sedeEnvio = (SEDES_DESPACHO.find(function (x) { return x.value === (row.sede || 'CARTAGENA'); }) || SEDES_DESPACHO[0]).label;
+                btnSend.title = 'Enviar a Programación de Cargue ' + sedeEnvio;
                 btnSend.innerHTML = '<i class="fas fa-paper-plane"></i>';
                 btnSend.addEventListener('click', function () {
                     enviarPedido(row.id, btnSend);
@@ -1193,7 +1201,27 @@
 
             let input;
 
-            if (column.type === 'select') {
+            if (column.type === 'sede') {
+                // Planta de despacho: decide a qué Programación de Cargue va el pedido.
+                input = document.createElement('select');
+                input.className = 'base-select';
+                input.dataset.field = column.field;
+                const actual = safeValue(row.sede || 'CARTAGENA').toUpperCase();
+                SEDES_DESPACHO.forEach(function (opt) {
+                    const option = document.createElement('option');
+                    option.value = opt.value;
+                    option.textContent = opt.label;
+                    if (actual === opt.value) {
+                        option.selected = true;
+                    }
+                    input.appendChild(option);
+                });
+                if (row.enviado_programacion) {
+                    // Ya enviado: el cargue vive en la programación de esa sede.
+                    input.disabled = true;
+                    input.title = 'El pedido ya se envió a la Programación de Cargue de esta planta';
+                }
+            } else if (column.type === 'select') {
                 input = document.createElement('select');
                 input.className = 'base-select';
                 input.dataset.field = column.field;
@@ -1296,7 +1324,7 @@
             if (!rows || rows.length === 0) {
                 const tr = document.createElement('tr');
                 const td = document.createElement('td');
-                td.colSpan = 11;
+                td.colSpan = 12;
                 td.className = 'empty-state';
                 td.textContent = emptyMessage || 'No hay datos en la tabla base. Usa "Agregar fila" para crear el primer registro.';
                 tr.appendChild(td);
@@ -1317,7 +1345,7 @@
         }
 
         async function fetchRows() {
-            tbody.innerHTML = '<tr><td colspan="11" class="empty-state"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Cargando datos...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" class="empty-state"><span class="spinner-border spinner-border-sm text-primary me-2"></span>Cargando datos...</td></tr>';
             try {
                 const response = await fetch(apiBase, { method: 'GET' });
                 if (!response.ok) {
@@ -1413,6 +1441,9 @@
                 setStatus('Cambios guardados correctamente', 'success');
             } catch (error) {
                 input.classList.remove('is-saving');
+                if (field === 'sede') {
+                    input.value = input.dataset.lastSaved || 'CARTAGENA';
+                }
                 setStatus(error.message || 'Error guardando cambios.', 'danger');
             } finally {
                 input.disabled = false;

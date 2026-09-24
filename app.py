@@ -24277,11 +24277,46 @@ def api_precintos_transferir():
         return jsonify(success=False, message='Indica una sede de origen y una de destino distintas.'), 400
     _verificar_sede_precintos(origen)
     _verificar_sede_precintos(destino)
-    try:
-        inicial = int(re.sub(r'\D', '', str(data.get('rango_inicial', ''))) or 0)
-        final = int(re.sub(r'\D', '', str(data.get('rango_final', ''))) or 0)
-    except ValueError:
-        return jsonify(success=False, message='Los rangos deben ser numericos.'), 400
+    simular = bool(data.get('simular'))
+
+    if data.get('lote_id'):
+        # Por lote: los ÚLTIMOS N sellos que el lote todavía puede entregar. Se toman
+        # del final para que el consecutivo de la sede de origen siga sin saltos.
+        lote = db.session.get(LotePrecintos, data.get('lote_id'))
+        if not lote:
+            return jsonify(success=False, message='Lote no encontrado.'), 404
+        try:
+            pedidos = int(data.get('cantidad') or 0)
+        except (TypeError, ValueError):
+            return jsonify(success=False, message='Cantidad invalida.'), 400
+        if not 1 <= pedidos <= PRECINTOS_TRANSFERENCIA_MAXIMA:
+            return jsonify(success=False, message='La cantidad debe estar entre 1 y {:,}.'.format(
+                PRECINTOS_TRANSFERENCIA_MAXIMA)), 400
+        marca = _precintos_marca_agua(origen)
+        q = InventarioPrecinto.query.filter(InventarioPrecinto.lote_id == lote.id,
+                                            InventarioPrecinto.sede == origen,
+                                            InventarioPrecinto.estado == 'DISPONIBLE')
+        if marca is not None:
+            q = q.filter(InventarioPrecinto.numero > marca)
+        numeros = sorted(n for (n,) in q.with_entities(InventarioPrecinto.numero)
+                         .order_by(InventarioPrecinto.numero.desc()).limit(pedidos).all())
+        if len(numeros) < pedidos:
+            return jsonify(success=False, message=(
+                'El lote solo tiene {:,} precintos disponibles para transferir en {}.'.format(
+                    len(numeros), SEDE_ETIQUETAS[origen]))), 409
+        if numeros[-1] - numeros[0] + 1 != pedidos:
+            return jsonify(success=False, message=(
+                'Los últimos {:,} precintos disponibles del lote no son seguidos ({} a {}, con números '
+                'usados en medio). Usa "Transferir a otra sede" con el rango exacto.'.format(
+                    pedidos, _formatear_codigo_precinto(numeros[0]),
+                    _formatear_codigo_precinto(numeros[-1])))), 409
+        inicial, final = numeros[0], numeros[-1]
+    else:
+        try:
+            inicial = int(re.sub(r'\D', '', str(data.get('rango_inicial', ''))) or 0)
+            final = int(re.sub(r'\D', '', str(data.get('rango_final', ''))) or 0)
+        except ValueError:
+            return jsonify(success=False, message='Los rangos deben ser numericos.'), 400
     if inicial <= 0 or final <= 0 or final < inicial:
         return jsonify(success=False, message='Rango invalido.'), 400
     cantidad = final - inicial + 1
@@ -24333,6 +24368,17 @@ def api_precintos_transferir():
             db.session.rollback()
             return jsonify(success=False,
                            message='No se transfirio nada: ' + '; '.join(problemas) + '.'), 409
+
+        if simular:
+            # Vista previa: qué números saldrían, sin mover nada.
+            db.session.rollback()
+            return jsonify(
+                success=True, simulacion=True, cantidad=len(mover),
+                rango_inicial=_formatear_codigo_precinto(inicial),
+                rango_final=_formatear_codigo_precinto(final),
+                message='Se transferirán {:,} precintos, del {} al {}, de {} a {}.'.format(
+                    len(mover), _formatear_codigo_precinto(inicial), _formatear_codigo_precinto(final),
+                    SEDE_ETIQUETAS[origen], SEDE_ETIQUETAS[destino]))
 
         for p in mover:
             p.sede = destino

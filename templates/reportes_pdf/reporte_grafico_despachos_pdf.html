@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>Reporte Gráfico Despachos</title>
+<title>Reporte Gráfico Despachos · Sede {{ sede_etiqueta }}</title>
 <style>
 @page { size:A4 landscape; margin:15mm 15mm 18mm 15mm; }
 body { font-family:'Segoe UI', Arial, sans-serif; font-size:12px; color:#2d3436; background:#f5f7fa; }
@@ -33,7 +33,7 @@ td:last-child, th:last-child { text-align:right; }
         {% else %}
             <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
         {% endif %}
-        <h1 style="margin-top:2px;">Distribución de Despachos</h1>
+        <h1 style="margin-top:2px;">Distribución de Despachos · Sede {{ sede_etiqueta }}</h1>
         <div class="badge-total" style="margin-top:4px;">{{ total_box_text if total_box_text else ('TOTAL %.2f BBL'|format(total_barriles)) }}</div>
     </div>
 </div>

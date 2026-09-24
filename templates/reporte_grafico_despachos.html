@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Analítica de Despachos | Conquers Executive Dashboard{% endblock %}
+{% block title %}Analítica de Despachos {{ sede_etiqueta }} | Conquers Executive Dashboard{% endblock %}
 {% block container_class %}container-fluid p-0{% endblock %}
 
 {% block content %}
@@ -665,6 +665,58 @@
         font-size: 2rem;
         margin: 0 auto 1.25rem auto;
     }
+
+    /* ==== SELECTOR DE SEDE (mismo diseño que la planilla de Planta) ==== */
+    .sede-pill-group {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface-subtle, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 30px;
+        padding: 4px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .sede-pill {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sede-pill.active {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+    }
+
+    .sede-pill:not(.active) {
+        color: #64748b;
+    }
+
+    .sede-pill:not(.active):hover {
+        color: #1a202c;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    [data-bs-theme="dark"] .sede-pill-group {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active) {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active):hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+    }
 </style>
 
 <div class="container-fluid px-4 py-4">
@@ -678,17 +730,29 @@
                     <span class="pulse-dot"></span>
                     <span>Trazabilidad en Tiempo Real</span>
                 </div>
-                <h1 class="h2 fw-bolder mb-1 text-white">Analítica de Despachos</h1>
+                <h1 class="h2 fw-bolder mb-1 text-white">Analítica de Despachos · Sede {{ sede_etiqueta }}</h1>
                 <p class="mb-0 text-white-50" style="font-size: 0.95rem;">
                     Consolidado de distribución de hidrocarburos, volúmenes certificados y participación de clientes
                 </p>
+                {% if sedes_reporte|length > 1 %}
+                <div class="mt-2">
+                    <div class="sede-pill-group">
+                        <a href="{{ url_for('reporte_grafico_despachos', sede='CARTAGENA') }}" class="sede-pill {{ 'active' if sede == 'CARTAGENA' else '' }}">
+                            <i class="bi bi-buildings"></i> Cartagena
+                        </a>
+                        <a href="{{ url_for('reporte_grafico_despachos', sede='MADRID') }}" class="sede-pill {{ 'active' if sede == 'MADRID' else '' }}">
+                            <i class="bi bi-geo-alt-fill"></i> Madrid
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
             <div class="d-flex gap-2 flex-wrap">
                 <button type="button" class="btn-exec-action" onclick="resetFilters()">
                     <i class="fas fa-history"></i>
                     <span>Ver Todo el Histórico</span>
                 </button>
-                <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, producto=filtros.producto, cliente=filtros.cliente, tipo=tipo) }}"
+                <a href="{{ url_for('descargar_reporte_grafico_despachos_pdf', fecha_inicio=filtros.fecha_inicio, fecha_fin=filtros.fecha_fin, producto=filtros.producto, cliente=filtros.cliente, tipo=tipo, sede=sede) }}"
                    class="btn-exec-action btn-pdf" target="_blank" aria-label="Exportar a PDF">
                     <i class="fas fa-file-pdf"></i>
                     <span>Exportar Informe PDF</span>
@@ -844,6 +908,7 @@
         </div>
         <form method="GET" id="filterForm">
             <input type="hidden" name="tipo" id="tipoGraficoInput" value="{{ tipo }}">
+            <input type="hidden" name="sede" value="{{ sede }}">
             <div class="row g-3 align-items-end">
                 <!-- Desde -->
                 <div class="col-6 col-md-2">
@@ -1475,7 +1540,7 @@
 
     // Restablecer a histórico completo
     function resetFilters() {
-        window.location.href = "{{ url_for('reporte_grafico_despachos') }}";
+        window.location.href = "{{ url_for('reporte_grafico_despachos', sede=sede) }}";
     }
 
     // Filtro en vivo de la tabla de clientes

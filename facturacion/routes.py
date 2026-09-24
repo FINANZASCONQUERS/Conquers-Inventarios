@@ -117,6 +117,10 @@ def permiso_importacion_requerido(f):
     return wrapper
 
 
+# Sede cuyos despachos se facturan desde este módulo (ver app.SEDES_PROGRAMACION).
+SEDE_FACTURACION = 'CARTAGENA'
+
+
 def _get_programacion_model():
     """Obtiene dinámicamente el modelo ProgramacionCargue de db.Model o SQLAlchemy registry."""
     # 1. En SQLAlchemy 2 / Flask-SQLAlchemy 3+
@@ -249,6 +253,11 @@ def listar_despachos_facturacion():
                 )
             )
         )
+
+    # Facturación trabaja sobre los despachos de Cartagena (el control SICOM de
+    # Zona Franca). Los cargues de Madrid quedan por fuera hasta definir cómo
+    # se facturan.
+    query = query.filter(ProgramacionCargue.sede == SEDE_FACTURACION)
 
     # Filtro por estado de facturación: 'FACTURADO', 'PENDIENTE', 'TODOS'
     estado_fac = request.args.get('estado_facturacion', 'TODOS').upper().strip()
@@ -640,6 +649,8 @@ def exportar_facturacion_excel():
                 )
             )
         )
+
+    query = query.filter(ProgramacionCargue.sede == SEDE_FACTURACION)
 
     estado_fac = request.args.get('estado_facturacion', 'TODOS').upper().strip()
     if estado_fac == 'FACTURADO':

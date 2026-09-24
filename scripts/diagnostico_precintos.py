@@ -154,32 +154,54 @@ def calcular_marca_agua(ocupados):
 
 # ------------------------------------------------------------------ consultas
 
-def cargar_datos(cur):
+def _tiene_columna_sede(cur, tabla):
+    cur.execute("""
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = %s AND column_name = 'sede'
+    """, (tabla,))
+    return cur.fetchone() is not None
+
+
+def cargar_datos(cur, sede='CARTAGENA'):
+    """Todo se mide dentro de una sede: cada bodega tiene su propio consecutivo."""
     datos = {}
+
+    if _tiene_columna_sede(cur, 'inventario_precintos'):
+        f, fp = ' AND sede = %s', (sede,)
+    elif sede == 'CARTAGENA':
+        # Base anterior a Madrid: todo el inventario es de Cartagena.
+        f, fp = '', ()
+    else:
+        sys.exit('\nEsta base no tiene la columna sede: no hay bodega de {}.'.format(sede))
+    fc = ' AND sede = %s' if _tiene_columna_sede(cur, 'programacion_cargue') and fp else ''
+    fcp = (sede,) if fc else ()
 
     cur.execute("""
         SELECT estado, COUNT(*) AS cantidad, MIN(numero) AS minimo, MAX(numero) AS maximo
         FROM inventario_precintos
+        WHERE 1 = 1""" + f + """
         GROUP BY estado
         ORDER BY estado
-    """)
+    """, fp)
     datos['por_estado'] = cur.fetchall()
 
     cur.execute("""
         SELECT id, nombre, rango_inicial, rango_final, total_precintos,
                numero_digitos, es_historico, activo, fecha_ingreso, usuario_registro
         FROM lotes_precintos
+        WHERE 1 = 1""" + (""" AND (sede = %s OR id IN (
+            SELECT lote_id FROM inventario_precintos WHERE sede = %s))""" if fp else "") + """
         ORDER BY rango_inicial
-    """)
+    """, fp * 2)
     datos['lotes'] = cur.fetchall()
 
     # Marca de agua: hasta donde llego el consecutivo segun la base.
     cur.execute("""
         SELECT numero
         FROM inventario_precintos
-        WHERE estado IN ('USADO', 'ANULADO')
+        WHERE estado IN ('USADO', 'ANULADO')""" + f + """
         ORDER BY numero
-    """)
+    """, fp)
     ocupados = [f['numero'] for f in cur.fetchall()]
     datos['maximo_ocupado'] = ocupados[-1] if ocupados else None
     datos['marca_agua'], datos['atipicos'] = calcular_marca_agua(ocupados)
@@ -188,18 +210,18 @@ def cargar_datos(cur):
     cur.execute("""
         SELECT numero, codigo, lote_id, origen
         FROM inventario_precintos
-        WHERE estado = 'DISPONIBLE'
+        WHERE estado = 'DISPONIBLE'""" + f + """
         ORDER BY numero ASC
         LIMIT 20
-    """)
+    """, fp)
     datos['cola'] = cur.fetchall()
 
     cur.execute("""
         SELECT numero, codigo, lote_id, origen, created_at
         FROM inventario_precintos
-        WHERE estado = 'DISPONIBLE'
+        WHERE estado = 'DISPONIBLE'""" + f + """
         ORDER BY numero ASC
-    """)
+    """, fp)
     datos['disponibles'] = cur.fetchall()
 
     cur.execute("""
@@ -207,26 +229,26 @@ def cargar_datos(cur):
                cliente, fecha_uso, usuario_uso, motivo_anulacion,
                fecha_anulacion, usuario_anulacion, origen
         FROM inventario_precintos
-        WHERE estado = 'ANULADO'
+        WHERE estado = 'ANULADO'""" + f + """
         ORDER BY fecha_anulacion DESC NULLS LAST, numero DESC
-    """)
+    """, fp)
     datos['anulados'] = cur.fetchall()
 
     cur.execute("""
         SELECT numero, codigo, programacion_id, placa, numero_guia, fecha_uso
         FROM inventario_precintos
-        WHERE estado = 'USADO'
+        WHERE estado = 'USADO'""" + f + """
         ORDER BY numero
-    """)
+    """, fp)
     datos['usados'] = cur.fetchall()
 
     cur.execute("""
         SELECT id, placa, numero_guia, cliente, fecha_programacion, fecha_despacho,
                precintos, ultimo_editor
         FROM programacion_cargue
-        WHERE precintos IS NOT NULL AND TRIM(precintos) <> ''
+        WHERE precintos IS NOT NULL AND TRIM(precintos) <> ''""" + fc + """
         ORDER BY id
-    """)
+    """, fcp)
     datos['cargues'] = cur.fetchall()
 
     return datos
@@ -646,6 +668,8 @@ def main():
     ap.add_argument('--database-url', default=None,
                     help='URL de la base. Por defecto toma $DATABASE_URL o la local de desarrollo.')
     ap.add_argument('--sin-csv', action='store_true', help='No escribir el CSV de detalle.')
+    ap.add_argument('--sede', default='CARTAGENA', type=str.upper, choices=('CARTAGENA', 'MADRID'),
+                    help='Bodega a diagnosticar. Cada sede tiene su propio consecutivo.')
     args = ap.parse_args()
 
     url = args.database_url or os.environ.get('DATABASE_URL') or URL_POR_DEFECTO
@@ -654,6 +678,7 @@ def main():
     print('DIAGNOSTICO DE PRECINTOS  -  SOLO LECTURA, NO MODIFICA NADA')
     print('=' * 78)
     print('  Base de datos: {}'.format(enmascarar_url_bd(url)))
+    print('  Sede.........: {}'.format(args.sede))
     print('  Fecha........: {}'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
     conexion = None
@@ -661,7 +686,7 @@ def main():
         conexion = psycopg2.connect(url)
         conexion.set_session(readonly=True, autocommit=False)
         cur = conexion.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        datos = cargar_datos(cur)
+        datos = cargar_datos(cur, args.sede)
     except psycopg2.Error as e:
         sys.exit('\nNo se pudo consultar la base: {}'.format(e))
     finally:

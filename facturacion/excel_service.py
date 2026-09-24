@@ -313,7 +313,10 @@ def procesar_excel_dry_run(
 
     # Construir consulta a la base de datos: solo despachos de Agosto 2026 en adelante
     fecha_corte_agosto = date(2026, 8, 1)
+    # El Excel de control es el de Zona Franca (Cartagena): cruzarlo contra
+    # guías de Madrid solo puede dar coincidencias falsas.
     query_prog = ProgramacionCargueModel.query.filter(
+        ProgramacionCargueModel.sede == 'CARTAGENA',
         ProgramacionCargueModel.numero_guia.isnot(None),
         ProgramacionCargueModel.numero_guia != '',
         or_(

@@ -220,6 +220,9 @@ defecto seguros. #}
                     {% if 'programacion_cargue' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('programacion_cargue', 'Programación de Despachos', 'calendar-check')) %}
                     {% endif %}
+                    {% if 'programacion_cargue_madrid' in session.get('area', []) %}
+                    {% set _ = user_planillas.append(('programacion_cargue_madrid', 'Programación de Despachos Madrid', 'calendar-check')) %}
+                    {% endif %}
                     {% if 'precintos' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('inventario_precintos', 'Inventario de Precintos', 'shield-lock-fill')) %}
                     {% endif %}
@@ -326,7 +329,8 @@ defecto seguros. #}
 
                             <!-- 🚛 LOGÍSTICA -->
                             {% if 'guia_transporte' in session.get('area', [])
-                            or 'programacion_cargue' in session.get('area', []) or session.get('email', '').lower()
+                            or 'programacion_cargue' in session.get('area', [])
+                            or 'programacion_cargue_madrid' in session.get('area', []) or session.get('email', '').lower()
                             in panel_allowed %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-truck me-2"></i>Logística</h6>
@@ -340,6 +344,12 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'programacion_cargue' %}active{% endif %}"
                                     href="{{ url_for('programacion_cargue') }}"><i
                                         class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos</a>
+                            </li>
+                            {% endif %}
+                            {% if 'programacion_cargue_madrid' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'programacion_cargue_madrid' %}active{% endif %}"
+                                    href="{{ url_for('programacion_cargue_madrid') }}"><i
+                                        class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos Madrid</a>
                             </li>
                             {% endif %}
                             {% if 'precintos' in session.get('area', []) %}
@@ -515,6 +525,9 @@ defecto seguros. #}
                                         class="bi bi-truck me-2 text-success"></i>Generar Guía</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('programacion_cargue') }}"><i
                                         class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos</a>
+                            </li>
+                            <li><a class="dropdown-item" href="{{ url_for('programacion_cargue_madrid') }}"><i
+                                        class="bi bi-calendar-check me-2 text-primary"></i>Programación de Despachos Madrid</a>
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('panel_enturnamiento') }}"><i
                                         class="bi bi-list-check me-2 text-info"></i>Panel de Enturnamiento</a></li>

@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8" />
-    <title>Programación de Cargue</title>
+    <title>Programación de Cargue{% if sede == 'MADRID' %} - Sede Madrid{% endif %}</title>
     <style>
         @page { size:A4 portrait; margin:15mm 15mm 18mm 15mm; }
         body { font-family:'Segoe UI', Arial, sans-serif; font-size:10px; color:#2d3436; background:#f0f3f7; }
@@ -44,7 +44,7 @@
         {% else %}
             <div style="font-size:22px;font-weight:700;color:#1b4f72;">LOGO</div>
         {% endif %}
-        <h1>Programación de Vehículos</h1>
+        <h1>Programación de Vehículos{% if sede == 'MADRID' %} · Sede Madrid{% endif %}</h1>
         <div class="badge-fecha">Generado: {{ fecha_reporte }}</div>
     </div>
 </div>

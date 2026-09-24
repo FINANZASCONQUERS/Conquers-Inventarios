@@ -451,6 +451,58 @@
         background: transparent;
         border-bottom-color: var(--primary-color);
     }
+
+    /* ==== SELECTOR DE SEDE (mismo diseño que la planilla de Planta) ==== */
+    .sede-pill-group {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface-subtle, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 30px;
+        padding: 4px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .sede-pill {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sede-pill.active {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+    }
+
+    .sede-pill:not(.active) {
+        color: #64748b;
+    }
+
+    .sede-pill:not(.active):hover {
+        color: #1a202c;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    [data-bs-theme="dark"] .sede-pill-group {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active) {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active):hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+    }
 </style>
 {% endblock %}
 
@@ -462,17 +514,35 @@
         <div class="pr-header__id">
             <div class="pr-header__mark"><i class="bi bi-shield-lock-fill"></i></div>
             <div>
-                <h1>Inventario de Precintos</h1>
-                <p>Sellos de seguridad · stock, trazabilidad y control de anulados</p>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h1>Inventario de Precintos</h1>
+                    {% if sedes_usuario|length > 1 %}
+                    <div class="sede-pill-group">
+                        <a href="{{ url_for('inventario_precintos', sede='CARTAGENA') }}" class="sede-pill {{ 'active' if sede_inicial == 'CARTAGENA' else '' }}">
+                            <i class="bi bi-buildings"></i> Cartagena
+                        </a>
+                        <a href="{{ url_for('inventario_precintos', sede='MADRID') }}" class="sede-pill {{ 'active' if sede_inicial == 'MADRID' else '' }}">
+                            <i class="bi bi-geo-alt-fill"></i> Madrid
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <p>Sellos de seguridad · stock, trazabilidad y control de anulados · Bodega {{ sede_etiquetas[sede_inicial] }}</p>
             </div>
         </div>
         <div class="pr-header__actions">
-            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('programacion_cargue') }}">
+            <a class="btn btn-sm btn-outline-secondary"
+               href="{{ url_for('programacion_cargue_madrid') if sede_inicial == 'MADRID' else url_for('programacion_cargue') }}">
                 <i class="bi bi-calendar-check me-1"></i>Programación de Cargue
             </a>
             <button class="btn btn-sm btn-outline-success" id="btnExportar">
                 <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
             </button>
+            {% if puede_registrar_lotes and sedes_usuario|length > 1 %}
+            <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalTransferir">
+                <i class="bi bi-arrow-left-right me-1"></i>Transferir a otra sede
+            </button>
+            {% endif %}
             {% if puede_registrar_lotes %}
             <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalLote">
                 <i class="bi bi-plus-lg me-1"></i>Registrar Lote
@@ -605,7 +675,7 @@
         <div class="modal-content">
             <form id="formLote">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Registrar lote de precintos</h5>
+                    <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Registrar lote de precintos · {{ sede_etiquetas[sede_inicial] }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -653,6 +723,56 @@
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="btnGuardarLote">
                         <i class="bi bi-check-lg me-1"></i>Crear lote
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if puede_registrar_lotes and sedes_usuario|length > 1 %}
+<!-- Modal: transferir sellos entre sedes -->
+<div class="modal fade" id="modalTransferir" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="formTransferir">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Transferir precintos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        Mueve sellos disponibles de la bodega de <strong>{{ sede_etiquetas[sede_inicial] }}</strong>
+                        a la de otra sede. Solo se mueven números que {{ sede_etiquetas[sede_inicial] }} todavía
+                        podía entregar; si alguno del rango ya se usó, no se mueve ninguno.
+                    </p>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Rango inicial <span class="text-danger">*</span></label>
+                            <input class="form-control pr-codigo" name="rango_inicial" inputmode="numeric" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small">Rango final <span class="text-danger">*</span></label>
+                            <input class="form-control pr-codigo" name="rango_final" inputmode="numeric" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Sede destino</label>
+                            <select class="form-select" name="sede_destino">
+                                {% for s in sedes_usuario if s != sede_inicial %}
+                                <option value="{{ s }}">{{ sede_etiquetas[s] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 mb-0 small d-none" id="previewTransferir"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnTransferir">
+                        <i class="bi bi-check-lg me-1"></i>Transferir
                     </button>
                 </div>
             </form>
@@ -711,6 +831,13 @@
     'use strict';
 
     const PUEDE_REGISTRAR_LOTES = {{ 'true' if puede_registrar_lotes else 'false' }};
+    // Bodega que muestra la página; toda consulta a la API la lleva.
+    const SEDE = "{{ sede_inicial }}";
+    // Sedes a las que se pueden mandar sellos desde esta bodega (Madrid = planta CWT).
+    const ETIQUETAS_SEDE = {{ sede_etiquetas | tojson }};
+    const OTRAS_SEDES = {{ sedes_usuario | reject('equalto', sede_inicial) | list | tojson }};
+    const nombreDestino = (s) => s === 'MADRID' ? 'Madrid (CWT)' : (ETIQUETAS_SEDE[s] || s);
+    const conSede = (url) => url + (url.includes('?') ? '&' : '?') + 'sede=' + encodeURIComponent(SEDE);
     const POR_PAGINA = 100;
     const COLUMNAS = 8;
 
@@ -771,7 +898,7 @@
 
     // ---------- Indicadores ----------
     async function cargarResumen() {
-        const r = await fetch('/api/precintos/resumen');
+        const r = await fetch(conSede('/api/precintos/resumen'));
         const d = await r.json();
         if (!d.success) return;
 
@@ -848,7 +975,7 @@
 
         let d;
         try {
-            const r = await fetch('/api/precintos/listado?' + params.toString());
+            const r = await fetch(conSede('/api/precintos/listado?' + params.toString()));
             d = await r.json();
         } catch (err) {
             tbody.innerHTML = vacio('bi-wifi-off', 'No se pudo conectar con el servidor.');
@@ -882,7 +1009,7 @@
     // ---------- Lotes ----------
     async function cargarLotes() {
         const cont = $('tablaLotes');
-        const r = await fetch('/api/precintos/lotes');
+        const r = await fetch(conSede('/api/precintos/lotes'));
         const d = await r.json();
 
         if (!d.success || !d.lotes.length) {
@@ -918,6 +1045,11 @@
                     <span>${l.pct_consumido}% consumido</span>
                     <span><b>${nfmt(l.total)}</b> en total</span>
                 </div>
+                ${PUEDE_REGISTRAR_LOTES && OTRAS_SEDES.length && !agotado ? OTRAS_SEDES.map(dest => `
+                <button type="button" class="btn btn-sm btn-outline-primary w-100 mt-2" data-transferir-lote="${l.id}"
+                    data-destino="${dest}" data-rango="${esc(l.rango_inicial)} – ${esc(l.rango_final)}" data-disponibles="${l.disponibles}">
+                    <i class="bi bi-truck me-1"></i>Transferir a ${esc(nombreDestino(dest))}
+                </button>`).join('') : ''}
             </div>`;
         }).join('') + (PUEDE_REGISTRAR_LOTES ? `
             <button type="button" class="pr-lote-nuevo" data-bs-toggle="modal" data-bs-target="#modalLote">
@@ -954,7 +1086,7 @@
     });
 
     $('btnExportar').addEventListener('click', () => {
-        window.location = '/api/precintos/exportar' + (estadoActual ? '?estado=' + estadoActual : '');
+        window.location = conSede('/api/precintos/exportar' + (estadoActual ? '?estado=' + estadoActual : ''));
     });
 
     // Eliminar lote
@@ -967,11 +1099,11 @@
 
             btn.disabled = true;
             try {
-                let r = await fetch(`/api/precintos/lotes/${loteId}`, { method: 'DELETE' });
+                let r = await fetch(conSede(`/api/precintos/lotes/${loteId}`), { method: 'DELETE' });
                 let d = await r.json();
                 if (!d.success && d.requiere_confirmacion) {
                     if (confirm(d.message)) {
-                        r = await fetch(`/api/precintos/lotes/${loteId}?forzar=1`, { method: 'DELETE' });
+                        r = await fetch(conSede(`/api/precintos/lotes/${loteId}?forzar=1`), { method: 'DELETE' });
                         d = await r.json();
                     } else {
                         return;
@@ -995,7 +1127,7 @@
 
             btnReactivar.disabled = true;
             try {
-                const r = await fetch('/api/precintos/reactivar', {
+                const r = await fetch(conSede('/api/precintos/reactivar'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ precinto_id: parseInt(id, 10) })
@@ -1025,7 +1157,7 @@
         ev.preventDefault();
         const motivo = $('anularMotivo').value.trim();
         if (!motivo) return;
-        const r = await fetch('/api/precintos/anular', {
+        const r = await fetch(conSede('/api/precintos/anular'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1068,7 +1200,7 @@
             btn.disabled = true;
             const payload = Object.fromEntries(new FormData(form).entries());
             try {
-                const r = await fetch('/api/precintos/lotes', {
+                const r = await fetch(conSede('/api/precintos/lotes'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -1079,6 +1211,111 @@
                     bootstrap.Modal.getOrCreateInstance($('modalLote')).hide();
                     form.reset();
                     preview.classList.add('d-none');
+                    recargarTodo();
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // Transferir desde un lote: se piden N precintos y el sistema propone los últimos
+    // N disponibles del lote (así el consecutivo de esta sede sigue sin saltos).
+    if (PUEDE_REGISTRAR_LOTES) {
+        $('tablaLotes').addEventListener('click', async (ev) => {
+            const btn = ev.target.closest('[data-transferir-lote]');
+            if (!btn) return;
+            const loteId = parseInt(btn.dataset.transferirLote, 10);
+            const destino = btn.dataset.destino;
+            const disponibles = parseInt(btn.dataset.disponibles, 10) || 0;
+            const enviar = (cantidad, simular) => fetch('/api/precintos/transferir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lote_id: loteId, cantidad, sede_origen: SEDE, sede_destino: destino, simular })
+            }).then(r => r.json());
+
+            const paso1 = await Swal.fire({
+                title: `Transferir a ${nombreDestino(destino)}`,
+                html: `<p style="margin-bottom:6px;">Lote <b>${esc(btn.dataset.rango)}</b> · ${nfmt(disponibles)} disponibles en ${esc(ETIQUETAS_SEDE[SEDE])}.</p>
+                       <p style="font-size:13px; color:#64748b; margin:0;">Se envían los <b>últimos</b> números del lote, para que
+                       ${esc(ETIQUETAS_SEDE[SEDE])} siga su consecutivo sin saltos.</p>`,
+                input: 'number',
+                inputLabel: '¿Cuántos precintos vas a mandar?',
+                inputValue: Math.min(100, disponibles),
+                inputAttributes: { min: 1, max: disponibles, step: 1 },
+                showCancelButton: true,
+                confirmButtonText: 'Ver qué números salen',
+                cancelButtonText: 'Cancelar',
+                showLoaderOnConfirm: true,
+                preConfirm: async (valor) => {
+                    const cantidad = parseInt(valor, 10);
+                    if (!cantidad || cantidad < 1 || cantidad > disponibles) {
+                        Swal.showValidationMessage(`Escribe una cantidad entre 1 y ${disponibles}`);
+                        return false;
+                    }
+                    const d = await enviar(cantidad, true);
+                    if (!d.success) { Swal.showValidationMessage(d.message || 'No se pudo calcular'); return false; }
+                    return { cantidad, vista: d };
+                }
+            });
+            if (!paso1.isConfirmed) return;
+
+            const { cantidad, vista } = paso1.value;
+            const paso2 = await Swal.fire({
+                icon: 'question',
+                title: 'Confirmar transferencia',
+                html: `<p style="font-size:18px; margin-bottom:6px;"><b>${esc(vista.rango_inicial)}</b> al <b>${esc(vista.rango_final)}</b></p>
+                       <p>${nfmt(vista.cantidad)} precintos pasan de ${esc(ETIQUETAS_SEDE[SEDE])} a <b>${esc(nombreDestino(destino))}</b>.
+                       Sepáralos físicamente con esos números.</p>`,
+                showCancelButton: true,
+                confirmButtonText: 'Transferir',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!paso2.isConfirmed) return;
+
+            const d = await enviar(cantidad, false);
+            aviso(d.message, d.success ? 'success' : 'danger');
+            if (d.success) recargarTodo();
+        });
+    }
+
+    // Transferir sellos a otra sede
+    const formTransferir = $('formTransferir');
+    if (formTransferir) {
+        const prev = $('previewTransferir');
+        const actualizar = () => {
+            const ini = (formTransferir.rango_inicial.value || '').replace(/\D/g, '');
+            const fin = (formTransferir.rango_final.value || '').replace(/\D/g, '');
+            if (!ini || !fin) { prev.classList.add('d-none'); return; }
+            const n = parseInt(fin, 10) - parseInt(ini, 10) + 1;
+            const destino = formTransferir.sede_destino.selectedOptions[0];
+            prev.className = 'alert py-2 mb-0 small ' + (n > 0 ? 'alert-info' : 'alert-danger');
+            prev.textContent = n > 0
+                ? `Se moverán ${nfmt(n)} precintos, de ${ini.padStart(6, '0')} a ${fin.padStart(6, '0')}, a ${destino ? destino.textContent : ''}.`
+                : 'El rango final debe ser mayor o igual al inicial.';
+        };
+        formTransferir.rango_inicial.addEventListener('input', actualizar);
+        formTransferir.rango_final.addEventListener('input', actualizar);
+        formTransferir.sede_destino.addEventListener('change', actualizar);
+
+        formTransferir.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const btn = $('btnTransferir');
+            btn.disabled = true;
+            const payload = Object.fromEntries(new FormData(formTransferir).entries());
+            payload.sede_origen = SEDE;
+            try {
+                const r = await fetch('/api/precintos/transferir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const d = await r.json();
+                aviso(d.message, d.success ? 'success' : 'danger');
+                if (d.success) {
+                    bootstrap.Modal.getOrCreateInstance($('modalTransferir')).hide();
+                    formTransferir.reset();
+                    prev.classList.add('d-none');
                     recargarTodo();
                 }
             } finally {

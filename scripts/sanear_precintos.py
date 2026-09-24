@@ -42,6 +42,15 @@ USO (PowerShell):
     # con un corte manual, cuando el consecutivo físico va más adelante
     python scripts/sanear_precintos.py --corte 4708 --apply
 
+    # la bodega de Madrid (cada sede tiene su propio consecutivo)
+    python scripts/sanear_precintos.py --sede MADRID
+
+SEDES:
+    Desde que existe Madrid, cada sede lleva su propia marca de agua. Todo se
+    calcula y se aplica dentro de la sede de --sede (CARTAGENA por defecto).
+    Con una marca global, los sellos que Madrid tiene en bodega por debajo del
+    consecutivo de Cartagena se verían como huecos y se retirarían.
+
 Ver primero scripts/diagnostico_precintos.py, que mide sin tocar nada.
 """
 
@@ -67,6 +76,7 @@ URL_POR_DEFECTO = 'postgresql://postgres:Sara_121128@localhost:5432/inventario_d
 # Mismo marcador que usa el resumen de app.py para no contarlos como merma.
 USUARIO_AJUSTE = 'Ajuste de inventario'
 MOTIVO_DEFECTO = 'Retirado por ajuste: numero anterior al consecutivo vigente'
+SEDES = ('CARTAGENA', 'MADRID')
 
 # Igual que en el diagnostico: un ocupado aislado muy arriba es un dedazo.
 VENTANA_DENSIDAD = 100
@@ -126,6 +136,8 @@ def main():
     ap.add_argument('--motivo', default=MOTIVO_DEFECTO, help='Motivo que queda registrado.')
     ap.add_argument('--forzar', action='store_true',
                     help='Ignora la comprobacion de corte envenenado. Usar solo si ya lo revisaste.')
+    ap.add_argument('--sede', default='CARTAGENA', type=str.upper, choices=SEDES,
+                    help='Bodega a sanear. Cada sede tiene su propio consecutivo.')
     args = ap.parse_args()
 
     url = args.database_url or os.environ.get('DATABASE_URL') or URL_POR_DEFECTO
@@ -135,6 +147,7 @@ def main():
         'APLICANDO CAMBIOS' if args.apply else 'SIMULACION (no escribe nada)'))
     print('=' * 78)
     print('  Base de datos: {}'.format(enmascarar_url_bd(url)))
+    print('  Sede.........: {}'.format(args.sede))
     print('  Fecha........: {}'.format(datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
 
     conexion = psycopg2.connect(url)
@@ -143,9 +156,21 @@ def main():
 
     try:
         cur.execute("""
-            SELECT numero FROM inventario_precintos
-            WHERE estado IN ('USADO', 'ANULADO') ORDER BY numero
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'inventario_precintos' AND column_name = 'sede'
         """)
+        if cur.fetchone():
+            filtro_sede, params_sede = ' AND sede = %s', (args.sede,)
+        elif args.sede == 'CARTAGENA':
+            # Base anterior a Madrid: todo el inventario es de Cartagena.
+            filtro_sede, params_sede = '', ()
+        else:
+            sys.exit('\nEsta base no tiene la columna sede: no hay bodega de {}.'.format(args.sede))
+
+        cur.execute("""
+            SELECT numero FROM inventario_precintos
+            WHERE estado IN ('USADO', 'ANULADO')""" + filtro_sede + """ ORDER BY numero
+        """, params_sede)
         ocupados = [f['numero'] for f in cur.fetchall()]
         if not ocupados:
             sys.exit('\nNo hay precintos USADO ni ANULADO. Nada que sanear.')
@@ -172,12 +197,13 @@ def main():
             SELECT id, numero, codigo, estado, lote_id, origen, programacion_id,
                    placa, numero_guia, cliente, fecha_uso, usuario_uso
             FROM inventario_precintos
-            WHERE estado = 'DISPONIBLE' AND numero < %s
+            WHERE estado = 'DISPONIBLE' AND numero < %s""" + filtro_sede + """
             ORDER BY numero
-        """, (corte,))
+        """, (corte,) + params_sede)
         huecos = cur.fetchall()
 
-        cur.execute("SELECT COUNT(*) AS n FROM inventario_precintos WHERE estado = 'DISPONIBLE'")
+        cur.execute("SELECT COUNT(*) AS n FROM inventario_precintos WHERE estado = 'DISPONIBLE'"
+                    + filtro_sede, params_sede)
         total_disponible = cur.fetchone()['n']
 
         if not huecos:
@@ -246,8 +272,9 @@ def main():
 
         cur.execute("""
             SELECT codigo FROM inventario_precintos
-            WHERE estado = 'DISPONIBLE' ORDER BY numero ASC LIMIT 1
-        """)
+            WHERE estado = 'DISPONIBLE' AND numero > %s""" + filtro_sede + """
+            ORDER BY numero ASC LIMIT 1
+        """, (corte,) + params_sede)
         siguiente = cur.fetchone()
         print('  El siguiente precinto a entregar es ahora: {}'.format(
             siguiente['codigo'] if siguiente else '(sin stock)'))
