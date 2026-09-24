@@ -7410,7 +7410,7 @@ def _obtener_siguiente_consecutivo_guia_fisica(sede=SEDE_POR_DEFECTO):
     Madrid sin guías registradas no sugiere nada (el 0601 es el arranque de Cartagena).
     """
     sede = _normalizar_sede(sede) or SEDE_POR_DEFECTO
-    sin_historial = '0601' if sede == SEDE_POR_DEFECTO else ''
+    sin_historial = '0601' if sede == SEDE_POR_DEFECTO else '0018'
     try:
         registros = (ProgramacionCargue.query
                      .filter(ProgramacionCargue.numero_guia.isnot(None),
@@ -7418,15 +7418,24 @@ def _obtener_siguiente_consecutivo_guia_fisica(sede=SEDE_POR_DEFECTO):
                      .order_by(ProgramacionCargue.id.desc())
                      .limit(300)
                      .all())
-        folios = []
+        folios = set()
         for r in registros:
             # Solo consultar la columna numero_guia (NUNCA la factura comercial de venta)
             num = (r.numero_guia or '').strip()
             folio = _extraer_folio_diluyente(num, sede)
             if folio is not None:
-                folios.append(folio)
+                folios.add(folio)
         
         if folios:
+            if sede == 'MADRID':
+                # En Madrid el talonario físico va por el folio 18. Previamente se imprimió por error
+                # la guía 25 (el 16/07/2026 en WCR021), dejando libres los folios 18 a 24.
+                # Buscamos el siguiente folio libre a partir del 18 (18..24, luego salta el 25 y sigue 26..).
+                candidato = 18
+                while candidato in folios:
+                    candidato += 1
+                return f"{candidato:04d}"
+
             siguiente = max(folios) + 1
             return f"{siguiente:04d}"
         return sin_historial
