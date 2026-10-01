@@ -548,13 +548,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion"] 
     },
     "german.galvis@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion"] 
     },
     "production@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -13990,6 +13990,8 @@ def handle_programacion():
     """Obtiene o crea registros de programación de la sede pedida (?sede=)."""
     sede = _sede_de_la_peticion()
     if request.method == 'POST':
+        if session.get('rol') == 'viewer':
+            return jsonify(success=False, message="Acceso denegado: los usuarios con rol de visualizador no pueden crear registros."), 403
         # Lógica para crear un nuevo registro vacío
         nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'), sede=sede)
         db.session.add(nuevo)
@@ -14686,7 +14688,7 @@ def update_programacion(id):
         # El admin puede editar todos los campos excepto los de auditoría que son automáticos.
         campos_permitidos = [c.name for c in ProgramacionCargue.__table__.columns if c.name not in ['id', 'ultimo_editor', 'fecha_actualizacion']]
 
-    if not campos_permitidos:
+    if session.get('rol') == 'viewer' or not campos_permitidos:
         return jsonify(success=False, message="No tienes permisos para editar."), 403
 
     try:
@@ -15195,6 +15197,8 @@ def delete_programacion(id):
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def upload_programacion_image(id):
     """Sube un archivo de guía (PDF/imagen) y lo guarda en disco; BD almacena ruta relativa."""
+    if session.get('rol') == 'viewer':
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
     try:
         # Verificar archivo
@@ -15316,6 +15320,8 @@ def get_programacion_image(id):
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def delete_programacion_image(id):
     """Elimina el archivo de guía en disco y limpia la referencia."""
+    if session.get('rol') == 'viewer':
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
     try:
         if not registro.imagen_guia:
@@ -15414,6 +15420,8 @@ def buscar_reemplazar_programacion():
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def importar_guia_sharepoint(id):
     """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
+    if session.get('rol') == 'viewer':
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
     numero_guia = (registro.numero_guia or '').strip()
 
@@ -16413,6 +16421,8 @@ def upload_programacion_excel():
     - Si no viene 'barriles' pero sí 'galones', se calcula barriles = galones/42.
     """
     # La carga (y el ?replace=1) solo afecta la tabla de la sede de la pantalla.
+    if session.get('rol') == 'viewer':
+        return jsonify(success=False, message="Acceso denegado: los usuarios con rol de visualizador no pueden cargar archivos."), 403
     sede = _sede_de_la_peticion()
     if 'excel_file' not in request.files:
         return jsonify(success=False, message='No se encontró archivo (campo excel_file).'), 400

@@ -650,11 +650,13 @@
             </div>
             <div class="col-lg-6">
                 <div class="d-flex justify-content-lg-end align-items-center flex-wrap gap-2">
+                    {% if rol_usuario != 'viewer' %}
                     <button class="btn btn-modern btn-outline-primary" data-bs-toggle="modal"
                         data-bs-target="#uploadExcelModal">
                         <i class="fas fa-file-upload me-2"></i>
                         <span>Importar</span>
                     </button>
+                    {% endif %}
 
                     <div class="btn-group shadow-sm" role="group">
                         <button type="button" class="btn btn-modern btn-outline-success export-btn"
@@ -714,18 +716,22 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>Guías pendientes
                             <span class="badge bg-danger ms-1" id="badge-guias-pendientes">…</span>
                         </button>
+                        {% if rol_usuario != 'viewer' %}
                         <button class="btn btn-sm btn-modern btn-outline-warning" data-bs-toggle="modal"
                             data-bs-target="#buscarReemplazarModal" title="Buscar y Reemplazar">
                             <i class="fas fa-search me-1"></i>Buscar
                         </button>
+                        {% endif %}
                         <button id="btn-sort-estado" class="btn btn-sm btn-modern btn-outline-secondary" type="button"
                             title="Ordenar por estado">
                             <i class="fas fa-sort-amount-down me-1"></i>Ordenar estados
                         </button>
+                        {% if rol_usuario != 'viewer' %}
                         <button id="btn-add-row" class="btn btn-sm btn-modern btn-primary" type="button"
                             title="Agregar nueva programación">
                             <i class="fas fa-plus me-1"></i>Agregar
                         </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -3070,7 +3076,7 @@
                                         <i class="fas fa-print"></i>
                                     </button>
                                     ${canDelete ? `<button class\="btn btn-outline-danger btn-xs btn-delete-row\" title\="Eliminar\" style\="padding: 0.15rem 0.4rem;"><i class\="fas fa-trash-alt"></i></button>` : ''}
-                                    ${!row.imagen_guia ? `
+                                    ${!row.imagen_guia && userRol !== 'viewer' ? `
                                     <button class="btn btn-outline-success btn-xs btn-upload-image" title="Subir" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-upload"></i>
                                     </button>
@@ -3082,9 +3088,10 @@
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-image"></i>
                                     </button>
+                                    ${userRol !== 'viewer' ? `
                                     <button class="btn btn-outline-danger btn-xs btn-delete-image" title="Borrar img" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-times"></i>
-                                    </button>` : ''}
+                                    </button>` : ''}` : ''}
                                 </div>
                             </div>
                         </td>`;
@@ -3242,6 +3249,11 @@
 
         menuItems.forEach(item => {
             const action = item.dataset.action;
+            if (userRol === 'viewer') {
+                if (action === 'view') item.style.display = hasImage ? 'flex' : 'none';
+                else item.style.display = 'none';
+                return;
+            }
             if (action === 'upload' || action === 'import') item.style.display = hasImage ? 'none' : 'flex';
             if (action === 'view' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'precintos-asignar' || action === 'precintos-liberar') {
@@ -3555,7 +3567,8 @@
     }
 
     // --- MANEJADORES DE EVENTOS ---
-    btnAddRow.addEventListener('click', function () {
+    if (btnAddRow) {
+        btnAddRow.addEventListener('click', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
         fetch(urlConSede("{{ url_for('handle_programacion') }}"), { method: 'POST' })
@@ -3574,6 +3587,7 @@
                 this.innerHTML = `<i class="fas fa-plus me-1"></i>Agregar`;
             });
     });
+    }
 
     tbody.addEventListener('input', function (e) {
         const cell = e.target.closest('td[data-field]');
