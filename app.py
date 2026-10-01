@@ -548,13 +548,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
     },
     "german.galvis@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "facturacion"] 
     },
     "production@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -7302,23 +7302,37 @@ def barcaza_bita():
         .filter(RegistroBarcazaBita.id.in_(subquery)).all())
 
     # 3. Preparar los datos
+    caps_bita = {t["TK"]: (t["MAX_CAP"], t["PRODUCTO"]) for t in PLANILLA_BARCAZA_BITA}
     datos_para_plantilla = []
     if registros_recientes:
         for r in registros_recientes:
+            cfg = caps_bita.get(r.tk, (r.max_cap, r.producto))
             datos_para_plantilla.append({
-                "TK": r.tk, "PRODUCTO": r.producto, "MAX_CAP": r.max_cap,
+                "TK": r.tk, "PRODUCTO": cfg[1] or r.producto, "MAX_CAP": cfg[0] or r.max_cap,
                 "BLS_60": r.bls_60 or "", "API": r.api or "", "BSW": r.bsw or "", "S": r.s or ""
             })
+        # Asegurar que cualquier tanque de PLANILLA_BARCAZA_BITA que no tenga registro histórico aún, aparezca
+        tks_existentes = {t["TK"] for t in datos_para_plantilla}
+        for tk_def in PLANILLA_BARCAZA_BITA:
+            if tk_def["TK"] not in tks_existentes:
+                datos_para_plantilla.append(dict(tk_def))
     else:
         datos_para_plantilla = [dict(t) for t in PLANILLA_BARCAZA_BITA]
 
     for tk in datos_para_plantilla:
         enriquecer_tanque(tk)
 
-    # 4. Lógica para separar en grupos
+    # 4. Lógica para ordenar y separar en grupos según el orden oficial de PLANILLA_BARCAZA_BITA
+    orden_bita = [t["TK"] for t in PLANILLA_BARCAZA_BITA]
+    orden_bita_map = {tk: i for i, tk in enumerate(orden_bita)}
+
+    def ordenar_bita(lista, prefijo):
+        sub = [tk for tk in lista if tk.get('TK', '').startswith(prefijo)]
+        return sorted(sub, key=lambda x: orden_bita_map.get(x.get('TK'), 999))
+
     grupos = {
-        "BARCAZA MARINSE": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('MARI')],
-        "BARCAZA OILTECH": [tk for tk in datos_para_plantilla if tk.get('TK', '').startswith('OID')]
+        "BARCAZA MARINSE": ordenar_bita(datos_para_plantilla, 'MARI'),
+        "BARCAZA OILTECH": ordenar_bita(datos_para_plantilla, 'OID')
     }
 
     disponibilidad = _disponibilidad_barcazas('BITA')
@@ -9297,15 +9311,30 @@ def reporte_barcaza_bita():
         .filter(RegistroBarcazaBita.id.in_(subquery)).all())
 
     # Preparar los datos y estadísticas para el reporte
+    caps_bita = {t["TK"]: (t["MAX_CAP"], t["PRODUCTO"]) for t in PLANILLA_BARCAZA_BITA}
     datos_reporte = []
     if registros_recientes:
         for r in registros_recientes:
+            cfg = caps_bita.get(r.tk, (r.max_cap, r.producto))
             datos_reporte.append({
-                "TK": r.tk, "PRODUCTO": r.producto, "MAX_CAP": r.max_cap,
+                "TK": r.tk, "PRODUCTO": cfg[1] or r.producto, "MAX_CAP": cfg[0] or r.max_cap,
                 "BLS_60": r.bls_60, "API": r.api, "BSW": r.bsw, "S": r.s
             })
+        tks_existentes = {t["TK"] for t in datos_reporte}
+        for tk_def in PLANILLA_BARCAZA_BITA:
+            if tk_def["TK"] not in tks_existentes:
+                nuevo = dict(tk_def)
+                nuevo.update({"BLS_60": 0.0, "API": 0.0, "BSW": 0.0, "S": 0.0})
+                datos_reporte.append(nuevo)
+    else:
+        datos_reporte = [dict(t) for t in PLANILLA_BARCAZA_BITA]
+
     for tk in datos_reporte:
         enriquecer_tanque(tk)
+
+    orden_bita = [t["TK"] for t in PLANILLA_BARCAZA_BITA]
+    orden_bita_map = {tk: i for i, tk in enumerate(orden_bita)}
+    datos_reporte.sort(key=lambda x: orden_bita_map.get(x.get('TK'), 999))
 
     total_consolidado = calcular_estadisticas(datos_reporte)
     tanques_marinse = [tk for tk in datos_reporte if tk.get('TK','').startswith('MARI')]
@@ -10423,6 +10452,9 @@ def exportar_excel(nombre_reporte):
             subquery_base = db.session.query(RegistroBarcazaBita.tk, func.max(RegistroBarcazaBita.timestamp).label('max_timestamp'))
             subquery = subquery_base.filter(RegistroBarcazaBita.timestamp <= timestamp_limite).group_by(RegistroBarcazaBita.tk).subquery() if timestamp_limite else subquery_base.group_by(RegistroBarcazaBita.tk).subquery()
             registros_db = db.session.query(RegistroBarcazaBita).join(subquery, (RegistroBarcazaBita.tk == subquery.c.tk) & (RegistroBarcazaBita.timestamp == subquery.c.max_timestamp)).all()
+            orden_bita = [t["TK"] for t in PLANILLA_BARCAZA_BITA]
+            orden_bita_map = {tk: i for i, tk in enumerate(orden_bita)}
+            registros_db = sorted(registros_db, key=lambda r: orden_bita_map.get(r.tk, 99))
             columnas = ["tk", "producto", "max_cap", "bls_60", "api", "bsw", "s"]
 
     # --- Lógica para Variaciones de Tanques (serie diaria) ---
@@ -11293,6 +11325,9 @@ def descargar_reporte_bita_pdf():
         return redirect(url_for('reporte_barcaza_bita'))
 
     # --- Limpieza de datos para prevenir el TypeError ---
+    orden_bita = [t["TK"] for t in PLANILLA_BARCAZA_BITA]
+    orden_bita_map = {tk: i for i, tk in enumerate(orden_bita)}
+
     datos_reporte = [{
         "TK": r.tk, "PRODUCTO": r.producto,
         "MAX_CAP": r.max_cap or 0.0,
@@ -11301,6 +11336,7 @@ def descargar_reporte_bita_pdf():
         "BSW": r.bsw or 0.0,
         "S": r.s or 0.0
     } for r in registros_recientes]
+    datos_reporte.sort(key=lambda x: orden_bita_map.get(x.get('TK'), 999))
     
     # Preparar datos y estadísticas con los datos ya limpios
     total_consolidado = calcular_estadisticas(datos_reporte)
