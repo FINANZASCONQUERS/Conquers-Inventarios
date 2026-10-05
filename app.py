@@ -542,7 +542,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "David Restrepo",
         "rol": "viewer",
-        "area": ["reportes", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante"] 
+        "area": ["reportes", "reporte_madrid", "programacion_cargue", "programacion_cargue_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo"]
     },
     "finance@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
