@@ -548,7 +548,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion", "barcaza_orion", "barcaza_bita"] 
     },
     "german.galvis@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
