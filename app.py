@@ -548,13 +548,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion", "barcaza_orion", "barcaza_bita"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion", "reporte_barcazas"]
     },
     "german.galvis@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "German Galvis",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion"] 
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "control_remolcadores", "flujo_efectivo", "modelo_optimizacion", "programacion_cargue", "programacion_cargue_madrid", "facturacion", "reporte_barcazas"] 
     },
     "production@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -745,10 +745,10 @@ MODULE_ROUTE_MAP = [
     (r'^/api/barcaza_bita', ['barcaza_bita']),
     (r'^/guardar_registro_barcaza', ['barcaza_orion']),
     (r'^/guardar-registro-bita', ['barcaza_bita']),
-    (r'^/api/barcazas', ['barcaza_orion', 'barcaza_bita', 'reportes']),
-    (r'^/reporte_barcaza', ['reportes', 'barcaza_orion', 'barcaza_bita']),
-    (r'^/descargar-reporte-orion-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
-    (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita']),
+    (r'^/api/barcazas', ['barcaza_orion', 'barcaza_bita', 'reportes', 'reporte_barcazas', 'reporte_barcaza']),
+    (r'^/reporte_barcaza', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
+    (r'^/descargar-reporte-orion-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
+    (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
     (r'^/reporte_planta_madrid(?:$|[/?#])', ['reporte_madrid', 'planta_madrid']),
     (r'^/descargar-reporte-planta-madrid-pdf', ['reporte_madrid', 'planta_madrid']),
     (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
@@ -1127,12 +1127,13 @@ def _init_tanques_planta():
 
         defaults = [
             {"nombre": "TK-109", "producto": "CRUDO RF.", "cap": 22000, "conv": "NONE",       "orden": 1},
-            {"nombre": "TK-110", "producto": "FO4",       "cap": 22000, "conv": "BBL_TO_TON", "orden": 2},
-            {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 6},
-            {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 3},
-            {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 4},
-            {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 5},
-            {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 7},
+            {"nombre": "TK-110", "producto": "CRUDO RF.", "cap": 22000, "conv": "NONE",       "orden": 2},
+            {"nombre": "TK-107", "producto": "FO4",       "cap": 30000, "conv": "BBL_TO_TON", "orden": 3},
+            {"nombre": "TK-01",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 4},
+            {"nombre": "TK-02",  "producto": "DILUYENTE", "cap": 450,   "conv": "NONE",       "orden": 5},
+            {"nombre": "TK-102", "producto": "IFO",       "cap": 4100,  "conv": "BBL_TO_TON", "orden": 6},
+            {"nombre": "TK-108", "producto": "FO6",       "cap": 28000, "conv": "BBL_TO_TON", "orden": 7},
+            {"nombre": "Consumo Interno", "producto": "DILUYENTE", "cap": 124.78, "conv": "BBL_TO_GAL", "orden": 8},
         ]
         
         for d in defaults:
@@ -3141,11 +3142,12 @@ def _expand_preview_rows(datos, max_rows=200):
    
 PLANILLA_PLANTA = [
     {"TK": "TK-109", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-110", "PRODUCTO": "FO4",       "MAX_CAP": 22000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
-    {"TK": "TK-108", "PRODUCTO": "FO6",       "MAX_CAP": 28000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-110", "PRODUCTO": "CRUDO RF.", "MAX_CAP": 22000, "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-107", "PRODUCTO": "FO4",       "MAX_CAP": 30000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-01",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-02",  "PRODUCTO": "DILUYENTE", "MAX_CAP": 450,   "TIPO_CONVERSION": "NONE",       "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "TK-102", "PRODUCTO": "IFO",       "MAX_CAP": 4100,  "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
+    {"TK": "TK-108", "PRODUCTO": "FO6",       "MAX_CAP": 28000, "TIPO_CONVERSION": "BBL_TO_TON", "CONVERSION_VALOR": None, "BLS_60": "", "API": "", "BSW": "", "S": ""},
     {"TK": "Consumo Interno", "PRODUCTO": "DILUYENTE", "MAX_CAP": 124.78, "MAX_CAP_GAL": 5240.91, "FILL_CAP_GAL": 4765.16, "TIPO_CONVERSION": "BBL_TO_GAL", "CONVERSION_VALOR": 42.0, "BLS_60": "", "API": "", "BSW": "", "S": ""}
 ]
 
@@ -5219,11 +5221,11 @@ def planta():
     
     # Si la tabla está vacía (fallback extremo), usamos la lista hardcoded para no romper
     if not tanques_conf:
-         orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
+         orden_deseado = ["TK-109", "TK-110", "TK-107", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
          orden_map = {tk: i for i, tk in enumerate(orden_deseado)}
          datos_por_tk = {fila["TK"]: dict(fila) for fila in PLANILLA_PLANTA}
-         # Añadir tipo conversión default: solo 110, 108 y 102 llevan BBL_TO_TON
-         allowed_ton = {'TK-110', 'TK-108', 'TK-102'}
+         # Añadir tipo conversión default: solo 107, 108 y 102 llevan BBL_TO_TON
+         allowed_ton = {'TK-107', 'TK-108', 'TK-102'}
          for k, v in datos_por_tk.items():
              v['TIPO_CONVERSION'] = 'BBL_TO_GAL' if k == 'Consumo Interno' else ('BBL_TO_TON' if k in allowed_ton else 'NONE')
     else:
@@ -5554,7 +5556,7 @@ def reporte_planta():
         defaults_map = {t.nombre: {"TK": t.nombre, "PRODUCTO": t.producto_actual, "MAX_CAP": t.capacidad_maxima} for t in tanques_db}
         lista_definiciones = defaults_map.values()
     else:
-        orden_deseado = ["TK-109", "TK-110", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
+        orden_deseado = ["TK-109", "TK-110", "TK-107", "TK-01", "TK-02", "TK-102", "TK-108", "Consumo Interno"]
         defaults_map = {fila["TK"]: fila for fila in PLANILLA_PLANTA}
         lista_definiciones = PLANILLA_PLANTA
 
@@ -9209,7 +9211,7 @@ def home_siza():
 
 @app.route('/reporte_barcaza')
 @login_required
-@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza'])
 def reporte_barcaza():
     # 1. Lógica del filtro de fecha (idéntica a la que ya usamos)
     fecha_str = request.args.get('fecha')
@@ -9295,7 +9297,7 @@ def reporte_barcaza():
 
 @app.route('/reporte_barcaza_bita')
 @login_required
-@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza'])
 def reporte_barcaza_bita():
     # La lógica de consulta es idéntica a la de la planilla
     fecha_str = request.args.get('fecha')
@@ -9667,39 +9669,42 @@ def dashboard_reportes():
         })
 
     # 7b. Barcaza Orion
-    if is_admin or 'barcaza_orion' in user_areas:
+    tiene_rep_barcazas = 'reporte_barcazas' in user_areas or 'reporte_barcaza' in user_areas
+    if is_admin or 'barcaza_orion' in user_areas or tiene_rep_barcazas:
+        solo_rep_orion = not is_admin and 'barcaza_orion' not in user_areas
         modulos_usuario.append({
             'id': 'barcaza_orion',
             'categoria': 'Barcazas',
-            'titulo': 'Barcaza Orion',
-            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza Orion (Manzanillo, CR, Margoth, Odisea).',
+            'titulo': 'Reporte Barcaza Orion' if solo_rep_orion else 'Barcaza Orion',
+            'descripcion': 'Reporte interactivo y monitoreo de inventario de la barcaza Orion.' if solo_rep_orion else 'Planilla de inventario y reporte operativo de la barcaza Orion (Manzanillo, CR, Margoth, Odisea).',
             'icono': 'bi-water',
             'color': 'primary',
             'bg_gradient': 'linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%)',
             'color_hex': '#2563EB',
             'badge': 'Barcazas',
-            'url_principal': url_for('barcaza_orion'),
-            'nombre_btn': 'Planilla Orion',
-            'sub_links': [
+            'url_principal': url_for('reporte_barcaza') if solo_rep_orion else url_for('barcaza_orion'),
+            'nombre_btn': 'Ver Reporte Orion' if solo_rep_orion else 'Planilla Orion',
+            'sub_links': [] if solo_rep_orion else [
                 {'nombre': 'Reporte Orion', 'url': url_for('reporte_barcaza'), 'icono': 'bi-file-earmark-bar-graph'}
             ]
         })
 
     # 7c. Barcaza BITA
-    if is_admin or 'barcaza_bita' in user_areas:
+    if is_admin or 'barcaza_bita' in user_areas or tiene_rep_barcazas:
+        solo_rep_bita = not is_admin and 'barcaza_bita' not in user_areas
         modulos_usuario.append({
             'id': 'barcaza_bita',
             'categoria': 'Barcazas',
-            'titulo': 'Barcaza BITA',
-            'descripcion': 'Planilla de inventario y reporte operativo de la barcaza BITA (Marinse, Oiltech).',
+            'titulo': 'Reporte Barcaza BITA' if solo_rep_bita else 'Barcaza BITA',
+            'descripcion': 'Reporte interactivo y monitoreo de inventario de la barcaza BITA.' if solo_rep_bita else 'Planilla de inventario y reporte operativo de la barcaza BITA (Marinse, Oiltech).',
             'icono': 'bi-tsunami',
             'color': 'info',
             'bg_gradient': 'linear-gradient(135deg, #CFFAFE 0%, #A5F3FC 100%)',
             'color_hex': '#0891B2',
             'badge': 'Barcazas',
-            'url_principal': url_for('barcaza_bita'),
-            'nombre_btn': 'Planilla BITA',
-            'sub_links': [
+            'url_principal': url_for('reporte_barcaza_bita') if solo_rep_bita else url_for('barcaza_bita'),
+            'nombre_btn': 'Ver Reporte BITA' if solo_rep_bita else 'Planilla BITA',
+            'sub_links': [] if solo_rep_bita else [
                 {'nombre': 'Reporte BITA', 'url': url_for('reporte_barcaza_bita'), 'icono': 'bi-file-earmark-bar-graph'}
             ]
         })
@@ -10682,7 +10687,7 @@ def descargar_reporte_variaciones_pdf():
             prev = bls
 
     # Orden sugerido
-    orden = ['TK-109','TK-110','TK-102','TK-01','TK-02']
+    orden = ['TK-109', 'TK-110', 'TK-107', 'TK-108', 'TK-102', 'TK-01', 'TK-02']
     tanques_ordenados = sorted(por_tanque.keys(), key=lambda k: (orden.index(k) if k in orden else 999, k))
 
     # Calcular estadísticas por tanque y globales
@@ -11157,7 +11162,7 @@ def descargar_reporte_planta_madrid_pdf():
 
 @app.route('/descargar-reporte-orion-pdf')
 @login_required
-@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza'])
 def descargar_reporte_orion_pdf():
     # --- La lógica de filtros se mantiene igual ---
     fecha_str = request.args.get('fecha', date.today().isoformat())
@@ -11278,7 +11283,7 @@ def descargar_reporte_orion_pdf():
 
 @app.route('/descargar-reporte-bita-pdf')
 @login_required
-@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita'])
+@permiso_requerido(['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza'])
 def descargar_reporte_bita_pdf():
     # --- Lógica para manejar los filtros avanzados ---
     filtro_tipo = request.args.get('filtro_tipo')
@@ -13990,7 +13995,7 @@ def handle_programacion():
     """Obtiene o crea registros de programación de la sede pedida (?sede=)."""
     sede = _sede_de_la_peticion()
     if request.method == 'POST':
-        if session.get('rol') == 'viewer':
+        if session.get('rol') == 'viewer' or (sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com'):
             return jsonify(success=False, message="Acceso denegado: los usuarios con rol de visualizador no pueden crear registros."), 403
         # Lógica para crear un nuevo registro vacío
         nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'), sede=sede)
@@ -14688,6 +14693,10 @@ def update_programacion(id):
         # El admin puede editar todos los campos excepto los de auditoría que son automáticos.
         campos_permitidos = [c.name for c in ProgramacionCargue.__table__.columns if c.name not in ['id', 'ultimo_editor', 'fecha_actualizacion']]
 
+    # Ana María Gallo es solo lectura en Madrid
+    if registro.sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com':
+        campos_permitidos = []
+
     if session.get('rol') == 'viewer' or not campos_permitidos:
         return jsonify(success=False, message="No tienes permisos para editar."), 403
 
@@ -15200,6 +15209,8 @@ def upload_programacion_image(id):
     if session.get('rol') == 'viewer':
         return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
+    if registro.sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com':
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura para esta sede."), 403
     try:
         # Verificar archivo
         if 'imagen' not in request.files:

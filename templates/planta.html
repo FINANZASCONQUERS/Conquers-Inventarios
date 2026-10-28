@@ -96,7 +96,7 @@
         border: 1px solid var(--border-color, #e2e8f0);
         border-radius: 30px;
         padding: 4px;
-        box-shadow: inset 0 1px 3px rgba(0,0,0,0.06);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
     }
 
     .sede-pill {
@@ -854,7 +854,8 @@
                                     <label class="form-label">Regla de Conversión</label>
                                     <select class="form-select" id="tk_conversion">
                                         <option value="NONE">Sin conversión</option>
-                                        <option value="BBL_TO_TON">Barriles a Toneladas (Usa API) - Solo 110, 108, 102</option>
+                                        <option value="BBL_TO_TON">Barriles a Toneladas (Usa API) - Solo 110, 108, 102
+                                        </option>
                                         <option value="BBL_TO_GAL">Barriles a Galones ( * 42)</option>
                                         <option value="GAL_TO_BBL">Galones a Barriles ( / 42)</option>
                                     </select>
@@ -1214,10 +1215,10 @@
         else if (conversionType === 'BBL_TO_TON') {
             // REGLA: Conversión a toneladas ÚNICAMENTE para tanques 110, 108 y 102.
             // Diluyente (TK-01, TK-02) y Crudo (TK-109) no lo llevan.
-            const allowedTonTanks = ['TK-110', 'TK-108', 'TK-102'];
+            const allowedTonTanks = ['TK-107', 'TK-108', 'TK-102'];
             const esTanquePermitido = allowedTonTanks.includes(tk) || (
-                (tk.includes('110') || tk.includes('108') || tk.includes('102')) &&
-                !tk.includes('109') && !tk.includes('01') && !tk.includes('02') &&
+                (tk.includes('107') || tk.includes('108') || tk.includes('102')) &&
+                !tk.includes('109') && !tk.includes('110') && !tk.includes('01') && !tk.includes('02') &&
                 !prod.includes('CRUDO') && !prod.includes('DILUYENTE')
             );
 
@@ -1237,7 +1238,7 @@
                 } else {
                     let tons = 0;
                     if (tk === 'TK-102' || tk.includes('102')) tons = bls / 6.7;
-                    else if (tk === 'TK-110' || tk.includes('110')) tons = bls / 7.4;
+                    else if (tk === 'TK-107' || tk.includes('107')) tons = bls / 7.4;
                     else if (tk === 'TK-108' || tk.includes('108')) tons = bls / 6.7;
                     resultHTML = tons > 0 ? tons.toFixed(2) : "—";
                 }
