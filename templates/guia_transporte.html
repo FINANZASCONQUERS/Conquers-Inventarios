@@ -1764,6 +1764,10 @@
                 <i class="bi bi-geo-alt-fill"></i> MADRID
             </button>
         </div>
+        <button type="button" id="btn-configurar-sede" class="btn btn-outline-primary" onclick="abrirModalConfigurarSede()" title="Configurar Planta y Origen de la sede activa"
+            style="margin-right: 12px; font-weight: 600; padding: 9px 13px; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="bi bi-gear-fill"></i> Configurar Sede
+        </button>
         <button onclick="validarYImprimir()" class="btn btn-primary">
             <i class="bi bi-printer"></i> Imprimir Guía
         </button>
@@ -1888,7 +1892,7 @@
             <div class="calib-mira" id="calib-mira-b"></div>
             <div class="fila">
                 <div class="campo lugar-fecha sin-borde" data-campo="fecha"><input id="fechaExpEDICION" readonly></div>
-                <div class="campo planta-productor sin-borde" data-campo="planta"><input id="plantaProductor"
+                <div class="campo planta-productor sin-borde" data-campo="planta" title="Doble clic para configurar Planta y Origen"><input id="plantaProductor" style="cursor: pointer;" ondblclick="abrirModalConfigurarSede()"
                         value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
                 <div class="campo factura-remision sin-borde" data-campo="factura"><input id="facturaRemision"
                         placeholder="FACTURA O REMISIÓN N°" value="{{ datos_guia.factura_remision }}"></div>
@@ -1960,7 +1964,7 @@
                         placeholder="PLACA DEL TANQUE"></div>
             </div>
             <div class="fila">
-                <div class="campo lugar-origen sin-borde" data-campo="origen"><input id="lugarOrigen"
+                <div class="campo lugar-origen sin-borde" data-campo="origen" title="Doble clic para configurar Planta y Origen"><input id="lugarOrigen" style="cursor: pointer;" ondblclick="abrirModalConfigurarSede()"
                         value="SOCIEDAD PORTUARIA DEL DIQUE" readonly></div>
                 <div class="campo fecha-hora-salida sin-borde" data-campo="fechaSalida"><input id="fechaHoraSalida"
                         readonly></div>
@@ -3359,11 +3363,11 @@
         // ═══════════════════════════════════════════════════
         // SELECTOR DE SEDE: CARTAGENA / MADRID
         // ═══════════════════════════════════════════════════
-        const SEDES_CONFIG = {
+        const SEDES_DEFAULT_CONFIG = {
             cartagena: {
                 nombre: 'CARTAGENA',
-                planta: 'CI CONQUERS WORLD TRADE SAS',
-                origen: 'CI CONQUERS WORLD TRADE SAS'
+                planta: 'SOCIEDAD PORTUARIA DEL DIQUE',
+                origen: 'SOCIEDAD PORTUARIA DEL DIQUE'
             },
             madrid: {
                 nombre: 'MADRID',
@@ -3371,6 +3375,148 @@
                 origen: 'CI CONQUERS WORLD TRADE SAS'
             }
         };
+
+        function obtenerConfigSede(sede) {
+            sede = (sede || 'cartagena').toLowerCase();
+            const def = SEDES_DEFAULT_CONFIG[sede] || SEDES_DEFAULT_CONFIG.cartagena;
+            try {
+                const guardado = localStorage.getItem('sede_custom_config_' + sede);
+                if (guardado) {
+                    const parsed = JSON.parse(guardado);
+                    return {
+                        nombre: def.nombre,
+                        planta: parsed.planta || def.planta,
+                        origen: parsed.origen || def.origen
+                    };
+                }
+            } catch (e) {
+                console.error("Error leyendo configuración personalizada de sede:", e);
+            }
+            return { ...def };
+        }
+
+        function guardarConfigSede(sede, config) {
+            sede = (sede || 'cartagena').toLowerCase();
+            try {
+                localStorage.setItem('sede_custom_config_' + sede, JSON.stringify({
+                    planta: config.planta,
+                    origen: config.origen
+                }));
+            } catch (e) {
+                console.error("Error guardando configuración de sede:", e);
+            }
+        }
+
+        // Proxy dinámico para mantener compatibilidad total con cualquier lectura a SEDES_CONFIG
+        const SEDES_CONFIG = new Proxy(SEDES_DEFAULT_CONFIG, {
+            get(target, prop) {
+                if (typeof prop === 'string' && (prop.toLowerCase() === 'cartagena' || prop.toLowerCase() === 'madrid')) {
+                    return obtenerConfigSede(prop.toLowerCase());
+                }
+                return target[prop];
+            }
+        });
+
+        function abrirModalConfigurarSede() {
+            const sedeActual = (localStorage.getItem('sede_guia') || 'cartagena').toLowerCase();
+            const configActual = obtenerConfigSede(sedeActual);
+            const nombreSede = configActual.nombre;
+
+            Swal.fire({
+                title: `<i class="bi bi-gear-fill text-primary me-2"></i>Configurar Sede ${nombreSede}`,
+                html: `
+                    <div style="text-align: left; font-size: 14px; margin-top: 10px;">
+                        <p class="text-muted mb-3" style="font-size: 13px;">
+                            Personaliza la <strong>Planta Productor</strong> y el <strong>Lugar de Origen</strong> que se cargarán automáticamente al seleccionar la sede <strong>${nombreSede}</strong>.
+                        </p>
+                        <div class="mb-3">
+                            <label for="swal-planta" class="form-label fw-bold mb-1" style="font-size: 12px; color: #333;">PLANTA PRODUCTOR:</label>
+                            <input id="swal-planta" class="form-control" value="${configActual.planta}" style="font-size: 13px; font-weight: 600; text-transform: uppercase;">
+                        </div>
+                        <div class="mb-3">
+                            <label for="swal-origen" class="form-label fw-bold mb-1" style="font-size: 12px; color: #333;">LUGAR DE ORIGEN:</label>
+                            <input id="swal-origen" class="form-control" value="${configActual.origen}" style="font-size: 13px; font-weight: 600; text-transform: uppercase;">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                            <span class="badge bg-light text-dark border"><i class="bi bi-geo-alt-fill text-primary"></i> Sede activa: ${nombreSede}</span>
+                            <button type="button" class="btn btn-sm btn-link text-danger text-decoration-none p-0" id="swal-btn-restablecer" style="font-size: 12px;">
+                                <i class="bi bi-arrow-counterclockwise"></i> Restablecer valores de fábrica
+                            </button>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-check-circle me-1"></i> Continuar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0d6efd',
+                cancelButtonColor: '#6c757d',
+                didOpen: () => {
+                    const btnRest = document.getElementById('swal-btn-restablecer');
+                    if (btnRest) {
+                        btnRest.addEventListener('click', () => {
+                            const def = SEDES_DEFAULT_CONFIG[sedeActual] || SEDES_DEFAULT_CONFIG.cartagena;
+                            document.getElementById('swal-planta').value = def.planta;
+                            document.getElementById('swal-origen').value = def.origen;
+                        });
+                    }
+                },
+                preConfirm: () => {
+                    const planta = (document.getElementById('swal-planta').value || '').trim().toUpperCase();
+                    const origen = (document.getElementById('swal-origen').value || '').trim().toUpperCase();
+                    if (!planta || !origen) {
+                        Swal.showValidationMessage('Tanto la Planta Productor como el Lugar de Origen son obligatorios.');
+                        return false;
+                    }
+                    return { planta, origen };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const nuevaPlanta = result.value.planta;
+                    const nuevoOrigen = result.value.origen;
+
+                    // Si no hubo cambios, no requerir confirmación
+                    if (nuevaPlanta === configActual.planta && nuevoOrigen === configActual.origen) {
+                        return;
+                    }
+
+                    // Mensaje de Advertencia y Confirmación
+                    Swal.fire({
+                        title: '¿Confirmar cambio para esta sede?',
+                        html: `
+                            <div style="text-align: left; font-size: 14px;">
+                                <p class="mb-2">Estás a punto de actualizar los valores por defecto para la sede <strong>${nombreSede}</strong>:</p>
+                                <div class="p-2 mb-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef; font-size: 13px;">
+                                    <div><strong>Planta:</strong> <span class="text-primary">${nuevaPlanta}</span></div>
+                                    <div class="mt-1"><strong>Origen:</strong> <span class="text-primary">${nuevoOrigen}</span></div>
+                                </div>
+                                <div class="alert alert-warning py-2 px-3 mb-0" style="font-size: 13px;">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                    <strong>Atención:</strong> Este cambio se mantendrá guardado para la sede <strong>${nombreSede}</strong>. La otra sede no se verá afectada.
+                                </div>
+                            </div>
+                        `,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#0d6efd',
+                        cancelButtonColor: '#dc3545',
+                        confirmButtonText: '<i class="bi bi-check2-circle me-1"></i> Sí, estoy seguro',
+                        cancelButtonText: 'Volver a revisar'
+                    }).then((conf) => {
+                        if (conf.isConfirmed) {
+                            guardarConfigSede(sedeActual, { planta: nuevaPlanta, origen: nuevoOrigen });
+                            aplicarSede(sedeActual);
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Configuración actualizada!',
+                                text: `Se guardaron los datos por defecto para la sede ${nombreSede}.`,
+                                timer: 2200,
+                                showConfirmButton: false
+                            });
+                        }
+                    });
+                }
+            });
+        }
 
         function cambiarSede(sede) {
             localStorage.setItem('sede_guia', sede);
