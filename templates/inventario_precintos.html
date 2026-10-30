@@ -1032,9 +1032,11 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-1">
-                        <span class="badge ${agotado ? 'bg-secondary-subtle text-secondary-emphasis' : 'bg-success-subtle text-success-emphasis'}">
-                            ${agotado ? 'Agotado' : 'Activo'}
+                        <span class="badge ${agotado ? 'bg-secondary-subtle text-secondary-emphasis' : (l.activo ? 'bg-success-subtle text-success-emphasis' : 'bg-warning-subtle text-warning-emphasis')}">
+                            ${agotado ? 'Agotado' : (l.activo ? 'Activo' : 'Inactivo')}
                         </span>
+                        ${PUEDE_REGISTRAR_LOTES && !agotado ? `<button class="pr-icobtn ${l.activo ? 'text-secondary' : 'text-success'}" data-toggle-lote="${l.id}" title="${l.activo ? 'Desactivar lote para despachos' : 'Activar lote para despachos'}">
+                            <i class="bi ${l.activo ? 'bi-pause-circle' : 'bi-play-circle'}"></i></button>` : ''}
                         ${PUEDE_REGISTRAR_LOTES ? `<button class="pr-icobtn pr-icobtn--anular" data-eliminar-lote="${l.id}" title="Eliminar lote">
                             <i class="bi bi-trash3"></i></button>` : ''}
                     </div>
@@ -1089,9 +1091,24 @@
         window.location = conSede('/api/precintos/exportar' + (estadoActual ? '?estado=' + estadoActual : ''));
     });
 
-    // Eliminar lote
+    // Eliminar o alternar estado de lote
     if (PUEDE_REGISTRAR_LOTES) {
         $('tablaLotes').addEventListener('click', async (ev) => {
+            const btnToggle = ev.target.closest('[data-toggle-lote]');
+            if (btnToggle) {
+                const loteId = btnToggle.dataset.toggleLote;
+                btnToggle.disabled = true;
+                try {
+                    const r = await fetch(conSede(`/api/precintos/lotes/${loteId}/toggle_activo`), { method: 'POST' });
+                    const d = await r.json();
+                    aviso(d.message, d.success ? 'success' : 'danger');
+                    if (d.success) recargarTodo();
+                } finally {
+                    btnToggle.disabled = false;
+                }
+                return;
+            }
+
             const btn = ev.target.closest('[data-eliminar-lote]');
             if (!btn) return;
             const loteId = btn.dataset.eliminarLote;

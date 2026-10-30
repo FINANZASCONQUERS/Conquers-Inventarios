@@ -2710,6 +2710,7 @@
                 const txt = (inp.value || 'DESTINO').toString();
                 wrap.textContent = txt.toUpperCase();
             }
+            if (typeof verificarEmpresaEspecialPlantaOrigen === 'function') verificarEmpresaEspecialPlantaOrigen();
         }
 
         // --- FUNCIONES DE SINCRONIZACIÓN PARA WRAPPERS DE DESPACHO, DIRECCIÓN Y CIUDAD ---
@@ -2717,6 +2718,7 @@
             const inp = document.getElementById('clienteNombreDisplay');
             const wrap = document.querySelector('.despacho .despacho-wrap');
             if (inp && wrap) wrap.textContent = (inp.value || 'SELECCIONE UN CLIENTE').toUpperCase();
+            if (typeof verificarEmpresaEspecialPlantaOrigen === 'function') verificarEmpresaEspecialPlantaOrigen();
         }
 
         function syncDireccionWrap() {
@@ -3585,7 +3587,50 @@
                     btnMadrid.style.color = '#555';
                 }
             }
+            verificarEmpresaEspecialPlantaOrigen();
         }
+
+        // Condición especial para ESTACION VASCONIA (VITOL COLOMBIA BLEND):
+        // En Cartagena, para esta empresa/destino, Planta y Origen cambian a "CI CONQUERS WORLD TRADE SAS" (como en Madrid)
+        function verificarEmpresaEspecialPlantaOrigen() {
+            const sedeActual = (localStorage.getItem('sede_guia') || 'cartagena').toLowerCase();
+            if (sedeActual !== 'cartagena') return;
+
+            const cliente = (document.getElementById('clienteNombreDisplay')?.value || '').toUpperCase();
+            const destino = (document.getElementById('destinoDireccion')?.value || '').toUpperCase();
+
+            const esVasconiaVitol = (
+                cliente.includes('VASCONIA') || cliente.includes('VITOL') ||
+                destino.includes('VASCONIA') || destino.includes('VITOL')
+            );
+
+            const plantaInput = document.getElementById('plantaProductor');
+            const origenInput = document.getElementById('lugarOrigen');
+            const config = SEDES_CONFIG.cartagena;
+
+            if (esVasconiaVitol) {
+                if (plantaInput) {
+                    plantaInput.value = 'CI CONQUERS WORLD TRADE SAS';
+                    plantaInput.style.textAlign = 'center';
+                    plantaInput.title = 'Condición especial (Vitol / Vasconia): CI CONQUERS WORLD TRADE SAS';
+                }
+                if (origenInput) {
+                    origenInput.value = 'CI CONQUERS WORLD TRADE SAS';
+                    origenInput.title = 'Condición especial (Vitol / Vasconia): CI CONQUERS WORLD TRADE SAS';
+                }
+            } else {
+                if (plantaInput) {
+                    plantaInput.value = config.planta;
+                    plantaInput.style.textAlign = 'left';
+                    plantaInput.title = 'Doble clic para configurar Planta y Origen';
+                }
+                if (origenInput) {
+                    origenInput.value = config.origen;
+                    origenInput.title = 'Doble clic para configurar Planta y Origen';
+                }
+            }
+        }
+
         function configurarEventosConductores() {
             const conductorInput = document.getElementById('conductorSelect');
             const cedulaInput = document.getElementById('cedulaConductor');
@@ -4133,6 +4178,7 @@
             if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
             if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
             if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+            if (typeof verificarEmpresaEspecialPlantaOrigen === 'function') verificarEmpresaEspecialPlantaOrigen();
 
             // Imprimir
             setTimeout(() => {
@@ -4232,6 +4278,7 @@
             if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
             if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
             if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+            if (typeof verificarEmpresaEspecialPlantaOrigen === 'function') verificarEmpresaEspecialPlantaOrigen();
 
             // Si todo está bien, imprimir (con tinta o láser, primero el recordatorio del diálogo)
             confirmarConfiguracionImpresora(false).then(ok => {
@@ -4275,6 +4322,7 @@
                 if (typeof syncCiudadWrap === 'function') syncCiudadWrap();
                 if (typeof syncHoraPrintWrap === 'function') syncHoraPrintWrap();
                 if (typeof ajustarTamanoFecha === 'function') ajustarTamanoFecha();
+                if (typeof verificarEmpresaEspecialPlantaOrigen === 'function') verificarEmpresaEspecialPlantaOrigen();
                 const contenedor = document.getElementById('contenedor-guia');
                 // IMPORTANTE: Limpiar el estilo inline para permitir que actúe el !important del @media print con el offset
                 if (contenedor) contenedor.style.transform = '';

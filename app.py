@@ -1,6 +1,6 @@
 from collections import defaultdict
 import requests
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, text
 import json
 import hashlib
 from datetime import datetime, time, date, timedelta
@@ -40,7 +40,7 @@ except Exception as e:
                 "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases"
             )
 import math
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, text
 from flask_migrate import Migrate
 import numpy as np
 import re
@@ -23359,6 +23359,9 @@ def _precintos_asegurar_esquema():
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_precinto_numero_disponible "
             "ON inventario_precintos (numero) WHERE estado = 'DISPONIBLE'"
         ))
+        db.session.execute(text(
+            "ALTER TABLE lotes_precintos ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT TRUE"
+        ))
         db.session.commit()
         _PRECINTOS_ESQUEMA_LISTO = True
     except Exception as e:
@@ -23452,29 +23455,53 @@ def _recalcular_texto_precintos(registro):
     return registro.precintos
 
 
-def _precintos_marca_agua(sede):
-    """El numero mas alto que ya salio de la bodega de `sede` (USADO o ANULADO).
+def _precintos_lotes_activos(sede):
+    """Devuelve los lotes activos que tienen presencia o stock en la sede,
+    ordenados del mas reciente al mas antiguo."""
+    lotes_con_sellos = [lid for (lid,) in db.session.query(InventarioPrecinto.lote_id)
+                        .filter(InventarioPrecinto.sede == sede,
+                                InventarioPrecinto.lote_id.isnot(None))
+                        .distinct().all()]
+    return (LotePrecintos.query
+            .filter(
+                or_(LotePrecintos.activo.is_(True), LotePrecintos.activo.is_(None)),
+                or_(LotePrecintos.sede == sede, LotePrecintos.id.in_(lotes_con_sellos))
+            )
+            .order_by(LotePrecintos.created_at.desc(), LotePrecintos.id.desc())
+            .all())
 
-    Se calcula por sede. Si fuera global, en cuanto Madrid gastara unos cuantos
-    sellos de un bloque mas alto que el de Cartagena, la marca de Cartagena
-    saltaria hasta alla y todo su stock quedaria por debajo: congelado.
 
-    El consecutivo no retrocede. Un numero por debajo de esta marca ya se gasto
-    fisicamente, asi que no puede volver a entregarse aunque su fila haya
-    quedado en DISPONIBLE -- y queda en DISPONIBLE mas seguido de lo que
-    parece: al editar a mano la celda de precintos de un cargue
-    (_sincronizar_precintos_manual), al liberar una fila, o al dar de alta un
-    lote cuyo rango arranca antes del consecutivo real.
+def _precintos_marca_agua_lote(lote_obj_o_id, sede):
+    """El numero mas alto que ya salio de la bodega de `sede` para este lote (USADO o ANULADO).
 
-    No se usa MAX() a secas: un solo numero mal digitado ('0005000' por
-    '000500') queda marcado USADO al final del lote y dispararia la marca hasta
-    alla, dejando el stock entero por debajo y bloqueando toda asignacion. Se
-    toma el ocupado mas alto que tenga vecinos ocupados cerca; lo que quede
-    aislado por encima se ignora, que es lo que ese numero es: un error.
+    Se calcula por lote y por sede. Al calcularse por lote, el consumo de un lote
+    con numeracion alta (ej. 15.101 - 15.300) no congela los lotes con numeracion
+    diferente (ej. 005.000 - 010.000).
     """
+    if not lote_obj_o_id:
+        return None
+    if isinstance(lote_obj_o_id, int):
+        lote = db.session.get(LotePrecintos, lote_obj_o_id)
+        lote_id = lote_obj_o_id
+    else:
+        lote = lote_obj_o_id
+        lote_id = lote.id
+
+    filtros = [
+        InventarioPrecinto.estado.in_(('USADO', 'ANULADO')),
+        InventarioPrecinto.sede == sede
+    ]
+    if lote and lote.rango_inicial is not None and lote.rango_final is not None:
+        filtros.append(or_(
+            InventarioPrecinto.lote_id == lote_id,
+            and_(InventarioPrecinto.numero >= lote.rango_inicial,
+                 InventarioPrecinto.numero <= lote.rango_final)
+        ))
+    else:
+        filtros.append(InventarioPrecinto.lote_id == lote_id)
+
     ocupados = [n for (n,) in db.session.query(InventarioPrecinto.numero)
-                .filter(InventarioPrecinto.estado.in_(('USADO', 'ANULADO')),
-                        InventarioPrecinto.sede == sede)
+                .filter(*filtros)
                 .order_by(InventarioPrecinto.numero.asc()).all()]
     if not ocupados:
         return None
@@ -23485,55 +23512,117 @@ def _precintos_marca_agua(sede):
     return ocupados[-1]
 
 
-def _precintos_contar_huecos(sede, marca=None):
-    """Cuantos DISPONIBLE quedaron por debajo de la marca: stock que no es stock."""
-    if marca is None:
-        marca = _precintos_marca_agua(sede)
-    if marca is None:
-        return 0
-    return (InventarioPrecinto.query
-            .filter(InventarioPrecinto.estado == 'DISPONIBLE',
-                    InventarioPrecinto.sede == sede,
-                    InventarioPrecinto.numero < marca)
-            .count())
+def _precintos_marca_agua(sede, lote=None):
+    """Marca de agua para un lote especifico o para el lote activo principal de la sede."""
+    if lote is not None:
+        return _precintos_marca_agua_lote(lote, sede)
+    lotes = _precintos_lotes_activos(sede)
+    for l in lotes:
+        m = _precintos_marca_agua_lote(l, sede)
+        q = InventarioPrecinto.query.filter(
+            InventarioPrecinto.lote_id == l.id,
+            InventarioPrecinto.sede == sede,
+            InventarioPrecinto.estado == 'DISPONIBLE'
+        )
+        if m is not None:
+            q = q.filter(InventarioPrecinto.numero > m)
+        if q.count() > 0:
+            return m
+    if lotes:
+        return _precintos_marca_agua_lote(lotes[0], sede)
+    return None
+
+
+def _precintos_contar_huecos(sede, lote=None):
+    """Cuantos DISPONIBLE quedaron por debajo de la marca de agua de su respectivo lote."""
+    if lote is not None:
+        m = _precintos_marca_agua_lote(lote, sede)
+        if m is None:
+            return 0
+        lid = lote.id if hasattr(lote, 'id') else lote
+        return (InventarioPrecinto.query
+                .filter(InventarioPrecinto.estado == 'DISPONIBLE',
+                        InventarioPrecinto.sede == sede,
+                        InventarioPrecinto.lote_id == lid,
+                        InventarioPrecinto.numero <= m)
+                .count())
+
+    total_huecos = 0
+    lotes = _precintos_lotes_activos(sede)
+    for l in lotes:
+        m = _precintos_marca_agua_lote(l, sede)
+        if m is not None:
+            h = (InventarioPrecinto.query
+                 .filter(InventarioPrecinto.estado == 'DISPONIBLE',
+                         InventarioPrecinto.sede == sede,
+                         InventarioPrecinto.lote_id == l.id,
+                         InventarioPrecinto.numero <= m)
+                 .count())
+            total_huecos += h
+    return total_huecos
 
 
 def _tomar_precintos_disponibles(cantidad, sede):
     """Bloquea y devuelve los siguientes N sellos del consecutivo.
 
-    Solo entrega numeros por encima de la marca de agua: entregar el minimo
-    DISPONIBLE a secas era repartir sellos ya gastados, porque los huecos que
-    quedan atras son siempre los numeros mas bajos y por lo tanto los primeros
-    de la cola.
-
-    `skip_locked` evita que dos usuarios asignando a la vez se lleven el mismo
-    consecutivo: el segundo salta las filas que el primero ya tiene tomadas.
+    Busca sellos disponibles en los lotes activos de la sede (priorizando el lote activo
+    mas reciente que tenga stock). Solo entrega numeros por encima de la marca de agua
+    de cada lote para evitar reutilizar sellos ya consumidos o huecos historicos.
     """
-    query = db.session.query(InventarioPrecinto).filter(
-        InventarioPrecinto.estado == 'DISPONIBLE',
-        InventarioPrecinto.sede == sede)
-    marca = _precintos_marca_agua(sede)
-    if marca is not None:
-        query = query.filter(InventarioPrecinto.numero > marca)
-    return (query
-            .order_by(InventarioPrecinto.numero.asc())
-            .limit(cantidad)
-            .with_for_update(skip_locked=True)
-            .all())
+    tomados = []
+    lotes = _precintos_lotes_activos(sede)
+
+    # 1. Tomar de los lotes activos (priorizando el lote mas reciente con stock)
+    for l in lotes:
+        if len(tomados) >= cantidad:
+            break
+        marca = _precintos_marca_agua_lote(l, sede)
+        q = db.session.query(InventarioPrecinto).filter(
+            InventarioPrecinto.estado == 'DISPONIBLE',
+            InventarioPrecinto.sede == sede,
+            InventarioPrecinto.lote_id == l.id
+        )
+        if marca is not None:
+            q = q.filter(InventarioPrecinto.numero > marca)
+
+        faltan = cantidad - len(tomados)
+        lote_tomados = (q.order_by(InventarioPrecinto.numero.asc())
+                        .limit(faltan)
+                        .with_for_update(skip_locked=True)
+                        .all())
+        tomados.extend(lote_tomados)
+
+    # 2. Si todavia faltan (o si hay sellos sin lote asignado)
+    if len(tomados) < cantidad:
+        faltan = cantidad - len(tomados)
+        ids_tomados = [p.id for p in tomados]
+        q_sueltos = db.session.query(InventarioPrecinto).filter(
+            InventarioPrecinto.estado == 'DISPONIBLE',
+            InventarioPrecinto.sede == sede,
+            InventarioPrecinto.lote_id.is_(None)
+        )
+        if ids_tomados:
+            q_sueltos = q_sueltos.filter(~InventarioPrecinto.id.in_(ids_tomados))
+        sueltos = (q_sueltos.order_by(InventarioPrecinto.numero.asc())
+                   .limit(faltan)
+                   .with_for_update(skip_locked=True)
+                   .all())
+        tomados.extend(sueltos)
+
+    return tomados
 
 
 def _precintos_mensaje_stock(faltante, pedidos, sede):
     """Explica por que no hay stock sin mentir sobre el conteo de DISPONIBLE."""
-    marca = _precintos_marca_agua(sede)
-    msg = ('Stock insuficiente en {}: solo quedan {} precintos por encima de {} y se '
+    resumen = _precintos_resumen(sede)
+    disponibles = resumen.get('disponibles', 0)
+    msg = ('Stock insuficiente en {}: solo quedan {} precintos disponibles y se '
            'pidieron {}. Registra o transfiere un lote.').format(
-        SEDE_ETIQUETAS.get(sede, sede), faltante,
-        _formatear_codigo_precinto(marca) if marca else 'el consecutivo', pedidos)
-    huecos = _precintos_contar_huecos(sede, marca)
+        SEDE_ETIQUETAS.get(sede, sede), disponibles, pedidos)
+    huecos = resumen.get('huecos', 0)
     if huecos:
-        msg += (' (Hay {} numeros marcados DISPONIBLE por debajo del consecutivo '
-                'que no se entregan porque ya se usaron. Si alguno sigue fisicamente '
-                'en bodega, revisalo con scripts/diagnostico_precintos.py.)').format(huecos)
+        msg += (' (Hay {} numeros marcados DISPONIBLE por debajo del consecutivo de su lote '
+                'que no se entregan porque ya se usaron.)').format(huecos)
     return msg
 
 
@@ -23582,40 +23671,71 @@ def _precintos_resumen(sede):
         .filter(InventarioPrecinto.sede == sede)
         .group_by(InventarioPrecinto.estado).all()
     )
-    disponibles = conteos.get('DISPONIBLE', 0)
     retirados = (InventarioPrecinto.query
                  .filter(InventarioPrecinto.estado == 'ANULADO',
                          InventarioPrecinto.sede == sede,
                          InventarioPrecinto.usuario_anulacion == PRECINTOS_USUARIO_AJUSTE)
                  .count())
-    # Los proximos tienen que salir de la misma regla que usa la asignacion, o
-    # la pagina anuncia un numero y el boton entrega otro.
-    marca = _precintos_marca_agua(sede)
-    q_proximos = InventarioPrecinto.query.filter(InventarioPrecinto.estado == 'DISPONIBLE',
-                                                 InventarioPrecinto.sede == sede)
-    if marca is not None:
-        q_proximos = q_proximos.filter(InventarioPrecinto.numero > marca)
-    proximos = (q_proximos.order_by(InventarioPrecinto.numero.asc())
-                .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
-    huecos = _precintos_contar_huecos(sede, marca)
-    disponibles = max(disponibles - huecos, 0)
+
+    lotes = _precintos_lotes_activos(sede)
+    proximos = []
+    marca_principal = None
+    lote_activo_principal = None
+    total_disponibles = 0
+    total_huecos = 0
+
+    for l in lotes:
+        m = _precintos_marca_agua_lote(l, sede)
+        q = InventarioPrecinto.query.filter(
+            InventarioPrecinto.estado == 'DISPONIBLE',
+            InventarioPrecinto.sede == sede,
+            InventarioPrecinto.lote_id == l.id
+        )
+        if m is not None:
+            total_huecos += q.filter(InventarioPrecinto.numero <= m).count()
+            q_disp = q.filter(InventarioPrecinto.numero > m)
+        else:
+            q_disp = q
+
+        disp_lote = q_disp.count()
+        total_disponibles += disp_lote
+
+        if not proximos and disp_lote > 0:
+            lote_activo_principal = l
+            marca_principal = m
+            proximos = (q_disp.order_by(InventarioPrecinto.numero.asc())
+                        .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
+
+    # Sellos sin lote
+    q_sin_lote = InventarioPrecinto.query.filter(
+        InventarioPrecinto.estado == 'DISPONIBLE',
+        InventarioPrecinto.sede == sede,
+        InventarioPrecinto.lote_id.is_(None)
+    )
+    total_disponibles += q_sin_lote.count()
+    if not proximos:
+        proximos = (q_sin_lote.order_by(InventarioPrecinto.numero.asc())
+                    .limit(PRECINTOS_CANTIDAD_DEFECTO).all())
+
     por_revisar = (InventarioPrecinto.query
                    .filter(InventarioPrecinto.sede == sede,
                            InventarioPrecinto.requiere_revision.is_(True)).count())
+
     return {
         'sede': sede,
         'sede_etiqueta': SEDE_ETIQUETAS.get(sede, sede),
-        'marca_agua': _formatear_codigo_precinto(marca) if marca is not None else None,
-        'disponibles': disponibles,
+        'marca_agua': _formatear_codigo_precinto(marca_principal) if marca_principal is not None else None,
+        'lote_activo': lote_activo_principal.nombre or f'{_formatear_codigo_precinto(lote_activo_principal.rango_inicial)} – {_formatear_codigo_precinto(lote_activo_principal.rango_final)}' if lote_activo_principal else None,
+        'disponibles': total_disponibles,
         'usados': conteos.get('USADO', 0),
         'anulados': conteos.get('ANULADO', 0) - retirados,
         'retirados': retirados,
-        'huecos': huecos,
+        'huecos': total_huecos,
         'por_revisar': por_revisar,
         'siguiente': proximos[0].codigo if proximos else None,
         'proximos': [p.codigo for p in proximos],
         'stock_minimo': PRECINTOS_STOCK_MINIMO,
-        'stock_bajo': disponibles < PRECINTOS_STOCK_MINIMO,
+        'stock_bajo': total_disponibles < PRECINTOS_STOCK_MINIMO,
         'cantidad_defecto': PRECINTOS_CANTIDAD_DEFECTO,
         'cantidad_maxima': PRECINTOS_CANTIDAD_MAXIMA,
     }
@@ -23841,6 +23961,7 @@ def api_precintos_lotes():
             'usuario_registro': l.usuario_registro or '',
             'observaciones': l.observaciones or '',
             'es_historico': bool(l.es_historico),
+            'activo': bool(l.activo if l.activo is not None else True),
             'sede_registro': l.sede or SEDE_POR_DEFECTO,
         })
     return jsonify(success=True, lotes=data)
@@ -23970,6 +24091,30 @@ def api_precintos_eliminar_lote(lote_id):
     return jsonify(
         success=True,
         message='Lote {} eliminado ({:,} precintos removidos).'.format(lote_id, total_borrados),
+        resumen=_precintos_resumen(sede_pagina)
+    )
+
+
+@app.route('/api/precintos/lotes/<int:lote_id>/toggle_activo', methods=['POST'])
+@login_required
+@permiso_requerido('precintos')
+def api_precintos_toggle_activo_lote(lote_id):
+    """Activa o desactiva un lote para asignacion de precintos."""
+    if not _precintos_puede_registrar_lotes():
+        return jsonify(success=False, message='No tienes permiso para modificar lotes.'), 403
+    _precintos_asegurar_esquema()
+    sede_pagina = _sede_precintos_de_la_peticion()
+    lote = db.session.get(LotePrecintos, lote_id)
+    if not lote:
+        return jsonify(success=False, message='Lote no encontrado.'), 404
+
+    lote.activo = not bool(lote.activo if lote.activo is not None else True)
+    db.session.commit()
+    estado_txt = 'activado' if lote.activo else 'desactivado'
+    return jsonify(
+        success=True,
+        message=f'Lote {_formatear_codigo_precinto(lote.rango_inicial)} – {_formatear_codigo_precinto(lote.rango_final)} {estado_txt}.',
+        activo=lote.activo,
         resumen=_precintos_resumen(sede_pagina)
     )
 
@@ -24349,7 +24494,7 @@ def api_precintos_transferir():
         if not 1 <= pedidos <= PRECINTOS_TRANSFERENCIA_MAXIMA:
             return jsonify(success=False, message='La cantidad debe estar entre 1 y {:,}.'.format(
                 PRECINTOS_TRANSFERENCIA_MAXIMA)), 400
-        marca = _precintos_marca_agua(origen)
+        marca = _precintos_marca_agua(origen, lote=lote)
         q = InventarioPrecinto.query.filter(InventarioPrecinto.lote_id == lote.id,
                                             InventarioPrecinto.sede == origen,
                                             InventarioPrecinto.estado == 'DISPONIBLE')
@@ -24403,7 +24548,7 @@ def api_precintos_transferir():
                 no_disponibles.append(n)
             elif (vivo.sede or SEDE_POR_DEFECTO) != origen:
                 ajenos.append(n)
-            elif marca_origen is not None and n <= marca_origen:
+            elif (vivo.lote_id and _precintos_marca_agua(origen, lote=vivo.lote_id) is not None and n <= _precintos_marca_agua(origen, lote=vivo.lote_id)):
                 gastados.append(n)
             else:
                 mover.append(vivo)
