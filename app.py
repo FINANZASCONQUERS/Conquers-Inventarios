@@ -500,7 +500,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Logistics Madrid",
         "rol": "editor",
-        "area": ["programacion_cargue_madrid", "reporte_madrid", "precintos"]
+        "area": ["programacion_cargue_madrid", "reporte_madrid", "precintos", "guia_transporte"]
     },
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -7551,11 +7551,15 @@ def guia_transporte():
     
     # Pasamos el diccionario 'datos_guia' y la lista de clientes fresca a la plantilla HTML.
     clientes = cargar_clientes()
+    sedes = _sedes_programacion_usuario()
+    sede_defecto = 'madrid' if sedes == ['MADRID'] else 'cartagena'
     return render_template(
         "guia_transporte.html", 
         nombre=session.get("nombre"),
         datos_guia=datos_guia,
-        lista_clientes=clientes
+        lista_clientes=clientes,
+        sedes_usuario=sedes,
+        sede_predeterminada=sede_defecto
     )
 
 @app.route('/dashboard-siza')

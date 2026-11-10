@@ -1755,14 +1755,18 @@
         <!-- Selector de Sede Cartagena / Madrid -->
         <div id="sede-selector"
             style="display: inline-flex; align-items: center; gap: 0; margin-right: 12px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.15); border: 2px solid #0d6efd;">
+            {% if not sedes_usuario or 'CARTAGENA' in sedes_usuario or session.get('rol') == 'admin' %}
             <button type="button" id="btn-sede-cartagena" class="btn-sede active" onclick="cambiarSede('cartagena')"
                 style="padding: 10px 18px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #0d6efd, #0a58ca); color: white; display: flex; align-items: center; gap: 6px;">
                 <i class="bi bi-geo-alt-fill"></i> CARTAGENA
             </button>
+            {% endif %}
+            {% if not sedes_usuario or 'MADRID' in sedes_usuario or session.get('rol') == 'admin' %}
             <button type="button" id="btn-sede-madrid" class="btn-sede" onclick="cambiarSede('madrid')"
                 style="padding: 10px 18px; font-weight: 700; font-size: 14px; border: none; cursor: pointer; transition: all 0.3s ease; background: rgba(255,255,255,0.95); color: #555; display: flex; align-items: center; gap: 6px;">
                 <i class="bi bi-geo-alt-fill"></i> MADRID
             </button>
+            {% endif %}
         </div>
         <button type="button" id="btn-configurar-sede" class="btn btn-outline-primary" onclick="abrirModalConfigurarSede()" title="Configurar Planta y Origen de la sede activa"
             style="margin-right: 12px; font-weight: 600; padding: 9px 13px; display: inline-flex; align-items: center; gap: 6px;">
@@ -3525,6 +3529,9 @@
             aplicarSede(sede);
         }
 
+        const SEDES_USUARIO = {{ sedes_usuario | tojson if sedes_usuario is defined else '["CARTAGENA", "MADRID"]' }};
+        const SEDE_PREDETERMINADA = "{{ sede_predeterminada if sede_predeterminada is defined else 'cartagena' }}";
+
         // Si la guía se abrió desde la Programación de Cargue, la sede del cargue
         // (?sede=madrid|cartagena) manda sobre la última que se usó en este navegador.
         function sedeInicialGuia() {
@@ -3533,7 +3540,14 @@
                 localStorage.setItem('sede_guia', desdeUrl);
                 return desdeUrl;
             }
-            return localStorage.getItem('sede_guia') || 'cartagena';
+            if (SEDES_USUARIO && SEDES_USUARIO.length === 1 && SEDES_USUARIO[0] === 'MADRID') {
+                return 'madrid';
+            }
+            const guardada = (localStorage.getItem('sede_guia') || '').toLowerCase();
+            if (guardada && (!SEDES_USUARIO || SEDES_USUARIO.map(s => s.toLowerCase()).includes(guardada))) {
+                return guardada;
+            }
+            return SEDE_PREDETERMINADA || 'cartagena';
         }
 
         function aplicarSede(sede) {
