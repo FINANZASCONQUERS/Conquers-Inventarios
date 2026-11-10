@@ -650,7 +650,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="d-flex justify-content-lg-end align-items-center flex-wrap gap-2">
-                    {% if rol_usuario != 'viewer' %}
+                    {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
                     <button class="btn btn-modern btn-outline-primary" data-bs-toggle="modal"
                         data-bs-target="#uploadExcelModal">
                         <i class="fas fa-file-upload me-2"></i>
@@ -716,7 +716,7 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>Guías pendientes
                             <span class="badge bg-danger ms-1" id="badge-guias-pendientes">…</span>
                         </button>
-                        {% if rol_usuario != 'viewer' %}
+                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
                         <button class="btn btn-sm btn-modern btn-outline-warning" data-bs-toggle="modal"
                             data-bs-target="#buscarReemplazarModal" title="Buscar y Reemplazar">
                             <i class="fas fa-search me-1"></i>Buscar
@@ -726,7 +726,7 @@
                             title="Ordenar por estado">
                             <i class="fas fa-sort-amount-down me-1"></i>Ordenar estados
                         </button>
-                        {% if rol_usuario != 'viewer' %}
+                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
                         <button id="btn-add-row" class="btn btn-sm btn-modern btn-primary" type="button"
                             title="Agregar nueva programación">
                             <i class="fas fa-plus me-1"></i>Agregar
@@ -1319,10 +1319,11 @@
         const userEmail = "{{ email_usuario }}";
         const userRol = "{{ rol_usuario }}";
         const userName = "{{ nombre }}";
+        const isViewerMode = userRol === 'viewer' || (SEDE_PROGRAMACION === 'MADRID' && userEmail === 'amariagallo@conquerstrading.com');
         // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
         const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)
-        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'].includes(userEmail);
+        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.madrid@conquerstrading.com'].includes(userEmail);
         const tbody = document.getElementById('schedule-table-body');
         const thead = document.querySelector('table thead');
         const btnAddRow = document.getElementById('btn-add-row');
@@ -1332,7 +1333,7 @@
         let mostrandoHistorialCompleto = false;
 
         const DESPACHADO_LOCK_DELAY_MS = 30 * 60 * 1000;
-        const DESPACHADO_OVERRIDE_EMAILS = ['logistic@conquerstrading.com', 'logistics.assistant@conquerstrading.com'];
+        const DESPACHADO_OVERRIDE_EMAILS = ['logistic@conquerstrading.com', 'logistics.assistant@conquerstrading.com', 'logistics.madrid@conquerstrading.com'];
         const isDespachadoOverride = DESPACHADO_OVERRIDE_EMAILS.includes(userEmail);
         const despachadoLockTimers = new Map();
 
@@ -1344,6 +1345,7 @@
             'amariagallo@conquerstrading.com': ['destino', 'cliente'],
             'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinerycwt@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'logistics.madrid@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'factura', 'factura_sicom', 'fecha_factura', 'mes_facturado'],
             // Ignacio ahora con todos los campos como Samantha/logistic
             'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'ignacio@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -1552,7 +1554,7 @@
         });
 
         const allColumns = Object.keys(columnsConfig);
-        const userPermissions = permissions[userEmail] || [];
+        const userPermissions = isViewerMode ? [] : (permissions[userEmail] || []);
         const isAdmin = userRol === 'admin';
         let originalData = [];
 
@@ -3076,7 +3078,7 @@
                                         <i class="fas fa-print"></i>
                                     </button>
                                     ${canDelete ? `<button class\="btn btn-outline-danger btn-xs btn-delete-row\" title\="Eliminar\" style\="padding: 0.15rem 0.4rem;"><i class\="fas fa-trash-alt"></i></button>` : ''}
-                                    ${!row.imagen_guia && userRol !== 'viewer' ? `
+                                    ${!row.imagen_guia && !isViewerMode ? `
                                     <button class="btn btn-outline-success btn-xs btn-upload-image" title="Subir" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-upload"></i>
                                     </button>
@@ -3088,7 +3090,7 @@
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-image"></i>
                                     </button>
-                                    ${userRol !== 'viewer' ? `
+                                    ${!isViewerMode ? `
                                     <button class="btn btn-outline-danger btn-xs btn-delete-image" title="Borrar img" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-times"></i>
                                     </button>` : ''}` : ''}
@@ -3249,7 +3251,7 @@
 
         menuItems.forEach(item => {
             const action = item.dataset.action;
-            if (userRol === 'viewer') {
+            if (isViewerMode) {
                 if (action === 'view') item.style.display = hasImage ? 'flex' : 'none';
                 else item.style.display = 'none';
                 return;

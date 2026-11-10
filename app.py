@@ -496,6 +496,12 @@ USUARIOS = {
         "rol": "editor",
         "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "precintos"]
     },
+    "logistics.madrid@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Logistics Madrid",
+        "rol": "editor",
+        "area": ["programacion_cargue_madrid", "reporte_madrid", "precintos"]
+    },
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
@@ -1825,7 +1831,11 @@ def _sede_de_la_peticion(default=SEDE_POR_DEFECTO):
     if crudo is None and request.is_json:
         crudo = (request.get_json(silent=True) or {}).get('sede')
     if crudo in (None, ''):
-        crudo = default
+        sedes = _sedes_programacion_usuario()
+        if len(sedes) == 1:
+            crudo = sedes[0]
+        else:
+            crudo = default
     sede = _normalizar_sede(crudo)
     if not sede:
         raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
@@ -14683,6 +14693,8 @@ def update_programacion(id):
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Refinería de Madrid: mismos campos que refinería en Cartagena.
         'refinerycwt@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        # Logística de Madrid: todos los campos de programación.
+        'logistics.madrid@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'factura_sicom', 'fecha_factura', 'mes_facturado'],
         'qualitycontrol@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos']
     }
     # Ignacio entra con dos correos; ignacio@ no tenía entrada y no podía editar.
@@ -14862,7 +14874,8 @@ def normalizar_programacion_mayusculas():
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com',
-        'qualitycontrol@conquerstrading.com'
+        'qualitycontrol@conquerstrading.com',
+        'logistics.madrid@conquerstrading.com'
     }
 
     if session.get('rol') != 'admin' and (session.get('email') not in usuarios_autorizados):
@@ -15180,7 +15193,8 @@ def delete_programacion(id):
         'ignacio@conquerstrading.com',
         'logistic@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
-        'oci@conquerstrading.com'
+        'oci@conquerstrading.com',
+        'logistics.madrid@conquerstrading.com'
     }
     if session.get('email') not in usuarios_autorizados and session.get('rol') != 'admin':
         return jsonify(success=False, message='No tienes permiso para eliminar registros.'), 403
@@ -15369,7 +15383,8 @@ def buscar_reemplazar_programacion():
         'oci@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'amariagallo@conquerstrading.com',
-        'ignacio@conquerstrading.com'
+        'ignacio@conquerstrading.com',
+        'logistics.madrid@conquerstrading.com'
     ]
     if session.get('rol') != 'admin' and session.get('email') not in usuarios_permitidos:
         return jsonify(success=False, message="No tienes permisos para realizar esta acción."), 403
@@ -23392,7 +23407,13 @@ def _sede_precintos_de_la_peticion():
     crudo = request.args.get('sede')
     if crudo is None and request.is_json:
         crudo = (request.get_json(silent=True) or {}).get('sede')
-    sede = _normalizar_sede(crudo or SEDE_POR_DEFECTO)
+    if crudo in (None, ''):
+        sedes = _sedes_precintos_usuario()
+        if len(sedes) == 1:
+            crudo = sedes[0]
+        else:
+            crudo = SEDE_POR_DEFECTO
+    sede = _normalizar_sede(crudo)
     if not sede:
         raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
     return _verificar_sede_precintos(sede)
@@ -23405,6 +23426,7 @@ def _precintos_puede_registrar_lotes():
         'logistic@conquerstrading.com',
         'oci@conquerstrading.com',
         'production@conquerstrading.com',
+        'logistics.madrid@conquerstrading.com',
     }
 
 
