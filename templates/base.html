@@ -201,9 +201,13 @@ defecto seguros. #}
                     {% if 'barcaza_orion' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('barcaza_orion', 'Planilla Orion', 'water')) %}
                     {% set _ = user_planillas.append(('reporte_barcaza', 'Reporte Orion', 'file-earmark-bar-graph')) %}
+                    {% elif 'reporte_barcazas' in session.get('area', []) or 'reporte_barcaza' in session.get('area', []) %}
+                    {% set _ = user_planillas.append(('reporte_barcaza', 'Reporte Orion', 'file-earmark-bar-graph')) %}
                     {% endif %}
                     {% if 'barcaza_bita' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('barcaza_bita', 'Planilla BITA', 'tsunami')) %}
+                    {% set _ = user_planillas.append(('reporte_barcaza_bita', 'Reporte BITA', 'file-earmark-bar-graph')) %}
+                    {% elif 'reporte_barcazas' in session.get('area', []) or 'reporte_barcaza' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('reporte_barcaza_bita', 'Reporte BITA', 'file-earmark-bar-graph')) %}
                     {% endif %}
                     {% if 'guia_transporte' in session.get('area', []) %}{% set _ = user_planillas.append(('guia_transporte', 'Generar Guía', 'truck')) %}{% endif %}
@@ -232,7 +236,8 @@ defecto seguros. #}
                     {% if 'control_remolcadores' in session.get('area', []) %}
                     {% set _ = user_planillas.append(('control_remolcadores_page', 'Control Remolcadores', 'life-preserver')) %}
                     {% endif %}
-                    {% if 'control_calidad' in session.get('area', []) %}{% set _ = user_planillas.append(('control_calidad', 'Reporte Análisis de Calidad', 'clipboard-check')) %}{% endif %}
+                    {% if 'control_calidad' in session.get('area', []) %}{% set _ = user_planillas.append(('control_calidad', 'Control de Calidad (Cartagena)', 'clipboard-check')) %}{% endif %}
+                    {% if 'control_calidad_madrid' in session.get('area', []) %}{% set _ = user_planillas.append(('control_calidad_madrid', 'Control de Calidad (Madrid)', 'clipboard-check')) %}{% endif %}
                     {% if 'analisis_laboratorio' in session.get('area', []) %}{% set _ = user_planillas.append(('analisis_laboratorio', 'Análisis de Laboratorio', 'flask')) %}{% endif %}
                     {% if session.get('email', '').lower() in panel_allowed %}
                     {% set _ = user_planillas.append(('panel_enturnamiento', 'Panel de Enturnamiento', 'list-check')) %}
@@ -250,7 +255,7 @@ defecto seguros. #}
                             aria-labelledby="planillasDropdown" style="min-width: 280px;">
                             <!-- 🏭 PRODUCCIÓN -->
                             {% if 'planta' in session.get('area', []) or 'planta_madrid' in session.get('area', []) or 'reporte_madrid' in session.get('area', []) or 'reportes' in session.get('area',
-                            []) or 'simulador_rendimiento' in session.get('area', []) or 'control_calidad' in session.get('area', []) or 'analisis_laboratorio' in session.get('area', []) or 'programacion_base' in
+                            []) or 'simulador_rendimiento' in session.get('area', []) or 'control_calidad' in session.get('area', []) or 'control_calidad_madrid' in session.get('area', []) or 'analisis_laboratorio' in session.get('area', []) or 'programacion_base' in
                             session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i
@@ -284,7 +289,12 @@ defecto seguros. #}
                             {% if 'control_calidad' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'control_calidad' %}active{% endif %}"
                                     href="{{ url_for('control_calidad') }}"><i
-                                        class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
+                                        class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad (Cartagena)</a></li>
+                            {% endif %}
+                            {% if 'control_calidad_madrid' in session.get('area', []) %}
+                            <li><a class="dropdown-item {% if request.endpoint == 'control_calidad_madrid' %}active{% endif %}"
+                                    href="{{ url_for('control_calidad_madrid') }}"><i
+                                        class="bi bi-clipboard-check me-2 text-primary"></i>Control de Calidad (Madrid)</a></li>
                             {% endif %}
                             {% if 'analisis_laboratorio' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'analisis_laboratorio' %}active{% endif %}"
@@ -302,7 +312,7 @@ defecto seguros. #}
                             {% endif %}
 
                             <!-- 🚢 BARCAZAS -->
-                            {% if 'barcaza_orion' in session.get('area', []) or 'barcaza_bita' in session.get('area', []) %}
+                            {% if 'barcaza_orion' in session.get('area', []) or 'barcaza_bita' in session.get('area', []) or 'reporte_barcazas' in session.get('area', []) or 'reporte_barcaza' in session.get('area', []) %}
                             <li>
                                 <h6 class="dropdown-header text-primary"><i class="bi bi-water me-2"></i>Barcazas</h6>
                             </li>
@@ -310,6 +320,8 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'barcaza_orion' %}active{% endif %}"
                                     href="{{ url_for('barcaza_orion') }}"><i
                                         class="bi bi-water me-2 text-primary"></i>Planilla Orion</a></li>
+                            {% endif %}
+                            {% if 'barcaza_orion' in session.get('area', []) or 'reporte_barcazas' in session.get('area', []) or 'reporte_barcaza' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'reporte_barcaza' %}active{% endif %}"
                                     href="{{ url_for('reporte_barcaza') }}"><i
                                         class="bi bi-file-earmark-bar-graph me-2 text-primary"></i>Reporte Orion</a></li>
@@ -318,6 +330,8 @@ defecto seguros. #}
                             <li><a class="dropdown-item {% if request.endpoint == 'barcaza_bita' %}active{% endif %}"
                                     href="{{ url_for('barcaza_bita') }}"><i
                                         class="bi bi-tsunami me-2 text-info"></i>Planilla BITA</a></li>
+                            {% endif %}
+                            {% if 'barcaza_bita' in session.get('area', []) or 'reporte_barcazas' in session.get('area', []) or 'reporte_barcaza' in session.get('area', []) %}
                             <li><a class="dropdown-item {% if request.endpoint == 'reporte_barcaza_bita' %}active{% endif %}"
                                     href="{{ url_for('reporte_barcaza_bita') }}"><i
                                         class="bi bi-file-earmark-bar-graph me-2 text-info"></i>Reporte BITA</a></li>
@@ -491,7 +505,9 @@ defecto seguros. #}
                             <li><a class="dropdown-item" href="{{ url_for('simulador_rendimiento') }}"><i
                                         class="bi bi-droplet-fill me-2 text-primary"></i>Simulador Rendimiento</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('control_calidad') }}"><i
-                                        class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad</a></li>
+                                        class="bi bi-clipboard-check me-2 text-success"></i>Control de Calidad (Cartagena)</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('control_calidad_madrid') }}"><i
+                                        class="bi bi-clipboard-check me-2 text-primary"></i>Control de Calidad (Madrid)</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('analisis_laboratorio') }}"><span class="me-2">🧪</span>Análisis de Laboratorio</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('programacion_base') }}"><i
                                         class="bi bi-table me-2 text-success"></i>Pedidos</a>

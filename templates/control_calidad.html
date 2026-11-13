@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Control de Calidad{% endblock %}
+{% block title %}Control de Calidad{% if sedes_usuario|length < 2 and sede == 'MADRID' %} Madrid{% else %} · {{ sede_etiqueta }}{% endif %}{% endblock %}
 {% block container_class %}container-fluid p-0{% endblock %}
 
 {% block content %}
@@ -14,8 +14,20 @@
                             <i class="fas fa-flask"></i>
                         </div>
                         <div class="ms-3">
-                            <h2 class="page-title mb-0">Control de Calidad</h2>
-                            <p class="page-subtitle mb-0">Análisis y Monitoreo de Productos</p>
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <h2 class="page-title mb-0">Control de Calidad{% if sedes_usuario|length < 2 and sede == 'MADRID' %} Madrid{% endif %}</h2>
+                                {% if sedes_usuario|length > 1 %}
+                                <div class="sede-pill-group">
+                                    <a href="{{ url_for('control_calidad') }}" class="sede-pill {{ 'active' if sede == 'CARTAGENA' else '' }}">
+                                        <i class="bi bi-buildings"></i> Cartagena
+                                    </a>
+                                    <a href="{{ url_for('control_calidad_madrid') }}" class="sede-pill {{ 'active' if sede == 'MADRID' else '' }}">
+                                        <i class="bi bi-geo-alt-fill"></i> Madrid
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <p class="page-subtitle mb-0">Análisis y Monitoreo de Productos · Sede {{ sede_etiqueta }}</p>
                         </div>
                     </div>
                 </div>
@@ -167,6 +179,7 @@
 {% endblock %}
 {% block scripts %}
 <script>
+    const SEDE_CALIDAD = "{{ sede }}";
     document.addEventListener('DOMContentLoaded', function () {
         // --- VARIABLES Y CONFIGURACIÓN ---
         const userEmail = "{{ email_usuario }}";
@@ -243,6 +256,7 @@
             const fechaFin = document.getElementById('fecha_fin').value;
             let url = `/exportar_control_calidad/${exportFormat}`;
             const params = new URLSearchParams();
+            params.append('sede', SEDE_CALIDAD);
             if (fechaInicio) params.append('fecha_inicio', fechaInicio);
             if (fechaFin) params.append('fecha_fin', fechaFin);
             if (params.toString()) url += `?${params.toString()}`;
@@ -255,6 +269,7 @@
 
         function buildApiUrl(page, filters, historialCompleto) {
             const params = new URLSearchParams();
+            params.set('sede', SEDE_CALIDAD);
             if (historialCompleto) {
                 params.set('all', '1');
             } else {
@@ -592,7 +607,11 @@
             btnAddRow.addEventListener('click', function () {
                 this.disabled = true;
                 this.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando...';
-                fetch("/api/control_calidad", { method: 'POST' })
+                fetch("/api/control_calidad", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sede: SEDE_CALIDAD })
+                })
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
@@ -626,7 +645,7 @@
                 const row = deleteButton.closest('tr');
                 const id = row.dataset.id;
                 if (confirm('¿Seguro que deseas eliminar este registro?')) {
-                    fetch(`/api/control_calidad/${id}`, { method: 'DELETE' })
+                    fetch(`/api/control_calidad/${id}?sede=${encodeURIComponent(SEDE_CALIDAD)}`, { method: 'DELETE' })
                         .then(res => res.json())
                         .then(data => {
                             if (data.success) {
@@ -668,10 +687,10 @@
             const statusIndicator = row.querySelector('.save-indicator');
             statusIndicator.innerHTML = '<span class="spinner-border spinner-border-sm text-primary" role="status"></span>';
 
-            fetch(`/api/control_calidad/${id}`, {
+            fetch(`/api/control_calidad/${id}?sede=${encodeURIComponent(SEDE_CALIDAD)}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [field]: processedValue })
+                body: JSON.stringify({ [field]: processedValue, sede: SEDE_CALIDAD })
             })
                 .then(res => res.json().then(data => ({ ok: res.ok, data })))
                 .then(({ ok, data }) => {
@@ -742,7 +761,7 @@
             btnUploadExcel.disabled = true;
             btnUploadExcel.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Subiendo...';
             const replace = document.getElementById('replaceExisting').checked ? '1' : '0';
-            fetch(`/api/control_calidad/upload_excel?replace=${replace}`, { method: 'POST', body: fd })
+            fetch(`/api/control_calidad/upload_excel?replace=${replace}&sede=${encodeURIComponent(SEDE_CALIDAD)}`, { method: 'POST', body: fd })
                 .then(r => r.json().then(data => ({ ok: r.ok, data })))
                 .then(({ ok, data }) => {
                     if (ok && data.success) {
@@ -1488,6 +1507,58 @@
         color: var(--primary-color) !important;
         border-color: var(--primary-color);
         border-right-color: transparent;
+    }
+
+    /* ==== SELECTOR DE SEDE ==== */
+    .sede-pill-group {
+        display: inline-flex;
+        align-items: center;
+        background: var(--bg-surface-subtle, #f8fafc);
+        border: 1px solid var(--border-color, #e2e8f0);
+        border-radius: 30px;
+        padding: 4px;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .sede-pill {
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .sede-pill.active {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        color: white !important;
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.35);
+    }
+
+    .sede-pill:not(.active) {
+        color: #64748b;
+    }
+
+    .sede-pill:not(.active):hover {
+        color: #1a202c;
+        background: rgba(0, 0, 0, 0.05);
+    }
+
+    [data-bs-theme="dark"] .sede-pill-group {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active) {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] .sede-pill:not(.active):hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.08);
     }
 </style>
 {% endblock %}

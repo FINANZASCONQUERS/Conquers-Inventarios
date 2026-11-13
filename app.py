@@ -8,7 +8,7 @@ import os
 import unicodedata
 from functools import wraps
 import click
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory, has_app_context # Añadido send_file, current_app, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file, current_app, send_from_directory, has_app_context, has_request_context # Añadido send_file, current_app, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl 
 from io import BytesIO # Para Excel
@@ -490,29 +490,35 @@ USUARIOS = {
         "rol": "admin",
         "area": [] 
     },
+    "refinery@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Refinery",
+        "rol": "refineria",
+        "area": ["planta", "planta_madrid", "reporte_madrid", "programacion_cargue", "programacion_cargue_madrid", "control_calidad", "control_calidad_madrid", "precintos"]
+    },
     "refinerycwt@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery CWT",
         "rol": "editor",
-        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "precintos"]
+        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos"]
     },
     "logistics.madrid@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Logistics Madrid",
         "rol": "editor",
-        "area": ["programacion_cargue_madrid", "reporte_madrid", "precintos", "guia_transporte"]
+        "area": ["programacion_cargue_madrid", "reporte_madrid", "control_calidad_madrid", "precintos", "guia_transporte"]
     },
     "oci@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "control_calidad_madrid", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
     },
     "carlos.baron@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Carlos Barón",
         "rol": "editor",
-        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
+        "area": ["planta", "transito", "guia_transporte", "control_remolcadores", "programacion_cargue", "siza_solicitante", "programacion_base", "facturacion", "precintos", "control_calidad", "control_calidad_madrid", "barcaza_orion", "barcaza_bita", "reportes", "reporte_madrid", "programacion_cargue_madrid"]
     },
     "logistics.inventory@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -524,25 +530,25 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "analisis_laboratorio", "siza_solicitante", "reportes"] 
+        "area": ["barcaza_orion", "barcaza_bita", "programacion_cargue", "control_calidad", "control_calidad_madrid", "analisis_laboratorio", "siza_solicitante", "reportes"] 
     },
     "quality.manager@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ricardo Congo",
         "rol": "editor",
-        "area": ["barcaza_orion", "barcaza_bita", "analisis_laboratorio", "control_calidad", "reportes"]
+        "area": ["barcaza_orion", "barcaza_bita", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "reportes"]
     },
     "omar.morales@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
     },
     "omar.morales@conquerstraing.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
     },
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -566,13 +572,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
     },
     "ignacio@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
     },
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -608,7 +614,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Juan Diego Cuadros",
         "rol": "editor",
-        "area": ["siza_solicitante", "control_calidad", "barcaza_orion", "barcaza_bita", "programacion_cargue", "analisis_laboratorio", "reportes"]
+        "area": ["siza_solicitante", "control_calidad", "control_calidad_madrid", "barcaza_orion", "barcaza_bita", "programacion_cargue", "analisis_laboratorio", "reportes"]
     },
     "brando@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -690,8 +696,9 @@ PUBLIC_PATHS = (
 
 # --- MAPEO DE RUTAS A MÓDULOS / ÁREAS (RBAC) ---
 MODULE_ROUTE_MAP = [
-    (r'^/control_calidad', ['control_calidad']),
-    (r'^/api/control_calidad', ['control_calidad']),
+    (r'^/control_calidad_madrid(?:$|[/?#])', ['control_calidad_madrid']),
+    (r'^/control_calidad(?:$|[/?#])', ['control_calidad']),
+    (r'^/api/control_calidad', ['control_calidad', 'control_calidad_madrid']),
     (r'^/analisis-laboratorio', ['analisis_laboratorio']),
     (r'^/api/analisis-laboratorio', ['analisis_laboratorio']),
     (r'^/inventario-precintos', ['precintos']),
@@ -779,7 +786,7 @@ MODULE_ROUTE_MAP = [
     (r'^/reporte_variaciones_tanques', ['planta']),
     (r'^/api/tanques', ['planta']),
     (r'^/guardar-datos-planta', ['planta']),
-    (r'^/agregar-producto', ['planta', 'control_calidad', 'analisis_laboratorio']),
+    (r'^/agregar-producto', ['planta', 'planta_madrid', 'control_calidad', 'control_calidad_madrid', 'analisis_laboratorio']),
     (r'^/historial_registros', ['planta']),
     (r'^/inventario_epp', ['inventario_epp']),
     (r'^/api/inventario_epp', ['inventario_epp']),
@@ -1392,6 +1399,9 @@ class RegistroCalidad(db.Model):
     __tablename__ = 'registros_calidad'
 
     id = db.Column(db.Integer, primary_key=True)
+    # Sede donde se tomó el análisis de calidad (CARTAGENA o MADRID).
+    sede = db.Column(db.String(20), nullable=False, default='CARTAGENA',
+                     server_default='CARTAGENA', index=True)
     timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     usuario = db.Column(db.String(100), nullable=False)
 
@@ -1519,14 +1529,20 @@ AREA_PROGRAMACION_POR_SEDE = {
     'CARTAGENA': 'programacion_cargue',
     'MADRID': 'programacion_cargue_madrid',
 }
+# Area de usuario que abre el control de calidad de cada sede.
+AREA_CALIDAD_POR_SEDE = {
+    'CARTAGENA': 'control_calidad',
+    'MADRID': 'control_calidad_madrid',
+}
 # Usuarios de refineria: solo campos de refineria, candado de 30 minutos y no
 # pueden tocar un cargue DESPACHADO.
 EMAILS_REFINERIA = {
     'refinery.control@conquerstrading.com',
     'refinerycwt@conquerstrading.com',
+    'refinery@conquerstrading.com',
 }
 # Nombre que dejan en `ultimo_editor` (bloqueo de eliminacion tras 30 min).
-NOMBRES_REFINERIA = {'control refineria', 'refinery cwt'}
+NOMBRES_REFINERIA = {'control refineria', 'refinery cwt', 'refinery'}
 
 
 class ProgramacionCargue(db.Model):
@@ -1765,7 +1781,7 @@ def _ensure_sede_columns():
     Las filas existentes quedan en CARTAGENA por el DEFAULT: es donde estaban.
     """
     from sqlalchemy import inspect, text
-    tablas = ('programacion_cargue', 'programacion_base', 'lotes_precintos', 'inventario_precintos')
+    tablas = ('programacion_cargue', 'programacion_base', 'lotes_precintos', 'inventario_precintos', 'registros_calidad')
     with app.app_context():
         insp = inspect(db.engine)
         existentes = set(insp.get_table_names())
@@ -1809,12 +1825,39 @@ def _normalizar_sede(valor):
     return sede if sede in SEDES_PROGRAMACION else None
 
 
+def _sedes_por_mapa(area_por_sede, areas=None, rol=None):
+    """Sedes habilitadas para el usuario según un mapa {SEDE: area}."""
+    rol_actual = rol if rol is not None else (session.get('rol') if has_request_context() else None)
+    if rol_actual == 'admin':
+        return list(SEDES_PROGRAMACION)
+    if areas is not None:
+        areas_actuales = areas
+    elif has_request_context():
+        areas_actuales = session.get('area', []) or []
+    else:
+        areas_actuales = []
+    return [s for s in SEDES_PROGRAMACION if area_por_sede[s] in areas_actuales]
+
+
+def _resolver_sede_peticion(sedes_permitidas, nombre_modulo, default=SEDE_POR_DEFECTO):
+    """Extrae y valida ?sede= o JSON['sede'] contra las sedes permitidas."""
+    crudo = request.args.get('sede')
+    if crudo is None and request.is_json:
+        crudo = (request.get_json(silent=True) or {}).get('sede')
+    if crudo in (None, ''):
+        crudo = sedes_permitidas[0] if len(sedes_permitidas) == 1 else default
+    sede = _normalizar_sede(crudo)
+    if not sede:
+        raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
+    if sede not in sedes_permitidas:
+        raise SedeNoPermitida(
+            f'No tienes acceso a {nombre_modulo} de {SEDE_ETIQUETAS[sede]}.')
+    return sede
+
+
 def _sedes_programacion_usuario():
     """Sedes cuya programacion de cargue puede abrir el usuario en sesion."""
-    if session.get('rol') == 'admin':
-        return list(SEDES_PROGRAMACION)
-    areas = session.get('area', []) or []
-    return [s for s in SEDES_PROGRAMACION if AREA_PROGRAMACION_POR_SEDE[s] in areas]
+    return _sedes_por_mapa(AREA_PROGRAMACION_POR_SEDE)
 
 
 def _puede_sede_programacion(sede):
@@ -1827,22 +1870,31 @@ def _sede_de_la_peticion(default=SEDE_POR_DEFECTO):
     Sin sede explicita se asume Cartagena: es lo que hacian todas las pantallas
     antes de que existiera Madrid.
     """
-    crudo = request.args.get('sede')
-    if crudo is None and request.is_json:
-        crudo = (request.get_json(silent=True) or {}).get('sede')
-    if crudo in (None, ''):
-        sedes = _sedes_programacion_usuario()
-        if len(sedes) == 1:
-            crudo = sedes[0]
-        else:
-            crudo = default
-    sede = _normalizar_sede(crudo)
-    if not sede:
-        raise SedeNoPermitida(f'Sede desconocida: {crudo}.', status=400)
-    if not _puede_sede_programacion(sede):
+    return _resolver_sede_peticion(_sedes_programacion_usuario(), 'la programación', default=default)
+
+
+def _sedes_calidad_usuario(areas=None, rol=None):
+    """Sedes cuyo control de calidad puede abrir el usuario en sesion."""
+    return _sedes_por_mapa(AREA_CALIDAD_POR_SEDE, areas=areas, rol=rol)
+
+
+def _puede_sede_calidad(sede, areas=None, rol=None):
+    return sede in _sedes_calidad_usuario(areas=areas, rol=rol)
+
+
+def _sede_calidad_de_la_peticion(default=SEDE_POR_DEFECTO):
+    """Sede pedida por ?sede= o JSON para control de calidad."""
+    return _resolver_sede_peticion(_sedes_calidad_usuario(), 'el control de calidad', default=default)
+
+
+def _calidad_de_sede_o_404(id):
+    """get_or_404 + control de sede para registros de control de calidad."""
+    registro = RegistroCalidad.query.get_or_404(id)
+    sede = getattr(registro, 'sede', None) or SEDE_POR_DEFECTO
+    if not _puede_sede_calidad(sede):
         raise SedeNoPermitida(
-            f'No tienes acceso a la programación de {SEDE_ETIQUETAS[sede]}.')
-    return sede
+            f'Este registro de calidad es de la sede {SEDE_ETIQUETAS.get(sede, sede)} y no tienes acceso a ella.')
+    return registro
 
 
 def _verificar_sede_registro(registro):
@@ -4484,57 +4536,71 @@ def transito():
 # --- PERMISOS DE CONTROL DE CALIDAD ---
 EMAILS_EDITORES_CALIDAD = {
     'refinery.control@conquerstrading.com',
+    'refinerycwt@conquerstrading.com',
+    'refinery@conquerstrading.com',
     'quality.manager@conquerstrading.com',
     'qualitycontrol@conquerstrading.com',
     'juandiego.cuadros@conquerstrading.com'
 }
 
-def puede_ver_control_calidad(email, rol, area=None):
+def _areas_para_calidad(email, area=None):
+    """Obtiene las áreas del usuario desde argumento, sesión activa o catálogo USUARIOS."""
+    if area is not None:
+        return area
+    if has_request_context() and 'area' in session:
+        return session.get('area', []) or []
+    return (USUARIOS.get((email or '').lower(), {}) or {}).get('area', [])
+
+def puede_ver_control_calidad(email, rol, area=None, sede=None):
     if rol == 'admin':
         return True
-    if area and 'control_calidad' in area:
-        return True
-    if email in EMAILS_EDITORES_CALIDAD:
-        return True
-    if email in {'omar.morales@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'production@conquerstrading.com'}:
-        return True
-    return False
+    sedes = _sedes_calidad_usuario(areas=_areas_para_calidad(email, area), rol=rol)
+    if sede is not None:
+        return sede in sedes
+    return bool(sedes)
 
-def puede_editar_control_calidad(email, rol):
+def puede_editar_control_calidad(email, rol, sede=None, area=None):
     if rol == 'admin':
         return True
-    return email in EMAILS_EDITORES_CALIDAD
+    if (email or '').lower() not in EMAILS_EDITORES_CALIDAD:
+        return False
+    sedes = _sedes_calidad_usuario(areas=_areas_para_calidad(email, area), rol=rol)
+    if sede is not None:
+        return sede in sedes
+    return bool(sedes)
 
-@app.route('/control_calidad')
-@login_required
-def control_calidad():
+
+def _render_control_calidad(sede):
+    """Misma pantalla de Control de Calidad para Cartagena y Madrid; cambia la sede."""
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
     area_usuario = session.get('area', [])
-    
-    if not puede_ver_control_calidad(email_usuario, rol_usuario, area_usuario):
-        flash("No tienes permisos para acceder a esta página.", "danger")
+
+    if not puede_ver_control_calidad(email_usuario, rol_usuario, area_usuario, sede=sede):
+        flash(f"No tienes permisos para acceder al Control de Calidad de {SEDE_ETIQUETAS.get(sede, sede)}.", "danger")
         return redirect(url_for('home'))
-        
-    puede_editar = puede_editar_control_calidad(email_usuario, rol_usuario)
-    
-    # Consulta todos los registros de RegistroCalidad ordenados por timestamp desc
-    todos_los_registros = db.session.query(RegistroCalidad).order_by(RegistroCalidad.timestamp.desc()).all()
-    
-    # Calcular KPIs
+
+    puede_editar = puede_editar_control_calidad(email_usuario, rol_usuario, sede=sede, area=area_usuario)
+
+    todos_los_registros = (db.session.query(RegistroCalidad)
+                           .filter(RegistroCalidad.sede == sede)
+                           .order_by(RegistroCalidad.timestamp.desc())
+                           .all())
+
+    # Calcular KPIs de la sede
     today = date.today()
     registros_hoy = [r for r in todos_los_registros if r.timestamp and r.timestamp.date() == today]
     registros_hoy_count = len(registros_hoy)
-    
+
     bsw_values = [r.bsw for r in registros_hoy if r.bsw is not None]
     bsw_promedio = sum(bsw_values) / len(bsw_values) if bsw_values else 0
-    
+
     alertas_calidad = len([r for r in registros_hoy if r.bsw and r.bsw > 0.5])
-    
-    # Convertir a diccionario para la plantilla
+
     datos = [
         {
             "id": r.id,
+            "sede": r.sede or SEDE_POR_DEFECTO,
             "fecha": r.fecha,
             "hora": r.hora,
             "producto": r.producto or '',
@@ -4554,26 +4620,40 @@ def control_calidad():
         }
         for r in todos_los_registros
     ]
-    
-    return render_template("control_calidad.html", 
-                           nombre=session.get("nombre"), 
-                           datos=datos, 
-                           registros_hoy=registros_hoy_count, 
-                           bsw_promedio=bsw_promedio, 
+
+    return render_template("control_calidad.html",
+                           nombre=session.get("nombre"),
+                           datos=datos,
+                           registros_hoy=registros_hoy_count,
+                           bsw_promedio=bsw_promedio,
                            alertas_calidad=alertas_calidad,
                            email_usuario=email_usuario,
                            rol_usuario=rol_usuario,
-                           puede_editar=puede_editar)
-  
+                           puede_editar=puede_editar,
+                           sede=sede,
+                           sede_etiqueta=SEDE_ETIQUETAS[sede],
+                           sedes_usuario=_sedes_calidad_usuario())
+
+
+@app.route('/control_calidad')
+@login_required
+@permiso_requerido('control_calidad')
+def control_calidad():
+    """Control de Calidad de la planta Cartagena."""
+    return _render_control_calidad('CARTAGENA')
+
+
+@app.route('/control_calidad_madrid')
+@login_required
+@permiso_requerido('control_calidad_madrid')
+def control_calidad_madrid():
+    """Control de Calidad de la planta Madrid (Cundinamarca)."""
+    return _render_control_calidad('MADRID')
+
 @app.route('/api/control_calidad', methods=['GET'])
 @login_required
 def get_control_calidad_data():
-    email_usuario = session.get('email')
-    rol_usuario = session.get('rol')
-    area_usuario = session.get('area', [])
-    
-    if not puede_ver_control_calidad(email_usuario, rol_usuario, area_usuario):
-        return jsonify({"error": "No tienes permisos para acceder a esta información"}), 403
+    sede = _sede_calidad_de_la_peticion()
 
     # --- Paginación server-side ---
     page = request.args.get('page', 1, type=int)
@@ -4581,8 +4661,8 @@ def get_control_calidad_data():
     per_page = min(per_page, 200)  # Límite máximo de seguridad
     show_all = request.args.get('all', '0') == '1'
 
-    # --- Construir query base ---
-    query = db.session.query(RegistroCalidad)
+    # --- Construir query base filtrada por sede ---
+    query = db.session.query(RegistroCalidad).filter(RegistroCalidad.sede == sede)
 
     # --- Filtros server-side ---
     filterable_text_cols = {
@@ -4637,6 +4717,7 @@ def get_control_calidad_data():
     datos = [
         {
             "id": r.id,
+            "sede": r.sede or SEDE_POR_DEFECTO,
             "fecha": r.fecha,
             "hora": r.hora,
             "producto": r.producto or '',
@@ -4657,19 +4738,21 @@ def get_control_calidad_data():
         for r in registros
     ]
 
-    return jsonify({"data": datos, "total": total, "page": page, "per_page": per_page, "pages": pages})
+    return jsonify({"data": datos, "total": total, "page": page, "per_page": per_page, "pages": pages, "sede": sede})
 
 @app.route('/api/control_calidad', methods=['POST'])
 @login_required
 def crear_registro_calidad():
     """Crear un nuevo registro vacío de control de calidad"""
+    sede = _sede_calidad_de_la_peticion()
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    
-    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+
+    if not puede_editar_control_calidad(email_usuario, rol_usuario, sede=sede):
         return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para crear registros."}), 403
     try:
         nuevo = RegistroCalidad(
+            sede=sede,
             fecha=None,
             hora=None,
             producto=None,
@@ -4691,7 +4774,7 @@ def crear_registro_calidad():
         )
         db.session.add(nuevo)
         db.session.commit()
-        return jsonify(success=True, message="Registro creado exitosamente.", id=nuevo.id)
+        return jsonify(success=True, message="Registro creado exitosamente.", id=nuevo.id, sede=sede)
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
@@ -4700,14 +4783,15 @@ def crear_registro_calidad():
 @login_required
 def actualizar_registro_calidad(id):
     """Actualizar un campo específico de un registro de control de calidad"""
+    registro = _calidad_de_sede_o_404(id)
+    sede_reg = registro.sede or SEDE_POR_DEFECTO
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    
-    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+
+    if not puede_editar_control_calidad(email_usuario, rol_usuario, sede=sede_reg):
         return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para editar registros."}), 403
     try:
-        registro = RegistroCalidad.query.get_or_404(id)
-        datos = request.get_json()
+        datos = request.get_json() or {}
         
         def to_float(v):
             if v is None or v == '':
@@ -4764,13 +4848,14 @@ def actualizar_registro_calidad(id):
 @app.route('/api/control_calidad/<int:id>', methods=['DELETE'])
 @login_required
 def eliminar_registro_calidad(id):
+    registro = _calidad_de_sede_o_404(id)
+    sede_reg = registro.sede or SEDE_POR_DEFECTO
     email_usuario = session.get('email')
     rol_usuario = session.get('rol')
-    
-    if not puede_editar_control_calidad(email_usuario, rol_usuario):
+
+    if not puede_editar_control_calidad(email_usuario, rol_usuario, sede=sede_reg):
         return jsonify({"success": False, "message": "Solo el personal de Refinería, Ricardo Congo y Juan Diego Cuadros tienen permiso para eliminar registros."}), 403
     try:
-        registro = RegistroCalidad.query.get_or_404(id)
         db.session.delete(registro)
         db.session.commit()
         return jsonify(success=True, message="Registro eliminado.")
@@ -9744,21 +9829,25 @@ def dashboard_reportes():
             ]
         })
 
-    # 8. Control de Calidad
-    if is_admin or 'control_calidad' in user_areas:
+    # 8. Control de Calidad (Cartagena y/o Madrid)
+    ve_calidad_ctg = is_admin or 'control_calidad' in user_areas
+    ve_calidad_mad = is_admin or 'control_calidad_madrid' in user_areas
+    if ve_calidad_ctg or ve_calidad_mad:
         modulos_usuario.append({
             'id': 'control_calidad',
             'categoria': 'Calidad',
-            'titulo': 'Control de Calidad',
+            'titulo': 'Control de Calidad' if ve_calidad_ctg else 'Control de Calidad (Madrid)',
             'descripcion': 'Certificados de calidad, registro de parámetros y cumplimiento de especificaciones.',
             'icono': 'bi-clipboard-check-fill',
             'color': 'teal',
             'bg_gradient': 'linear-gradient(135deg, #CCFBF1 0%, #99F6E4 100%)',
             'color_hex': '#0D9488',
             'badge': 'Calidad',
-            'url_principal': url_for('control_calidad'),
-            'nombre_btn': 'Control Calidad',
-            'sub_links': []
+            'url_principal': url_for('control_calidad' if ve_calidad_ctg else 'control_calidad_madrid'),
+            'nombre_btn': 'Control Calidad' if ve_calidad_ctg else 'Control Calidad Madrid',
+            'sub_links': [
+                {'nombre': 'Control Calidad Madrid', 'url': url_for('control_calidad_madrid'), 'icono': 'bi-geo-alt-fill'}
+            ] if (ve_calidad_ctg and ve_calidad_mad) else []
         })
 
     # 9. Análisis de Laboratorio
@@ -14695,6 +14784,7 @@ def update_programacion(id):
         'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'refinery@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Refinería de Madrid: mismos campos que refinería en Cartagena.
         'refinerycwt@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Logística de Madrid: todos los campos de programación.
@@ -14878,6 +14968,7 @@ def normalizar_programacion_mayusculas():
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com',
+        'refinery@conquerstrading.com',
         'qualitycontrol@conquerstrading.com',
         'logistics.madrid@conquerstrading.com'
     }
