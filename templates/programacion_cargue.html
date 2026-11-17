@@ -1145,6 +1145,10 @@
                 <div id="modal-viewer" class="viewer-container"></div>
             </div>
             <div class="modal-footer border-0">
+                <a id="btn-open-image-newtab" href="#" target="_blank" rel="noopener"
+                    class="btn btn-outline-primary rounded-2 px-3 d-none">
+                    <i class="fas fa-external-link-alt me-1"></i> Abrir en pestaña
+                </a>
                 <a id="btn-download-image" href="#" download="guia_transporte.png"
                     class="btn btn-success rounded-2 px-4">
                     <i class="fas fa-download me-1"></i> Descargar
@@ -1168,6 +1172,7 @@
         <li data-action="upload"><i class="fas fa-upload"></i> Subir Guía</li>
         <li data-action="import"><i class="fas fa-cloud-download-alt"></i> Importar SharePoint</li>
         <li data-action="view"><i class="fas fa-image"></i> Ver Guía</li>
+        <li data-action="download-img"><i class="fas fa-download"></i> Descargar Guía</li>
         <li data-action="delete-img"><i class="fas fa-times"></i> Eliminar Imagen</li>
         <div class="menu-divider"></div>
         <li data-action="precintos-asignar"><i class="fas fa-bolt"></i> Asignar precintos…</li>
@@ -1316,7 +1321,7 @@
     }
     document.addEventListener('DOMContentLoaded', function () {
         // --- VARIABLES Y CONFIGURACIÓN ---
-        const userEmail = "{{ email_usuario }}";
+        const userEmail = ("{{ email_usuario }}" || '').toLowerCase();
         const userRol = "{{ rol_usuario }}";
         const userName = "{{ nombre }}";
         const isViewerMode = userRol === 'viewer' || (SEDE_PROGRAMACION === 'MADRID' && userEmail === 'amariagallo@conquerstrading.com');
@@ -3088,8 +3093,11 @@
                                     </button>
                                     ` : ''}
                                     ${row.imagen_guia ? `
-                                    <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver" style="padding: 0.15rem 0.4rem;">
+                                    <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver imagen / guía" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-image"></i>
+                                    </button>
+                                    <button class="btn btn-outline-success btn-xs btn-download-image-row" title="Descargar guía" style="padding: 0.15rem 0.4rem;">
+                                        <i class="fas fa-download"></i>
                                     </button>
                                     ${!isViewerMode ? `
                                     <button class="btn btn-outline-danger btn-xs btn-delete-image" title="Borrar img" style="padding: 0.15rem 0.4rem;">
@@ -3253,12 +3261,12 @@
         menuItems.forEach(item => {
             const action = item.dataset.action;
             if (isViewerMode) {
-                if (action === 'view') item.style.display = hasImage ? 'flex' : 'none';
+                if (action === 'view' || action === 'download-img') item.style.display = hasImage ? 'flex' : 'none';
                 else item.style.display = 'none';
                 return;
             }
             if (action === 'upload' || action === 'import') item.style.display = hasImage ? 'none' : 'flex';
-            if (action === 'view' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
+            if (action === 'view' || action === 'download-img' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'precintos-asignar' || action === 'precintos-liberar') {
                 item.style.display = puedePrecintos ? 'flex' : 'none';
             }
@@ -3291,6 +3299,7 @@
             'upload': '.btn-upload-image',
             'import': '.btn-import-sharepoint',
             'view': '.btn-view-image',
+            'download-img': '.btn-download-image-row',
             'delete-img': '.btn-delete-image',
             'delete-row': '.btn-delete-row'
         };
@@ -3796,6 +3805,190 @@
 
     // ...eliminada funcionalidad de live edit...
 
+    // Utilidades compartidas para visualizar y descargar imágenes/PDF de guía (tabla e historial)
+    let activeGuideBlobUrl = null;
+    const imageModalEl = document.getElementById('imageModal');
+    if (imageModalEl && !imageModalEl.dataset.blobCleanupBound) {
+        imageModalEl.dataset.blobCleanupBound = '1';
+        imageModalEl.addEventListener('hidden.bs.modal', () => {
+            if (activeGuideBlobUrl) {
+                URL.revokeObjectURL(activeGuideBlobUrl);
+                activeGuideBlobUrl = null;
+            }
+            const viewer = document.getElementById('modal-viewer');
+            if (viewer) viewer.innerHTML = '';
+        });
+    }
+
+    function resolverExtensionArchivoGuia(mimeType, src, filename) {
+        const mime = (mimeType || '').toLowerCase();
+        if (mime.includes('pdf')) return 'pdf';
+        if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+        if (mime.includes('png')) return 'png';
+        if (mime.includes('gif')) return 'gif';
+        if (mime.includes('webp')) return 'webp';
+        for (const candidate of [filename, src]) {
+            if (!candidate) continue;
+            try {
+                const u = new URL(candidate, window.location.href);
+                const ext = (u.pathname.split('.').pop() || '').toLowerCase();
+                if (['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                    return ext === 'jpeg' ? 'jpg' : ext;
+                }
+            } catch (err) { /* ignore */ }
+        }
+        return 'png';
+    }
+
+    function dataUriToBlobUrl(dataUri, fallbackMime) {
+        if (!dataUri || !String(dataUri).startsWith('data:')) return null;
+        const parts = String(dataUri).split(',');
+        if (parts.length < 2) return null;
+        const header = parts[0];
+        const mimeMatch = header.match(/data:([^;]+)/i);
+        const mime = (mimeMatch && mimeMatch[1]) ? mimeMatch[1] : (fallbackMime || 'application/octet-stream');
+        const isBase64 = /;base64/i.test(header);
+        let bytes;
+        if (isBase64) {
+            const binStr = atob(parts.slice(1).join(','));
+            bytes = new Uint8Array(binStr.length);
+            for (let i = 0; i < binStr.length; i++) {
+                bytes[i] = binStr.charCodeAt(i);
+            }
+        } else {
+            const decoded = decodeURIComponent(parts.slice(1).join(','));
+            bytes = new TextEncoder().encode(decoded);
+        }
+        const blob = new Blob([bytes], { type: mime });
+        return URL.createObjectURL(blob);
+    }
+
+    function forzarDescargaArchivo(href, filename, revokeAfterMs = 0) {
+        const link = document.createElement('a');
+        link.href = href;
+        link.download = filename || 'guia_transporte';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        if (revokeAfterMs > 0) {
+            setTimeout(() => URL.revokeObjectURL(href), revokeAfterMs);
+        }
+    }
+
+    async function obtenerMetaGuia(id) {
+        const res = await fetch(urlConSede(`/api/programacion/${id}/image`));
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+            throw new Error(data.message || 'No se pudo obtener el archivo de la guía.');
+        }
+        return data;
+    }
+
+    async function abrirModalGuia(id) {
+        try {
+            const data = await obtenerMetaGuia(id);
+            const viewer = document.getElementById('modal-viewer');
+            const downloadBtn = document.getElementById('btn-download-image');
+            const openTabBtn = document.getElementById('btn-open-image-newtab');
+            const modalTitle = document.getElementById('imageModalLabel');
+
+            if (activeGuideBlobUrl) {
+                URL.revokeObjectURL(activeGuideBlobUrl);
+                activeGuideBlobUrl = null;
+            }
+            viewer.innerHTML = '';
+
+            const rawSrc = data.imagen || data.url || data.dataUri;
+            const mimeType = (data.mime || '').toLowerCase();
+            const ext = resolverExtensionArchivoGuia(mimeType, rawSrc, data.filename);
+            const isPdf = mimeType.includes('pdf') || ext === 'pdf';
+            const downloadFilename = data.filename || `guia_transporte_${id}.${ext}`;
+
+            let previewSrc = rawSrc;
+            let downloadHref = data.downloadUrl || rawSrc;
+            if (rawSrc && String(rawSrc).startsWith('data:')) {
+                const blobUrl = dataUriToBlobUrl(rawSrc, mimeType || (isPdf ? 'application/pdf' : 'image/png'));
+                if (blobUrl) {
+                    activeGuideBlobUrl = blobUrl;
+                    if (isPdf) previewSrc = blobUrl;
+                    downloadHref = blobUrl;
+                }
+            }
+
+            if (modalTitle) {
+                const guiaTag = data.numeroGuia ? ` · Guía ${data.numeroGuia}` : '';
+                modalTitle.innerHTML = `<i class="fas fa-image me-2"></i>Imagen de Guía de Transporte${guiaTag}`;
+            }
+
+            downloadBtn.href = downloadHref;
+            downloadBtn.download = downloadFilename;
+
+            if (openTabBtn) {
+                if (previewSrc) {
+                    openTabBtn.href = previewSrc;
+                    openTabBtn.classList.remove('d-none');
+                } else {
+                    openTabBtn.classList.add('d-none');
+                }
+            }
+
+            if (isPdf) {
+                const iframe = document.createElement('iframe');
+                iframe.src = previewSrc + (String(previewSrc).startsWith('blob:') ? '' : '#toolbar=1&navpanes=0&scrollbar=1');
+                iframe.title = downloadFilename;
+                iframe.style.width = '100%';
+                iframe.style.height = '70vh';
+                iframe.style.border = '0';
+                iframe.style.borderRadius = '8px';
+                viewer.appendChild(iframe);
+            } else {
+                const img = document.createElement('img');
+                img.src = previewSrc;
+                img.alt = 'Imagen de guía';
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '70vh';
+                img.style.borderRadius = '8px';
+                viewer.appendChild(img);
+            }
+
+            const imageModal = bootstrap.Modal.getOrCreateInstance(imageModalEl);
+            imageModal.show();
+        } catch (err) {
+            showToast('danger', 'No se pudo cargar el archivo: ' + (err?.message || 'Error de conexión'));
+        }
+    }
+
+    async function descargarArchivoGuia(id) {
+        try {
+            const data = await obtenerMetaGuia(id);
+            const rawSrc = data.imagen || data.url || data.dataUri;
+            const mimeType = (data.mime || '').toLowerCase();
+            const ext = resolverExtensionArchivoGuia(mimeType, rawSrc, data.filename);
+            const filename = data.filename || `guia_transporte_${id}.${ext}`;
+
+            if (data.downloadUrl) {
+                forzarDescargaArchivo(data.downloadUrl, filename);
+                return;
+            }
+            if (rawSrc && String(rawSrc).startsWith('data:')) {
+                const blobUrl = dataUriToBlobUrl(rawSrc, mimeType);
+                if (blobUrl) {
+                    forzarDescargaArchivo(blobUrl, filename, 60000);
+                    return;
+                }
+            }
+            if (rawSrc) {
+                const sep = rawSrc.includes('?') ? '&' : '?';
+                forzarDescargaArchivo(`${rawSrc}${sep}download=1`, filename);
+            } else {
+                showToast('danger', 'Archivo de guía no disponible.');
+            }
+        } catch (err) {
+            showToast('danger', 'No se pudo descargar el archivo: ' + (err?.message || 'Error de conexión'));
+        }
+    }
+
     tbody.addEventListener('click', function (e) {
         const printButton = e.target.closest('.btn-print-guide');
         if (printButton) {
@@ -3897,70 +4090,14 @@
         const viewButton = e.target.closest('.btn-view-image');
         if (viewButton) {
             const row = viewButton.closest('tr');
-            const id = row.dataset.id;
+            if (row && row.dataset.id) abrirModalGuia(row.dataset.id);
+        }
 
-            // Obtener el archivo (imagen o PDF) del servidor
-            fetch(`/api/programacion/${id}/image`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const viewer = document.getElementById('modal-viewer');
-                        const downloadBtn = document.getElementById('btn-download-image');
-
-                        // Limpiar el viewer
-                        viewer.innerHTML = '';
-
-                        // Usar la fuente y el MIME entregados por el servidor
-                        const src = data.imagen; // puede ser URL o data URI
-                        const mimeType = (data.mime || '').toLowerCase();
-
-                        // Preparar botón de descarga
-                        let extension = 'png';
-                        if (mimeType.includes('pdf')) extension = 'pdf';
-                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
-                        else if (mimeType.includes('gif')) extension = 'gif';
-                        else if (mimeType.includes('png')) extension = 'png';
-                        else {
-                            // Último recurso: deducir por extensión de la URL si aplica
-                            try {
-                                const u = new URL(src, window.location.href);
-                                const path = u.pathname || '';
-                                const ext = (path.split('.').pop() || '').toLowerCase();
-                                if (['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
-                                    extension = ext === 'jpeg' ? 'jpg' : ext;
-                                }
-                            } catch (e) { /* ignore */ }
-                        }
-                        downloadBtn.href = src;
-                        downloadBtn.download = `guia_transporte_${id}.${extension}`;
-
-                        // Render según tipo
-                        if (mimeType.includes('pdf')) {
-                            const embed = document.createElement('embed');
-                            embed.type = 'application/pdf';
-                            // Añadir parámetros para mostrar toolbar del visor PDF del navegador
-                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
-                            embed.style.width = '100%';
-                            embed.style.height = '70vh';
-                            embed.style.border = '0';
-                            viewer.appendChild(embed);
-                        } else {
-                            const img = document.createElement('img');
-                            img.src = src;
-                            img.alt = 'Imagen de guía';
-                            img.style.maxWidth = '100%';
-                            img.style.maxHeight = '70vh';
-                            img.style.borderRadius = '8px';
-                            viewer.appendChild(img);
-                        }
-
-                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
-                        imageModal.show();
-                    } else {
-                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
-                    }
-                })
-                .catch(() => showToast('danger', 'Error al cargar el archivo'));
+        // Botón descargar imagen/PDF de guía directo desde la fila
+        const downloadRowButton = e.target.closest('.btn-download-image-row');
+        if (downloadRowButton) {
+            const row = downloadRowButton.closest('tr');
+            if (row && row.dataset.id) descargarArchivoGuia(row.dataset.id);
         }
 
         // Botón eliminar imagen de guía
@@ -4865,14 +5002,17 @@
                                 <i class="fas fa-print"></i>
                             </button>
                             ${row.imagen_guia ? `
-                                <button class="btn btn-outline-success btn-view-image-historial" data-id="${row.id}" title="Ver archivo">
+                                <button class="btn btn-outline-primary btn-view-image-historial" data-id="${row.id}" title="Ver archivo">
                                     <i class="fas fa-image"></i>
                                 </button>
-                            ` : `
+                                <button class="btn btn-outline-success btn-download-image-historial" data-id="${row.id}" title="Descargar archivo">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            ` : `${!isViewerMode ? `
                                 <button class="btn btn-outline-secondary btn-upload-image-historial" data-id="${row.id}" title="Subir archivo">
                                     <i class="fas fa-upload"></i>
                                 </button>
-                            `}
+                            ` : ''}`}
                             ${canDelete ? `
                                 <button class="btn btn-outline-danger btn-delete-historial" data-id="${row.id}" title="Eliminar">
                                     <i class="fas fa-trash-alt"></i>
@@ -5168,51 +5308,14 @@
         // Botón Ver imagen desde historial
         const btnViewImg = e.target.closest('.btn-view-image-historial');
         if (btnViewImg) {
-            const registroId = btnViewImg.dataset.id;
-            fetch(`/api/programacion/${registroId}/image`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        const viewer = document.getElementById('modal-viewer');
-                        const downloadBtn = document.getElementById('btn-download-image');
-                        viewer.innerHTML = '';
+            abrirModalGuia(btnViewImg.dataset.id);
+            return;
+        }
 
-                        const src = data.imagen;
-                        const mimeType = (data.mime || '').toLowerCase();
-
-                        let extension = 'png';
-                        if (mimeType.includes('pdf')) extension = 'pdf';
-                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
-                        else if (mimeType.includes('gif')) extension = 'gif';
-
-                        downloadBtn.href = src;
-                        downloadBtn.download = `guia_transporte_${registroId}.${extension}`;
-
-                        if (mimeType.includes('pdf')) {
-                            const embed = document.createElement('embed');
-                            embed.type = 'application/pdf';
-                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
-                            embed.style.width = '100%';
-                            embed.style.height = '70vh';
-                            embed.style.border = '0';
-                            viewer.appendChild(embed);
-                        } else {
-                            const img = document.createElement('img');
-                            img.src = src;
-                            img.alt = 'Imagen de guía';
-                            img.style.maxWidth = '100%';
-                            img.style.maxHeight = '70vh';
-                            img.style.borderRadius = '8px';
-                            viewer.appendChild(img);
-                        }
-
-                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
-                        imageModal.show();
-                    } else {
-                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
-                    }
-                })
-                .catch(() => showToast('danger', 'Error al cargar el archivo'));
+        // Botón Descargar imagen desde historial
+        const btnDownloadImg = e.target.closest('.btn-download-image-historial');
+        if (btnDownloadImg) {
+            descargarArchivoGuia(btnDownloadImg.dataset.id);
             return;
         }
 

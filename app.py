@@ -1911,6 +1911,12 @@ def _programacion_de_sede_o_404(id):
     return _verificar_sede_registro(ProgramacionCargue.query.get_or_404(id))
 
 
+def _es_solo_lectura_programacion(sede):
+    """True si el usuario actual no puede mutar programación/archivos en la sede dada."""
+    email = (session.get('email') or '').lower()
+    return session.get('rol') == 'viewer' or (sede == 'MADRID' and email == 'amariagallo@conquerstrading.com')
+
+
 def _es_usuario_refineria(email=None):
     return (email if email is not None else session.get('email')) in EMAILS_REFINERIA
 
@@ -2480,11 +2486,11 @@ _ensure_volumen_dian_columns()
 # ===== Servir guías cargadas (PDF/imagenes) =====
 @app.get('/guias/<path:filename>')
 def serve_guia(filename):
-    """Sirve archivos de guía desde GUIDES_DIR con Content-Type correcto e inline.
+    """Sirve archivos de guía desde GUIDES_DIR (inline para vista previa o attachment con ?download=1).
 
     - Detecta MIME con mimetypes.guess_type.
     - Fallback a application/pdf si extensión .pdf o firma %PDF.
-    - Fuerza Content-Disposition: inline y añade X-Content-Type-Options: nosniff.
+    - Soporta ?download=1 para forzar descarga con Content-Disposition: attachment.
     """
     normalized = _normalize_guia_relative_path(filename)
     if not normalized:
@@ -2513,10 +2519,28 @@ def serve_guia(filename):
             pass
     mime = mime or 'application/octet-stream'
 
-    resp = send_file(safe_path, mimetype=mime, as_attachment=False, conditional=True)
-    resp.headers['Content-Disposition'] = f'inline; filename="{os.path.basename(safe_path)}"'
+    force_download = str(request.args.get('download', '')).strip().lower() in ('1', 'true', 'yes', 'si')
+    real_ext = os.path.splitext(safe_path)[1]
+    if not real_ext and mime == 'application/pdf':
+        real_ext = '.pdf'
+    requested_name = (request.args.get('nombre') or '').strip()
+    if requested_name:
+        base_name = secure_filename(os.path.splitext(requested_name)[0])[:80]
+        download_name = f"{base_name}{real_ext}" if base_name else os.path.basename(safe_path)
+    else:
+        download_name = os.path.basename(safe_path)
+
+    resp = send_file(
+        safe_path,
+        mimetype=mime,
+        as_attachment=force_download,
+        download_name=download_name,
+        conditional=True
+    )
+    disposition = 'attachment' if force_download else 'inline'
+    resp.headers['Content-Disposition'] = f'{disposition}; filename="{download_name}"'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
-    resp.headers.setdefault('Cache-Control', 'public, max-age=3600')
+    resp.headers.setdefault('Cache-Control', 'private, max-age=3600')
     # Log de depuración opcional
     try:
         debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
@@ -2527,7 +2551,7 @@ def serve_guia(filename):
             except Exception:
                 pass
             current_app.logger.info(
-                f"[MIME_DEBUG] /guias -> file={normalized} mime={mime} size={size} disposition=inline Accept={request.headers.get('Accept')}"
+                f"[MIME_DEBUG] /guias -> file={normalized} mime={mime} size={size} disposition={disposition} Accept={request.headers.get('Accept')}"
             )
     except Exception:
         pass
@@ -14098,7 +14122,7 @@ def handle_programacion():
     """Obtiene o crea registros de programación de la sede pedida (?sede=)."""
     sede = _sede_de_la_peticion()
     if request.method == 'POST':
-        if session.get('rol') == 'viewer' or (sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com'):
+        if _es_solo_lectura_programacion(sede):
             return jsonify(success=False, message="Acceso denegado: los usuarios con rol de visualizador no pueden crear registros."), 403
         # Lógica para crear un nuevo registro vacío
         nuevo = ProgramacionCargue(ultimo_editor=session.get('nombre'), sede=sede)
@@ -15315,10 +15339,8 @@ def delete_programacion(id):
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def upload_programacion_image(id):
     """Sube un archivo de guía (PDF/imagen) y lo guarda en disco; BD almacena ruta relativa."""
-    if session.get('rol') == 'viewer':
-        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
-    if registro.sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com':
+    if _es_solo_lectura_programacion(registro.sede or SEDE_POR_DEFECTO):
         return jsonify(success=False, message="Acceso denegado: rol de solo lectura para esta sede."), 403
     try:
         # Verificar archivo
@@ -15389,11 +15411,14 @@ def upload_programacion_image(id):
 @login_required
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def get_programacion_image(id):
-    """Devuelve información para visualizar la guía (URL si está en disco o dataUri si legado)."""
+    """Devuelve información para visualizar y descargar la guía (URL en disco o dataUri legado)."""
     registro = _programacion_de_sede_o_404(id)
     try:
         if not registro.imagen_guia:
             return jsonify(success=False, message='Este registro no tiene archivo'), 404
+
+        guia_ref = secure_filename(str(registro.numero_guia or '').strip())
+        nombre_base = f"guia_{guia_ref}" if guia_ref else f"guia_transporte_{id}"
 
         # Compatibilidad: data URI antigua
         if str(registro.imagen_guia).startswith('data:'):
@@ -15408,14 +15433,30 @@ def get_programacion_image(id):
                             mime = 'application/pdf'
                 except Exception:
                     pass
-            # Log opcional
+            mime = mime or 'application/octet-stream'
+            ext_map = {
+                'application/pdf': 'pdf',
+                'image/jpeg': 'jpg',
+                'image/jpg': 'jpg',
+                'image/png': 'png',
+                'image/gif': 'gif',
+                'image/webp': 'webp',
+            }
+            ext = ext_map.get(mime, 'png')
             try:
                 debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
                 if debug:
-                    current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=datauri mime={mime or 'application/octet-stream'}")
+                    current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=datauri mime={mime}")
             except Exception:
                 pass
-            return jsonify(success=True, dataUri=registro.imagen_guia, mime=mime or 'application/octet-stream', imagen=registro.imagen_guia)
+            return jsonify(
+                success=True,
+                dataUri=registro.imagen_guia,
+                mime=mime,
+                imagen=registro.imagen_guia,
+                filename=f"{nombre_base}.{ext}",
+                numeroGuia=registro.numero_guia or ''
+            )
 
         # Ruta relativa en disco
         rel_path = _normalize_guia_relative_path(registro.imagen_guia)
@@ -15423,15 +15464,35 @@ def get_programacion_image(id):
         if not abs_path or not os.path.exists(abs_path):
             return jsonify(success=False, message='Archivo no encontrado'), 404
         url = url_for('serve_guia', filename=rel_path)
+        download_url = url_for('serve_guia', filename=rel_path, download=1, nombre=nombre_base)
         mime, _ = mimetypes.guess_type(abs_path)
-        # Log opcional
+        if not mime or mime == 'application/octet-stream':
+            try:
+                if abs_path.lower().endswith('.pdf'):
+                    mime = 'application/pdf'
+                else:
+                    with open(abs_path, 'rb') as f:
+                        if f.read(8).startswith(b'%PDF'):
+                            mime = 'application/pdf'
+            except Exception:
+                pass
+        mime = mime or 'application/octet-stream'
+        file_ext = os.path.splitext(abs_path)[1] or ('.pdf' if mime == 'application/pdf' else '')
         try:
             debug = str(app.config.get('MIME_DEBUG', '0')).lower() in ('1','true','yes','on')
             if debug:
-                current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=file url={url} mime={mime or 'application/octet-stream'}")
+                current_app.logger.info(f"[MIME_DEBUG] /api/programacion/{id}/image -> source=file url={url} mime={mime}")
         except Exception:
             pass
-        return jsonify(success=True, url=url, mime=mime or 'application/octet-stream', imagen=url)
+        return jsonify(
+            success=True,
+            url=url,
+            downloadUrl=download_url,
+            filename=f"{nombre_base}{file_ext}",
+            mime=mime,
+            imagen=url,
+            numeroGuia=registro.numero_guia or ''
+        )
     except Exception as e:
         return jsonify(success=False, message=str(e)), 500
 
@@ -15440,9 +15501,9 @@ def get_programacion_image(id):
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def delete_programacion_image(id):
     """Elimina el archivo de guía en disco y limpia la referencia."""
-    if session.get('rol') == 'viewer':
-        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
+    if _es_solo_lectura_programacion(registro.sede or SEDE_POR_DEFECTO):
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura para esta sede."), 403
     try:
         if not registro.imagen_guia:
             return jsonify(success=True, message='No hay archivo para eliminar')
@@ -15541,9 +15602,9 @@ def buscar_reemplazar_programacion():
 @permiso_requerido(['programacion_cargue', 'programacion_cargue_madrid'])
 def importar_guia_sharepoint(id):
     """Importa una guía desde SharePoint utilizando el numero_guia del registro."""
-    if session.get('rol') == 'viewer':
-        return jsonify(success=False, message="Acceso denegado: rol de solo lectura."), 403
     registro = _programacion_de_sede_o_404(id)
+    if _es_solo_lectura_programacion(registro.sede or SEDE_POR_DEFECTO):
+        return jsonify(success=False, message="Acceso denegado: rol de solo lectura para esta sede."), 403
     numero_guia = (registro.numero_guia or '').strip()
 
     if not numero_guia:
