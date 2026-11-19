@@ -502,6 +502,12 @@ USUARIOS = {
         "rol": "editor",
         "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos"]
     },
+    "refinerycwt.control@conquerstrading.com": {
+        "password": generate_password_hash("Conquers2025"),
+        "nombre": "Control Refineria Madrid",
+        "rol": "refineria",
+        "area": ["programacion_cargue_madrid", "control_calidad_madrid", "planta_madrid", "reporte_madrid", "programacion_base", "guia_transporte", "precintos"]
+    },
     "logistics.madrid@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Logistics Madrid",
@@ -1534,15 +1540,16 @@ AREA_CALIDAD_POR_SEDE = {
     'CARTAGENA': 'control_calidad',
     'MADRID': 'control_calidad_madrid',
 }
-# Usuarios de refineria: solo campos de refineria, candado de 30 minutos y no
-# pueden tocar un cargue DESPACHADO.
+# Usuarios de refineria: solo campos de refineria, candado de 30 minutos (solo Cartagena)
+# y no pueden tocar un cargue DESPACHADO.
 EMAILS_REFINERIA = {
     'refinery.control@conquerstrading.com',
+    'refinerycwt.control@conquerstrading.com',
     'refinerycwt@conquerstrading.com',
     'refinery@conquerstrading.com',
 }
-# Nombre que dejan en `ultimo_editor` (bloqueo de eliminacion tras 30 min).
-NOMBRES_REFINERIA = {'control refineria', 'refinery cwt', 'refinery'}
+# Nombre que dejan en `ultimo_editor` (bloqueo de eliminacion tras 30 min en Cartagena).
+NOMBRES_REFINERIA = {'control refineria', 'control refineria madrid', 'refinery cwt', 'refinery'}
 
 
 class ProgramacionCargue(db.Model):
@@ -4560,6 +4567,7 @@ def transito():
 # --- PERMISOS DE CONTROL DE CALIDAD ---
 EMAILS_EDITORES_CALIDAD = {
     'refinery.control@conquerstrading.com',
+    'refinerycwt.control@conquerstrading.com',
     'refinerycwt@conquerstrading.com',
     'refinery@conquerstrading.com',
     'quality.manager@conquerstrading.com',
@@ -5263,7 +5271,7 @@ def login():
 
     next_page = request.args.get('next')
     if request.method == 'POST':
-        email = request.form['email'].lower()
+        email = request.form['email'].strip().lower()
         password = request.form['password']
         user = USUARIOS.get(email)
 
@@ -13447,7 +13455,8 @@ PROGRAMACION_BASE_ALLOWED_EMAILS = {
     'logistic@conquerstrading.com',
     'ops@conquerstrading.com',
     'brando@conquerstrading.com',
-    'refinery.control@conquerstrading.com'
+    'refinery.control@conquerstrading.com',
+    'refinerycwt.control@conquerstrading.com'
 }
 
 
@@ -14166,8 +14175,8 @@ def handle_programacion():
 
         fila['es_diluyente_pesado'] = _es_diluyente_pesado_desde_pedido(r)
 
-        # Añadimos flag calculado: si ya pasaron 30 min desde completado
-        if r.refineria_completado_en:
+        # Añadimos flag calculado: si ya pasaron 30 min desde completado (solo Cartagena; Madrid sin restricción de tiempo)
+        if (r.sede or SEDE_POR_DEFECTO).upper() != 'MADRID' and r.refineria_completado_en:
             fila['refineria_bloqueado'] = (ahora - r.refineria_completado_en) > timedelta(minutes=30)
         else:
             fila['refineria_bloqueado'] = False
@@ -14808,6 +14817,7 @@ def update_programacion(id):
         'carlos.baron@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'refinerycwt.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'refinery@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Refinería de Madrid: mismos campos que refinería en Cartagena.
         'refinerycwt@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -14842,10 +14852,12 @@ def update_programacion(id):
             if 'estado' in data and data.get('estado') not in ('PROGRAMADO', 'CARGANDO', 'CARGADO'):
                 return jsonify(success=False, message="Bloqueado: El usuario de refinería solo puede establecer el estado como PROGRAMADO, CARGANDO o CARGADO."), 403
 
-        # Bloqueo de 30 minutos: solo aplica para los campos de datos de refinería, EXCLUYENDO el estado
+        # Bloqueo de 30 minutos: solo aplica en Cartagena para los campos de datos de refinería, EXCLUYENDO el estado.
+        # En sede Madrid no hay restricción de tiempo en programación de cargue.
         campos_refineria_bloqueables = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
         ahora = datetime.utcnow()
-        if registro.refineria_completado_en and (ahora - registro.refineria_completado_en) > timedelta(minutes=30):
+        sede_registro = (registro.sede or SEDE_POR_DEFECTO).upper()
+        if sede_registro != 'MADRID' and registro.refineria_completado_en and (ahora - registro.refineria_completado_en) > timedelta(minutes=30):
             if _es_usuario_refineria():
                 if any(campo in campos_refineria_bloqueables for campo in data.keys()):
                     return jsonify(success=False, message="Bloqueado: Han pasado más de 30 minutos desde que se completaron los campos de refinería. Solo puedes editar el estado."), 403
@@ -14934,21 +14946,22 @@ def update_programacion(id):
         # Actualizar editor
         registro.ultimo_editor = session.get('nombre')
 
-        # Evaluar completitud de refinería después de aplicar cambios
-        campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
-        def valor_lleno(v):
-            return v not in (None, '')
-        try:
-            completo = all(valor_lleno(getattr(registro, f)) for f in campos_refineria)
-        except Exception:
-            completo = False
+        # Evaluar completitud de refinería después de aplicar cambios (el reloj de 30 min solo aplica en Cartagena)
+        if sede_registro != 'MADRID':
+            campos_refineria = ['estado','galones','barriles','temperatura','api_obs','api_corregido','precintos','fecha_despacho']
+            def valor_lleno(v):
+                return v not in (None, '')
+            try:
+                completo = all(valor_lleno(getattr(registro, f)) for f in campos_refineria)
+            except Exception:
+                completo = False
 
-        if completo and not registro.refineria_completado_en:
-            registro.refineria_completado_en = ahora
-        elif not completo and registro.refineria_completado_en:
-            # Si aún no ha pasado el bloqueo definitivo, permitir reiniciar el reloj
-            if (ahora - registro.refineria_completado_en) <= timedelta(minutes=30):
-                registro.refineria_completado_en = None
+            if completo and not registro.refineria_completado_en:
+                registro.refineria_completado_en = ahora
+            elif not completo and registro.refineria_completado_en:
+                # Si aún no ha pasado el bloqueo definitivo, permitir reiniciar el reloj
+                if (ahora - registro.refineria_completado_en) <= timedelta(minutes=30):
+                    registro.refineria_completado_en = None
 
         # Mantener el pedido vinculado con el dato real de Programación de Cargue.
         _sincronizar_pedido_desde_programacion(registro, usuario=session.get('nombre'))
@@ -14992,6 +15005,7 @@ def normalizar_programacion_mayusculas():
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com',
+        'refinerycwt.control@conquerstrading.com',
         'refinery@conquerstrading.com',
         'qualitycontrol@conquerstrading.com',
         'logistics.madrid@conquerstrading.com'
@@ -15320,8 +15334,8 @@ def delete_programacion(id):
 
     registro = _programacion_de_sede_o_404(id)
 
-    # Bloqueo: si último editor fue Refinería y han pasado >30 min, prohibir eliminación (para todos)
-    if registro.ultimo_editor and registro.ultimo_editor.strip().lower() in NOMBRES_REFINERIA:
+    # Bloqueo: si último editor fue Refinería y han pasado >30 min, prohibir eliminación (solo Cartagena; Madrid sin restricción de tiempo)
+    if (registro.sede or SEDE_POR_DEFECTO).upper() != 'MADRID' and registro.ultimo_editor and registro.ultimo_editor.strip().lower() in NOMBRES_REFINERIA:
         if registro.fecha_actualizacion and (datetime.utcnow() - registro.fecha_actualizacion) > timedelta(minutes=30):
             return jsonify(success=False, message='Registro bloqueado: no puede eliminarse después de 30 minutos de la edición de Refinería.'), 403
     try:
@@ -21168,7 +21182,8 @@ def depurar_conductores_ajax():
         'production@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
-        'refinery.control@conquerstrading.com'
+        'refinery.control@conquerstrading.com',
+        'refinerycwt.control@conquerstrading.com'
     }
 
     if session.get('rol') != 'admin' and (session.get('email') not in usuarios_autorizados):
@@ -23587,12 +23602,12 @@ def _precintos_puede_registrar_lotes():
 
 
 def _precintos_bloqueo_refineria(registro):
-    """Mismo candado de 30 min que aplica update_programacion sobre `precintos`."""
+    """Mismo candado de 30 min que aplica update_programacion sobre `precintos` (solo Cartagena; Madrid sin restricción de tiempo)."""
     if not _es_usuario_refineria():
         return None
     if (registro.estado or '').upper() == 'DESPACHADO':
         return 'El registro ya esta DESPACHADO y refineria no puede modificarlo.'
-    if registro.refineria_completado_en:
+    if (registro.sede or SEDE_POR_DEFECTO).upper() != 'MADRID' and registro.refineria_completado_en:
         if (datetime.utcnow() - registro.refineria_completado_en) > timedelta(minutes=30):
             return ('Pasaron mas de 30 minutos desde que se completaron los campos '
                     'de refineria. Ya no puedes cambiar los precintos.')
@@ -23600,12 +23615,14 @@ def _precintos_bloqueo_refineria(registro):
 
 
 def _actualizar_reloj_refineria(registro):
-    """Arranca o reinicia el candado de 30 min de refineria.
+    """Arranca o reinicia el candado de 30 min de refineria (solo Cartagena).
 
     update_programacion hace esto al guardar un campo; como los endpoints de
     precintos escriben `precintos` por fuera de ese flujo, hay que repetirlo
     aqui o el candado no se activa cuando precintos es el ultimo campo.
     """
+    if (registro.sede or SEDE_POR_DEFECTO).upper() == 'MADRID':
+        return
     campos = ['estado', 'galones', 'barriles', 'temperatura',
               'api_obs', 'api_corregido', 'precintos', 'fecha_despacho']
     ahora = datetime.utcnow()
