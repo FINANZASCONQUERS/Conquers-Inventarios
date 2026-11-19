@@ -1339,7 +1339,8 @@
 
         const DESPACHADO_LOCK_DELAY_MS = 30 * 60 * 1000;
         const DESPACHADO_OVERRIDE_EMAILS = ['logistic@conquerstrading.com', 'logistics.assistant@conquerstrading.com', 'logistics.madrid@conquerstrading.com'];
-        const isDespachadoOverride = DESPACHADO_OVERRIDE_EMAILS.includes(userEmail);
+        // En sede Madrid no aplica restricción de tiempo en programación de cargue.
+        const isDespachadoOverride = SEDE_PROGRAMACION === 'MADRID' || DESPACHADO_OVERRIDE_EMAILS.includes(userEmail);
         const despachadoLockTimers = new Map();
 
         const permissions = {
@@ -1349,6 +1350,7 @@
             'carlos.baron@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'amariagallo@conquerstrading.com': ['destino', 'cliente'],
             'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'refinerycwt.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinery@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinerycwt@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'logistics.madrid@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'factura', 'factura_sicom', 'fecha_factura', 'mes_facturado'],
@@ -2966,12 +2968,13 @@
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
                 // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
-                // Si el usuario es refinería y pasaron 30 min, bloquear todos sus campos excepto el estado. Si está DESPACHADO, bloquear todo.
+                // En Cartagena: si pasaron 30 min, bloquear campos de datos excepto estado. En Madrid no hay restricción de tiempo.
+                // Si está DESPACHADO, bloquear todo.
                 const esColRefineriaConTiempo = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
                 const esColEstado = col === 'estado';
                 const refineriaBlocked = ES_REFINERIA && (
                     (row.estado || '').toUpperCase() === 'DESPACHADO' && (esColRefineriaConTiempo || esColEstado) ||
-                    row.refineria_bloqueado && esColRefineriaConTiempo
+                    (SEDE_PROGRAMACION !== 'MADRID' && row.refineria_bloqueado && esColRefineriaConTiempo)
                 );
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
@@ -3093,6 +3096,7 @@
                                     </button>
                                     ` : ''}
                                     ${row.imagen_guia ? `
+                                    <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver" style="padding: 0.15rem 0.4rem;">
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver imagen / guía" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-image"></i>
                                     </button>
@@ -3261,11 +3265,13 @@
         menuItems.forEach(item => {
             const action = item.dataset.action;
             if (isViewerMode) {
+                if (action === 'view') item.style.display = hasImage ? 'flex' : 'none';
                 if (action === 'view' || action === 'download-img') item.style.display = hasImage ? 'flex' : 'none';
                 else item.style.display = 'none';
                 return;
             }
             if (action === 'upload' || action === 'import') item.style.display = hasImage ? 'none' : 'flex';
+            if (action === 'view' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'view' || action === 'download-img' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'precintos-asignar' || action === 'precintos-liberar') {
                 item.style.display = puedePrecintos ? 'flex' : 'none';
@@ -4090,9 +4096,72 @@
         const viewButton = e.target.closest('.btn-view-image');
         if (viewButton) {
             const row = viewButton.closest('tr');
+            const id = row.dataset.id;
             if (row && row.dataset.id) abrirModalGuia(row.dataset.id);
         }
 
+            // Obtener el archivo (imagen o PDF) del servidor
+            fetch(`/api/programacion/${id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const viewer = document.getElementById('modal-viewer');
+                        const downloadBtn = document.getElementById('btn-download-image');
+
+                        // Limpiar el viewer
+                        viewer.innerHTML = '';
+
+                        // Usar la fuente y el MIME entregados por el servidor
+                        const src = data.imagen; // puede ser URL o data URI
+                        const mimeType = (data.mime || '').toLowerCase();
+
+                        // Preparar botón de descarga
+                        let extension = 'png';
+                        if (mimeType.includes('pdf')) extension = 'pdf';
+                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+                        else if (mimeType.includes('gif')) extension = 'gif';
+                        else if (mimeType.includes('png')) extension = 'png';
+                        else {
+                            // Último recurso: deducir por extensión de la URL si aplica
+                            try {
+                                const u = new URL(src, window.location.href);
+                                const path = u.pathname || '';
+                                const ext = (path.split('.').pop() || '').toLowerCase();
+                                if (['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                                    extension = ext === 'jpeg' ? 'jpg' : ext;
+                                }
+                            } catch (e) { /* ignore */ }
+                        }
+                        downloadBtn.href = src;
+                        downloadBtn.download = `guia_transporte_${id}.${extension}`;
+
+                        // Render según tipo
+                        if (mimeType.includes('pdf')) {
+                            const embed = document.createElement('embed');
+                            embed.type = 'application/pdf';
+                            // Añadir parámetros para mostrar toolbar del visor PDF del navegador
+                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
+                            embed.style.width = '100%';
+                            embed.style.height = '70vh';
+                            embed.style.border = '0';
+                            viewer.appendChild(embed);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = src;
+                            img.alt = 'Imagen de guía';
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '70vh';
+                            img.style.borderRadius = '8px';
+                            viewer.appendChild(img);
+                        }
+
+                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                        imageModal.show();
+                    } else {
+                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error al cargar el archivo'));
         // Botón descargar imagen/PDF de guía directo desde la fila
         const downloadRowButton = e.target.closest('.btn-download-image-row');
         if (downloadRowButton) {
