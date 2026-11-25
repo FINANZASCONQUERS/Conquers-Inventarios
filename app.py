@@ -494,19 +494,19 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery",
         "rol": "refineria",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "programacion_cargue", "programacion_cargue_madrid", "control_calidad", "control_calidad_madrid", "precintos"]
+        "area": ["planta", "planta_madrid", "reporte_madrid", "programacion_cargue", "programacion_cargue_madrid", "control_calidad", "control_calidad_madrid", "precintos", "rendimientos_cartagena", "rendimientos_cartagena_editar", "rendimientos_madrid", "rendimientos_madrid_editar"]
     },
     "refinerycwt@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery CWT",
         "rol": "editor",
-        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos"]
+        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos", "rendimientos_madrid", "rendimientos_madrid_editar"]
     },
     "refinerycwt.control@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Control Refineria Madrid",
         "rol": "refineria",
-        "area": ["programacion_cargue_madrid", "control_calidad_madrid", "planta_madrid", "reporte_madrid", "programacion_base", "guia_transporte", "precintos"]
+        "area": ["programacion_cargue_madrid", "control_calidad_madrid", "planta_madrid", "reporte_madrid", "programacion_base", "guia_transporte", "precintos", "rendimientos_madrid", "rendimientos_madrid_editar"]
     },
     "logistics.madrid@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -548,13 +548,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita", "rendimientos_cartagena", "rendimientos_madrid"]
     },
     "omar.morales@conquerstraing.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Omar Morales",
         "rol": "viewer",
-        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita"]
+        "area": ["reportes", "reporte_madrid", "planilla_precios", "simulador_rendimiento", "flujo_efectivo", "siza_solicitante", "programacion_base", "analisis_laboratorio", "control_calidad", "control_calidad_madrid", "modelo_optimizacion", "barcaza_orion", "barcaza_bita", "rendimientos_cartagena", "rendimientos_madrid"]
     },
     "david.restrepo@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -578,13 +578,13 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid", "rendimientos_cartagena", "rendimientos_cartagena_editar", "rendimientos_madrid", "rendimientos_madrid_editar"] 
     },
     "ignacio@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Ignacio Quimbayo",
         "rol": "editor",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid"] 
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid", "rendimientos_cartagena", "rendimientos_cartagena_editar", "rendimientos_madrid", "rendimientos_madrid_editar"] 
     },
     "ops@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -650,7 +650,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte", "precintos"] 
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte", "precintos", "rendimientos_cartagena", "rendimientos_cartagena_editar"] 
     },
     "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -768,6 +768,10 @@ MODULE_ROUTE_MAP = [
     (r'^/reporte_barcaza', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
     (r'^/descargar-reporte-orion-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
     (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
+    (r'^/api/reporte_rendimientos_madrid(?:$|[/?#])', ['rendimientos_madrid', 'rendimientos_madrid_editar']),
+    (r'^/api/reporte_rendimientos(?:$|[/?#])', ['rendimientos_cartagena', 'rendimientos_cartagena_editar']),
+    (r'^/api/produccion_planta_madrid(?:$|[/?#])', ['rendimientos_madrid_editar']),
+    (r'^/api/produccion_planta(?:$|[/?#])', ['rendimientos_cartagena_editar']),
     (r'^/reporte_planta_madrid(?:$|[/?#])', ['reporte_madrid', 'planta_madrid']),
     (r'^/descargar-reporte-planta-madrid-pdf', ['reporte_madrid', 'planta_madrid']),
     (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
@@ -1306,6 +1310,309 @@ def _init_tanques_madrid():
             print(f"[INIT] Error inicializando tanques Madrid: {e}")
 
 _init_tanques_madrid()
+
+
+FACTORES_TON_RENDIMIENTO = {
+    "Crudo": 7.2,
+    "Diluyente": 8.5,
+    "MGO": 7.4,
+    "FO6": 6.7,
+}
+
+HISTORIAL_INICIAL_PRODUCCION_MADRID = {
+    "2026-10-01": {"crudo_procesado": 1464.01, "diluyente": 272.62, "mgo": 462.21, "fo6": 743.90, "consumo_interno": 24.75, "horas_operadas": 24.0},
+    "2026-10-02": {"crudo_procesado": 1546.31, "diluyente": 276.62, "mgo": 477.37, "fo6": 806.16, "consumo_interno": 27.67, "horas_operadas": 24.0},
+    "2026-10-03": {"crudo_procesado": 1531.56, "diluyente": 295.48, "mgo": 427.94, "fo6": 823.56, "consumo_interno": 27.27, "horas_operadas": 24.0},
+    "2026-10-04": {"crudo_procesado": 1542.11, "diluyente": 243.85, "mgo": 466.57, "fo6": 833.03, "consumo_interno": 0.0,   "horas_operadas": 24.0},
+    "2026-10-05": {"crudo_procesado": 1267.95, "diluyente": 148.88, "mgo": 492.69, "fo6": 645.66, "consumo_interno": 27.60, "horas_operadas": 24.0},
+    "2026-10-06": {"crudo_procesado": 1604.96, "diluyente": 313.40, "mgo": 453.27, "fo6": 846.23, "consumo_interno": 29.21, "horas_operadas": 24.0},
+    "2026-10-07": {"crudo_procesado": 1401.26, "diluyente": 267.04, "mgo": 314.02, "fo6": 782.33, "consumo_interno": 26.18, "horas_operadas": 24.0},
+}
+
+
+class ProduccionDiariaPlanta(db.Model):
+    __tablename__ = 'produccion_diaria_planta'
+    __table_args__ = (
+        db.UniqueConstraint('planta', 'fecha', name='uq_produccion_diaria_planta_fecha'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    planta = db.Column(db.String(30), nullable=False, index=True)  # 'cartagena' | 'madrid'
+    fecha = db.Column(db.Date, nullable=False, index=True)
+    crudo_procesado = db.Column(db.Float, nullable=False, default=0.0)
+    diluyente = db.Column(db.Float, nullable=False, default=0.0)
+    mgo = db.Column(db.Float, nullable=False, default=0.0)
+    fo6 = db.Column(db.Float, nullable=False, default=0.0)
+    consumo_interno = db.Column(db.Float, nullable=False, default=0.0)
+    horas_operadas = db.Column(db.Float, nullable=False, default=24.0)
+    usuario = db.Column(db.String(100), nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "fecha": self.fecha.isoformat(),
+            "planta": self.planta,
+            "crudo_procesado": round(float(self.crudo_procesado or 0.0), 4),
+            "diluyente": round(float(self.diluyente or 0.0), 4),
+            "mgo": round(float(self.mgo or 0.0), 4),
+            "fo6": round(float(self.fo6 or 0.0), 4),
+            "consumo_interno": round(float(self.consumo_interno or 0.0), 4),
+            "horas_operadas": round(float(self.horas_operadas if self.horas_operadas is not None else 24.0), 2),
+            "usuario": self.usuario or "",
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ProduccionDiariaPlanta {self.planta} {self.fecha}>'
+
+
+def _init_produccion_diaria_planta():
+    from sqlalchemy import inspect
+    with app.app_context():
+        try:
+            insp = inspect(db.engine)
+            if 'produccion_diaria_planta' not in insp.get_table_names():
+                ProduccionDiariaPlanta.__table__.create(db.engine, checkfirst=True)
+                print("[INIT] Tabla produccion_diaria_planta creada.")
+
+            if ProduccionDiariaPlanta.query.filter_by(planta='madrid').count() == 0:
+                for fecha_iso, vals in HISTORIAL_INICIAL_PRODUCCION_MADRID.items():
+                    db.session.add(ProduccionDiariaPlanta(
+                        planta='madrid',
+                        fecha=date.fromisoformat(fecha_iso),
+                        crudo_procesado=vals['crudo_procesado'],
+                        diluyente=vals['diluyente'],
+                        mgo=vals['mgo'],
+                        fo6=vals['fo6'],
+                        consumo_interno=vals['consumo_interno'],
+                        horas_operadas=vals['horas_operadas'],
+                        usuario='Respaldo HTML',
+                    ))
+                db.session.commit()
+                print("[INIT] Respaldo inicial de producción Madrid (2026-10-01..07) cargado.")
+        except Exception as e:
+            db.session.rollback()
+            print(f"[INIT] Error inicializando produccion_diaria_planta: {e}")
+
+
+_init_produccion_diaria_planta()
+
+
+def _hoy_bogota():
+    return datetime.now(BOGOTA_TZ).date()
+
+
+def _timestamp_para_fecha_planta(fecha_obj):
+    """Genera un timestamp naive cuya fecha SQL siempre coincide con fecha_obj (en UTC y Bogotá)."""
+    ahora_utc = datetime.utcnow()
+    if fecha_obj == _hoy_bogota():
+        if ahora_utc.date() == fecha_obj:
+            return ahora_utc
+        return datetime.combine(fecha_obj, time(23, 59, 0))
+    return datetime.combine(fecha_obj, time(17, 0, 0))
+
+
+def _obtener_ultimos_registros_tanques(model_cls, timestamp_limite):
+    """Obtiene el último registro por fecha/hora (timestamp) de cada tanque <= timestamp_limite."""
+    subq = (
+        db.session.query(
+            model_cls.tk.label('tk'),
+            func.max(model_cls.timestamp).label('max_ts'),
+        )
+        .filter(model_cls.timestamp <= timestamp_limite)
+        .group_by(model_cls.tk)
+        .subquery()
+    )
+    filas = (
+        db.session.query(model_cls)
+        .join(subq, (model_cls.tk == subq.c.tk) & (model_cls.timestamp == subq.c.max_ts))
+        .order_by(model_cls.id.asc())
+        .all()
+    )
+    por_tk = {}
+    for r in filas:
+        por_tk[r.tk] = r
+    return list(por_tk.values())
+
+
+def _puede_ver_rendimientos(planta):
+    if session.get('rol') == 'admin':
+        return True
+    areas = set(session.get('area') or [])
+    if planta == 'madrid':
+        return bool(areas & {'rendimientos_madrid', 'rendimientos_madrid_editar'})
+    return bool(areas & {'rendimientos_cartagena', 'rendimientos_cartagena_editar'})
+
+
+def _puede_editar_rendimientos(planta):
+    if session.get('rol') == 'admin':
+        return True
+    areas = set(session.get('area') or [])
+    if planta == 'madrid':
+        return 'rendimientos_madrid_editar' in areas
+    return 'rendimientos_cartagena_editar' in areas
+
+
+def _parse_float_produccion(val, default=0.0):
+    if val is None or val == '':
+        return default
+    if isinstance(val, (int, float)):
+        return float(val) if not math.isnan(float(val)) else default
+    s = str(val).strip()
+    if not s:
+        return default
+    if ',' in s and '.' in s:
+        if s.rfind(',') > s.rfind('.'):
+            s = s.replace('.', '').replace(',', '.')
+        else:
+            s = s.replace(',', '')
+    elif ',' in s:
+        s = s.replace(',', '.')
+    try:
+        num = float(s)
+        return num if not math.isnan(num) else default
+    except (ValueError, TypeError):
+        return default
+
+
+def _clasificar_tanque_inventario(planta, tk_nombre, producto):
+    tk_u = (tk_nombre or '').strip().upper()
+    prod_u = (producto or '').strip().upper()
+
+    if 'CONSUMO INTERNO' in tk_u or 'COMBUSTIBLE' in prod_u or (planta == 'madrid' and tk_u == 'TK-24'):
+        return None
+    if 'CRUDO' in prod_u:
+        return 'Crudo'
+    if 'DILUYENTE' in prod_u:
+        return 'Diluyente'
+    if 'MGO' in prod_u or 'FO4' in prod_u or 'F04' in prod_u:
+        return 'MGO'
+    if 'FO6' in prod_u or 'F06' in prod_u or 'IFO' in prod_u:
+        return 'FO6'
+    return None
+
+
+def _calcular_inventario_disponible_desde_tanques(planta, datos_tanques):
+    totales_bbl = {"Crudo": 0.0, "Diluyente": 0.0, "MGO": 0.0, "FO6": 0.0}
+    detalle_tks = {"Crudo": [], "Diluyente": [], "MGO": [], "FO6": []}
+
+    for fila in (datos_tanques or []):
+        tk = fila.get("TK") or ""
+        prod = fila.get("PRODUCTO") or ""
+        bls = _parse_float_produccion(fila.get("BLS_60"), default=0.0)
+        cat = _clasificar_tanque_inventario(planta, tk, prod)
+        if cat:
+            totales_bbl[cat] += bls
+            detalle_tks[cat].append({"tk": tk, "producto": prod, "bls": round(bls, 2)})
+
+    inventario = {}
+    for cat in ("Crudo", "Diluyente", "MGO", "FO6"):
+        bbl = round(totales_bbl[cat], 2)
+        factor = FACTORES_TON_RENDIMIENTO[cat]
+        ton = round(bbl / factor, 2) if factor > 0 else 0.0
+        inventario[cat] = {
+            "bbl": bbl,
+            "ton": ton,
+            "factor": factor,
+            "tanques": detalle_tks[cat],
+        }
+    return inventario
+
+
+def _obtener_payload_rendimientos(planta, fecha_seleccionada, datos_tanques):
+    inicio_mes = fecha_seleccionada.replace(day=1)
+    registros_mes = (
+        ProduccionDiariaPlanta.query
+        .filter(
+            ProduccionDiariaPlanta.planta == planta,
+            ProduccionDiariaPlanta.fecha >= inicio_mes,
+            ProduccionDiariaPlanta.fecha <= fecha_seleccionada,
+        )
+        .order_by(ProduccionDiariaPlanta.fecha.asc())
+        .all()
+    )
+
+    historial_mes = {}
+    registro_dia = None
+    for r in registros_mes:
+        f_iso = r.fecha.isoformat()
+        d_item = r.to_dict()
+        historial_mes[f_iso] = d_item
+        if r.fecha == fecha_seleccionada:
+            registro_dia = d_item
+
+    if registro_dia is None:
+        registro_dia = {
+            "fecha": fecha_seleccionada.isoformat(),
+            "planta": planta,
+            "crudo_procesado": 0.0,
+            "diluyente": 0.0,
+            "mgo": 0.0,
+            "fo6": 0.0,
+            "consumo_interno": 0.0,
+            "horas_operadas": 24.0,
+            "usuario": "",
+            "updated_at": None,
+            "sin_registro": True,
+        }
+    else:
+        registro_dia["sin_registro"] = False
+
+    inventario = _calcular_inventario_disponible_desde_tanques(planta, datos_tanques)
+
+    fechas_prod_rows = (
+        db.session.query(ProduccionDiariaPlanta.fecha)
+        .filter(ProduccionDiariaPlanta.planta == planta)
+        .all()
+    )
+    fechas_produccion = sorted({f.isoformat() for (f,) in fechas_prod_rows if f})
+
+    return {
+        "planta": planta,
+        "fecha": fecha_seleccionada.isoformat(),
+        "dia": registro_dia,
+        "historial_mes": historial_mes,
+        "inventario": inventario,
+        "factores_ton": FACTORES_TON_RENDIMIENTO,
+        "fechas_produccion": fechas_produccion,
+    }
+
+
+def _guardar_produccion_diaria_db(planta, fecha_obj, payload, usuario):
+    crudo = max(0.0, _parse_float_produccion(payload.get("crudo_procesado"), 0.0))
+    diluyente = max(0.0, _parse_float_produccion(payload.get("diluyente"), 0.0))
+    mgo = max(0.0, _parse_float_produccion(payload.get("mgo"), 0.0))
+    fo6 = max(0.0, _parse_float_produccion(payload.get("fo6"), 0.0))
+    consumo = max(0.0, _parse_float_produccion(payload.get("consumo_interno"), 0.0))
+    horas = max(0.0, _parse_float_produccion(payload.get("horas_operadas"), 24.0))
+
+    existente = ProduccionDiariaPlanta.query.filter_by(planta=planta, fecha=fecha_obj).first()
+    if existente:
+        existente.crudo_procesado = crudo
+        existente.diluyente = diluyente
+        existente.mgo = mgo
+        existente.fo6 = fo6
+        existente.consumo_interno = consumo
+        existente.horas_operadas = horas
+        existente.usuario = usuario
+        existente.updated_at = datetime.utcnow()
+        rec = existente
+    else:
+        rec = ProduccionDiariaPlanta(
+            planta=planta,
+            fecha=fecha_obj,
+            crudo_procesado=crudo,
+            diluyente=diluyente,
+            mgo=mgo,
+            fo6=fo6,
+            consumo_interno=consumo,
+            horas_operadas=horas,
+            usuario=usuario,
+            updated_at=datetime.utcnow(),
+        )
+        db.session.add(rec)
+    return rec
+
     
 class RegistroBarcazaOrion(db.Model):
     __tablename__ = 'registros_barcaza_orion' # Nombre de la nueva tabla
@@ -5297,13 +5604,14 @@ def logout():
 @login_required
 @permiso_requerido('planta')
 def planta():
-    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy.
+    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy (Bogotá).
     fecha_str = request.args.get('fecha')
+    hoy_bogota = _hoy_bogota()
 
     try:
-        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else hoy_bogota
     except (ValueError, TypeError):
-        fecha_seleccionada = date.today()
+        fecha_seleccionada = hoy_bogota
     
     timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
@@ -5397,40 +5705,70 @@ def planta():
     )
 
     # 4. Construimos listado de días con registros...
+    puede_ver_rend = _puede_ver_rendimientos('cartagena')
+    puede_editar_prod = _puede_editar_rendimientos('cartagena')
     try:
         dias_rows = (db.session
             .query(func.date(RegistroPlanta.timestamp).label('dia'))
             .group_by(func.date(RegistroPlanta.timestamp))
             .all())
-        fechas_con_registro = []
+        fechas_set = set()
         for (dia,) in dias_rows:
             try:
-                fechas_con_registro.append(dia.isoformat())
+                fechas_set.add(dia.isoformat())
             except AttributeError:
-                fechas_con_registro.append(str(dia))
+                fechas_set.add(str(dia))
+        if puede_ver_rend:
+            prod_rows = (db.session
+                .query(ProduccionDiariaPlanta.fecha)
+                .filter(ProduccionDiariaPlanta.planta == 'cartagena')
+                .all())
+            for (f,) in prod_rows:
+                if f:
+                    fechas_set.add(f.isoformat())
+        fechas_con_registro = sorted(fechas_set)
     except Exception:
         fechas_con_registro = []
+
+    produccion_dia = None
+    if puede_editar_prod:
+        prod_rec = ProduccionDiariaPlanta.query.filter_by(planta='cartagena', fecha=fecha_seleccionada).first()
+        produccion_dia = prod_rec.to_dict() if prod_rec else {
+            "fecha": fecha_seleccionada.isoformat(),
+            "planta": "cartagena",
+            "crudo_procesado": "",
+            "diluyente": "",
+            "mgo": "",
+            "fo6": "",
+            "consumo_interno": "",
+            "horas_operadas": 24,
+            "sin_registro": True,
+        }
 
     # 5. Enviamos los datos y la fecha seleccionada de vuelta al HTML
     return render_template("planta.html", 
                            planilla=datos_para_plantilla, 
                            nombre=session.get("nombre", "Usuario"),
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
-                           today_iso=date.today().isoformat(),
+                           today_iso=hoy_bogota.isoformat(),
                            fechas_con_registro=fechas_con_registro,
-                           tanques_conf=tanques_conf) # Pasamos config para el modal
+                           tanques_conf=tanques_conf,
+                           produccion_dia=produccion_dia,
+                           puede_ver_rendimientos=puede_ver_rend,
+                           puede_editar_prod=puede_editar_prod) # Pasamos config para el modal
 
 @app.route('/planta_madrid')
 @login_required
 @permiso_requerido(['planta_madrid'])
 def planta_madrid():
-    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy por defecto
+    # 1. Obtiene la fecha del filtro de la URL. Si no se envía ninguna, usa la fecha de hoy (Bogotá) por defecto
     fecha_str = request.args.get('fecha')
+    hoy_bogota = _hoy_bogota()
 
     try:
-        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else hoy_bogota
     except (ValueError, TypeError):
-        fecha_seleccionada = date.today()
+        fecha_seleccionada = hoy_bogota
 
     start_dia = datetime.combine(fecha_seleccionada, time.min)
     end_dia = datetime.combine(fecha_seleccionada, time.max)
@@ -5515,27 +5853,56 @@ def planta_madrid():
     )
 
     # 4. Listado de días con registros
+    puede_ver_rend = _puede_ver_rendimientos('madrid')
+    puede_editar_prod = _puede_editar_rendimientos('madrid')
     try:
         dias_rows = (db.session
             .query(func.date(RegistroPlantaMadrid.timestamp).label('dia'))
             .group_by(func.date(RegistroPlantaMadrid.timestamp))
             .all())
-        fechas_con_registro = []
+        fechas_set = set()
         for (dia,) in dias_rows:
             try:
-                fechas_con_registro.append(dia.isoformat())
+                fechas_set.add(dia.isoformat())
             except AttributeError:
-                fechas_con_registro.append(str(dia))
+                fechas_set.add(str(dia))
+        if puede_ver_rend:
+            prod_rows = (db.session
+                .query(ProduccionDiariaPlanta.fecha)
+                .filter(ProduccionDiariaPlanta.planta == 'madrid')
+                .all())
+            for (f,) in prod_rows:
+                if f:
+                    fechas_set.add(f.isoformat())
+        fechas_con_registro = sorted(fechas_set)
     except Exception:
         fechas_con_registro = []
+
+    produccion_dia = None
+    if puede_editar_prod:
+        prod_rec = ProduccionDiariaPlanta.query.filter_by(planta='madrid', fecha=fecha_seleccionada).first()
+        produccion_dia = prod_rec.to_dict() if prod_rec else {
+            "fecha": fecha_seleccionada.isoformat(),
+            "planta": "madrid",
+            "crudo_procesado": "",
+            "diluyente": "",
+            "mgo": "",
+            "fo6": "",
+            "consumo_interno": "",
+            "horas_operadas": 24,
+            "sin_registro": True,
+        }
 
     return render_template("planta_madrid.html", 
                            planilla=datos_para_plantilla, 
                            nombre=session.get("nombre", "Usuario"),
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
-                           today_iso=date.today().isoformat(),
+                           today_iso=hoy_bogota.isoformat(),
                            fechas_con_registro=fechas_con_registro,
-                           tanques_conf=tanques_conf)
+                           tanques_conf=tanques_conf,
+                           produccion_dia=produccion_dia,
+                           puede_ver_rendimientos=puede_ver_rend,
+                           puede_editar_prod=puede_editar_prod)
 
 @app.route('/reporte_variaciones_tanques')
 @login_required
@@ -5644,25 +6011,18 @@ def reporte_variaciones_tanques():
 @app.route('/reporte_planta')
 @login_required
 def reporte_planta():
-    # 1. La lógica del filtro de fecha no cambia
+    # 1. La lógica del filtro de fecha
     fecha_str = request.args.get('fecha')
+    hoy_bogota = _hoy_bogota()
     try:
-        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else hoy_bogota
     except (ValueError, TypeError):
-        fecha_seleccionada = date.today()
+        fecha_seleccionada = hoy_bogota
     
     timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
-    # 2. La consulta a la base de datos no cambia
-    subquery = (db.session.query(
-        func.max(RegistroPlanta.id).label('max_id')
-    ).filter(
-        RegistroPlanta.timestamp <= timestamp_limite
-    ).group_by(RegistroPlanta.tk).subquery())
-
-    registros_recientes = (db.session.query(RegistroPlanta)
-        .filter(RegistroPlanta.id.in_(subquery))
-        .all())
+    # 2. Último registro por timestamp (evita sobrescritura por cargas retroactivas)
+    registros_recientes = _obtener_ultimos_registros_tanques(RegistroPlanta, timestamp_limite)
     
     # 3. Preparamos los datos y la información
     datos_planta_js = []
@@ -5736,48 +6096,53 @@ def reporte_planta():
 
     # 4. Renderizamos la plantilla con los datos ya ordenados
     # Fechas con registro para colorear
+    puede_ver_rend = _puede_ver_rendimientos('cartagena')
+    puede_editar_prod = _puede_editar_rendimientos('cartagena')
+    rendimientos_payload = _obtener_payload_rendimientos('cartagena', fecha_seleccionada, datos_planta_js) if puede_ver_rend else {}
     try:
         dias_rows = (db.session
             .query(func.date(RegistroPlanta.timestamp).label('dia'))
             .group_by(func.date(RegistroPlanta.timestamp))
             .all())
-        fechas_con_registro = []
+        fechas_set = set(rendimientos_payload.get('fechas_produccion') or []) if puede_ver_rend else set()
         for (dia,) in dias_rows:
             try:
-                fechas_con_registro.append(dia.isoformat())
+                fechas_set.add(dia.isoformat())
             except AttributeError:
-                fechas_con_registro.append(str(dia))
+                fechas_set.add(str(dia))
+        fechas_con_registro = sorted(fechas_set)
     except Exception:
-        fechas_con_registro = []
+        fechas_con_registro = (rendimientos_payload.get('fechas_produccion') or []) if puede_ver_rend else []
+
+    tab_inicial = request.args.get('tab', 'tanques')
+    if not puede_ver_rend or tab_inicial not in ('tanques', 'rendimientos'):
+        tab_inicial = 'tanques'
 
     return render_template("reporte_planta.html", 
                            datos_planta_para_js=datos_planta_js,
                            fecha_actualizacion_info=fecha_actualizacion_info,
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
-                           today_iso=date.today().isoformat(),
-                           fechas_con_registro=fechas_con_registro)
+                           today_iso=hoy_bogota.isoformat(),
+                           fechas_con_registro=fechas_con_registro,
+                           rendimientos_payload=rendimientos_payload,
+                           tab_inicial=tab_inicial,
+                           puede_ver_rendimientos=puede_ver_rend,
+                           puede_editar_prod=puede_editar_prod)
 
 @app.route('/reporte_planta_madrid')
 @login_required
 @permiso_requerido(['reporte_madrid', 'planta_madrid'])
 def reporte_planta_madrid():
     fecha_str = request.args.get('fecha')
+    hoy_bogota = _hoy_bogota()
     try:
-        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else date.today()
+        fecha_seleccionada = date.fromisoformat(fecha_str) if fecha_str else hoy_bogota
     except (ValueError, TypeError):
-        fecha_seleccionada = date.today()
+        fecha_seleccionada = hoy_bogota
     
     timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
 
-    subquery = (db.session.query(
-        func.max(RegistroPlantaMadrid.id)
-    ).filter(
-        RegistroPlantaMadrid.timestamp <= timestamp_limite
-    ).group_by(RegistroPlantaMadrid.tk))
-
-    registros_recientes = (db.session.query(RegistroPlantaMadrid)
-        .filter(RegistroPlantaMadrid.id.in_(subquery))
-        .all())
+    registros_recientes = _obtener_ultimos_registros_tanques(RegistroPlantaMadrid, timestamp_limite)
     
     datos_planta_js = []
     fecha_actualizacion_info = "No hay registros para la fecha seleccionada."
@@ -5852,26 +6217,38 @@ def reporte_planta_madrid():
             ultimo_registro_general.usuario
         )
 
+    puede_ver_rend = _puede_ver_rendimientos('madrid')
+    puede_editar_prod = _puede_editar_rendimientos('madrid')
+    rendimientos_payload = _obtener_payload_rendimientos('madrid', fecha_seleccionada, datos_planta_js) if puede_ver_rend else {}
     try:
         dias_rows = (db.session
             .query(func.date(RegistroPlantaMadrid.timestamp).label('dia'))
             .group_by(func.date(RegistroPlantaMadrid.timestamp))
             .all())
-        fechas_con_registro = []
+        fechas_set = set(rendimientos_payload.get('fechas_produccion') or []) if puede_ver_rend else set()
         for (dia,) in dias_rows:
             try:
-                fechas_con_registro.append(dia.isoformat())
+                fechas_set.add(dia.isoformat())
             except AttributeError:
-                fechas_con_registro.append(str(dia))
+                fechas_set.add(str(dia))
+        fechas_con_registro = sorted(fechas_set)
     except Exception:
-        fechas_con_registro = []
+        fechas_con_registro = (rendimientos_payload.get('fechas_produccion') or []) if puede_ver_rend else []
+
+    tab_inicial = request.args.get('tab', 'tanques')
+    if not puede_ver_rend or tab_inicial not in ('tanques', 'rendimientos'):
+        tab_inicial = 'tanques'
 
     return render_template("reporte_planta_madrid.html", 
                            datos_planta_para_js=datos_planta_js,
                            fecha_actualizacion_info=fecha_actualizacion_info,
                            fecha_seleccionada=fecha_seleccionada.isoformat(),
-                           today_iso=date.today().isoformat(),
-                           fechas_con_registro=fechas_con_registro)
+                           today_iso=hoy_bogota.isoformat(),
+                           fechas_con_registro=fechas_con_registro,
+                           rendimientos_payload=rendimientos_payload,
+                           tab_inicial=tab_inicial,
+                           puede_ver_rendimientos=puede_ver_rend,
+                           puede_editar_prod=puede_editar_prod)
 
 @app.route('/guardar-config-transito', methods=['POST'])
 @login_required
@@ -10052,8 +10429,24 @@ def guardar_datos_planta():
 @login_required
 @permiso_requerido('planta')
 def guardar_registro_planta():
-    lista_tanques = request.get_json()
-    if not isinstance(lista_tanques, list):
+    raw_payload = request.get_json()
+    fecha_obj = _hoy_bogota()
+    produccion_payload = None
+
+    if isinstance(raw_payload, list):
+        lista_tanques = raw_payload
+    elif isinstance(raw_payload, dict):
+        lista_tanques = raw_payload.get('tanques')
+        produccion_payload = raw_payload.get('produccion')
+        fecha_str = raw_payload.get('fecha')
+        if fecha_str:
+            try:
+                fecha_obj = date.fromisoformat(str(fecha_str).strip())
+            except ValueError:
+                return jsonify(success=False, message="Fecha inválida (use YYYY-MM-DD)."), 400
+        if not isinstance(lista_tanques, list):
+            return jsonify(success=False, message="Formato de datos incorrecto."), 400
+    else:
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
@@ -10067,8 +10460,10 @@ def guardar_registro_planta():
                 return float(s)
             except Exception:
                 return None
-        today_start = datetime.combine(date.today(), time.min)
-        today_end = datetime.combine(date.today(), time.max)
+        day_start = datetime.combine(fecha_obj, time.min)
+        day_end = datetime.combine(fecha_obj, time.max)
+        ts_guardar = _timestamp_para_fecha_planta(fecha_obj)
+        usuario_actual = session.get("nombre", "No identificado")
 
         for datos_tanque in lista_tanques:
             tk = datos_tanque.get('TK')
@@ -10076,12 +10471,11 @@ def guardar_registro_planta():
 
             registro_existente = db.session.query(RegistroPlanta).filter(
                 RegistroPlanta.tk == tk,
-                RegistroPlanta.timestamp.between(today_start, today_end)
-            ).first()
+                RegistroPlanta.timestamp.between(day_start, day_end)
+            ).order_by(RegistroPlanta.timestamp.desc(), RegistroPlanta.id.desc()).first()
 
             if registro_existente:
-                # Si existe, lo ACTUALIZAMOS
-                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.usuario = usuario_actual
                 if datos_tanque.get('PRODUCTO'):
                     registro_existente.producto = "DILUYENTE" if tk == "Consumo Interno" else datos_tanque.get('PRODUCTO')
                 if datos_tanque.get('MAX_CAP') is not None:
@@ -10090,12 +10484,11 @@ def guardar_registro_planta():
                 registro_existente.api = to_float(datos_tanque.get('API'))
                 registro_existente.bsw = to_float(datos_tanque.get('BSW'))
                 registro_existente.s = to_float(datos_tanque.get('S'))
-                registro_existente.timestamp = datetime.utcnow()
+                registro_existente.timestamp = ts_guardar
             else:
-                # Si no existe para hoy, CREAMOS uno nuevo
                 nuevo_registro = RegistroPlanta(
-                    timestamp=datetime.utcnow(),
-                    usuario=session.get("nombre", "No identificado"),
+                    timestamp=ts_guardar,
+                    usuario=usuario_actual,
                     tk=tk,
                     producto="DILUYENTE" if tk == "Consumo Interno" else datos_tanque.get('PRODUCTO'),
                     max_cap=124.78 if tk == "Consumo Interno" else to_float(datos_tanque.get('MAX_CAP')),
@@ -10105,9 +10498,17 @@ def guardar_registro_planta():
                     s=to_float(datos_tanque.get('S'))
                 )
                 db.session.add(nuevo_registro)
-        
+
+        if _puede_editar_rendimientos('cartagena') and isinstance(produccion_payload, dict) and produccion_payload.get('guardar', True):
+            tiene_valor = any(
+                str(produccion_payload.get(k, '')).strip() != ''
+                for k in ('crudo_procesado', 'diluyente', 'mgo', 'fo6', 'consumo_interno')
+            )
+            if tiene_valor or ProduccionDiariaPlanta.query.filter_by(planta='cartagena', fecha=fecha_obj).first():
+                _guardar_produccion_diaria_db('cartagena', fecha_obj, produccion_payload, usuario_actual)
+
         db.session.commit()
-        return jsonify(success=True, message="Inventario de planta actualizado exitosamente.")
+        return jsonify(success=True, message=f"Inventario de planta del {fecha_obj.isoformat()} actualizado exitosamente.", fecha=fecha_obj.isoformat())
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
@@ -10116,8 +10517,24 @@ def guardar_registro_planta():
 @login_required
 @permiso_requerido(['planta_madrid'])
 def guardar_registro_planta_madrid():
-    lista_tanques = request.get_json()
-    if not isinstance(lista_tanques, list):
+    raw_payload = request.get_json()
+    fecha_obj = _hoy_bogota()
+    produccion_payload = None
+
+    if isinstance(raw_payload, list):
+        lista_tanques = raw_payload
+    elif isinstance(raw_payload, dict):
+        lista_tanques = raw_payload.get('tanques')
+        produccion_payload = raw_payload.get('produccion')
+        fecha_str = raw_payload.get('fecha')
+        if fecha_str:
+            try:
+                fecha_obj = date.fromisoformat(str(fecha_str).strip())
+            except ValueError:
+                return jsonify(success=False, message="Fecha inválida (use YYYY-MM-DD)."), 400
+        if not isinstance(lista_tanques, list):
+            return jsonify(success=False, message="Formato de datos incorrecto."), 400
+    else:
         return jsonify(success=False, message="Formato de datos incorrecto."), 400
 
     try:
@@ -10131,8 +10548,10 @@ def guardar_registro_planta_madrid():
                 return float(s)
             except Exception:
                 return None
-        today_start = datetime.combine(date.today(), time.min)
-        today_end = datetime.combine(date.today(), time.max)
+        day_start = datetime.combine(fecha_obj, time.min)
+        day_end = datetime.combine(fecha_obj, time.max)
+        ts_guardar = _timestamp_para_fecha_planta(fecha_obj)
+        usuario_actual = session.get("nombre", "No identificado")
 
         for datos_tanque in lista_tanques:
             tk = datos_tanque.get('TK')
@@ -10140,12 +10559,11 @@ def guardar_registro_planta_madrid():
 
             registro_existente = db.session.query(RegistroPlantaMadrid).filter(
                 RegistroPlantaMadrid.tk == tk,
-                RegistroPlantaMadrid.timestamp.between(today_start, today_end)
-            ).first()
+                RegistroPlantaMadrid.timestamp.between(day_start, day_end)
+            ).order_by(RegistroPlantaMadrid.timestamp.desc(), RegistroPlantaMadrid.id.desc()).first()
 
             if registro_existente:
-                # Si existe, lo ACTUALIZAMOS
-                registro_existente.usuario = session.get("nombre", "No identificado")
+                registro_existente.usuario = usuario_actual
                 if datos_tanque.get('PRODUCTO'):
                     registro_existente.producto = datos_tanque.get('PRODUCTO')
                 if datos_tanque.get('MAX_CAP') is not None:
@@ -10156,12 +10574,11 @@ def guardar_registro_planta_madrid():
                 registro_existente.api = to_float(datos_tanque.get('API'))
                 registro_existente.bsw = to_float(datos_tanque.get('BSW'))
                 registro_existente.s = to_float(datos_tanque.get('S'))
-                registro_existente.timestamp = datetime.utcnow()
+                registro_existente.timestamp = ts_guardar
             else:
-                # Si no existe para hoy, CREAMOS uno nuevo
                 nuevo_registro = RegistroPlantaMadrid(
-                    timestamp=datetime.utcnow(),
-                    usuario=session.get("nombre", "No identificado"),
+                    timestamp=ts_guardar,
+                    usuario=usuario_actual,
                     tk=tk,
                     producto=datos_tanque.get('PRODUCTO'),
                     max_cap=to_float(datos_tanque.get('MAX_CAP')),
@@ -10172,12 +10589,158 @@ def guardar_registro_planta_madrid():
                     s=to_float(datos_tanque.get('S'))
                 )
                 db.session.add(nuevo_registro)
-        
+
+        if _puede_editar_rendimientos('madrid') and isinstance(produccion_payload, dict) and produccion_payload.get('guardar', True):
+            tiene_valor = any(
+                str(produccion_payload.get(k, '')).strip() != ''
+                for k in ('crudo_procesado', 'diluyente', 'mgo', 'fo6', 'consumo_interno')
+            )
+            if tiene_valor or ProduccionDiariaPlanta.query.filter_by(planta='madrid', fecha=fecha_obj).first():
+                _guardar_produccion_diaria_db('madrid', fecha_obj, produccion_payload, usuario_actual)
+
         db.session.commit()
-        return jsonify(success=True, message="Inventario de planta Madrid actualizado exitosamente.")
+        return jsonify(success=True, message=f"Inventario de planta Madrid del {fecha_obj.isoformat()} actualizado exitosamente.", fecha=fecha_obj.isoformat())
     except Exception as e:
         db.session.rollback()
         return jsonify(success=False, message=f"Error interno: {str(e)}"), 500
+
+
+def _obtener_tanques_snapshot_para_rendimientos(planta, fecha_seleccionada):
+    timestamp_limite = datetime.combine(fecha_seleccionada, time.max)
+    if planta == 'madrid':
+        registros = _obtener_ultimos_registros_tanques(RegistroPlantaMadrid, timestamp_limite)
+        try:
+            tanques_db = TanquePlantaMadrid.query.filter_by(activo=True).order_by(TanquePlantaMadrid.orden).all()
+        except Exception:
+            tanques_db = []
+        defaults_map = {t.nombre: t.producto_actual for t in tanques_db}
+        allowed = set(defaults_map.keys()) if defaults_map else None
+        out = []
+        for r in registros:
+            if not r.tk:
+                continue
+            if allowed is not None and r.tk not in allowed:
+                continue
+            out.append({
+                "TK": r.tk,
+                "PRODUCTO": defaults_map.get(r.tk) or r.producto or "",
+                "BLS_60": r.bls_60,
+            })
+        return out
+    else:
+        registros = _obtener_ultimos_registros_tanques(RegistroPlanta, timestamp_limite)
+        try:
+            tanques_db = TanquePlanta.query.filter_by(activo=True).order_by(TanquePlanta.orden).all()
+        except Exception:
+            tanques_db = []
+        defaults_map = {t.nombre: t.producto_actual for t in tanques_db}
+        allowed = set(defaults_map.keys()) if defaults_map else None
+        out = []
+        for r in registros:
+            if not r.tk:
+                continue
+            if allowed is not None and r.tk not in allowed:
+                continue
+            out.append({
+                "TK": r.tk,
+                "PRODUCTO": "DILUYENTE" if r.tk == "Consumo Interno" else (defaults_map.get(r.tk) or r.producto or ""),
+                "BLS_60": r.bls_60,
+            })
+        return out
+
+
+@app.route('/api/produccion_planta', methods=['GET', 'POST'])
+@login_required
+@permiso_requerido(['rendimientos_cartagena_editar'])
+def api_produccion_planta():
+    if request.method == 'GET':
+        fecha_str = request.args.get('fecha')
+        try:
+            fecha_obj = date.fromisoformat(fecha_str) if fecha_str else _hoy_bogota()
+        except (ValueError, TypeError):
+            fecha_obj = _hoy_bogota()
+        tanques = _obtener_tanques_snapshot_para_rendimientos('cartagena', fecha_obj)
+        payload = _obtener_payload_rendimientos('cartagena', fecha_obj, tanques)
+        return jsonify(success=True, **payload)
+
+    data = request.get_json(silent=True) or {}
+    fecha_str = data.get('fecha')
+    try:
+        fecha_obj = date.fromisoformat(str(fecha_str).strip()) if fecha_str else _hoy_bogota()
+    except (ValueError, TypeError):
+        return jsonify(success=False, message="Fecha inválida (use YYYY-MM-DD)."), 400
+
+    try:
+        usuario_actual = session.get("nombre", "No identificado")
+        rec = _guardar_produccion_diaria_db('cartagena', fecha_obj, data, usuario_actual)
+        db.session.commit()
+        tanques = _obtener_tanques_snapshot_para_rendimientos('cartagena', fecha_obj)
+        payload = _obtener_payload_rendimientos('cartagena', fecha_obj, tanques)
+        return jsonify(success=True, message=f"Producción diaria de Cartagena ({fecha_obj.isoformat()}) guardada exitosamente.", registro=rec.to_dict(), **payload)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error guardando producción Cartagena: {str(e)}"), 500
+
+
+@app.route('/api/produccion_planta_madrid', methods=['GET', 'POST'])
+@login_required
+@permiso_requerido(['rendimientos_madrid_editar'])
+def api_produccion_planta_madrid():
+    if request.method == 'GET':
+        fecha_str = request.args.get('fecha')
+        try:
+            fecha_obj = date.fromisoformat(fecha_str) if fecha_str else _hoy_bogota()
+        except (ValueError, TypeError):
+            fecha_obj = _hoy_bogota()
+        tanques = _obtener_tanques_snapshot_para_rendimientos('madrid', fecha_obj)
+        payload = _obtener_payload_rendimientos('madrid', fecha_obj, tanques)
+        return jsonify(success=True, **payload)
+
+    data = request.get_json(silent=True) or {}
+    fecha_str = data.get('fecha')
+    try:
+        fecha_obj = date.fromisoformat(str(fecha_str).strip()) if fecha_str else _hoy_bogota()
+    except (ValueError, TypeError):
+        return jsonify(success=False, message="Fecha inválida (use YYYY-MM-DD)."), 400
+
+    try:
+        usuario_actual = session.get("nombre", "No identificado")
+        rec = _guardar_produccion_diaria_db('madrid', fecha_obj, data, usuario_actual)
+        db.session.commit()
+        tanques = _obtener_tanques_snapshot_para_rendimientos('madrid', fecha_obj)
+        payload = _obtener_payload_rendimientos('madrid', fecha_obj, tanques)
+        return jsonify(success=True, message=f"Producción diaria de Madrid ({fecha_obj.isoformat()}) guardada exitosamente.", registro=rec.to_dict(), **payload)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error guardando producción Madrid: {str(e)}"), 500
+
+
+@app.route('/api/reporte_rendimientos', methods=['GET'])
+@login_required
+@permiso_requerido(['rendimientos_cartagena', 'rendimientos_cartagena_editar'])
+def api_reporte_rendimientos():
+    fecha_str = request.args.get('fecha')
+    try:
+        fecha_obj = date.fromisoformat(fecha_str) if fecha_str else _hoy_bogota()
+    except (ValueError, TypeError):
+        fecha_obj = _hoy_bogota()
+    tanques = _obtener_tanques_snapshot_para_rendimientos('cartagena', fecha_obj)
+    payload = _obtener_payload_rendimientos('cartagena', fecha_obj, tanques)
+    return jsonify(success=True, **payload)
+
+
+@app.route('/api/reporte_rendimientos_madrid', methods=['GET'])
+@login_required
+@permiso_requerido(['rendimientos_madrid', 'rendimientos_madrid_editar'])
+def api_reporte_rendimientos_madrid():
+    fecha_str = request.args.get('fecha')
+    try:
+        fecha_obj = date.fromisoformat(fecha_str) if fecha_str else _hoy_bogota()
+    except (ValueError, TypeError):
+        fecha_obj = _hoy_bogota()
+    tanques = _obtener_tanques_snapshot_para_rendimientos('madrid', fecha_obj)
+    payload = _obtener_payload_rendimientos('madrid', fecha_obj, tanques)
+    return jsonify(success=True, **payload)
     
 @app.route('/inventario-zisa')
 @login_required

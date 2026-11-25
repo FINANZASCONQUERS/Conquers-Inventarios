@@ -700,7 +700,7 @@
                             </ul>
                         </div>
                         {% if session.rol == 'admin' or 'planta_madrid' in session.get('area', []) %}
-                        <a href="{{ url_for('planta_madrid') }}" class="btn btn-glass btn-outline-glass">
+                        <a href="{{ url_for('planta_madrid', fecha=fecha_seleccionada) }}" class="btn btn-glass btn-outline-glass">
                             <i class="bi bi-pencil-fill me-2"></i>Editar Planilla Madrid
                         </a>
                         {% endif %}
@@ -708,6 +708,29 @@
                 </div>
             </div>
         </div>
+
+        {% if puede_ver_rendimientos %}
+        <!-- PESTAÑAS DEL REPORTE (TANQUES VS PRODUCCIÓN Y RENDIMIENTOS) -->
+        <ul class="nav nav-pills mb-4 gap-2" id="reporteMadridTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4 py-2 rounded-pill {{ 'active' if tab_inicial != 'rendimientos' else '' }}"
+                    id="tab-tanques-btn" data-bs-toggle="pill" data-bs-target="#pane-tanques" type="button" role="tab"
+                    style="border:1px solid var(--border-color);">
+                    <i class="bi bi-fuel-pump-fill me-2"></i>Inventario de Tanques
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4 py-2 rounded-pill {{ 'active' if tab_inicial == 'rendimientos' else '' }}"
+                    id="tab-rendimientos-btn" data-bs-toggle="pill" data-bs-target="#pane-rendimientos" type="button" role="tab"
+                    style="border:1px solid var(--border-color);" onclick="setTimeout(()=>{ if(window.rrRender) window.rrRender(); }, 60)">
+                    <i class="bi bi-bar-chart-line-fill me-2"></i>Producción y Rendimientos
+                </button>
+            </li>
+        </ul>
+        {% endif %}
+
+        <div class="tab-content" id="reporteMadridTabContent">
+        <div class="tab-pane fade {{ 'show active' if (not puede_ver_rendimientos or tab_inicial != 'rendimientos') else '' }}" id="pane-tanques" role="tabpanel">
 
         <!-- FILTROS GLASSMORPHISM -->
         <div class="filters-glass-card">
@@ -770,6 +793,28 @@
         <div class="total-product-card" id="totalProductoContainer" style="display: none;">
             <h3 class="total-product-title" id="totalProducto"></h3>
         </div>
+
+        </div><!-- /pane-tanques -->
+
+        {% if puede_ver_rendimientos %}
+        <div class="tab-pane fade {{ 'show active' if tab_inicial == 'rendimientos' else '' }}" id="pane-rendimientos" role="tabpanel">
+            {% set rr_planta = 'madrid' %}
+            {% set rr_titulo = 'REPORTE REFINERÍA CWT MADRID' %}
+            {% set rr_panel_title = 'Reporte Refinería CWT Madrid' %}
+            {% set rr_accent = '#0071C0' %}
+            {% set rr_grp_color = '#0071C0' %}
+            {% set rr_cons_color = '#0071C0' %}
+            {% set rr_btn_text = '#ffffff' %}
+            {% set rr_inv_head_bg = '#0071C0' %}
+            {% set rr_inv_head_color = '#ffffff' %}
+            {% set rr_can_edit = puede_editar_prod %}
+            {% set rr_api_get = url_for('api_reporte_rendimientos_madrid') %}
+            {% set rr_api_save = url_for('api_produccion_planta_madrid') %}
+            {% set rr_png_prefix = 'Reporte_Refineria_Madrid' %}
+            {% include '_reporte_rendimientos_panel.html' %}
+        </div><!-- /pane-rendimientos -->
+        {% endif %}
+        </div><!-- /tab-content -->
 
     </div>
 </div>

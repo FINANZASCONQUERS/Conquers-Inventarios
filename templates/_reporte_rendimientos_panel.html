@@ -1,0 +1,776 @@
+{# Componente reutilizable: Reporte Ejecutivo de Producción y Rendimientos (Cartagena y Madrid) #}
+<style>
+    .rr-wrapper {
+        font-family: Arial, 'Inter', sans-serif;
+        color: #102f50;
+    }
+    .rr-app {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 16px;
+        align-items: start;
+    }
+    @media (max-width: 1100px) {
+        .rr-app {
+            grid-template-columns: 1fr;
+        }
+        .rr-panel {
+            position: static !important;
+            max-height: none !important;
+        }
+    }
+    .rr-panel, .rr-report, .rr-box, .rr-card {
+        background: #ffffff;
+        border-radius: 14px;
+        color: #102f50;
+    }
+    .rr-panel {
+        padding: 16px;
+        box-shadow: 0 4px 18px rgba(16, 47, 80, 0.08);
+        position: sticky;
+        top: 16px;
+        max-height: 92vh;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+    }
+    .rr-report {
+        padding: 28px;
+        border-top: 6px solid {{ rr_accent }};
+        box-shadow: 0 4px 20px rgba(16, 47, 80, 0.09);
+        border-left: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .rr-field {
+        display: grid;
+        grid-template-columns: 1fr 108px;
+        gap: 6px;
+        margin: 7px 0;
+        font-size: 12px;
+        align-items: center;
+    }
+    .rr-field input {
+        padding: 5px 8px;
+        text-align: right;
+        border: 1px solid #b9cada;
+        border-radius: 6px;
+        font-size: 12px;
+        color: #102f50;
+        background: #fff;
+        width: 100%;
+    }
+    .rr-field input[readonly] {
+        background: #eef3f7;
+        color: #475569;
+    }
+    .rr-grp {
+        font-size: 11px;
+        font-weight: 700;
+        color: {{ rr_grp_color | default(rr_accent) }};
+        margin-top: 14px;
+        margin-bottom: 4px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+    }
+    .rr-sub {
+        font-size: 11px;
+        color: #607991;
+    }
+    .rr-btn {
+        width: 100%;
+        background: {{ rr_accent }};
+        color: {{ rr_btn_text | default('#ffffff') }};
+        border: 0;
+        border-radius: 6px;
+        padding: 9px 12px;
+        margin-top: 9px;
+        font-weight: 700;
+        font-size: 12.5px;
+        cursor: pointer;
+        transition: opacity 0.2s ease, transform 0.15s ease;
+    }
+    .rr-btn:hover {
+        opacity: 0.92;
+        transform: translateY(-1px);
+    }
+    .rr-btn-secondary {
+        background: #1e3a5f;
+        color: #ffffff;
+    }
+    .rr-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .rr-head h1 {
+        font-size: 21px;
+        font-weight: 800;
+        margin: 0;
+        color: #102f50;
+    }
+    .rr-corte {
+        font-size: 14px;
+        font-weight: 800;
+        color: #102f50;
+        background: #f1f5f9;
+        padding: 6px 12px;
+        border-radius: 8px;
+    }
+    .rr-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin: 20px 0;
+    }
+    @media (max-width: 900px) {
+        .rr-cards { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 540px) {
+        .rr-cards { grid-template-columns: 1fr; }
+    }
+    .rr-card, .rr-box {
+        padding: 16px;
+        box-shadow: 0 3px 14px #dce3e9;
+    }
+    .rr-cards .rr-card {
+        display: flex;
+        flex-direction: column;
+    }
+    .rr-cards .rr-card > b {
+        display: block;
+        min-height: 40px;
+        line-height: 1.25;
+        font-size: 12px;
+        color: #102f50;
+    }
+    .rr-big {
+        font-size: 23px;
+        font-weight: 800;
+        margin-top: 6px;
+        color: #102f50;
+    }
+    .rr-grid {
+        display: grid;
+        grid-template-columns: 1.7fr 1fr;
+        gap: 14px;
+    }
+    @media (max-width: 900px) {
+        .rr-grid { grid-template-columns: 1fr; }
+    }
+    .rr-box h3 {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0 0 12px;
+        color: #102f50;
+    }
+    .rr-prod {
+        display: grid;
+        grid-template-columns: 110px 125px 1fr 78px;
+        gap: 8px;
+        margin: 20px 0;
+        font-weight: 700;
+        font-size: 13px;
+        align-items: center;
+    }
+    .rr-bar {
+        height: 18px;
+        background: #e4edf4;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .rr-fill {
+        height: 100%;
+        border-radius: 10px;
+    }
+    .rr-row, .rr-inv {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr 0.85fr;
+        gap: 8px;
+        padding: 8px;
+        border-bottom: 1px solid #edf1f4;
+        font-size: 12px;
+        align-items: center;
+    }
+    .rr-chart {
+        margin-top: 14px;
+    }
+    .rr-chart canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    .rr-inventory {
+        margin-top: 14px;
+        padding: 22px;
+    }
+    .rr-inventory h3 {
+        font-size: 18px;
+        margin: 0 0 14px;
+    }
+    .rr-inventory .rr-inv, .rr-inventory .rr-invhead {
+        font-size: 15px;
+        padding: 13px 12px;
+    }
+    .rr-inventory .rr-inv b {
+        font-size: 15.5px;
+    }
+    .rr-invhead {
+        background: {{ rr_inv_head_bg }};
+        color: {{ rr_inv_head_color | default('#102f50') }};
+        font-weight: 800;
+        border-radius: 8px 8px 0 0;
+    }
+    .rr-tank-breakdown {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 400;
+        margin-top: 2px;
+    }
+    .rr-status-msg {
+        margin-top: 8px;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 6px 8px;
+        border-radius: 6px;
+        display: none;
+    }
+    .rr-status-ok {
+        background: #dcfce7;
+        color: #166534;
+        display: block;
+    }
+    .rr-status-err {
+        background: #fee2e2;
+        color: #991b1b;
+        display: block;
+    }
+    .rr-badge-auto {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        background: #e0f2fe;
+        color: #0369a1;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 4px;
+    }
+</style>
+
+<div class="rr-wrapper">
+    <div class="rr-app">
+        <aside class="rr-panel">
+            <div style="font-weight:800; font-size:14px; color:#102f50;">{{ rr_panel_title }}</div>
+            <div class="rr-sub">
+                {% if rr_can_edit %}
+                    Actualiza cifras del corte o consulta cualquier fecha guardada en base de datos.
+                {% else %}
+                    Consulta el histórico de producción, rendimientos e inventario disponible por fecha.
+                {% endif %}
+            </div>
+
+            <div class="rr-grp">DATOS DEL CORTE</div>
+            <div class="rr-field">
+                <span>Fecha</span>
+                <input id="rr_fecha" type="date" value="{{ fecha_seleccionada }}">
+            </div>
+
+            <div class="rr-grp">PRODUCCIÓN DIARIA · BBL</div>
+            <div id="rr_di"></div>
+            <div class="rr-field">
+                <span>Horas operadas</span>
+                <input id="rr_horas" value="24" {% if not rr_can_edit %}readonly{% endif %}>
+            </div>
+
+            <div class="rr-grp">ACUMULADO DEL MES · BBL</div>
+            <div id="rr_mi"></div>
+
+            <div class="rr-grp">
+                INVENTARIO DISPONIBLE
+                <span class="rr-badge-auto">Tanques</span>
+            </div>
+            <div id="rr_ii"></div>
+            <div class="rr-sub" style="margin-top:4px;">
+                Calculado automáticamente del cierre de tanques de esta fecha (FO4 → MGO, IFO → FO6; Consumo Interno excluido).
+            </div>
+
+            {% if rr_can_edit %}
+            <button type="button" class="rr-btn" id="rr_btn_guardar" onclick="rrGuardar()">
+                <i class="bi bi-save2-fill me-1"></i>Guardar / actualizar día
+            </button>
+            <div id="rr_status" class="rr-status-msg"></div>
+            {% endif %}
+
+            <button type="button" class="rr-btn rr-btn-secondary" onclick="rrDescargarPNG()">
+                <i class="bi bi-image me-1"></i>Descargar imagen PNG
+            </button>
+
+            <div class="rr-sub" style="margin-top:8px;">
+                El acumulado mensual se suma automáticamente hasta la fecha de corte. La línea de crudo muestra barriles diarios; los derivados muestran su rendimiento diario (%) respecto al crudo.
+            </div>
+        </aside>
+
+        <main class="rr-report" id="rr_reporte">
+            <div class="rr-head">
+                <div>
+                    <h1>{{ rr_titulo }}</h1>
+                    <div class="rr-sub">Producción diaria, acumulado mensual e inventario disponible · BBL</div>
+                </div>
+                <span class="rr-corte" id="rr_corte">CORTE {{ fecha_seleccionada }}</span>
+            </div>
+
+            <div class="rr-cards">
+                <div class="rr-card">
+                    <b>PRODUCCIÓN DIARIA · BBLS X DÍA</b>
+                    <div class="rr-big" id="rr_tasa" style="color:#128b78">0,00 BBL</div>
+                </div>
+                <div class="rr-card">
+                    <b>CONSUMO INTERNO DIARIO</b>
+                    <div class="rr-big" id="rr_cons" style="color:{{ rr_cons_color | default(rr_accent) }};font-size:21px;white-space:nowrap">0,00 BBL</div>
+                </div>
+                <div class="rr-card">
+                    <b>ACUMULADO CONSUMO INTERNO</b>
+                    <div class="rr-big" id="rr_rend" style="color:#b7770c;font-size:21px;white-space:nowrap">0,00 BBL</div>
+                </div>
+                <div class="rr-card">
+                    <b>ACUMULADO PRODUCCIÓN MES</b>
+                    <div class="rr-big" id="rr_cr">0,00 BBL</div>
+                </div>
+            </div>
+
+            <div class="rr-grid">
+                <div class="rr-box">
+                    <h3>RENDIMIENTO POR PRODUCTO</h3>
+                    <div id="rr_prods"></div>
+                </div>
+                <div class="rr-box">
+                    <h3>ACUMULADO DEL MES</h3>
+                    <div id="rr_mes"></div>
+                </div>
+            </div>
+
+            <div class="rr-box rr-chart">
+                <h3>PRODUCCIÓN DIARIA · EVOLUCIÓN POR DÍA</h3>
+                <div class="rr-sub" style="margin-bottom:6px;">
+                    Crudo: volumen diario (BBL). Derivados: rendimiento diario (%) respecto al crudo. A la derecha: acumulados del mes en BBL.
+                </div>
+                <canvas id="rr_graf" width="1000" height="360"></canvas>
+            </div>
+
+            <div class="rr-box rr-inventory">
+                <h3>INVENTARIO DE PRODUCTO DISPONIBLE</h3>
+                <div class="rr-inv rr-invhead">
+                    <div>PRODUCTO</div>
+                    <div>VOLUMEN TOTAL</div>
+                    <div>TONELADAS</div>
+                </div>
+                <div id="rr_invent"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script id="rr-initial-payload" type="application/json">{{ rendimientos_payload | tojson }}</script>
+<script>
+(function () {
+    const RR_CONFIG = {
+        planta: {{ rr_planta | tojson }},
+        accent: {{ rr_accent | tojson }},
+        canEdit: {{ (rr_can_edit | default(false)) | tojson }},
+        apiGet: {{ rr_api_get | tojson }},
+        apiSave: {{ rr_api_save | tojson }},
+        pngPrefix: {{ rr_png_prefix | tojson }}
+    };
+
+    const PRODUCTS = [
+        { key: "crudo_procesado", label: "Crudo procesado", color: RR_CONFIG.accent },
+        { key: "diluyente", label: "Diluyente", color: "#b7770c" },
+        { key: "mgo", label: "MGO", color: "#2878bd" },
+        { key: "fo6", label: "FO6", color: "#128b78" },
+        { key: "consumo_interno", label: "Consumo interno", color: "#607991" }
+    ];
+    const INV_KEYS = ["Crudo", "Diluyente", "MGO", "FO6"];
+    const FACTORES_TON = { "Crudo": 7.2, "Diluyente": 8.5, "MGO": 7.4, "FO6": 6.7 };
+
+    let payload = {};
+    try {
+        payload = JSON.parse(document.getElementById("rr-initial-payload").textContent || "{}");
+    } catch (e) {
+        payload = {};
+    }
+
+    let stateDia = { crudo_procesado: 0, diluyente: 0, mgo: 0, fo6: 0, consumo_interno: 0, horas_operadas: 24 };
+    let stateMes = { crudo_procesado: 0, diluyente: 0, mgo: 0, fo6: 0, consumo_interno: 0 };
+    let stateHist = {};
+    let stateInv = {};
+
+    const F = n => Number(n || 0).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const parseNum = v => {
+        if (v === null || v === undefined) return 0;
+        let s = String(v).trim();
+        if (!s) return 0;
+        if (s.includes(",") && s.includes(".")) {
+            s = s.lastIndexOf(",") > s.lastIndexOf(".") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/,/g, "");
+        } else if (s.includes(",")) {
+            s = s.replace(",", ".");
+        }
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    };
+    const safePct = (num, den) => (den > 0 ? (num / den) * 100 : 0);
+
+    function buildInputs() {
+        const ro = RR_CONFIG.canEdit ? "" : "readonly";
+        document.getElementById("rr_di").innerHTML = PRODUCTS.map((p, i) =>
+            `<div class="rr-field"><span>${p.label}</span><input id="rr_d${i}" ${ro} value="0"></div>`
+        ).join("");
+        document.getElementById("rr_mi").innerHTML = PRODUCTS.map((p, i) =>
+            `<div class="rr-field"><span>${p.label}</span><input id="rr_m${i}" readonly value="0,00" title="Calculado automáticamente con el acumulado mensual hasta la fecha de corte"></div>`
+        ).join("");
+        document.getElementById("rr_ii").innerHTML = INV_KEYS.map((k, i) =>
+            `<div class="rr-field"><span>${k}</span><input id="rr_i${i}" readonly value="0,00" title="Volumen en BBL consolidado desde la planilla de tanques"></div>`
+        ).join("");
+
+        PRODUCTS.forEach((p, i) => {
+            const inp = document.getElementById("rr_d" + i);
+            if (inp && RR_CONFIG.canEdit) {
+                inp.addEventListener("input", () => rrRender());
+                inp.addEventListener("change", () => rrRender());
+            }
+        });
+        const hrsInp = document.getElementById("rr_horas");
+        if (hrsInp && RR_CONFIG.canEdit) {
+            hrsInp.addEventListener("input", () => rrRender());
+        }
+    }
+
+    function applyPayload(data) {
+        payload = data || {};
+        const dia = payload.dia || {};
+        stateHist = Object.assign({}, payload.historial_mes || {});
+        stateInv = payload.inventario || {};
+
+        if (payload.fecha && document.getElementById("rr_fecha")) {
+            document.getElementById("rr_fecha").value = payload.fecha;
+        }
+
+        PRODUCTS.forEach((p, i) => {
+            const val = Number(dia[p.key] || 0);
+            stateDia[p.key] = val;
+            const inp = document.getElementById("rr_d" + i);
+            if (inp) inp.value = String(val).replace(".", ",");
+        });
+        stateDia.horas_operadas = Number(dia.horas_operadas !== undefined ? dia.horas_operadas : 24);
+        const hrsInp = document.getElementById("rr_horas");
+        if (hrsInp) hrsInp.value = String(stateDia.horas_operadas).replace(".", ",");
+
+        INV_KEYS.forEach((k, i) => {
+            const bbl = Number((stateInv[k] && stateInv[k].bbl) || 0);
+            const inp = document.getElementById("rr_i" + i);
+            if (inp) inp.value = F(bbl);
+        });
+
+        rrRender();
+    }
+
+    function readInputs() {
+        PRODUCTS.forEach((p, i) => {
+            const inp = document.getElementById("rr_d" + i);
+            stateDia[p.key] = inp ? parseNum(inp.value) : 0;
+        });
+        const hrsInp = document.getElementById("rr_horas");
+        stateDia.horas_operadas = hrsInp ? parseNum(hrsInp.value) : 24;
+    }
+
+    function recalcularMes() {
+        const fecha = document.getElementById("rr_fecha").value;
+        const ym = fecha.slice(0, 7);
+        PRODUCTS.forEach(p => { stateMes[p.key] = 0; });
+
+        const live = Object.assign({}, stateHist);
+        const hayDatos = PRODUCTS.slice(0, 4).some(p => Number(stateDia[p.key] || 0) !== 0) || Number(stateDia.consumo_interno || 0) !== 0;
+        if (live[fecha] || hayDatos) {
+            live[fecha] = Object.assign({}, stateDia);
+        }
+
+        Object.keys(live)
+            .filter(z => z.slice(0, 7) === ym && z <= fecha)
+            .sort()
+            .forEach(z => {
+                const row = live[z] || {};
+                const cp = Number(row.crudo_procesado || 0);
+                let ci = Number(row.consumo_interno || 0);
+                if (ci < 0 || (cp > 0 && ci > cp)) ci = 0;
+                PRODUCTS.forEach(p => {
+                    const val = p.key === "consumo_interno" ? ci : Number(row[p.key] || 0);
+                    stateMes[p.key] += val;
+                });
+            });
+
+        PRODUCTS.forEach((p, i) => {
+            const el = document.getElementById("rr_m" + i);
+            if (el) el.value = F(stateMes[p.key]);
+        });
+        return live;
+    }
+
+    function drawChart(live) {
+        const canvas = document.getElementById("rr_graf");
+        if (!canvas) return;
+        const c = canvas.getContext("2d");
+        const w = canvas.width;
+        const h = canvas.height;
+        c.clearRect(0, 0, w, h);
+
+        const fecha = document.getElementById("rr_fecha").value;
+        const ym = fecha.slice(0, 7);
+        const ds = Object.keys(live)
+            .filter(z => z.slice(0, 7) === ym && z <= fecha)
+            .sort();
+
+        const chartProducts = PRODUCTS.slice(0, 4);
+        const L = 90, R = 245, T = 55, B = 35, plotH = h - T - B;
+        c.textBaseline = "middle";
+
+        // Leyenda
+        chartProducts.forEach((p, k) => {
+            const x = L + k * 215;
+            c.strokeStyle = p.color;
+            c.lineWidth = 3;
+            c.beginPath();
+            c.moveTo(x, 20);
+            c.lineTo(x + 25, 20);
+            c.stroke();
+            c.fillStyle = "#34546f";
+            c.font = "12px Arial";
+            c.textAlign = "left";
+            c.fillText(p.label, x + 31, 20);
+        });
+
+        if (!ds.length) {
+            c.fillStyle = "#64748b";
+            c.font = "14px Arial";
+            c.textAlign = "center";
+            c.fillText("Sin registros diarios de producción para este mes aún.", w / 2, h / 2 + 10);
+            return;
+        }
+
+        const xp = i => ds.length <= 1 ? (L + w - R) / 2 : L + (w - L - R) * i / (ds.length - 1);
+
+        ds.forEach((z, i) => {
+            const x = xp(i);
+            c.strokeStyle = "#e9eef3";
+            c.lineWidth = 1;
+            c.beginPath();
+            c.moveTo(x, T);
+            c.lineTo(x, h - B);
+            c.stroke();
+            c.fillStyle = "#61788d";
+            c.font = "11px Arial";
+            c.textAlign = "center";
+            c.fillText(z.slice(8), x, h - 13);
+        });
+
+        chartProducts.forEach((p, k) => {
+            const values = ds.map(z => {
+                const volumen = Number((live[z] && live[z][p.key]) || 0);
+                const crudo = Number((live[z] && live[z].crudo_procesado) || 0);
+                return p.key === "crudo_procesado" ? volumen : (crudo > 0 ? (volumen / crudo) * 100 : null);
+            });
+            const valid = values.filter(v => v !== null);
+            if (!valid.length) return;
+            const low = Math.min(...valid);
+            const high = Math.max(...valid);
+            const spread = Math.max(high - low, 0.01);
+            const band = plotH / 4;
+            const mid = T + band * (k + 0.5);
+            const amplitude = band * 0.32;
+            const yp = v => mid - (v - (low + high) / 2) / spread * amplitude * 2;
+
+            c.strokeStyle = p.color;
+            c.fillStyle = p.color;
+            c.lineWidth = 2.7;
+            c.beginPath();
+            let connected = false;
+            values.forEach((v, i) => {
+                if (v === null) { connected = false; return; }
+                if (!connected) c.moveTo(xp(i), yp(v));
+                else c.lineTo(xp(i), yp(v));
+                connected = true;
+            });
+            c.stroke();
+
+            values.forEach((v, i) => {
+                if (v === null) return;
+                c.beginPath();
+                c.arc(xp(i), yp(v), 3.5, 0, Math.PI * 2);
+                c.fill();
+            });
+
+            const ultimo = valid[valid.length - 1];
+            const acumulado = ds.reduce((tot, z) => tot + Number((live[z] && live[z][p.key]) || 0), 0);
+            c.fillStyle = p.color;
+            c.font = "bold 11px Arial";
+            c.textAlign = "left";
+            c.fillText(p.label + " · " + F(acumulado) + " BBL", w - R + 12, yp(ultimo));
+        });
+    }
+
+    function rrRender() {
+        readInputs();
+        const live = recalcularMes();
+        const fecha = document.getElementById("rr_fecha").value;
+        const crude = stateDia.crudo_procesado;
+        const mc = stateMes.crudo_procesado;
+
+        document.getElementById("rr_corte").textContent = "CORTE " + fecha;
+        document.getElementById("rr_tasa").textContent = F(crude) + " BBL";
+        document.getElementById("rr_cr").textContent = F(mc) + " BBL";
+        document.getElementById("rr_cons").innerHTML = `${F(stateDia.consumo_interno)} BBL <span style="font-size:15px;font-weight:bold">(${F(safePct(stateDia.consumo_interno, crude))}%)</span>`;
+        document.getElementById("rr_rend").innerHTML = `${F(stateMes.consumo_interno)} BBL <span style="font-size:15px;font-weight:bold">(${F(safePct(stateMes.consumo_interno, mc))}%)</span>`;
+
+        const derivDefs = [
+            { key: "diluyente", label: "DILUYENTE", color: "#b7770c" },
+            { key: "mgo", label: "MGO", color: "#2878bd" },
+            { key: "fo6", label: "FO6", color: "#128b78" }
+        ];
+        document.getElementById("rr_prods").innerHTML = derivDefs.map(x => {
+            const val = stateDia[x.key];
+            const q = safePct(val, crude);
+            return `<div class="rr-prod">
+                <div>${x.label}</div>
+                <div>${F(val)} BBL</div>
+                <div class="rr-bar"><div class="rr-fill" style="width:${Math.min(q * 1.7, 100)}%;background:${x.color}"></div></div>
+                <div style="text-align:right">${F(q)} %</div>
+            </div>`;
+        }).join("");
+
+        const md = stateMes.diluyente + stateMes.mgo + stateMes.fo6;
+        const mesRows = PRODUCTS.slice(0, 4).map(p =>
+            `<div class="rr-row"><div>${p.label}</div><b>${F(stateMes[p.key])}</b><b>${F(safePct(stateMes[p.key], mc))} %</b></div>`
+        ).join("");
+        document.getElementById("rr_mes").innerHTML = mesRows +
+            `<div class="rr-row"><b>Derivados</b><b>${F(md)}</b><b>${F(safePct(md, mc))} %</b></div>` +
+            `<div class="rr-row"><b>Diferencia Crudo vs Derivados</b><b>${F(md - mc)}</b><b>${F(safePct(md - mc, mc))} %</b></div>`;
+
+        document.getElementById("rr_invent").innerHTML = INV_KEYS.map(k => {
+            const item = stateInv[k] || {};
+            const bbl = Number(item.bbl || 0);
+            const factor = Number(item.factor || FACTORES_TON[k] || 1);
+            const ton = factor > 0 ? (bbl / factor) : 0;
+            const tanques = Array.isArray(item.tanques) ? item.tanques : [];
+            const detalle = tanques.length
+                ? tanques.map(t => `${t.tk}: ${F(t.bls)}`).join(" · ")
+                : "Sin tanques registrados";
+            return `<div class="rr-inv">
+                <div>
+                    <b>${k.toUpperCase()}</b>
+                    <div class="rr-tank-breakdown">${detalle}</div>
+                </div>
+                <b>${F(bbl)} BBL</b>
+                <b>${F(ton)} TON</b>
+            </div>`;
+        }).join("");
+
+        drawChart(live);
+    }
+
+    async function rrCargarFecha(fecha) {
+        if (!fecha) return;
+        const statusEl = document.getElementById("rr_status");
+        if (statusEl) { statusEl.className = "rr-status-msg"; statusEl.textContent = ""; }
+        try {
+            const resp = await fetch(`${RR_CONFIG.apiGet}?fecha=${encodeURIComponent(fecha)}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" }
+            });
+            const data = await resp.json();
+            if (data.success) {
+                applyPayload(data);
+            }
+        } catch (e) {
+            console.error("Error cargando fecha rendimientos:", e);
+        }
+    }
+
+    async function rrGuardar() {
+        if (!RR_CONFIG.canEdit) return;
+        readInputs();
+        const fecha = document.getElementById("rr_fecha").value;
+        const statusEl = document.getElementById("rr_status");
+        const btn = document.getElementById("rr_btn_guardar");
+        if (btn) btn.disabled = true;
+
+        try {
+            const resp = await fetch(RR_CONFIG.apiSave, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                body: JSON.stringify({
+                    fecha,
+                    crudo_procesado: stateDia.crudo_procesado,
+                    diluyente: stateDia.diluyente,
+                    mgo: stateDia.mgo,
+                    fo6: stateDia.fo6,
+                    consumo_interno: stateDia.consumo_interno,
+                    horas_operadas: stateDia.horas_operadas
+                })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                applyPayload(data);
+                if (statusEl) {
+                    statusEl.className = "rr-status-msg rr-status-ok";
+                    statusEl.textContent = data.message || "Guardado en base de datos.";
+                }
+            } else {
+                if (statusEl) {
+                    statusEl.className = "rr-status-msg rr-status-err";
+                    statusEl.textContent = data.message || "Error al guardar.";
+                }
+            }
+        } catch (e) {
+            if (statusEl) {
+                statusEl.className = "rr-status-msg rr-status-err";
+                statusEl.textContent = "Error de conexión al servidor.";
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function rrDescargarPNG() {
+        const doCapture = async () => {
+            const target = document.getElementById("rr_reporte");
+            if (!target) return;
+            const c = await window.html2canvas(target, { scale: 2, backgroundColor: "#eef2f6" });
+            const a = document.createElement("a");
+            a.href = c.toDataURL("image/png");
+            a.download = `${RR_CONFIG.pngPrefix}_${document.getElementById("rr_fecha").value}.png`;
+            a.click();
+        };
+        if (typeof window.html2canvas === "function") {
+            doCapture();
+        } else {
+            const s = document.createElement("script");
+            s.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+            s.onload = doCapture;
+            document.head.appendChild(s);
+        }
+    }
+
+    window.rrRender = rrRender;
+    window.rrGuardar = rrGuardar;
+    window.rrDescargarPNG = rrDescargarPNG;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        buildInputs();
+        applyPayload(payload);
+        const fechaInp = document.getElementById("rr_fecha");
+        if (fechaInp) {
+            fechaInp.addEventListener("change", function () {
+                rrCargarFecha(this.value);
+            });
+        }
+    });
+})();
+</script>
