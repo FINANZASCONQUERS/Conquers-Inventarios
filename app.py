@@ -602,7 +602,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Asistente Logístico",
         "rol": "editor",
-        "area": ["programacion_cargue", "reporte_madrid", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes"]
+        "area": ["programacion_cargue", "programacion_cargue_madrid", "reporte_madrid", "guia_transporte", "panel_enturnamiento", "precintos", "facturacion", "analisis_laboratorio", "barcaza_orion", "barcaza_bita", "reportes"]
     },
     "comex@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),     
@@ -770,8 +770,8 @@ MODULE_ROUTE_MAP = [
     (r'^/descargar-reporte-bita-pdf', ['reportes', 'barcaza_orion', 'barcaza_bita', 'reporte_barcazas', 'reporte_barcaza']),
     (r'^/api/reporte_rendimientos_madrid(?:$|[/?#])', ['rendimientos_madrid', 'rendimientos_madrid_editar']),
     (r'^/api/reporte_rendimientos(?:$|[/?#])', ['rendimientos_cartagena', 'rendimientos_cartagena_editar']),
-    (r'^/api/produccion_planta_madrid(?:$|[/?#])', ['rendimientos_madrid_editar']),
-    (r'^/api/produccion_planta(?:$|[/?#])', ['rendimientos_cartagena_editar']),
+    (r'^/api/produccion_planta_madrid(?:/importar)?(?:$|[/?#])', ['rendimientos_madrid_editar']),
+    (r'^/api/produccion_planta(?:/importar)?(?:$|[/?#])', ['rendimientos_cartagena_editar']),
     (r'^/reporte_planta_madrid(?:$|[/?#])', ['reporte_madrid', 'planta_madrid']),
     (r'^/descargar-reporte-planta-madrid-pdf', ['reporte_madrid', 'planta_madrid']),
     (r'^/reporte_planta(?:$|[/?#])', ['reportes', 'planta']),
@@ -1329,6 +1329,10 @@ HISTORIAL_INICIAL_PRODUCCION_MADRID = {
     "2026-10-07": {"crudo_procesado": 1401.26, "diluyente": 267.04, "mgo": 314.02, "fo6": 782.33, "consumo_interno": 26.18, "horas_operadas": 24.0},
 }
 
+HISTORIAL_INICIAL_PRODUCCION_CARTAGENA = {
+    "2026-10-07": {"crudo_procesado": 3778.39, "diluyente": 508.83, "mgo": 1220.06, "fo6": 2072.92, "consumo_interno": 70.10, "horas_operadas": 24.0},
+}
+
 
 class ProduccionDiariaPlanta(db.Model):
     __tablename__ = 'produccion_diaria_planta'
@@ -1390,6 +1394,22 @@ def _init_produccion_diaria_planta():
                     ))
                 db.session.commit()
                 print("[INIT] Respaldo inicial de producción Madrid (2026-10-01..07) cargado.")
+
+            if ProduccionDiariaPlanta.query.filter_by(planta='cartagena').count() == 0:
+                for fecha_iso, vals in HISTORIAL_INICIAL_PRODUCCION_CARTAGENA.items():
+                    db.session.add(ProduccionDiariaPlanta(
+                        planta='cartagena',
+                        fecha=date.fromisoformat(fecha_iso),
+                        crudo_procesado=vals['crudo_procesado'],
+                        diluyente=vals['diluyente'],
+                        mgo=vals['mgo'],
+                        fo6=vals['fo6'],
+                        consumo_interno=vals['consumo_interno'],
+                        horas_operadas=vals['horas_operadas'],
+                        usuario='Respaldo HTML',
+                    ))
+                db.session.commit()
+                print("[INIT] Respaldo inicial de producción Cartagena (2026-10-07) cargado.")
         except Exception as e:
             db.session.rollback()
             print(f"[INIT] Error inicializando produccion_diaria_planta: {e}")
@@ -2227,7 +2247,9 @@ def _programacion_de_sede_o_404(id):
 def _es_solo_lectura_programacion(sede):
     """True si el usuario actual no puede mutar programación/archivos en la sede dada."""
     email = (session.get('email') or '').lower()
-    return session.get('rol') == 'viewer' or (sede == 'MADRID' and email == 'amariagallo@conquerstrading.com')
+    return session.get('rol') == 'viewer' or (
+        sede == 'MADRID' and email in ('amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com')
+    )
 
 
 def _es_usuario_refineria(email=None):
@@ -10714,6 +10736,76 @@ def api_produccion_planta_madrid():
         return jsonify(success=False, message=f"Error guardando producción Madrid: {str(e)}"), 500
 
 
+def _importar_historial_produccion_planta(planta):
+    body = request.get_json(silent=True) or {}
+    historial = body.get('historial') if isinstance(body, dict) and 'historial' in body else body
+    if not isinstance(historial, dict):
+        return jsonify(success=False, message="Formato inválido: se esperaba un objeto JSON por fecha (YYYY-MM-DD)."), 400
+
+    usuario_actual = session.get("nombre", "Importación HTML")
+    importados = 0
+    fechas_validas = []
+
+    try:
+        for fecha_key, vals in historial.items():
+            if not isinstance(vals, dict):
+                continue
+            try:
+                fecha_obj = date.fromisoformat(str(fecha_key).strip()[:10])
+            except ValueError:
+                continue
+
+            cp = _parse_float_produccion(vals.get("crudo_procesado", vals.get("Crudo procesado")), 0.0)
+            ci = _parse_float_produccion(vals.get("consumo_interno", vals.get("Consumo interno")), 0.0)
+            if ci < 0 or (cp > 0 and ci > cp):
+                ci = 0.0
+
+            normalizado = {
+                "crudo_procesado": cp,
+                "diluyente": _parse_float_produccion(vals.get("diluyente", vals.get("Diluyente")), 0.0),
+                "mgo": _parse_float_produccion(vals.get("mgo", vals.get("MGO")), 0.0),
+                "fo6": _parse_float_produccion(vals.get("fo6", vals.get("FO6")), 0.0),
+                "consumo_interno": ci,
+                "horas_operadas": _parse_float_produccion(vals.get("horas_operadas", vals.get("Horas operadas")), 24.0),
+            }
+            _guardar_produccion_diaria_db(planta, fecha_obj, normalizado, usuario_actual)
+            importados += 1
+            fechas_validas.append(fecha_obj)
+
+        if importados == 0:
+            return jsonify(success=False, message="No se encontraron fechas válidas (YYYY-MM-DD) en el archivo."), 400
+
+        db.session.commit()
+        fecha_actual_str = body.get('fecha_actual') if isinstance(body, dict) else None
+        try:
+            fecha_ref = date.fromisoformat(str(fecha_actual_str).strip()) if fecha_actual_str else max(fechas_validas)
+        except ValueError:
+            fecha_ref = max(fechas_validas)
+        if fecha_ref not in fechas_validas and fechas_validas:
+            fecha_ref = max(fechas_validas)
+
+        tanques = _obtener_tanques_snapshot_para_rendimientos(planta, fecha_ref)
+        payload = _obtener_payload_rendimientos(planta, fecha_ref, tanques)
+        return jsonify(success=True, importados=importados, message=f"Se importaron {importados} días al historial de {planta.capitalize()}.", **payload)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, message=f"Error importando histórico: {str(e)}"), 500
+
+
+@app.route('/api/produccion_planta/importar', methods=['POST'])
+@login_required
+@permiso_requerido(['rendimientos_cartagena_editar'])
+def api_produccion_planta_importar():
+    return _importar_historial_produccion_planta('cartagena')
+
+
+@app.route('/api/produccion_planta_madrid/importar', methods=['POST'])
+@login_required
+@permiso_requerido(['rendimientos_madrid_editar'])
+def api_produccion_planta_madrid_importar():
+    return _importar_historial_produccion_planta('madrid')
+
+
 @app.route('/api/reporte_rendimientos', methods=['GET'])
 @login_required
 @permiso_requerido(['rendimientos_cartagena', 'rendimientos_cartagena_editar'])
@@ -15397,8 +15489,8 @@ def update_programacion(id):
         # El admin puede editar todos los campos excepto los de auditoría que son automáticos.
         campos_permitidos = [c.name for c in ProgramacionCargue.__table__.columns if c.name not in ['id', 'ultimo_editor', 'fecha_actualizacion']]
 
-    # Ana María Gallo es solo lectura en Madrid
-    if registro.sede == 'MADRID' and session.get('email') == 'amariagallo@conquerstrading.com':
+    # Ana María Gallo y Asistente Logístico son solo lectura en Madrid
+    if registro.sede == 'MADRID' and (session.get('email') or '').lower() in ('amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com'):
         campos_permitidos = []
 
     if session.get('rol') == 'viewer' or not campos_permitidos:
@@ -17183,9 +17275,9 @@ def upload_programacion_excel():
     - Si no viene 'barriles' pero sí 'galones', se calcula barriles = galones/42.
     """
     # La carga (y el ?replace=1) solo afecta la tabla de la sede de la pantalla.
-    if session.get('rol') == 'viewer':
-        return jsonify(success=False, message="Acceso denegado: los usuarios con rol de visualizador no pueden cargar archivos."), 403
     sede = _sede_de_la_peticion()
+    if _es_solo_lectura_programacion(sede):
+        return jsonify(success=False, message="Acceso denegado: no tienes permisos para cargar archivos en esta sede."), 403
     if 'excel_file' not in request.files:
         return jsonify(success=False, message='No se encontró archivo (campo excel_file).'), 400
     f = request.files['excel_file']

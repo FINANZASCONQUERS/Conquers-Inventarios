@@ -650,7 +650,7 @@
             </div>
             <div class="col-lg-6">
                 <div class="d-flex justify-content-lg-end align-items-center flex-wrap gap-2">
-                    {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
+                    {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario in ['amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com']) %}
                     <button class="btn btn-modern btn-outline-primary" data-bs-toggle="modal"
                         data-bs-target="#uploadExcelModal">
                         <i class="fas fa-file-upload me-2"></i>
@@ -716,7 +716,7 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>Guías pendientes
                             <span class="badge bg-danger ms-1" id="badge-guias-pendientes">…</span>
                         </button>
-                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
+                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario in ['amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com']) %}
                         <button class="btn btn-sm btn-modern btn-outline-warning" data-bs-toggle="modal"
                             data-bs-target="#buscarReemplazarModal" title="Buscar y Reemplazar">
                             <i class="fas fa-search me-1"></i>Buscar
@@ -726,7 +726,7 @@
                             title="Ordenar por estado">
                             <i class="fas fa-sort-amount-down me-1"></i>Ordenar estados
                         </button>
-                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario == 'amariagallo@conquerstrading.com') %}
+                        {% if rol_usuario != 'viewer' and not (sede == 'MADRID' and email_usuario in ['amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com']) %}
                         <button id="btn-add-row" class="btn btn-sm btn-modern btn-primary" type="button"
                             title="Agregar nueva programación">
                             <i class="fas fa-plus me-1"></i>Agregar
@@ -1324,7 +1324,7 @@
         const userEmail = ("{{ email_usuario }}" || '').toLowerCase();
         const userRol = "{{ rol_usuario }}";
         const userName = "{{ nombre }}";
-        const isViewerMode = userRol === 'viewer' || (SEDE_PROGRAMACION === 'MADRID' && userEmail === 'amariagallo@conquerstrading.com');
+        const isViewerMode = userRol === 'viewer' || (SEDE_PROGRAMACION === 'MADRID' && ['amariagallo@conquerstrading.com', 'logistics.assistant@conquerstrading.com'].includes(userEmail));
         // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
         const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)

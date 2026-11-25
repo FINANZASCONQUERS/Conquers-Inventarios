@@ -306,6 +306,13 @@
                 <i class="bi bi-image me-1"></i>Descargar imagen PNG
             </button>
 
+            {% if rr_can_edit %}
+            <input type="file" id="rr_import_file" accept=".json,application/json" style="display:none" onchange="rrImportarArchivo(this)">
+            <button type="button" class="rr-btn" style="background:#475569;color:#ffffff;" onclick="document.getElementById('rr_import_file').click()">
+                <i class="bi bi-upload me-1"></i>Importar histórico (.json)
+            </button>
+            {% endif %}
+
             <div class="rr-sub" style="margin-top:8px;">
                 El acumulado mensual se suma automáticamente hasta la fecha de corte. La línea de crudo muestra barriles diarios; los derivados muestran su rendimiento diario (%) respecto al crudo.
             </div>
@@ -380,6 +387,7 @@
         canEdit: {{ (rr_can_edit | default(false)) | tojson }},
         apiGet: {{ rr_api_get | tojson }},
         apiSave: {{ rr_api_save | tojson }},
+        apiImport: {{ (rr_api_save ~ '/importar') | tojson }},
         pngPrefix: {{ rr_png_prefix | tojson }}
     };
 
@@ -758,9 +766,43 @@
         }
     }
 
+    async function rrImportarArchivo(inputEl) {
+        if (!RR_CONFIG.canEdit || !inputEl || !inputEl.files || !inputEl.files[0]) return;
+        const statusEl = document.getElementById("rr_status");
+        try {
+            const text = await inputEl.files[0].text();
+            const parsed = JSON.parse(text);
+            const fechaActual = document.getElementById("rr_fecha")?.value || "";
+            const resp = await fetch(RR_CONFIG.apiImport, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+                body: JSON.stringify({ historial: parsed, fecha_actual: fechaActual })
+            });
+            const data = await resp.json();
+            if (data.success) {
+                applyPayload(data);
+                if (statusEl) {
+                    statusEl.className = "rr-status-msg rr-status-ok";
+                    statusEl.textContent = data.message || "Histórico importado correctamente.";
+                }
+            } else if (statusEl) {
+                statusEl.className = "rr-status-msg rr-status-err";
+                statusEl.textContent = data.message || "Error al importar histórico.";
+            }
+        } catch (e) {
+            if (statusEl) {
+                statusEl.className = "rr-status-msg rr-status-err";
+                statusEl.textContent = "Archivo JSON inválido.";
+            }
+        } finally {
+            inputEl.value = "";
+        }
+    }
+
     window.rrRender = rrRender;
     window.rrGuardar = rrGuardar;
     window.rrDescargarPNG = rrDescargarPNG;
+    window.rrImportarArchivo = rrImportarArchivo;
 
     document.addEventListener("DOMContentLoaded", function () {
         buildInputs();
