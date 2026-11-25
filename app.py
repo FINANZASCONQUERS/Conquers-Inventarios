@@ -493,20 +493,20 @@ USUARIOS = {
     "refinery@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery",
-        "rol": "refineria",
-        "area": ["planta", "planta_madrid", "reporte_madrid", "programacion_cargue", "programacion_cargue_madrid", "control_calidad", "control_calidad_madrid", "precintos", "rendimientos_cartagena", "rendimientos_cartagena_editar", "rendimientos_madrid", "rendimientos_madrid_editar"]
+        "rol": "editor",
+        "area": ["planta", "planta_madrid", "reporte_madrid", "simulador_rendimiento", "programacion_cargue", "control_calidad", "control_calidad_madrid", "reportes", "programacion_base", "precintos", "barcaza_orion", "barcaza_bita", "programacion_cargue_madrid", "rendimientos_cartagena", "rendimientos_cartagena_editar", "rendimientos_madrid", "rendimientos_madrid_editar"]
     },
     "refinerycwt@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Refinery CWT",
         "rol": "editor",
-        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos", "rendimientos_madrid", "rendimientos_madrid_editar"]
+        "area": ["planta_madrid", "reporte_madrid", "programacion_cargue_madrid", "control_calidad_madrid", "precintos"]
     },
     "refinerycwt.control@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
         "nombre": "Control Refineria Madrid",
         "rol": "refineria",
-        "area": ["programacion_cargue_madrid", "control_calidad_madrid", "planta_madrid", "reporte_madrid", "programacion_base", "guia_transporte", "precintos", "rendimientos_madrid", "rendimientos_madrid_editar"]
+        "area": ["programacion_cargue_madrid", "control_calidad_madrid", "planta_madrid", "reporte_madrid", "programacion_base", "guia_transporte", "precintos"]
     },
     "logistics.madrid@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"),
@@ -650,7 +650,7 @@ USUARIOS = {
         "password": generate_password_hash("Conquers2025"), 
         "nombre": "Control Refineria",
         "rol": "refineria",
-        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte", "precintos", "rendimientos_cartagena", "rendimientos_cartagena_editar"] 
+        "area": ["programacion_cargue", "control_calidad", "planta", "programacion_base", "guia_transporte", "precintos"] 
     },
     "opensea@conquerstrading.com": {
         "password": generate_password_hash("Conquers2025"), 
@@ -1072,7 +1072,7 @@ def _init_cronograma_db():
                 {'fase_id': '4', 'fase': '4°', 'faseClass': 'c-4', 'faseLabel': '4to día hábil — Cierre', 'iconClass': 'ic-4', 'icon': '🧮', 'name': 'Liquidación de Impuestos', 'resp': '[{"label": "Kevin Marin", "cls": "teal"}, {"label": "Kelly Suarez", "cls": ""}]', 'hlt': False},
                 {'fase_id': '5', 'fase': '5°', 'faseClass': 'c-5', 'faseLabel': '5to día hábil — Cierre', 'iconClass': 'ic-5', 'icon': '📋', 'name': 'Entrega de Informes', 'resp': '[{"label": "Kevin Marin", "cls": "teal"}, {"label": "Kelly Suarez", "cls": ""}]', 'hlt': True}
             ]
-            for emp in ['ZF', 'CWT']:
+            for emp in ['ZF']:
                 for idx, a in enumerate(actividades_default):
                     obj = CronogramaActividad(
                         empresa=emp, fase_id=a['fase_id'], fase_nombre=a['fase'], fase_etiqueta=a['faseLabel'],
@@ -1853,10 +1853,9 @@ EMAILS_REFINERIA = {
     'refinery.control@conquerstrading.com',
     'refinerycwt.control@conquerstrading.com',
     'refinerycwt@conquerstrading.com',
-    'refinery@conquerstrading.com',
 }
 # Nombre que dejan en `ultimo_editor` (bloqueo de eliminacion tras 30 min en Cartagena).
-NOMBRES_REFINERIA = {'control refineria', 'control refineria madrid', 'refinery cwt', 'refinery'}
+NOMBRES_REFINERIA = {'control refineria', 'control refineria madrid', 'refinery cwt'}
 
 
 class ProgramacionCargue(db.Model):
@@ -10218,7 +10217,7 @@ def dashboard_reportes():
         })
 
     # 7d. Trasiegos TK -> Barcaza
-    allowed_trasiegos = ('production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery.control@conquerstrading.com',
+    allowed_trasiegos = ('production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery@conquerstrading.com', 'refinery.control@conquerstrading.com',
                          'qualitycontrol@conquerstrading.com', 'quality.manager@conquerstrading.com')
     if is_admin or 'trasiegos_page' in user_areas or user_email in allowed_trasiegos:
         modulos_usuario.append({
@@ -14015,6 +14014,8 @@ PROGRAMACION_BASE_ALLOWED_EMAILS = {
     'carlos.baron@conquerstrading.com',
     'omar.morales@conquerstrading.com',
     'production@conquerstrading.com',
+    'ignacio@conquerstrading.com',
+    'refinery@conquerstrading.com',
     'logistic@conquerstrading.com',
     'ops@conquerstrading.com',
     'brando@conquerstrading.com',
@@ -15381,7 +15382,7 @@ def update_programacion(id):
         'amariagallo@conquerstrading.com': ['destino', 'cliente'],
         'refinery.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         'refinerycwt.control@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-        'refinery@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+        'refinery@conquerstrading.com': ['factura', 'fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho','estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Refinería de Madrid: mismos campos que refinería en Cartagena.
         'refinerycwt@conquerstrading.com': ['estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
         # Logística de Madrid: todos los campos de programación.
@@ -15887,6 +15888,7 @@ def delete_programacion(id):
         'ops@conquerstrading.com',
         'production@conquerstrading.com',
         'ignacio@conquerstrading.com',
+        'refinery@conquerstrading.com',
         'logistic@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
@@ -16117,6 +16119,7 @@ def buscar_reemplazar_programacion():
         'carlos.baron@conquerstrading.com',
         'amariagallo@conquerstrading.com',
         'ignacio@conquerstrading.com',
+        'refinery@conquerstrading.com',
         'logistics.madrid@conquerstrading.com'
     ]
     if session.get('rol') != 'admin' and session.get('email') not in usuarios_permitidos:
@@ -21743,6 +21746,8 @@ def depurar_conductores_ajax():
         'ops@conquerstrading.com',
         'logistic@conquerstrading.com',
         'production@conquerstrading.com',
+        'ignacio@conquerstrading.com',
+        'refinery@conquerstrading.com',
         'carlos.baron@conquerstrading.com',
         'oci@conquerstrading.com',
         'refinery.control@conquerstrading.com',
@@ -23429,13 +23434,8 @@ def cronograma_home():
         flash('Acceso denegado. Permiso exclusivo para contabilidad.', 'danger')
         return redirect(url_for('home'))
 
-    # Default company: editors see their company; viewers default to ZF (they can still switch tabs client-side)
-    if is_kelly:
-        empresa_default = 'ZF'
-    elif is_kevin:
-        empresa_default = 'CWT'
-    else:
-        empresa_default = 'ZF'
+    # Cronograma unificado: una sola empresa ('ZF' como clave interna para conservar el histórico)
+    empresa_default = 'ZF'
 
     return render_template('cronograma.html', empresa_default=empresa_default, is_kelly=is_kelly, is_kevin=is_kevin)
 
@@ -23728,21 +23728,16 @@ def api_cronograma_auto_vencidos(empresa):
 
 
 def _can_edit_cronograma_for(empresa: str) -> bool:
-    """Centraliza la lógica de permisos para editar cronograma.
-    - Admins pueden editar ambos.
-    - `accounting@conquerstrading.com` (Jaime) puede editar ambos.
-    - Kelly (accountingzf@... or contains 'kelly'/'suarez') -> ZF only.
-    - Kevin (billcwt@... or contains 'kevin'/'marin') -> CWT only.
+    """Centraliza la lógica de permisos para editar el cronograma unificado.
+    - Admins, Jaime (accounting@), Kelly (accountingzf@) y Kevin (billcwt@) pueden editar el cronograma conjunto.
     """
     email = session.get('email', '').strip().lower()
     if session.get('rol') == 'admin':
         return True
-    if email == 'accounting@conquerstrading.com':
+    if email in ('accounting@conquerstrading.com', 'accountingzf@conquerstrading.com', 'billcwt@conquerstrading.com'):
         return True
-    if empresa == 'ZF':
-        return email == 'accountingzf@conquerstrading.com' or 'kelly' in email or 'suarez' in email
-    if empresa == 'CWT':
-        return email == 'billcwt@conquerstrading.com' or 'kevin' in email or 'marin' in email
+    if any(k in email for k in ('kelly', 'suarez', 'kevin', 'marin')):
+        return True
     return False
 
 @app.route('/api/cronograma/<empresa>/estado', methods=['POST'])
@@ -24160,6 +24155,8 @@ def _precintos_puede_registrar_lotes():
         'logistic@conquerstrading.com',
         'oci@conquerstrading.com',
         'production@conquerstrading.com',
+        'ignacio@conquerstrading.com',
+        'refinery@conquerstrading.com',
         'logistics.madrid@conquerstrading.com',
     }
 

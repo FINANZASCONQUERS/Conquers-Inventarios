@@ -1328,7 +1328,7 @@
         // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
         const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)
-        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.madrid@conquerstrading.com'].includes(userEmail);
+        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.madrid@conquerstrading.com'].includes(userEmail);
         const tbody = document.getElementById('schedule-table-body');
         const thead = document.querySelector('table thead');
         const btnAddRow = document.getElementById('btn-add-row');
@@ -1351,7 +1351,7 @@
             'amariagallo@conquerstrading.com': ['destino', 'cliente'],
             'refinery.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinerycwt.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-            'refinery@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
+            'refinery@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinerycwt@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'logistics.madrid@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'factura', 'factura_sicom', 'fecha_factura', 'mes_facturado'],
             // Ignacio ahora con todos los campos como Samantha/logistic
@@ -3096,6 +3096,7 @@
                                     </button>
                                     ` : ''}
                                     ${row.imagen_guia ? `
+                                    <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver" style="padding: 0.15rem 0.4rem;">
                                     <button class="btn btn-outline-primary btn-xs btn-view-image" title="Ver imagen / guía" style="padding: 0.15rem 0.4rem;">
                                         <i class="fas fa-image"></i>
                                     </button>
@@ -3264,11 +3265,13 @@
         menuItems.forEach(item => {
             const action = item.dataset.action;
             if (isViewerMode) {
+                if (action === 'view') item.style.display = hasImage ? 'flex' : 'none';
                 if (action === 'view' || action === 'download-img') item.style.display = hasImage ? 'flex' : 'none';
                 else item.style.display = 'none';
                 return;
             }
             if (action === 'upload' || action === 'import') item.style.display = hasImage ? 'none' : 'flex';
+            if (action === 'view' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'view' || action === 'download-img' || action === 'delete-img') item.style.display = hasImage ? 'flex' : 'none';
             if (action === 'precintos-asignar' || action === 'precintos-liberar') {
                 item.style.display = puedePrecintos ? 'flex' : 'none';
@@ -4093,9 +4096,72 @@
         const viewButton = e.target.closest('.btn-view-image');
         if (viewButton) {
             const row = viewButton.closest('tr');
+            const id = row.dataset.id;
             if (row && row.dataset.id) abrirModalGuia(row.dataset.id);
         }
 
+            // Obtener el archivo (imagen o PDF) del servidor
+            fetch(`/api/programacion/${id}/image`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        const viewer = document.getElementById('modal-viewer');
+                        const downloadBtn = document.getElementById('btn-download-image');
+
+                        // Limpiar el viewer
+                        viewer.innerHTML = '';
+
+                        // Usar la fuente y el MIME entregados por el servidor
+                        const src = data.imagen; // puede ser URL o data URI
+                        const mimeType = (data.mime || '').toLowerCase();
+
+                        // Preparar botón de descarga
+                        let extension = 'png';
+                        if (mimeType.includes('pdf')) extension = 'pdf';
+                        else if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extension = 'jpg';
+                        else if (mimeType.includes('gif')) extension = 'gif';
+                        else if (mimeType.includes('png')) extension = 'png';
+                        else {
+                            // Último recurso: deducir por extensión de la URL si aplica
+                            try {
+                                const u = new URL(src, window.location.href);
+                                const path = u.pathname || '';
+                                const ext = (path.split('.').pop() || '').toLowerCase();
+                                if (['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) {
+                                    extension = ext === 'jpeg' ? 'jpg' : ext;
+                                }
+                            } catch (e) { /* ignore */ }
+                        }
+                        downloadBtn.href = src;
+                        downloadBtn.download = `guia_transporte_${id}.${extension}`;
+
+                        // Render según tipo
+                        if (mimeType.includes('pdf')) {
+                            const embed = document.createElement('embed');
+                            embed.type = 'application/pdf';
+                            // Añadir parámetros para mostrar toolbar del visor PDF del navegador
+                            embed.src = src + '#toolbar=1&navpanes=0&scrollbar=1';
+                            embed.style.width = '100%';
+                            embed.style.height = '70vh';
+                            embed.style.border = '0';
+                            viewer.appendChild(embed);
+                        } else {
+                            const img = document.createElement('img');
+                            img.src = src;
+                            img.alt = 'Imagen de guía';
+                            img.style.maxWidth = '100%';
+                            img.style.maxHeight = '70vh';
+                            img.style.borderRadius = '8px';
+                            viewer.appendChild(img);
+                        }
+
+                        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+                        imageModal.show();
+                    } else {
+                        showToast('danger', 'No se pudo cargar el archivo: ' + (data.message || ''));
+                    }
+                })
+                .catch(() => showToast('danger', 'Error al cargar el archivo'));
         // Botón descargar imagen/PDF de guía directo desde la fila
         const downloadRowButton = e.target.closest('.btn-download-image-row');
         if (downloadRowButton) {

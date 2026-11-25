@@ -779,68 +779,6 @@
         </div>
     </div>
 
-    {% if puede_editar_prod %}
-    <!-- PRODUCCIÓN DIARIA Y RENDIMIENTOS (CARTAGENA) -->
-    <div class="table-container-modern mt-4 p-4" style="border-top: 5px solid #FFC000;">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-            <div>
-                <h5 class="fw-bold mb-1" style="color: var(--text-primary);">
-                    <i class="bi bi-speedometer2 me-2" style="color:#d97706;"></i>Producción Diaria · Refinería Conquers ZF (BBL)
-                </h5>
-                <small class="text-muted">Corte <strong>{{ fecha_seleccionada }}</strong> — Al guardar el registro general también se guarda esta producción junto con los tanques.</small>
-            </div>
-            <div class="d-flex gap-2">
-                <button type="button" onclick="guardarProduccionDiaria()" class="btn btn-premium" style="background: linear-gradient(135deg,#f59e0b,#d97706); color:#fff;">
-                    <i class="bi bi-check2-circle me-1"></i>Guardar Producción
-                </button>
-                <a href="{{ url_for('reporte_planta', fecha=fecha_seleccionada, tab='rendimientos') }}" class="btn btn-outline-premium btn-premium">
-                    <i class="bi bi-file-earmark-bar-graph me-1"></i>Ver Gráfica de Rendimientos
-                </a>
-            </div>
-        </div>
-        <div class="row g-3">
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">Crudo procesado (BBL)</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_crudo"
-                    value="{{ produccion_dia.crudo_procesado if produccion_dia and produccion_dia.crudo_procesado != '' else '' }}" placeholder="0.00">
-            </div>
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">Diluyente (BBL)</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_diluyente"
-                    value="{{ produccion_dia.diluyente if produccion_dia and produccion_dia.diluyente != '' else '' }}" placeholder="0.00">
-            </div>
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">MGO (BBL)</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_mgo"
-                    value="{{ produccion_dia.mgo if produccion_dia and produccion_dia.mgo != '' else '' }}" placeholder="0.00">
-            </div>
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">FO6 (BBL)</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_fo6"
-                    value="{{ produccion_dia.fo6 if produccion_dia and produccion_dia.fo6 != '' else '' }}" placeholder="0.00">
-            </div>
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">Consumo interno (BBL)</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_consumo"
-                    value="{{ produccion_dia.consumo_interno if produccion_dia and produccion_dia.consumo_interno != '' else '' }}" placeholder="0.00">
-            </div>
-            <div class="col-md-2 col-sm-6">
-                <label class="form-label small fw-bold text-muted mb-1">Horas operadas</label>
-                <input type="text" inputmode="decimal" class="form-control fw-bold text-end prod-input-ctg" id="prod_horas"
-                    value="{{ produccion_dia.horas_operadas if produccion_dia and produccion_dia.horas_operadas is not none else 24 }}" placeholder="24">
-            </div>
-        </div>
-        <div class="row g-2 mt-3 pt-3 border-top" id="prod-preview-ctg" style="font-size:0.85rem;">
-            <div class="col-auto"><span class="badge bg-warning-subtle text-dark border px-3 py-2">Diluyente: <strong id="prev_dil_pct">0,00%</strong></span></div>
-            <div class="col-auto"><span class="badge bg-primary-subtle text-primary border px-3 py-2">MGO: <strong id="prev_mgo_pct">0,00%</strong></span></div>
-            <div class="col-auto"><span class="badge bg-success-subtle text-success border px-3 py-2">FO6: <strong id="prev_fo6_pct">0,00%</strong></span></div>
-            <div class="col-auto"><span class="badge bg-light text-dark border px-3 py-2">Derivados: <strong id="prev_deriv">0,00 BBL (0,00%)</strong></span></div>
-            <div class="col-auto"><span class="badge bg-light text-dark border px-3 py-2">Consumo Int.: <strong id="prev_cons_pct">0,00%</strong></span></div>
-            <div class="col-auto"><span class="badge bg-light text-dark border px-3 py-2">Dif. Crudo vs Deriv.: <strong id="prev_dif">0,00 BBL</strong></span></div>
-        </div>
-    </div>
-    {% endif %}
-
     <!-- MODAL GESTIÓN TANQUES -->
     <div class="modal fade" id="modalGestionTanques" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -1185,79 +1123,6 @@
             });
     }
 
-    // ==== PRODUCCIÓN DIARIA (CARTAGENA) ====
-    function parseNumProd(v) {
-        if (v === null || v === undefined) return 0;
-        let s = String(v).trim();
-        if (!s) return 0;
-        if (s.includes(',') && s.includes('.')) {
-            s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
-        } else if (s.includes(',')) {
-            s = s.replace(',', '.');
-        }
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-
-    function obtenerPayloadProduccion() {
-        return {
-            fecha: document.getElementById('fecha_filtro')?.value || '{{ fecha_seleccionada }}',
-            crudo_procesado: document.getElementById('prod_crudo')?.value || '',
-            diluyente: document.getElementById('prod_diluyente')?.value || '',
-            mgo: document.getElementById('prod_mgo')?.value || '',
-            fo6: document.getElementById('prod_fo6')?.value || '',
-            consumo_interno: document.getElementById('prod_consumo')?.value || '',
-            horas_operadas: document.getElementById('prod_horas')?.value || '24'
-        };
-    }
-
-    function actualizarPreviewProduccion() {
-        const fmt = n => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const crudo = parseNumProd(document.getElementById('prod_crudo')?.value);
-        const dil = parseNumProd(document.getElementById('prod_diluyente')?.value);
-        const mgo = parseNumProd(document.getElementById('prod_mgo')?.value);
-        const fo6 = parseNumProd(document.getElementById('prod_fo6')?.value);
-        const cons = parseNumProd(document.getElementById('prod_consumo')?.value);
-        const deriv = dil + mgo + fo6;
-        const pct = v => crudo > 0 ? (v / crudo * 100) : 0;
-
-        if (document.getElementById('prev_dil_pct')) document.getElementById('prev_dil_pct').textContent = fmt(pct(dil)) + '%';
-        if (document.getElementById('prev_mgo_pct')) document.getElementById('prev_mgo_pct').textContent = fmt(pct(mgo)) + '%';
-        if (document.getElementById('prev_fo6_pct')) document.getElementById('prev_fo6_pct').textContent = fmt(pct(fo6)) + '%';
-        if (document.getElementById('prev_deriv')) document.getElementById('prev_deriv').textContent = `${fmt(deriv)} BBL (${fmt(pct(deriv))}%)`;
-        if (document.getElementById('prev_cons_pct')) document.getElementById('prev_cons_pct').textContent = fmt(pct(cons)) + '%';
-        if (document.getElementById('prev_dif')) document.getElementById('prev_dif').textContent = `${fmt(deriv - crudo)} BBL (${fmt(pct(deriv - crudo))}%)`;
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.prod-input-ctg').forEach(inp => {
-            inp.addEventListener('input', actualizarPreviewProduccion);
-        });
-        actualizarPreviewProduccion();
-    });
-
-    function guardarProduccionDiaria() {
-        const payload = obtenerPayloadProduccion();
-        const indicator = document.getElementById('savingIndicator');
-        if (indicator) indicator.style.display = 'flex';
-
-        fetch("{{ url_for('api_produccion_planta') }}", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-            body: JSON.stringify(payload)
-        })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    mostrarAlerta(data.message || "Producción diaria guardada.", "success", 3000);
-                } else {
-                    mostrarAlerta(data.message || "Error al guardar producción.", "danger");
-                }
-            })
-            .catch(err => mostrarAlerta("Error de conexión al guardar producción: " + err.message, "danger"))
-            .finally(() => { if (indicator) indicator.style.display = 'none'; });
-    }
-
     // ==== GUARDAR REGISTRO COMPLETO ====
     function guardarRegistro() {
         const datosAEnviar = [];
@@ -1282,7 +1147,6 @@
         });
 
         const fechaCorte = document.getElementById('fecha_filtro')?.value || '{{ fecha_seleccionada }}';
-        const prodPayload = obtenerPayloadProduccion();
 
         const indicator = document.getElementById('savingIndicator');
         if (indicator) indicator.style.display = 'flex';
@@ -1295,8 +1159,7 @@
             },
             body: JSON.stringify({
                 fecha: fechaCorte,
-                tanques: datosAEnviar,
-                produccion: prodPayload
+                tanques: datosAEnviar
             })
         })
             .then(res => {

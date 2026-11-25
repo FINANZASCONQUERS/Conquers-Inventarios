@@ -1059,13 +1059,7 @@
 <div class="cronograma-wrapper mt-3">
 
     <div class="top-bar">
-        <div class="empresa-tabs">
-            <button class="empresa-tab {% if empresa_default == 'ZF' %}active{% endif %}" onclick="switchEmpresa('ZF')"
-                id="tab-ZF">Contabilidad ZF</button>
-            <button class="empresa-tab {% if empresa_default == 'CWT' %}active{% endif %}"
-                onclick="switchEmpresa('CWT')" id="tab-CWT">Contabilidad CWT</button>
-        </div>
-        <div class="top-actions-group">
+        <div class="top-actions-group" style="margin-left: auto;">
             <div class="btn-group-crono">
                 <button class="btn-top btn-config" id="btn-generar-fechas" onclick="autoGenerarFechas()"
                     style="display:none;" title="Calcular y asignar días hábiles del ciclo automáticamente">
@@ -1114,8 +1108,8 @@
         <div class="crono-header">
             <div class="header-top">
                 <div>
-                    <div class="header-badge" id="header-empresa-badge">Cierre Contable - {{ empresa_default }}</div>
-                    <div class="header-title">Cronograma de <span id="header-empresa-title">{{ empresa_default }}</span>
+                    <div class="header-badge" id="header-empresa-badge">Cierre Contable</div>
+                    <div class="header-title">Cronograma de <span id="header-empresa-title">Cierre</span>
                     </div>
                     <div class="header-sub">Actividades · Responsables · Estados · Observaciones</div>
                 </div>
@@ -1322,11 +1316,7 @@
     let ONLY_MY_TASKS = false;
 
     function canEditCurrent() {
-        if (IS_ADMIN) return true;
-        if (IS_JAIME) return true;
-        if (currentEmpresa === 'ZF' && IS_KELLY) return true;
-        if (currentEmpresa === 'CWT' && IS_KEVIN) return true;
-        return false;
+        return IS_ADMIN || IS_JAIME || IS_KELLY || IS_KEVIN;
     }
 
     function updateUIForPermissions() {
@@ -1706,7 +1696,7 @@
             title: '¿Auto-asignar Días Hábiles?',
             width: 660,
             customClass: { popup: 'crono-swal' },
-            html: `Se calcularán y actualizarán automáticamente las fechas límite (PRE, Últ., 1° al 5° día hábil) para el ciclo de <strong>${mes}</strong> en <strong>${currentEmpresa}</strong>.<div style="margin-top:10px; font-size:0.95rem; color:var(--crono-text-muted); background:var(--crono-card-item-bg); padding:13px 15px; border-radius:6px; border-left:3px solid #0ea5e9; text-align:left;">🔒 Solo afecta a <strong>${mes}</strong>. Los meses anteriores conservan sus fechas y su cumplimiento.</div>`,
+            html: `Se calcularán y actualizarán automáticamente las fechas límite (PRE, Últ., 1° al 5° día hábil) para el ciclo de <strong>${mes}</strong>.<div style="margin-top:10px; font-size:0.95rem; color:var(--crono-text-muted); background:var(--crono-card-item-bg); padding:13px 15px; border-radius:6px; border-left:3px solid #0ea5e9; text-align:left;">🔒 Solo afecta a <strong>${mes}</strong>. Los meses anteriores conservan sus fechas y su cumplimiento.</div>`,
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: '📅 Asignar Días Hábiles',
@@ -2352,7 +2342,7 @@
         }).then(canvas => {
             const link = document.createElement('a');
             const m = document.getElementById('monthSelect').value.replace(/\s+/g, '_');
-            link.download = `cronograma_${currentEmpresa}_${m}.png`;
+            link.download = `cronograma_cierre_${m}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
             el.classList.remove('exporting');
