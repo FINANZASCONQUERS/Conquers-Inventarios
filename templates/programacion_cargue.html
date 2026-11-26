@@ -5025,9 +5025,17 @@
                 tr.dataset.id = row.id;
 
                 // Campos editables inline en el historial
+                const userEditableFields = (userRol === 'admin')
+                    ? ['producto_a_cargar', 'empresa_transportadora', 'nombre_conductor', 'destino', 'cliente', 'estado']
+                    : (permissions[userEmail] || []);
+                const canEditEstadoHist = !isViewerMode && userEditableFields.includes('estado') && !(row.refineria_bloqueado && !isDespachadoOverride && userRol !== 'admin');
+
                 const editableField = (fieldName, value, width) => {
                     const displayVal = value || '';
-                    return `<td data-hist-field="${fieldName}" style="min-width:${width || '120px'}; padding:2px 4px;">
+                    if (isViewerMode || !userEditableFields.includes(fieldName)) {
+                        return `<td style="min-width:${width || '120px'};">${displayVal || '-'}</td>`;
+                    }
+                    return `<td data-hist-field="${fieldName}" style="min-width:${width || '120px'}; padding:2px 4px; position:relative;">
                         <input type="text" class="form-control form-control-sm hist-editable-input" 
                             value="${displayVal.replace(/"/g, '&quot;')}" 
                             data-original="${displayVal.replace(/"/g, '&quot;')}" 
@@ -5038,6 +5046,15 @@
                         <small class="hist-save-status" style="display:none; position:absolute; right:6px; top:50%; transform:translateY(-50%)"></small>
                     </td>`;
                 };
+
+                const estadoActual = row.estado || 'PROGRAMADO';
+                const estadoCellHtml = canEditEstadoHist
+                    ? `<td style="min-width:140px; padding:2px 4px;">
+                        <select class="form-select form-select-sm hist-estado-select fw-semibold" data-id="${row.id}" data-original="${estadoActual}" style="font-size:0.78rem; padding:2px 24px 2px 6px;">
+                            ${['PROGRAMADO', 'CARGANDO', 'CARGADO', 'DESPACHADO'].map(opt => `<option value="${opt}" ${estadoActual === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                        </select>
+                       </td>`
+                    : `<td><span class="badge bg-${estadoBadge}">${estadoActual}</span></td>`;
 
                 tr.innerHTML = `
                     <td class="text-center fw-bold">${globalIndex}</td>
@@ -5053,7 +5070,7 @@
                     <td>${row.hora_llegada_estimada || '-'}</td>
                     ${editableField('destino', row.destino, '150px')}
                     ${editableField('cliente', row.cliente, '150px')}
-                    <td><span class="badge bg-${estadoBadge}">${row.estado || 'PROGRAMADO'}</span></td>
+                    ${estadoCellHtml}
                     <td class="text-end">${row.galones ? Number(row.galones).toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '-'}</td>
                     <td class="text-end">${row.barriles ? Number(row.barriles).toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '-'}</td>
                     <td class="text-end">${row.temperatura ? Number(row.temperatura).toLocaleString('es-CO', { minimumFractionDigits: 2 }) : '-'}</td>
@@ -5422,6 +5439,50 @@
             }
             return;
         }
+    });
+
+    // --- CAMBIO DE ESTADO INLINE EN HISTORIAL ---
+    document.getElementById('historial-table-body').addEventListener('change', function (e) {
+        const sel = e.target;
+        if (!sel.classList.contains('hist-estado-select')) return;
+
+        const id = sel.dataset.id;
+        const originalVal = sel.dataset.original || 'PROGRAMADO';
+        const newVal = sel.value;
+        if (newVal === originalVal) return;
+
+        sel.disabled = true;
+        fetch(`/api/programacion/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: newVal })
+        })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.success) {
+                    sel.dataset.original = newVal;
+                    const record = historialData.find(r => r.id == id);
+                    if (record) record.estado = newVal;
+                    const tr = sel.closest('tr');
+                    if (tr) {
+                        tr.className = newVal === 'DESPACHADO' ? 'bg-success-subtle'
+                            : newVal === 'CARGANDO' ? 'bg-warning-subtle'
+                            : newVal === 'CARGADO' ? 'bg-orange-subtle' : '';
+                    }
+                    showToast('success', `Estado actualizado a ${newVal}`);
+                    fetchAndRender();
+                } else {
+                    sel.value = originalVal;
+                    showToast('danger', `No se pudo cambiar el estado: ${data.message || 'Verifica campos obligatorios (puedes editar la fila completa con el botón azul).'}`);
+                }
+            })
+            .catch(() => {
+                sel.value = originalVal;
+                showToast('danger', 'Error de conexión al actualizar estado');
+            })
+            .finally(() => {
+                sel.disabled = false;
+            });
     });
 
     // --- EDICIÓN INLINE EN HISTORIAL (auto-save al perder foco) ---

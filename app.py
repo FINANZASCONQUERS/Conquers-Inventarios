@@ -14810,7 +14810,33 @@ def handle_programacion():
         registros = [p[0] for p in pendientes]
         pendientes_guia = {p[0].id: (p[1], p[2]) for p in pendientes}
     elif not mostrar_todas:
-        registros = query.limit(20).all()
+        # Mostrar los 20 más recientes + TODOS los vehículos aún NO despachados (PROGRAMADO/CARGANDO/CARGADO)
+        # para que ningún vehículo pendiente desaparezca de la lista principal por superar los 20 registros.
+        recientes = query.limit(20).all()
+        pendientes_no_despachados = (
+            ProgramacionCargue.query
+            .filter(
+                ProgramacionCargue.sede == sede,
+                or_(
+                    ProgramacionCargue.estado.is_(None),
+                    func.upper(func.trim(ProgramacionCargue.estado)) != 'DESPACHADO',
+                )
+            )
+            .order_by(
+                ProgramacionCargue.fecha_programacion.desc(),
+                ProgramacionCargue.id.desc()
+            )
+            .limit(200)
+            .all()
+        )
+        vistos = {}
+        for r in recientes + pendientes_no_despachados:
+            vistos[r.id] = r
+        registros = sorted(
+            vistos.values(),
+            key=lambda r: (r.fecha_programacion or date.min, r.id or 0),
+            reverse=True,
+        )
     else:
         # Limitar historial a últimos 500 registros para evitar lentitud
         registros = query.limit(500).all()
