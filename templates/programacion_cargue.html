@@ -1328,7 +1328,7 @@
         // Inventario de precintos: solo quien tiene el area ve el boton de asignar.
         const puedePrecintos = {{ 'true' if puede_precintos else 'false' }};
         // Solo estos usuarios pueden eliminar (Juliana, Ignacio, Samantha y Carlos)
-        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com', 'logistics.madrid@conquerstrading.com'].includes(userEmail);
+        const canDelete = ['ops@conquerstrading.com', 'production@conquerstrading.com', 'ignacio@conquerstrading.com', 'refinery@conquerstrading.com', 'logistic@conquerstrading.com', 'carlos.baron@conquerstrading.com', 'oci@conquerstrading.com'].includes(userEmail);
         const tbody = document.getElementById('schedule-table-body');
         const thead = document.querySelector('table thead');
         const btnAddRow = document.getElementById('btn-add-row');
@@ -1339,8 +1339,8 @@
 
         const DESPACHADO_LOCK_DELAY_MS = 30 * 60 * 1000;
         const DESPACHADO_OVERRIDE_EMAILS = ['logistic@conquerstrading.com', 'logistics.assistant@conquerstrading.com', 'logistics.madrid@conquerstrading.com'];
-        // En sede Madrid no aplica restricción de tiempo en programación de cargue.
-        const isDespachadoOverride = SEDE_PROGRAMACION === 'MADRID' || DESPACHADO_OVERRIDE_EMAILS.includes(userEmail);
+        // Solo los correos autorizados de logística pueden editar después del bloqueo de DESPACHADO (aplica igual en Cartagena y Madrid).
+        const isDespachadoOverride = DESPACHADO_OVERRIDE_EMAILS.includes(userEmail);
         const despachadoLockTimers = new Map();
 
         const permissions = {
@@ -1353,7 +1353,7 @@
             'refinerycwt.control@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinery@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'refinerycwt@conquerstrading.com': ['estado', 'galones', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
-            'logistics.madrid@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'factura', 'factura_sicom', 'fecha_factura', 'mes_facturado'],
+            'logistics.madrid@conquerstrading.com': ['fecha_programacion', 'producto_a_cargar', 'tipo_guia', 'cliente', 'destino', 'hora_llegada_estimada', 'placa', 'tanque', 'empresa_transportadora', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'estado', 'numero_guia', 'fecha_despacho'],
             // Ignacio ahora con todos los campos como Samantha/logistic
             'production@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
             'ignacio@conquerstrading.com': ['fecha_programacion', 'empresa_transportadora', 'placa', 'tanque', 'nombre_conductor', 'cedula_conductor', 'celular_conductor', 'hora_llegada_estimada', 'producto_a_cargar', 'tipo_guia', 'numero_guia', 'destino', 'cliente', 'fecha_despacho', 'estado', 'galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'],
@@ -2968,13 +2968,13 @@
                 const isEditable = !config.readonly && (isAdmin || userPermissions.includes(col));
                 const value = row[col] || '';
                 // Si el usuario es refinería y el registro está bloqueado, no permitir edición de sus campos
-                // En Cartagena: si pasaron 30 min, bloquear campos de datos excepto estado. En Madrid no hay restricción de tiempo.
+                // En Cartagena y Madrid: si pasaron 30 min, bloquear campos de datos excepto estado.
                 // Si está DESPACHADO, bloquear todo.
                 const esColRefineriaConTiempo = ['galones', 'barriles', 'temperatura', 'api_obs', 'api_corregido', 'precintos', 'fecha_despacho'].includes(col);
                 const esColEstado = col === 'estado';
                 const refineriaBlocked = ES_REFINERIA && (
-                    (row.estado || '').toUpperCase() === 'DESPACHADO' && (esColRefineriaConTiempo || esColEstado) ||
-                    (SEDE_PROGRAMACION !== 'MADRID' && row.refineria_bloqueado && esColRefineriaConTiempo)
+                    ((row.estado || '').toUpperCase() === 'DESPACHADO' && (esColRefineriaConTiempo || esColEstado)) ||
+                    (row.refineria_bloqueado && esColRefineriaConTiempo)
                 );
                 let finalEditable = isEditable && !refineriaBlocked;
                 const lockBadge = '';
@@ -5028,7 +5028,9 @@
                 const userEditableFields = (userRol === 'admin')
                     ? ['producto_a_cargar', 'empresa_transportadora', 'nombre_conductor', 'destino', 'cliente', 'estado']
                     : (permissions[userEmail] || []);
-                const canEditEstadoHist = !isViewerMode && userEditableFields.includes('estado') && !(row.refineria_bloqueado && !isDespachadoOverride && userRol !== 'admin');
+                const estadoActual = row.estado || 'PROGRAMADO';
+                const bloqueadoRefineriaDespachado = ES_REFINERIA && estadoActual.toUpperCase() === 'DESPACHADO';
+                const canEditEstadoHist = !isViewerMode && userEditableFields.includes('estado') && !bloqueadoRefineriaDespachado && !(row.refineria_bloqueado && !ES_REFINERIA && !isDespachadoOverride && userRol !== 'admin');
 
                 const editableField = (fieldName, value, width) => {
                     const displayVal = value || '';
@@ -5047,11 +5049,13 @@
                     </td>`;
                 };
 
-                const estadoActual = row.estado || 'PROGRAMADO';
+                const estadoOptionsHist = ES_REFINERIA
+                    ? ['PROGRAMADO', 'CARGANDO', 'CARGADO']
+                    : ['PROGRAMADO', 'CARGANDO', 'CARGADO', 'DESPACHADO'];
                 const estadoCellHtml = canEditEstadoHist
                     ? `<td style="min-width:140px; padding:2px 4px;">
                         <select class="form-select form-select-sm hist-estado-select fw-semibold" data-id="${row.id}" data-original="${estadoActual}" style="font-size:0.78rem; padding:2px 24px 2px 6px;">
-                            ${['PROGRAMADO', 'CARGANDO', 'CARGADO', 'DESPACHADO'].map(opt => `<option value="${opt}" ${estadoActual === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                            ${estadoOptionsHist.map(opt => `<option value="${opt}" ${estadoActual === opt ? 'selected' : ''}>${opt}</option>`).join('')}
                         </select>
                        </td>`
                     : `<td><span class="badge bg-${estadoBadge}">${estadoActual}</span></td>`;
