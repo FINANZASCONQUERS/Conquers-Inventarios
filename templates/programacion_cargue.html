@@ -972,23 +972,28 @@
                                     placeholder="Buscar cliente...">
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label small fw-semibold mb-1">Buscar Placa/Conductor</label>
-                                <input type="text" id="filter-search" class="form-control form-control-sm"
-                                    placeholder="Buscar...">
+                                <label class="form-label small fw-semibold mb-1">N° Guía</label>
+                                <input type="text" id="filter-guia" class="form-control form-control-sm"
+                                    placeholder="Buscar N° guía...">
                             </div>
-                            <div class="col-md-1">
+                        </div>
+                        <div class="row g-2 align-items-end mt-1">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold mb-1">Buscar Placa / Conductor / Guía</label>
+                                <input type="text" id="filter-search" class="form-control form-control-sm"
+                                    placeholder="Buscar placa, conductor o guía...">
+                            </div>
+                            <div class="col-md-2">
                                 <button id="btn-apply-historial-filters" class="btn btn-primary btn-sm w-100">
                                     <i class="fas fa-filter me-1"></i>Filtrar
                                 </button>
                             </div>
-                        </div>
-                        <div class="row mt-2">
-                            <div class="col-12">
-                                <div class="d-flex align-items-center gap-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center justify-content-md-end gap-3">
                                     <span class="badge bg-secondary" id="historial-total-badge">Total: 0
                                         registros</span>
                                     <button id="btn-clear-historial-filters"
-                                        class="btn btn-link btn-sm text-decoration-none">
+                                        class="btn btn-link btn-sm text-decoration-none p-0">
                                         <i class="fas fa-times me-1"></i>Limpiar filtros
                                     </button>
                                 </div>
@@ -3325,12 +3330,19 @@
 
     function applyFilters() {
         const filters = Array.from(thead.querySelectorAll('.filter-input')).reduce((acc, input) => {
-            if (input.value) { acc[input.dataset.filterCol] = input.value.toLowerCase(); }
+            if (input.value) {
+                const col = input.dataset.filterCol;
+                acc[col] = col === 'numero_guia'
+                    ? input.value.replace(/\s+/g, '').toLowerCase()
+                    : input.value.toLowerCase();
+            }
             return acc;
         }, {});
         const filteredData = originalData.filter(row => {
             return Object.keys(filters).every(col => {
-                return String(row[col] || '').toLowerCase().includes(filters[col]);
+                const rawVal = String(row[col] || '').toLowerCase();
+                const cellVal = col === 'numero_guia' ? rawVal.replace(/\s+/g, '') : rawVal;
+                return cellVal.includes(filters[col]);
             });
         });
         renderBody(filteredData);
@@ -5210,15 +5222,26 @@
     });
 
     // --- FUNCIÓN CENTRAL DE FILTROS DEL HISTORIAL ---
-    function aplicarFiltrosHistorial() {
+    function normalizarGuiaFiltro(valor) {
+        return String(valor || '').replace(/\s+/g, '').toUpperCase();
+    }
+
+    let guiaServerSearchSeq = 0;
+    let guiaInputDebounce = null;
+
+    function aplicarFiltrosHistorial(sourceData) {
+        const baseData = Array.isArray(sourceData) ? sourceData : historialData;
         const estado = document.getElementById('filter-estado').value;
         const producto = document.getElementById('filter-producto').value;
-        const search = document.getElementById('filter-search').value.toLowerCase();
+        const searchRaw = document.getElementById('filter-search').value;
+        const search = searchRaw.toLowerCase();
+        const searchGuiaNorm = normalizarGuiaFiltro(searchRaw);
         const clienteFilter = (document.getElementById('filter-cliente')?.value || '').toLowerCase();
+        const guiaFilter = normalizarGuiaFiltro(document.getElementById('filter-guia')?.value || '');
         const fechaDesde = document.getElementById('filter-fecha-desde').value; // YYYY-MM-DD
         const fechaHasta = document.getElementById('filter-fecha-hasta').value; // YYYY-MM-DD
 
-        historialFiltered = historialData.filter(row => {
+        historialFiltered = baseData.filter(row => {
             let match = true;
 
             // Filtro por rango de fechas (usa fecha_programacion en formato YYYY-MM-DD)
@@ -5243,10 +5266,15 @@
                 const cliente = (row.cliente || '').toLowerCase();
                 match = match && cliente.includes(clienteFilter);
             }
+            if (guiaFilter) {
+                const guiaNorm = normalizarGuiaFiltro(row.numero_guia);
+                match = match && guiaNorm.includes(guiaFilter);
+            }
             if (search) {
                 const placa = (row.placa || '').toLowerCase();
                 const conductor = (row.nombre_conductor || '').toLowerCase();
-                match = match && (placa.includes(search) || conductor.includes(search));
+                const guiaNorm = normalizarGuiaFiltro(row.numero_guia);
+                match = match && (placa.includes(search) || conductor.includes(search) || (searchGuiaNorm && guiaNorm.includes(searchGuiaNorm)));
             }
 
             return match;
@@ -5256,13 +5284,73 @@
         renderHistorialTable();
     }
 
+    function buscarGuiaEnServidor(guiaNorm) {
+        const reqSeq = ++guiaServerSearchSeq;
+        fetch(urlConSede("{{ url_for('handle_programacion') }}?numero_guia=" + encodeURIComponent(guiaNorm)))
+            .then(res => res.json())
+            .then(rows => {
+                if (reqSeq !== guiaServerSearchSeq) return;
+                if (Array.isArray(rows)) {
+                    aplicarFiltrosHistorial(rows);
+                }
+            })
+            .catch(() => {
+                if (reqSeq !== guiaServerSearchSeq) return;
+                aplicarFiltrosHistorial();
+            });
+    }
+
+    const filterGuiaInput = document.getElementById('filter-guia');
+    if (filterGuiaInput) {
+        filterGuiaInput.addEventListener('input', function () {
+            clearTimeout(guiaInputDebounce);
+            const guiaNorm = normalizarGuiaFiltro(filterGuiaInput.value);
+            if (!guiaNorm) {
+                guiaServerSearchSeq++;
+                aplicarFiltrosHistorial();
+                return;
+            }
+            aplicarFiltrosHistorial();
+            if (guiaNorm.length >= 3 && historialFiltered.length === 0) {
+                guiaInputDebounce = setTimeout(() => buscarGuiaEnServidor(guiaNorm), 250);
+            }
+        });
+        filterGuiaInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(guiaInputDebounce);
+                const guiaNorm = normalizarGuiaFiltro(filterGuiaInput.value);
+                if (guiaNorm) buscarGuiaEnServidor(guiaNorm);
+                else aplicarFiltrosHistorial();
+            }
+        });
+    }
+
+    ['filter-search', 'filter-cliente'].forEach(fid => {
+        const el = document.getElementById(fid);
+        if (el) {
+            el.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('btn-apply-historial-filters').click();
+                }
+            });
+        }
+    });
+
     // Aplicar filtros del historial (botón)
     document.getElementById('btn-apply-historial-filters').addEventListener('click', function () {
-        aplicarFiltrosHistorial();
+        const guiaNorm = normalizarGuiaFiltro(document.getElementById('filter-guia')?.value || '');
+        if (guiaNorm) {
+            buscarGuiaEnServidor(guiaNorm);
+        } else {
+            aplicarFiltrosHistorial();
+        }
     });
 
     // Limpiar filtros
     document.getElementById('btn-clear-historial-filters').addEventListener('click', function () {
+        guiaServerSearchSeq++;
         document.getElementById('filter-fecha-desde').value = '';
         document.getElementById('filter-fecha-hasta').value = '';
         document.getElementById('filter-estado').value = '';
@@ -5270,6 +5358,8 @@
         document.getElementById('filter-search').value = '';
         const filterCliente = document.getElementById('filter-cliente');
         if (filterCliente) filterCliente.value = '';
+        const filterGuia = document.getElementById('filter-guia');
+        if (filterGuia) filterGuia.value = '';
         document.querySelectorAll('.fecha-rapida').forEach(b => {
             b.classList.remove('active');
             b.classList.replace('btn-primary', 'btn-outline-primary');

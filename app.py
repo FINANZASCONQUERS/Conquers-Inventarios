@@ -14797,6 +14797,7 @@ def handle_programacion():
     
     # Lógica GET
     mostrar_todas = request.args.get('all', '0') == '1'
+    numero_guia_q = _normalizar_numero_guia(request.args.get('numero_guia', ''))
     query = ProgramacionCargue.query.filter(ProgramacionCargue.sede == sede).order_by(
         ProgramacionCargue.fecha_programacion.desc(),
         ProgramacionCargue.id.desc()
@@ -14809,6 +14810,17 @@ def handle_programacion():
             return jsonify(success=True, total=len(pendientes))
         registros = [p[0] for p in pendientes]
         pendientes_guia = {p[0].id: (p[1], p[2]) for p in pendientes}
+    elif numero_guia_q:
+        # Búsqueda directa en todo el historial de la sede por número de guía (sin límite de 500 filas)
+        registros = (
+            query
+            .filter(
+                ProgramacionCargue.numero_guia.isnot(None),
+                _expr_numero_guia_normalizado().contains(numero_guia_q),
+            )
+            .limit(200)
+            .all()
+        )
     elif not mostrar_todas:
         # Mostrar los 20 más recientes + TODOS los vehículos aún NO despachados (PROGRAMADO/CARGANDO/CARGADO)
         # para que ningún vehículo pendiente desaparezca de la lista principal por superar los 20 registros.
